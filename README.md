@@ -1,2 +1,3 @@
-# scheduler-library
+# Scheduler Library (SL)
+
 Scheduler Library tool
