@@ -1,64 +1,37 @@
-# Mini-ERA Smart-Scheduler SDK
+# Scheduler Library (SL)
 
-This is a Software Development Environment for initial development, deployment, and testing of a Smart Scheduler.
-This code provides the Mini-ERA (FFT and Viterbi) kernels (i.e. the C-Subset of Mini-ERA) implemented atop a
-Smart Scheduler library layer.  Calls to execute the FFT or Viterbi (accelerator functions) are now turned into
-calls to the Scheduler to request_execution of a Task (either an FFT_TASK or a VITERBI_TASK) and the
-scheduler will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via
-a pthread, or on a hardware accelerator where those are implemented).
+This is a Software Development Environment for initial development, deployment, and testing of a *smart scheduler*. This code provides the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> (FFT and Viterbi) kernels (i.e. the C-Subset of Mini-ERA) implemented atop a Scheduler Library (SL).  Calls to execute the FFT or Viterbi (accelerator functions) are now turned into calls to SL to `request_execution` of a task (either an `FFT_TASK` or a `VITERBI_TASK`) and SL will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
 
 ## Requirements
 
-Mini-ERA has been successfully built and executed using the following set-up:
+SL has been successfully built and executed using the following set-up:
  - Ubuntu 18.04
  - Ubuntu 16.04
 
-Other platforms should also work; this implementation does NOT include the CV/CNN tensorflow model code, and
-thus does not require that support, etc.  This code does require gcc or similar/compatible compiler, an up to date pthreads
-library, and the C99 standard.
+Other platforms should also work; this implementation does NOT support (yet) the CV/CNN tensorflow model code, and thus does not require that support, etc.  This code does require gcc or similar/compatible compiler, an up to date pthreads library, and the C99 standard.
 
 ## Installation and Execution
-The installationa nd execution are fairly standard, vit github clone and makefiles.
-
-### Installation
-
-Install by cloning the repository (really a sub-repo of the main Mini-ERA repository):
+The installation and execution are fairly standard, via github clone and makefiles:
 
 ```
 git clone https://github.com/IBM/mini-era.git
-cd mini-era/scheduler
-```
-
-### Build
-
-The basic Mini-ERA+Scheduler build should be accomplished with a simple make; the makefile also
-supports the clean target to facilitate clean-up and full re-compilations.
-
-
-```
 make clean
 make
 ```
 
-The ```make clean``` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc.
-The ```make``` command should produce the ```test-scheduler.exe``` target, which is the core executable that will run the
-C-mode Mini-ERA application atop the Scheduler.
+The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. The `make` command should produce the `test-scheduler.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
 
 ### Configuration
 
-The Mini-ERA + Scheduler build supports more than just a basic Linux platform; there is provision to tie this same application
-into the EPOCHS ESP-based (https://esp.cs.columbia.edu) Soc platform (currently propotyped on an FPGA).  As such, there
-are options to compile this application code within the ESP SoC design environment to cross-compile an output target or
-the EPOCHS native RISC-V Linux SoC environment.  There are also some additional configuration capabilites tied in to the overall
-make process, and these are controlled in two ways:
+The Mini-ERA + SL build supports more than just a basic Linux platform; there is provision to tie this same application into the EPOCHS <a href="https://esp.cs.columbia.edu" target="_blank">ESP-based</a> Soc platform (currently propotyped on an FPGA). As such, there are options to compile this application code within the ESP SoC design environment to cross-compile an output target or the EPOCHS native RISC-V Linux SoC environment. There are also some additional configuration capabilites tied in to the overall make process, and these are controlled in two ways:
 
-1. Build using an explicit Makefile, e.g. to build the local (native to this system) version, invoke ```make -f Makefile.local``` which will use the native gcc and compile to a version that does not include the use of ESP-based SoC Accelerator hardware; to compile explicitly to the ESP-based SoC RISC-V system, build with ```make -f Makefile.riscv```
+1. Build using an explicit Makefile, e.g. to build the local (native to this system) version, invoke `make -f Makefile.local` which will use the native gcc and compile to a version that does not include the use of ESP-based SoC hardware; to compile explicitly to the ESP-based SoC RISC-V system, build with `make -f Makefile.riscv`
 
-2. Alter the contents of the ```.config``` file.  The config file contains a set of defines used by the Makefile to produce the proper build style by default.
+2. Alter the contents of the `.config` file. The config file contains a set of defines used by the Makefile to produce the proper build style by default.
 
-### The ```.config``` file contents
+### The `.config` File Contents
 
-The config file contains a series of definitions, like #define macros or environment variables, wused to guide the default make behavior.  These contents are:
+The config file contains a series of definitions, like #define macros or environment variables, wused to guide the default make behavior. These contents are:
 
 - DO_CROSS_COMPILATION=y  indicates we are cross-compiling (uses the cross-compiler defined in Makefile)
 - COMPILE_TO_ESP=y	  indicates we are compiling to target the ESP RISC-V SoC environment
@@ -71,8 +44,6 @@ The config file contains a series of definitions, like #define macros or environ
 - CONFIG_VERBOSE=y	  turns on a LOT of debugging output
 - CONFIG_DBG_THREADS=y	  turns on debugging output for the threads 
 - CONFIG_GDB=y		  indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
-
-
 
 ### Usage
 ```
@@ -101,26 +72,20 @@ Usage: ./cmain.exe <OPTIONS>
                :      1 = Fastest_to_Slewest_First_Available
 ```
 
-To actually execute a trace, one must point to the trace repository.  The scheduler sub-directoyr does not include a trace directory itself, but instead uses the one from Mini-ERA.  One can do this in several ways:
-1. Copy the ```test-scheduler.exe``` to the (parent) mini-era directory, and run from there 
-2. Create a soft-link (```ln -s scheduler/test-scheduler.exe .```) in the (parent) mini-era directory, and run from there, therefore always using the most-recently compiled version of ```test-scheduler.exe```
-3. Create a soft-link in the scheduler directory to the (parent) Mini-ERA traces directory, and run from the scheduler directory, e.g. ```ln -s ../traces .```   This is done by default and should work IF you cloned the top-level mini-era repository in full.
-4. create a local traces directory, and populate it with the required files (see the Mini-ERA README)
+To actually execute a trace, one must point to the trace repository. SL does not include a trace directory itself, but instead uses the one from <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a>.
 
 ## Status
 
-This platform is meant for Scheduler-Library/Layer development and integration, so it is expected to change over
-time.  Currently, this is a relatively complete but bare-bones trace version Mini-ERA implementation.
-Additional features of the Mini-ERA code, and extensions thereto should also be developed over time.
+This platform is meant for SL development and integration, so it is expected to change over time. Currently, this is a relatively complete but bare-bones trace version Mini-ERA implementation. Additional features of the Mini-ERA code, and extensions thereto should also be developed over time.
 
-There are currently some example traces in the ```traces``` subdirectory.  Note that most development of Mini-ERA and
-its off-shoots to date has focused around the ```tt02.new``` trace.
- - ```tt00.new``` is a 5000 record illustrative trace
- - ```tt001new``` is a 5000 record illustrative trace
- - ```tt002new``` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times)
- - ```tt003new``` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times)
+There are currently some example traces in the `traces` subdirectory. Note that most development of Mini-ERA and its off-shoots to date has focused around the `tt02.new` trace.
 
-For additional information, please see the (historic, parent) Mini-ERA master main-line README.
+ - `tt00.new` is a 5000 record illustrative trace.
+ - `tt001new` is a 5000 record illustrative trace.
+ - `tt002new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
+ - `tt003new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
+
+For additional information, please see the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> main-line README.
 
 
 ## Contacts and Current Maintainers
