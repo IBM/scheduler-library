@@ -1,9 +1,72 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.npy
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
 .project
-.pydevproject
-*.pyc
-*.trace
-sim_*
-datasets
 .DS_Store
-.global.atrace
-*.csv
+output.txt
+
+#Executables in utils 
+utils/debug_tracegen
+utils/debug_vistracegen
+utils/tracegen
+utils/vistracegen
+
+#Executables in erav3-app
+erav3-app/erav3c
+erav3-app/verbose_erav3c
+
