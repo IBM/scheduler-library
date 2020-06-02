@@ -34,6 +34,11 @@
 char cv_dict[256]; 
 char rad_dict[256];
 char vit_dict[256];
+
+//TODO: profile all possible fft and decoder sizes
+//Dummy numbers for development
+float fft_profile[NUM_ACCEL_TYPES] = {20, 0.2, 0, 0};
+float vit_profile[NUM_ACCEL_TYPES] = {3, 0, 0.03, 0};
 //char * cv_dict  = "traces/objects_dictionary.dfn";
 //char * rad_dict = "traces/radar_dictionary.dfn";
 //char * vit_dict = "traces/vit_dictionary.dfn";
@@ -72,7 +77,8 @@ void print_usage(char * pname) {
   printf("               :      0 = No variability (e.g. all messages same size, etc.)\n");
   printf("    -P <N>     : defines the Scheduler Accelerator Selection Policy:\n");
   printf("               :      0 = Select_Accelerator_Type_And_Wait\n");
-  printf("               :      1 = Fastest_to_Slewest_First_Available\n");
+  printf("               :      1 = Fastest_to_Slowest_First_Available\n");
+  printf("               :      2 = Fastest_Finish_Time_First\n");
 }
 
 
@@ -407,7 +413,7 @@ int main(int argc, char *argv[])
     gettimeofday(&start_exec_rad, NULL);
    #endif
     // Request a MetadataBlock (for an FFT_TASK at Critical Level)
-    task_metadata_block_t* fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK);
+    task_metadata_block_t* fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile);
     if (fft_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
@@ -416,7 +422,7 @@ int main(int argc, char *argv[])
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_rad_kernel(fft_mb_ptr, radar_inputs); // Critical RADAR task
     for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
-      task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK);
+      task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile);
       if (fft_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
 	exit (-5);
@@ -431,7 +437,7 @@ int main(int argc, char *argv[])
    #endif
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock (for an VITERBI_TASK at Critical Level)
-    task_metadata_block_t* vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3);
+    task_metadata_block_t* vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile);
     if (vit_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
@@ -441,7 +447,7 @@ int main(int argc, char *argv[])
     start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->metadata_block_id));
     for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
-      task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK);
+      task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile);
       if (vit_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
 	exit (-5);

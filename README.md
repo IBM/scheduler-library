@@ -69,7 +69,8 @@ Usage: ./cmain.exe <OPTIONS>
                :      0 = No variability (e.g. all messages same size, etc.)
     -P <N>     : defines the Scheduler Accelerator Selection Policy:
                :      0 = Select_Accelerator_Type_And_Wait
-               :      1 = Fastest_to_Slewest_First_Available
+               :      1 = Fastest_to_Slowest_First_Available
+               :      2 = Fastest_Finish_Time_First
 ```
 
 To actually execute a trace, one must point to the trace repository. SL does not include a trace directory itself, but instead uses the one from <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a>.
@@ -91,4 +92,4 @@ For additional information, please see the <a href="https://github.com/IBM/mini-
 ## Contacts and Current Maintainers
 
  - J-D Wellman (wellman@us.ibm.com)
- - Augusto Veja (ajvega@us.ibm.com)
+ - Augusto Vega (ajvega@us.ibm.com)

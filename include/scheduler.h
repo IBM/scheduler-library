@@ -57,6 +57,7 @@ typedef enum { cpu_accel_t = 0,
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
 	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
+		   FASTEST_FINISH_TIME_FIRST_POLICY,
                NUM_SELECTION_POLICIES } accel_selct_policy_t;
 
 
@@ -139,6 +140,7 @@ typedef struct task_metadata_entry_struct {
   int32_t  accelerator_id;        // indicates which accelerator this task is executing on
   scheduler_jobs_t job_type;      // see above enumeration
   task_criticality_t crit_level;  // [0 .. ?] ?
+  float task_profile[NUM_ACCEL_TYPES];  //Timing profile for task
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
   unsigned gets_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
@@ -169,7 +171,7 @@ extern unsigned fft_logn_samples;
 
 extern status_t initialize_scheduler();
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, float * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
