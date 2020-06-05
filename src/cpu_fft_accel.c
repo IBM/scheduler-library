@@ -26,7 +26,7 @@ extern uint64_t fft_usec;
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->metadata_block_id, task_metadata_block->criticality_level ));
-  float * data = (float*)(task_metadata_block->data_view.fft_data);
+  float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
 
 #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->fft_timings.calc_start), NULL);

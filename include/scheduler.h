@@ -68,6 +68,13 @@ extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
 
 
+// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "FFT" Task view of "data"
+  int32_t log_nsamples;       // The Log2 of the number of samples in this FFT
+  float   theData[2* (1<<14)]; // MAx supported samples (2^14) * 2 float per complex input/output
+}  fft_data_struct_t;
+
 // This is a struutre that defines the "Viterbi" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Viterbi" view of "data"
@@ -155,7 +162,7 @@ typedef struct task_metadata_entry_struct {
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
   union { // This union holds job-specific "views" of the data (input/ouput memory for job accelerators)
     uint8_t  raw_data[128*1024];     // 128 KB is the current MAX data size for all jobs
-    float    fft_data[1<<15];        // FFT view of data -- 16k-samples (max) complex float
+    fft_data_struct_t     fft_data;  // FFT view of data -- see strucutre typedef above
     viterbi_data_struct_t vit_data;  // Viterbi view of data -- see strucutre typedef above
   } data_view;
 } task_metadata_block_t;
