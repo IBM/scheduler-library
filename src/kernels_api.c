@@ -107,6 +107,7 @@ unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 
 /* } radar_dict_entry_t; */
 
 #define MAX_RDICT_ENTRIES   12   // This should be updated eventually...
+unsigned int        num_radar_samples_sets = 0;
 unsigned int        num_radar_dictionary_items = 0;
 radar_dict_entry_t* the_radar_return_dict;
 
@@ -153,12 +154,12 @@ status_t init_rad_kernel(char* dict_fn)
     return error;
   }
   // Read the number of definitions
-  if (fscanf(dictF, "%u\n", &num_radar_dictionary_items) != 1) {
-    printf("ERROR reading the number of Radar Dictionary items\n");
+  if (fscanf(dictF, "%u %u\n", &num_radar_samples_sets, &num_radar_dictionary_items) != 2) {
+    printf("ERROR reading the number of Radar Dictionary sets and items per set\n");
     exit(-2);
   }
-  DEBUG(printf("  There are %u dictionary entries\n", num_radar_dictionary_items));
-  the_radar_return_dict = (radar_dict_entry_t*)calloc(num_radar_dictionary_items, sizeof(radar_dict_entry_t));
+  DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, num_radar_dictionary_items));
+  the_radar_return_dict = (radar_dict_entry_t*)calloc(num_radar_samples_sets * num_radar_dictionary_items, sizeof(radar_dict_entry_t));
   if (the_radar_return_dict == NULL) 
   {
     printf("ERROR : Cannot allocate Radar Trace Dictionary memory space");
@@ -166,32 +167,34 @@ status_t init_rad_kernel(char* dict_fn)
   }
 
   unsigned tot_dict_values = 0;
-  for (int di = 0; di < num_radar_dictionary_items; di++) {
-    unsigned entry_id;
-    unsigned entry_log_nsamples;
-    float entry_dist;
-    unsigned entry_dict_values = 0;
-    if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
-      printf("ERROR reading Radar Dictionary entry %u header\n", di);
-      exit(-2);
-    }
-    DEBUG(printf("  Reading rad dictionary entry %u : %u %u %f\n", di, entry_id, entry_log_nsamples, entry_dist));
-    the_radar_return_dict[di].index = di;
-    the_radar_return_dict[di].return_id = entry_id;
-    the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
-    the_radar_return_dict[di].distance =  entry_dist;
-    for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
-      float fin;
-      if (fscanf(dictF, "%f", &fin) != 1) {
-	printf("ERROR reading Radar Dictionary entry %u data entries\n", di);
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    for (int di = 0; di < num_radar_dictionary_items; di++) {
+      unsigned entry_id;
+      unsigned entry_log_nsamples;
+      float entry_dist;
+      unsigned entry_dict_values = 0;
+      if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
+	printf("ERROR reading Radar Dictionary entry %u header\n", di);
 	exit(-2);
       }
-      the_radar_return_dict[di].return_data[i] = fin;
-      tot_dict_values++;
-      entry_dict_values++;
-    }
-    DEBUG(printf("    Read in dict entry %u with %u total values\n", di, entry_dict_values));
-  }
+      DEBUG(printf("  Reading rad dictionary entry %u : %u %u %f\n", di, entry_id, entry_log_nsamples, entry_dist));
+      the_radar_return_dict[di].index = di;
+      the_radar_return_dict[di].return_id = entry_id;
+      the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
+      the_radar_return_dict[di].distance =  entry_dist;
+      for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
+	float fin;
+	if (fscanf(dictF, "%f", &fin) != 1) {
+	  printf("ERROR reading Radar Dictionary entry %u data entries\n", di);
+	  exit(-2);
+	}
+	the_radar_return_dict[di].return_data[i] = fin;
+	tot_dict_values++;
+	entry_dict_values++;
+      }
+      DEBUG(printf("    Read in dict entry %u with %u total values\n", di, entry_dict_values));
+    } // for (int di across radar dictionary entries per set
+  } // for (si across radar dictionary sets)
   DEBUG(printf("  Read %u dict entries with %u values across them all\n", num_radar_dictionary_items, tot_dict_values));
   if (!feof(dictF)) {
     printf("NOTE: Did not hit eof on the radar dictionary file %s\n", dict_fn);
