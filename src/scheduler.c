@@ -390,7 +390,8 @@ static void init_vit_parameters(int vn)
 
 
 // Right now default to max of 16k-samples
-unsigned fft_logn_samples = 14; // Defaults to 16k samples
+#define  MAX_fft_log_nsamples  14    // Maximum FFT samples per invocation size
+unsigned crit_fft_log_nsamples = MAX_fft_log_nsamples; // Log2 of num FFT samples in Critical FFT tasks
 
 #define NUM_FFT_ACCEL 4
 #ifdef HW_FFT

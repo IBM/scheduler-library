@@ -144,7 +144,7 @@ status_t init_rad_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_rad_kernel...\n"));
 
-  init_calculate_peak_dist(fft_logn_samples);
+  init_calculate_peak_dist(crit_fft_log_nsamples);
 
   // Read in the radar distances dictionary file
   FILE *dictF = fopen(dict_fn,"r");
@@ -508,11 +508,11 @@ radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs)
 }
   
 
-void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, float * inputs)
+void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
 {
   DEBUG(printf("In start_execution_of_rad_kernel\n"));
   DEBUG(printf("  Calling start_calculate_peak_dist_from_fmcw\n"));
-  start_calculate_peak_dist_from_fmcw(mb_ptr, inputs);
+  start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
 }
 
 

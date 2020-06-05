@@ -26,6 +26,7 @@ extern uint64_t fft_usec;
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->metadata_block_id, task_metadata_block->criticality_level ));
+  int32_t fft_log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
 
 #ifdef INT_TIME
@@ -35,7 +36,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
  #endif // INT_TIME
-  fft(task_metadata_block, data, 1<<fft_logn_samples, fft_logn_samples, -1);
+  fft(task_metadata_block, data, 1<<fft_log_nsamples, fft_log_nsamples, -1);
   /* for (int j = 0; j < 2 * RADAR_N; j++) { */
   /*   printf("%u,%f\n", j, data[j]); */
   /* } */

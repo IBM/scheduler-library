@@ -145,11 +145,11 @@ int main(int argc, char *argv[])
 #endif
       break;
     case 'f':
-      fft_logn_samples = atoi(optarg);
-      if ((fft_logn_samples == 10) || (fft_logn_samples == 14)) {
-	printf("Using 2^%u = %u samples for the FFT\n", fft_logn_samples, (1<<fft_logn_samples));
+      crit_fft_log_nsamples = atoi(optarg);
+      if ((crit_fft_log_nsamples == 10) || (crit_fft_log_nsamples == 14)) {
+	printf("Using 2^%u = %u samples for the FFT\n", crit_fft_log_nsamples, (1<<crit_fft_log_nsamples));
       } else {
-	printf("Cannot specify FFT logn samples value %u (Legal values are 10, 14)\n", fft_logn_samples);
+	printf("Cannot specify FFT logn samples value %u (Legal values are 10, 14)\n", crit_fft_log_nsamples);
 	exit(-1);
       }
       break;
@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
       exit (-4);
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-    start_execution_of_rad_kernel(fft_mb_ptr, radar_inputs); // Critical RADAR task
+    start_execution_of_rad_kernel(fft_mb_ptr, crit_fft_log_nsamples, radar_inputs); // Critical RADAR task
     for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
       task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile);
       if (fft_mb_ptr_2 == NULL) {
@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
       }
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
       float* addl_radar_inputs = radar_inputs;
-      start_execution_of_rad_kernel(fft_mb_ptr_2, addl_radar_inputs); // Critical RADAR task
+      start_execution_of_rad_kernel(fft_mb_ptr_2, crit_fft_log_nsamples, addl_radar_inputs); // Critical RADAR task
     }
 
     DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->metadata_block_id));

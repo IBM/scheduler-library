@@ -56,13 +56,14 @@ void init_calculate_peak_dist(unsigned fft_logn_samples)
 //      This will let us refine the non-blocking behavior, and start the more detailed behavior of the
 //        scheduler implementation (i.e. ranking, queue management, etc.)
 
-void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, float* data)
+void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, uint32_t fft_log_nsamples, float* data)
 {
-  fft_metadata_block->data_size = 2 * RADAR_N * sizeof(float);
+  fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
+  fft_metadata_block->data_size = 2 * (1<<fft_log_nsamples) * sizeof(float);
   // Copy over our task data to the MetaData Block
   //fft_metadata_block->data = (uint8_t*)data;
   float* mdataptr = (float*)fft_metadata_block->data_view.fft_data.theData;
-  for (int i = 0; i < 2*RADAR_N; i++) {
+  for (int i = 0; i < 2*(1<<fft_log_nsamples); i++) {
     mdataptr[i] = data[i];
   }
 

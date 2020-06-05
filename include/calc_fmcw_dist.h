@@ -15,7 +15,7 @@ extern float    RADAR_alpha; // Chirp rate (saw-tooth)
 /* Some function declarations */
 extern void  init_calculate_peak_dist();
 
-void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, float* data);
+void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, uint32_t fft_log_nsamples, float* data);
 extern float finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* metatask_block_ptr);
 
 #ifdef INT_TIME
