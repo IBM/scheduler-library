@@ -373,15 +373,7 @@ int main(int argc, char *argv[])
     iter_rad_usec += stop_iter_rad.tv_usec - start_iter_rad.tv_usec;
    #endif
     distance_t rdict_dist = rdentry_p->distance;
-    float * ref_in = rdentry_p->return_data;
-    float radar_inputs[2*RADAR_N];
-    SDEBUG(printf("\nCopying radar inputs...\n"));
-    for (int ii = 0; ii < 2*RADAR_N; ii++) {
-      radar_inputs[ii] = ref_in[ii];
-      #ifdef SUPER_VERBOSE
-       if (ii < 64) { printf("radar_inputs[%2u] = %f  %f\n", radar_inputs[ii], ref_in[ii]); }
-      #endif
-    }
+    float * radar_inputs = rdentry_p->return_data;
 
     /* The Viterbi decoding kernel performs Viterbi decoding on the next
      * OFDM symbol (message), and returns the extracted message.
@@ -428,7 +420,8 @@ int main(int argc, char *argv[])
 	exit (-5);
       }
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
-      start_execution_of_rad_kernel(fft_mb_ptr_2, radar_inputs); // Critical RADAR task
+      float* addl_radar_inputs = radar_inputs;
+      start_execution_of_rad_kernel(fft_mb_ptr_2, addl_radar_inputs); // Critical RADAR task
     }
 
     DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->metadata_block_id));
