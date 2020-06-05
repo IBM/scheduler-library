@@ -9,40 +9,9 @@
 #include "calc_fmcw_dist.h"
 #include "scheduler.h"
 
-
-/* unsigned RADAR_LOGN    = 0;   // Log2 of the number of samples */
-/* unsigned RADAR_N       = 0;   // The number of samples (2^LOGN) */
-/* float    RADAR_fs      = 0.0; // Sampling Frequency */
-/* float    RADAR_alpha   = 0.0; // Chirp rate (saw-tooth) */
 // CONSTANTS
 #define RADAR_c          300000000.0  // Speed of Light in Meters/Sec
 #define RADAR_threshold -100;
-
-/* //float   RADAR_psd_threshold = 1e-10*pow(8192,2);  // ~= 0.006711 and 450 ~= 0.163635 in 16K */
-/* float   RADAR_psd_threshold = 0.0067108864; */
-
-/* void init_calculate_peak_dist(unsigned fft_logn_samples) */
-/* { */
-/*   switch (fft_logn_samples) { */
-/*   case 10: */
-/*     RADAR_LOGN  = 10; */
-/*     RADAR_fs    = 204800.0; */
-/*     RADAR_alpha = 30000000000.0; */
-/*     RADAR_psd_threshold = 0.000316; // 1e-10*pow(8192,2);  // 450m ~= 0.000638 so psd_thres ~= 0.000316 ? */
-/*     break; */
-/*   case 14: */
-/*     RADAR_LOGN  = 14; */
-/*     RADAR_fs    = 32768000.0; */
-/*     RADAR_alpha = 4800000000000.0; */
-/*     RADAR_psd_threshold = 1e-10*pow(8192,2); */
-/*     break; */
-/*   default: */
-/*     printf("ERROR : Unsupported Log-N FFT Samples Value: %u\n", fft_logn_samples); */
-/*     exit(-1); */
-/*   } */
-/*   RADAR_N = (1 << RADAR_LOGN); */
-/* } */
-
 
 
 // This now illustrates the use of the "task metadata" to transfer information for an FFT operation.
@@ -79,6 +48,7 @@ void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_blo
   // This now ends this block -- we've kicked off execution
 };
 
+
 // NOTE: This routine DOES NOT copy out the data results -- a call to
 //   calculate_peak_distance_from_fmcw now results in alteration ONLY
 //   of the metadata task data; we could send in the data pointer and
@@ -100,23 +70,19 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
   gettimeofday(&(fft_metadata_block->fft_timings.cdfmcw_start), NULL);
  #endif // INT_TIME
 
-  //unsigned RADAR_LOGN    = 0;   // Log2 of the number of samples
   unsigned RADAR_N       = 0;   // The number of samples (2^LOGN)
   float    RADAR_fs      = 0.0; // Sampling Frequency
   float    RADAR_alpha   = 0.0; // Chirp rate (saw-tooth)
   //float   RADAR_psd_threshold = 1e-10*pow(8192,2);  // ~= 0.006711 and 450 ~= 0.163635 in 16K
   float   RADAR_psd_threshold = 0.0067108864;
-  //void init_calculate_peak_dist(unsigned fft_logn_samples)
-  //{
+
   switch (fft_log_nsamples) {
   case 10:
-    //RADAR_LOGN  = 10;
     RADAR_fs    = 204800.0;
     RADAR_alpha = 30000000000.0;
     RADAR_psd_threshold = 0.000316; // 1e-10*pow(8192,2);  // 450m ~= 0.000638 so psd_thres ~= 0.000316 ?
     break;
   case 14:
-    //RADAR_LOGN  = 14;
     RADAR_fs    = 32768000.0;
     RADAR_alpha = 4800000000000.0;
     RADAR_psd_threshold = 1e-10*pow(8192,2);
@@ -125,9 +91,7 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
     printf("ERROR : Unsupported Log-N FFT Samples Value: %u\n", fft_log_nsamples);
     exit(-1);
   }
-  //RADAR_N = (1 << RADAR_LOGN);
   RADAR_N = (1 << fft_log_nsamples);
-  //}
 
   float max_psd = 0;
   unsigned int max_index = 0;

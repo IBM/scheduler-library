@@ -414,11 +414,11 @@ struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 
 
 /* User-defined code */
-static void init_fft_parameters(unsigned n)
+static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 {
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
-  int len = 1 << fft_logn_samples;
+  int len = 1 << log_nsamples;
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
     fftHW_in_words_adj  = 2 * len;
     fftHW_out_words_adj = 2 * len;
@@ -621,7 +621,7 @@ status_t initialize_scheduler()
     fftHW_desc[fi].do_bitrev  = FFTHW_DO_BITREV;
 
     //fftHW_desc[fi].len      = fftHW_len;
-    fftHW_desc[fi].log_len    = fft_logn_samples; 
+    fftHW_desc[fi].log_len    = log_nsamples; 
     fftHW_desc[fi].src_offset = 0;
     fftHW_desc[fi].dst_offset = 0;
   }
@@ -719,11 +719,15 @@ void
 execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
-  TDEBUG(printf("In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB %d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
-#ifdef HW_FFT
-  float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
+  uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
+  TDEBUG(printf("In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB %d  CL %d  %u log_nsamples\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
+ #ifdef HW_FFT
+  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  init_fft_parameters(fn, log_nsamples);
+  
   // convert input from float to fixed point
-  for (int j = 0; j < 2 * (1 << fft_logn_samples); j++) {
+  float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
+  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
   }
 
@@ -732,17 +736,17 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
 
   // convert output from fixed point to float
-  for (int j = 0; j < 2 * (1 << fft_logn_samples); j++) {
+  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
   }
 
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
-#else
+ #else
   printf("ERROR : This executable DOES NOT support Hardware-FFT execution!\n");
   exit(-2);
-#endif
+ #endif
 }
 
 

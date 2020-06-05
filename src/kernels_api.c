@@ -145,8 +145,6 @@ status_t init_rad_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_rad_kernel...\n"));
 
-  //init_calculate_peak_dist(crit_fft_log_nsamples);
-
   // Read in the radar distances dictionary file
   FILE *dictF = fopen(dict_fn,"r");
   if (!dictF)

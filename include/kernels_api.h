@@ -115,8 +115,6 @@ typedef enum {
 
 extern bool_t   output_viz_trace;
 
-extern unsigned fft_logn_samples;
-
 extern char* lane_names[NUM_LANES];
 extern char* message_names[NUM_MESSAGES];
 extern char* object_names[NUM_OBJECTS];
