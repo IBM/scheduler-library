@@ -168,16 +168,26 @@ status_t init_rad_kernel(char* dict_fn)
 
   unsigned tot_dict_values = 0;
   for (int si = 0; si < num_radar_samples_sets; si++) {
+    unsigned curr_log_nsamples;
+    if (fscanf(dictF, "%u\n", &curr_log_nsamples) != 1) {
+      printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
+      exit(-2);
+    }
     for (int di = 0; di < num_radar_dictionary_items; di++) {
       unsigned entry_id;
       unsigned entry_log_nsamples;
       float entry_dist;
       unsigned entry_dict_values = 0;
       if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
-	printf("ERROR reading Radar Dictionary entry %u header\n", di);
+	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
 	exit(-2);
       }
-      DEBUG(printf("  Reading rad dictionary entry %u : %u %u %f\n", di, entry_id, entry_log_nsamples, entry_dist));
+      if (curr_log_nsamples != entry_log_nsamples) {
+	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, curr_log_nsamples);
+	exit(-2);
+      }
+	
+      DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
       the_radar_return_dict[di].index = di;
       the_radar_return_dict[di].return_id = entry_id;
       the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
@@ -185,15 +195,16 @@ status_t init_rad_kernel(char* dict_fn)
       for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
 	float fin;
 	if (fscanf(dictF, "%f", &fin) != 1) {
-	  printf("ERROR reading Radar Dictionary entry %u data entries\n", di);
+	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
 	  exit(-2);
 	}
 	the_radar_return_dict[di].return_data[i] = fin;
 	tot_dict_values++;
 	entry_dict_values++;
       }
-      DEBUG(printf("    Read in dict entry %u with %u total values\n", di, entry_dict_values));
+      DEBUG(printf("    Read in dict set %u entry %u with %u total values\n", si, di, entry_dict_values));
     } // for (int di across radar dictionary entries per set
+    DEBUG(printf("   Done reading in Radar dictionary set %u\n", si));
   } // for (si across radar dictionary sets)
   DEBUG(printf("  Read %u dict entries with %u values across them all\n", num_radar_dictionary_items, tot_dict_values));
   if (!feof(dictF)) {
