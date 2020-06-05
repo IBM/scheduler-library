@@ -60,8 +60,8 @@ void print_usage(char * pname) {
 #else
   printf("    -t <trace> : defines the input trace file <trace> to use\n");
 #endif
-  printf("    -f <N>     : defines Log2 number of FFT samples\n");
-  printf("               :      14 = 2^14 = 16k samples (default); 10 = 1k samples\n");
+  printf("    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
+  printf("               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.\n");
   
   printf("    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>     : defines Viterbi message size:\n");
@@ -142,13 +142,8 @@ int main(int argc, char *argv[])
 #endif
       break;
     case 'f':
-      crit_fft_log_nsamples = atoi(optarg);
-      if ((crit_fft_log_nsamples == 10) || (crit_fft_log_nsamples == 14)) {
-	printf("Using 2^%u = %u samples for the FFT\n", crit_fft_log_nsamples, (1<<crit_fft_log_nsamples));
-      } else {
-	printf("Cannot specify FFT logn samples value %u (Legal values are 10, 14)\n", crit_fft_log_nsamples);
-	exit(-1);
-      }
+      crit_fft_samples_set = atoi(optarg);
+      printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
       break;
     case 'r':
 #ifdef USE_SIM_ENVIRON
@@ -274,6 +269,11 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  if (crit_fft_samples_set >= num_radar_samples_sets) {
+    printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
+    exit(-1);
+  }
+    
   if (global_scheduler_selection_policy > NUM_SELECTION_POLICIES) {
     printf("ERROR : Selected Scheduler Policy (%u) is larger than number of policies (%u)\n", global_scheduler_selection_policy, NUM_SELECTION_POLICIES);
     exit(-1);
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
       exit (-4);
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-    start_execution_of_rad_kernel(fft_mb_ptr, crit_fft_log_nsamples, radar_inputs); // Critical RADAR task
+    start_execution_of_rad_kernel(fft_mb_ptr, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
     for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
       task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile);
       if (fft_mb_ptr_2 == NULL) {
@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
       }
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
       float* addl_radar_inputs = radar_inputs;
-      start_execution_of_rad_kernel(fft_mb_ptr_2, crit_fft_log_nsamples, addl_radar_inputs); // Critical RADAR task
+      start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // Critical RADAR task
     }
 
     DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->metadata_block_id));

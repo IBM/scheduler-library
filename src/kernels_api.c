@@ -106,10 +106,11 @@ unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 
 /*   float return_data[2 * MAX_RADAR_N]; */
 /* } radar_dict_entry_t; */
 
-#define MAX_RDICT_ENTRIES   12   // This should be updated eventually...
+#define MAX_RDICT_ENTRIES      12   // This should be updated eventually...
 unsigned int        num_radar_samples_sets = 0;
 unsigned int        num_radar_dictionary_items = 0;
 radar_dict_entry_t* the_radar_return_dict;
+unsigned int        radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
 
 unsigned radar_total_calc = 0;
 unsigned hist_pct_errs[MAX_RDICT_ENTRIES][5];// = {0, 0, 0, 0, 0}; // One per distance, plus global?
@@ -168,8 +169,7 @@ status_t init_rad_kernel(char* dict_fn)
 
   unsigned tot_dict_values = 0;
   for (int si = 0; si < num_radar_samples_sets; si++) {
-    unsigned curr_log_nsamples;
-    if (fscanf(dictF, "%u\n", &curr_log_nsamples) != 1) {
+    if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
       exit(-2);
     }
@@ -182,8 +182,8 @@ status_t init_rad_kernel(char* dict_fn)
 	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
 	exit(-2);
       }
-      if (curr_log_nsamples != entry_log_nsamples) {
-	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, curr_log_nsamples);
+      if (radar_log_nsamples_per_dict_set[si] != entry_log_nsamples) {
+	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
 	exit(-2);
       }
 	

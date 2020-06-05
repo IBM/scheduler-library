@@ -174,7 +174,7 @@ typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 extern accel_selct_policy_t global_scheduler_selection_policy;
 
 // This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
-extern unsigned crit_fft_log_nsamples;
+extern unsigned crit_fft_samples_set;
 
 extern status_t initialize_scheduler();
 

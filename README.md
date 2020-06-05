@@ -56,8 +56,8 @@ Usage: ./cmain.exe <OPTIONS>
     -V <file>  : defines the input Viterbi dictionary file <file> to use
     -C <file>  : defines the input CV/CNN dictionary file <file> to use
     -t <trace> : defines the input trace file <trace> to use
-    -f <N>     : defines Log2 number of FFT samples
-               :      14 = 2^14 = 16k samples (default); 10 = 1k samples
+    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
+               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
     -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
     -v <N>     : defines Viterbi message size:
                :      0 = Short messages (4 characters)

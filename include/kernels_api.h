@@ -133,6 +133,11 @@ extern unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
 extern unsigned rand_seed;
 
+#define MAX_RDICT_SAMPLE_SETS   4   // This should be updated eventually...
+extern unsigned int num_radar_samples_sets;
+extern unsigned int radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
+
+
 /* Input Trace Functions */
 status_t init_trace_reader(char * tr_fn);
 bool_t eof_trace_reader(void);
