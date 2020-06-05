@@ -154,8 +154,10 @@ status_t init_rad_kernel(char* dict_fn)
     return error;
   }
   // Read the number of definitions
-  if (fscanf(dictF, "%u\n", &num_radar_dictionary_items))
-    ;
+  if (fscanf(dictF, "%u\n", &num_radar_dictionary_items) != 1) {
+    printf("ERROR reading the number of Radar Dictionary items\n");
+    exit(-2);
+  }
   DEBUG(printf("  There are %u dictionary entries\n", num_radar_dictionary_items));
   the_radar_return_dict = (radar_dict_entry_t*)calloc(num_radar_dictionary_items, sizeof(radar_dict_entry_t));
   if (the_radar_return_dict == NULL) 
@@ -167,18 +169,24 @@ status_t init_rad_kernel(char* dict_fn)
   unsigned tot_dict_values = 0;
   for (int di = 0; di < num_radar_dictionary_items; di++) {
     unsigned entry_id;
+    unsigned entry_log_nsamples;
     float entry_dist;
     unsigned entry_dict_values = 0;
-    if (fscanf(dictF, "%u %f", &entry_id, &entry_dist))
-      ;
-    DEBUG(printf("  Reading rad dictionary entry %u : %u %f\n", di, entry_id, entry_dist));
+    if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
+      printf("ERROR reading Radar Dictionary entry %u header\n", di);
+      exit(-2);
+    }
+    DEBUG(printf("  Reading rad dictionary entry %u : %u %u %f\n", di, entry_id, entry_log_nsamples, entry_dist));
     the_radar_return_dict[di].index = di;
     the_radar_return_dict[di].return_id = entry_id;
+    the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
     the_radar_return_dict[di].distance =  entry_dist;
     for (int i = 0; i < 2*RADAR_N; i++) {
       float fin;
-      if (fscanf(dictF, "%f", &fin))
-	;
+      if (fscanf(dictF, "%f", &fin) != 1) {
+	printf("ERROR reading Radar Dictionary entry %u data entries\n", di);
+	exit(-2);
+      }
       the_radar_return_dict[di].return_data[i] = fin;
       tot_dict_values++;
       entry_dict_values++;

@@ -35,6 +35,7 @@ typedef float distance_t;
 typedef struct {
   unsigned int index;
   unsigned int return_id;
+  unsigned int log_nsamples;
   float distance;
   float return_data[2 * MAX_RADAR_N];
 } radar_dict_entry_t;

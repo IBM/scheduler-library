@@ -39,9 +39,6 @@ char vit_dict[256];
 //Dummy numbers for development
 float fft_profile[NUM_ACCEL_TYPES] = {20, 0.2, 0, 0};
 float vit_profile[NUM_ACCEL_TYPES] = {3, 0, 0.03, 0};
-//char * cv_dict  = "traces/objects_dictionary.dfn";
-//char * rad_dict = "traces/radar_dictionary.dfn";
-//char * vit_dict = "traces/vit_dictionary.dfn";
 
 bool_t all_obstacle_lanes_mode = false;
 unsigned time_step;
@@ -206,7 +203,7 @@ int main(int argc, char *argv[])
 
 
   if (rad_dict[0] == '\0') {
-    sprintf(rad_dict, "traces/radar_dictionary.dfn");
+    sprintf(rad_dict, "traces/norm_radar_16k_dictionary.dfn");
   }
   if (vit_dict[0] == '\0') {
     sprintf(vit_dict, "traces/vit_dictionary.dfn");
