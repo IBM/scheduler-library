@@ -101,8 +101,9 @@ unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 
 /* typedef struct { */
 /*   unsigned int index; */
 /*   unsigned int return_id; */
+/*   unsigned int log_nsamples; */
 /*   float distance; */
-/*   float return_data[2 * RADAR_N]; */
+/*   float return_data[2 * MAX_RADAR_N]; */
 /* } radar_dict_entry_t; */
 
 #define MAX_RDICT_ENTRIES   12   // This should be updated eventually...
@@ -144,7 +145,7 @@ status_t init_rad_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_rad_kernel...\n"));
 
-  init_calculate_peak_dist(crit_fft_log_nsamples);
+  //init_calculate_peak_dist(crit_fft_log_nsamples);
 
   // Read in the radar distances dictionary file
   FILE *dictF = fopen(dict_fn,"r");
@@ -181,7 +182,7 @@ status_t init_rad_kernel(char* dict_fn)
     the_radar_return_dict[di].return_id = entry_id;
     the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
     the_radar_return_dict[di].distance =  entry_dist;
-    for (int i = 0; i < 2*RADAR_N; i++) {
+    for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
       float fin;
       if (fscanf(dictF, "%f", &fin) != 1) {
 	printf("ERROR reading Radar Dictionary entry %u data entries\n", di);

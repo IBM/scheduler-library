@@ -37,7 +37,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
  #endif // INT_TIME
   fft(task_metadata_block, data, 1<<fft_log_nsamples, fft_log_nsamples, -1);
-  /* for (int j = 0; j < 2 * RADAR_N; j++) { */
+  /* for (int j = 0; j < 2 * (1<<fft_log_nsamples); j++) { */
   /*   printf("%u,%f\n", j, data[j]); */
   /* } */
  #ifdef INT_TIME
