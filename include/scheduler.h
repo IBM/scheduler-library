@@ -29,6 +29,9 @@
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 #define MAX_ACCEL_OF_EACH_TYPE    10
 
+#define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
+#define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
+
 
 typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,

@@ -420,6 +420,9 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
   int len = 1 << log_nsamples;
+
+  fftHW_desc[n].log_len    = log_nsamples; 
+
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
     fftHW_in_words_adj  = 2 * len;
     fftHW_out_words_adj = 2 * len;
@@ -590,8 +593,9 @@ status_t initialize_scheduler()
 #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
-    DEBUG(printf("Init FFT parameters on acclerator %u\n", fi));
-    init_fft_parameters(fi);
+    // Inititalize to the "largest legal" FFT size
+    printf("Calling init_fft_parameters for Accel %u and LOGN %u\n", fi, MAX_RADAR_LOGN);
+    init_fft_parameters(fi, MAX_RADAR_LOGN);
 
     DEBUG(printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]));
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
@@ -622,7 +626,7 @@ status_t initialize_scheduler()
     fftHW_desc[fi].do_bitrev  = FFTHW_DO_BITREV;
 
     //fftHW_desc[fi].len      = fftHW_len;
-    fftHW_desc[fi].log_len    = log_nsamples; 
+    //fftHW_desc[fi].log_len    = log_nsamples; 
     fftHW_desc[fi].src_offset = 0;
     fftHW_desc[fi].dst_offset = 0;
   }
