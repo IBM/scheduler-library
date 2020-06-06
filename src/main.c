@@ -417,7 +417,13 @@ int main(int argc, char *argv[])
 	exit (-5);
       }
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
-      float* addl_radar_inputs = radar_inputs;
+      radar_dict_entry_t* rdentry_p2;
+      if (task_size_variability == 0) {
+	rdentry_p2 = select_critical_radar_input(vehicle_state);
+      } else {
+	rdentry_p2 = select_random_radar_input();
+      }
+      float* addl_radar_inputs = rdentry_p2->return_data;
       start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // Critical RADAR task
     }
 

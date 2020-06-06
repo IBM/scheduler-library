@@ -116,6 +116,7 @@ unsigned radar_total_calc = 0;
 unsigned hist_pct_errs[MAX_RDICT_ENTRIES][5];// = {0, 0, 0, 0, 0}; // One per distance, plus global?
 unsigned hist_distances[MAX_RDICT_ENTRIES];
 char*    hist_pct_err_label[5] = {"   0%", "<  1%", "< 10%", "<100%", ">100%"};
+unsigned radar_inputs_histogram[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 
 #define VITERBI_LENGTHS  4
 unsigned viterbi_messages_histogram[VITERBI_LENGTHS][NUM_MESSAGES];
@@ -142,6 +143,7 @@ unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the f
 
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
+//#define DEBUG(X) X
 
 status_t init_rad_kernel(char* dict_fn)
 {
@@ -173,6 +175,7 @@ status_t init_rad_kernel(char* dict_fn)
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
       exit(-2);
     }
+    DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
     for (int di = 0; di < num_radar_dictionary_items; di++) {
       unsigned entry_id;
       unsigned entry_log_nsamples;
@@ -206,9 +209,18 @@ status_t init_rad_kernel(char* dict_fn)
     } // for (int di across radar dictionary entries per set
     DEBUG(printf("   Done reading in Radar dictionary set %u\n", si));
   } // for (si across radar dictionary sets)
-  DEBUG(printf("  Read %u dict entries with %u values across them all\n", num_radar_dictionary_items, tot_dict_values));
+  DEBUG(printf("  Read %u sets with %u entries totalling %u values across them all\n", num_radar_samples_sets, num_radar_dictionary_items, tot_dict_values));
   if (!feof(dictF)) {
     printf("NOTE: Did not hit eof on the radar dictionary file %s\n", dict_fn);
+    while(!feof(dictF)) {
+      char c;
+      if (fscanf(dictF, "%c", &c) != 1) {
+	printf("Couldn't read final character\n");
+      } else {
+	printf("Next char is %c = %u = 0x%x\n", c, c, c);
+      }
+    }
+    //if (!feof(dictF)) { printf("and still no EOF\n"); } 
   }
   fclose(dictF);
 
@@ -220,8 +232,16 @@ status_t init_rad_kernel(char* dict_fn)
     }
   }
 
+    //Clear the inputs (injected) histogram
+  for (int i = 0; i < MAX_RDICT_SAMPLE_SETS; i++) {
+    for (int j = 0; j < MAX_RDICT_ENTRIES; j++) {
+      radar_inputs_histogram[i][j] = 0;
+    }
+  }
+
   return success;
 }
+//#define DEBUG(X) 
 
 
 /* This is the initialization of the Viterbi dictionary data, etc.
@@ -538,13 +558,28 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 
 
 
+
+// These routine selects a random FFT input (from the dictionary) or the specific Critical Radar Task FFT Input
+//  Used to support variable non-critical task sizes, and histogram stats gathering.
+radar_dict_entry_t* select_random_radar_input()
+{
+  int s_num = (rand() % (num_radar_samples_sets)); // Return a value from [0,num_radar_samples_sets) */
+  int e_num = (rand() % (num_radar_dictionary_items)); // Return a value from [0,num_radar_dictionary_items) */
+  radar_inputs_histogram[s_num][e_num]++;
+  return &(the_radar_return_dict[num_radar_dictionary_items*s_num + e_num]);
+}
+
+radar_dict_entry_t* select_critical_radar_input(vehicle_state_t vs)
+{
+  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
+  radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
+  return &(the_radar_return_dict[crit_fft_samples_set*num_radar_dictionary_items + tr_val]);
+}
+  
 radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_rad_kernel\n"));
-
-  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
-  
-  return &(the_radar_return_dict[tr_val]);
+  return select_critical_radar_input(vs);
 }
   
 
@@ -692,7 +727,7 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
   return trace_msg;
 }
 
-// This routine is used to select a random (non-critical?) Viterbi message input
+// These routines are used to select a random (non-critical?) Viterbi message input
 //  to support variable message sizes per iteration
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num)
 {
@@ -711,7 +746,7 @@ vit_dict_entry_t* select_random_vit_input()
 void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
 {
   // Send each message (here they are all the same) through the viterbi decoder
-  DEBUG(printf("  Calling the viterbi decode routine for message %u iter %u\n", trace_msg->msg_num, mi));
+  DEBUG(printf("  Calling the viterbi decode routine for message %u\n", trace_msg->msg_num));
   start_decode(mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
 }
 
@@ -920,6 +955,16 @@ void closeout_rad_kernel()
   for (int i = 0; i < 5; i++) {
     printf("  %7s | %9u \n", hist_pct_err_label[i], totals[i]);
   }
+
+
+  printf("\nHistogram of Radar Task Inputs Used:\n");
+  printf("    %3s | %5s | %9s \n", "Set", "Entry", "NumOccurs");
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    for (int di = 0; di < num_radar_dictionary_items; di++) {
+      printf("    %3u | %3u | %9u \n", si, di, radar_inputs_histogram[si][di]);
+    }
+  }
+  printf("\n");
 }
 
 void closeout_vit_kernel()
