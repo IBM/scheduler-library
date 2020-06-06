@@ -107,14 +107,14 @@ unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 
 /* } radar_dict_entry_t; */
 
 #define MAX_RDICT_ENTRIES      12   // This should be updated eventually...
-unsigned int        num_radar_samples_sets = 0;
-unsigned int        num_radar_dictionary_items = 0;
-radar_dict_entry_t* the_radar_return_dict;
-unsigned int        radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
+unsigned int         num_radar_samples_sets = 0;
+unsigned int         radar_dict_items_per_set = 0;
+radar_dict_entry_t** the_radar_return_dict;
+unsigned int         radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
 
 unsigned radar_total_calc = 0;
-unsigned hist_pct_errs[MAX_RDICT_ENTRIES][5];// = {0, 0, 0, 0, 0}; // One per distance, plus global?
-unsigned hist_distances[MAX_RDICT_ENTRIES];
+unsigned hist_pct_errs[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES][5];// = {0, 0, 0, 0, 0}; // One per distance, plus global?
+unsigned hist_distances[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 char*    hist_pct_err_label[5] = {"   0%", "<  1%", "< 10%", "<100%", ">100%"};
 unsigned radar_inputs_histogram[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 
@@ -157,26 +157,32 @@ status_t init_rad_kernel(char* dict_fn)
     return error;
   }
   // Read the number of definitions
-  if (fscanf(dictF, "%u %u\n", &num_radar_samples_sets, &num_radar_dictionary_items) != 2) {
+  if (fscanf(dictF, "%u %u\n", &num_radar_samples_sets, &radar_dict_items_per_set) != 2) {
     printf("ERROR reading the number of Radar Dictionary sets and items per set\n");
     exit(-2);
   }
-  DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, num_radar_dictionary_items));
-  the_radar_return_dict = (radar_dict_entry_t*)calloc(num_radar_samples_sets * num_radar_dictionary_items, sizeof(radar_dict_entry_t));
-  if (the_radar_return_dict == NULL) 
-  {
-    printf("ERROR : Cannot allocate Radar Trace Dictionary memory space");
+  DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, radar_dict_items_per_set));
+  the_radar_return_dict = (radar_dict_entry_t**)calloc(num_radar_samples_sets, sizeof(radar_dict_entry_t*));
+  if (the_radar_return_dict == NULL) {
+    printf("ERROR : Cannot allocate Radar Trace Dictionary memory space\n");
     return error;
   }
-
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    the_radar_return_dict[si] = (radar_dict_entry_t*)calloc(radar_dict_items_per_set, sizeof(radar_dict_entry_t));
+    if (the_radar_return_dict[si] == NULL) {
+      printf("ERROR : Cannot allocate Radar Trace Dictionary memory space for set %u\n", si);
+      return error;
+    }
+  }
   unsigned tot_dict_values = 0;
+  unsigned tot_index = 0;
   for (int si = 0; si < num_radar_samples_sets; si++) {
     if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
       exit(-2);
     }
     DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
-    for (int di = 0; di < num_radar_dictionary_items; di++) {
+    for (int di = 0; di < radar_dict_items_per_set; di++) {
       unsigned entry_id;
       unsigned entry_log_nsamples;
       float entry_dist;
@@ -191,17 +197,19 @@ status_t init_rad_kernel(char* dict_fn)
       }
 	
       DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
-      the_radar_return_dict[di].index = di;
-      the_radar_return_dict[di].return_id = entry_id;
-      the_radar_return_dict[di].log_nsamples = entry_log_nsamples;
-      the_radar_return_dict[di].distance =  entry_dist;
+      the_radar_return_dict[si][di].index = tot_index++;  // Set, and increment total index
+      the_radar_return_dict[si][di].set = si;
+      the_radar_return_dict[si][di].index_in_set = di;
+      the_radar_return_dict[si][di].return_id = entry_id;
+      the_radar_return_dict[si][di].log_nsamples = entry_log_nsamples;
+      the_radar_return_dict[si][di].distance =  entry_dist;
       for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
 	float fin;
 	if (fscanf(dictF, "%f", &fin) != 1) {
 	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
 	  exit(-2);
 	}
-	the_radar_return_dict[di].return_data[i] = fin;
+	the_radar_return_dict[si][di].return_data[i] = fin;
 	tot_dict_values++;
 	entry_dict_values++;
       }
@@ -209,7 +217,7 @@ status_t init_rad_kernel(char* dict_fn)
     } // for (int di across radar dictionary entries per set
     DEBUG(printf("   Done reading in Radar dictionary set %u\n", si));
   } // for (si across radar dictionary sets)
-  DEBUG(printf("  Read %u sets with %u entries totalling %u values across them all\n", num_radar_samples_sets, num_radar_dictionary_items, tot_dict_values));
+  DEBUG(printf("  Read %u sets with %u entries totalling %u values across them all\n", num_radar_samples_sets, radar_dict_items_per_set, tot_dict_values));
   if (!feof(dictF)) {
     printf("NOTE: Did not hit eof on the radar dictionary file %s\n", dict_fn);
     while(!feof(dictF)) {
@@ -225,10 +233,12 @@ status_t init_rad_kernel(char* dict_fn)
   fclose(dictF);
 
   // Initialize hist_pct_errs values
-  for (int di = 0; di < num_radar_dictionary_items; di++) {
-    hist_distances[di] = 0;
-    for (int i = 0; i < 5; i++) {
-      hist_pct_errs[di][i] = 0;
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    for (int di = 0; di < radar_dict_items_per_set; di++) {
+      hist_distances[si][di] = 0;
+      for (int i = 0; i < 5; i++) {
+	hist_pct_errs[si][di][i] = 0;
+      }
     }
   }
 
@@ -278,7 +288,7 @@ status_t init_vit_kernel(char* dict_fn)
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
   if (the_viterbi_trace_dict == NULL) 
   {
-    printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space");
+    printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space\n");
     return error;
   }
   // Read in each dictionary item
@@ -375,7 +385,7 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
   the_cv_object_dict = (cv_dict_entry_t*)calloc(num_cv_dictionary_items, sizeof(cv_dict_entry_t));
   if (the_cv_object_dict == NULL) 
   {
-    printf("ERROR : Cannot allocate Cv Trace Dictionary memory space");
+    printf("ERROR : Cannot allocate Cv Trace Dictionary memory space\n");
     return error;
   }
 
@@ -564,22 +574,24 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 radar_dict_entry_t* select_random_radar_input()
 {
   int s_num = (rand() % (num_radar_samples_sets)); // Return a value from [0,num_radar_samples_sets) */
-  int e_num = (rand() % (num_radar_dictionary_items)); // Return a value from [0,num_radar_dictionary_items) */
+  int e_num = (rand() % (radar_dict_items_per_set)); // Return a value from [0,radar_dict_items_per_set) */
   radar_inputs_histogram[s_num][e_num]++;
-  return &(the_radar_return_dict[num_radar_dictionary_items*s_num + e_num]);
+  return &(the_radar_return_dict[s_num][e_num]);
 }
 
-radar_dict_entry_t* select_critical_radar_input(vehicle_state_t vs)
+radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
 {
-  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
-  radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
-  return &(the_radar_return_dict[crit_fft_samples_set*num_radar_dictionary_items + tr_val]);
+  radar_inputs_histogram[rdentry_p->set][rdentry_p->index_in_set]++;
+  return rdentry_p;
 }
   
+
 radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_rad_kernel\n"));
-  return select_critical_radar_input(vs);
+  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
+  radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
+  return &(the_radar_return_dict[crit_fft_samples_set][tr_val]);
 }
   
 
@@ -605,12 +617,12 @@ distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
 }
 
 
-void post_execute_rad_kernel(unsigned index, distance_t tr_dist, distance_t dist)
+void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
 {
   // Get an error estimate (Root-Squared?)
   float error;
   radar_total_calc++;
-  hist_distances[index]++;
+  hist_distances[set][index]++;
   if ((tr_dist >= 500.0) && (dist > 10000.0)) {
     error = 0.0;
   } else {
@@ -626,18 +638,18 @@ void post_execute_rad_kernel(unsigned index, distance_t tr_dist, distance_t dist
   DEBUG(printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err));
   //printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err);
   if (pct_err == 0.0) {
-    hist_pct_errs[index][0]++;
+    hist_pct_errs[set][index][0]++;
   } else if (pct_err < 0.01) {
-    hist_pct_errs[index][1]++;
+    hist_pct_errs[set][index][1]++;
   } else if (pct_err < 0.1) {
     printf("RADAR_LT010_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
-    hist_pct_errs[index][2]++;
+    hist_pct_errs[set][index][2]++;
   } else if (pct_err < 1.00) {
     printf("RADAR_LT100_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
-    hist_pct_errs[index][3]++;
+    hist_pct_errs[set][index][3]++;
   } else {
     printf("RADAR_GT100_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
-    hist_pct_errs[index][4]++;
+    hist_pct_errs[set][index][4]++;
   }
 }
 
@@ -936,18 +948,23 @@ void closeout_cv_kernel()
 void closeout_rad_kernel()
 {
   printf("\nHistogram of Radar Distances:\n");
-  for (int di = 0; di < num_radar_dictionary_items; di++) {
-    printf("    %3u | %8.3f | %9u \n", di, the_radar_return_dict[di].distance, hist_distances[di]);
+  printf("    %3s | %3s | %8s | %9s \n", "Set", "Idx", "Distance", "Occurs");
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    for (int di = 0; di < radar_dict_items_per_set; di++) {
+      printf("    %3u | %3u | %8.3f | %9u \n", si, di, the_radar_return_dict[si][di].distance, hist_distances[si][di]);
+    }
   }
 
   printf("\nHistogram of Radar Distance ABS-PCT-ERROR:\n");
   unsigned totals[] = {0, 0, 0, 0, 0};
   
-  for (int di = 0; di < num_radar_dictionary_items; di++) {
-    printf("    Entry %u Id %u Distance %f Occurs %u Histogram:\n", di, the_radar_return_dict[di].index, the_radar_return_dict[di].distance, hist_distances[di]);
-    for (int i = 0; i < 5; i++) {
-      printf("    %7s | %9u \n", hist_pct_err_label[i], hist_pct_errs[di][i]);
-      totals[i] += hist_pct_errs[di][i];
+  for (int si = 0; si < num_radar_samples_sets; si++) {
+    for (int di = 0; di < radar_dict_items_per_set; di++) {
+      printf("    Set %u Entry %u Id %u Distance %f Occurs %u Histogram:\n", si, di, the_radar_return_dict[si][di].index, the_radar_return_dict[si][di].distance, hist_distances[si][di]);
+      for (int i = 0; i < 5; i++) {
+	printf("    %7s | %9u \n", hist_pct_err_label[i], hist_pct_errs[si][di][i]);
+	totals[i] += hist_pct_errs[si][di][i];
+      }
     }
   }
 
@@ -960,7 +977,7 @@ void closeout_rad_kernel()
   printf("\nHistogram of Radar Task Inputs Used:\n");
   printf("    %3s | %5s | %9s \n", "Set", "Entry", "NumOccurs");
   for (int si = 0; si < num_radar_samples_sets; si++) {
-    for (int di = 0; di < num_radar_dictionary_items; di++) {
+    for (int di = 0; di < radar_dict_items_per_set; di++) {
       printf("    %3u | %3u | %9u \n", si, di, radar_inputs_histogram[si][di]);
     }
   }

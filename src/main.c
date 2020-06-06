@@ -419,7 +419,7 @@ int main(int argc, char *argv[])
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
       radar_dict_entry_t* rdentry_p2;
       if (task_size_variability == 0) {
-	rdentry_p2 = select_critical_radar_input(vehicle_state);
+	rdentry_p2 = select_critical_radar_input(rdentry_p);
       } else {
 	rdentry_p2 = select_random_radar_input();
       }
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 
     // POST-EXECUTE each kernel to gather stats, etc.
     post_execute_cv_kernel(cv_tr_label, label);
-    post_execute_rad_kernel(rdentry_p->index, rdict_dist, distance);
+    post_execute_rad_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
     post_execute_vit_kernel(vdentry_p->msg_id, message);
 
     /* The plan_and_control() function makes planning and control decisions
