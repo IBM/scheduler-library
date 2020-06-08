@@ -91,9 +91,11 @@ const char* accel_type_str[NUM_ACCEL_TYPES] = { "CPU-ACCELERATOR",
 						"NO-ACCELERATOR"};
 
 const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_Accelerator_Type_and_Wait_Available",
-"Fastest_to_Slowest_First_Available", "Fastest_Finish_Time_First" } ;
+								       "Fastest_to_Slowest_First_Available",
+								       "Fastest_Finish_Time_First" } ;
 
 volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
 int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
 void print_base_metadata_block_contents(task_metadata_block_t* mb)
@@ -661,6 +663,16 @@ status_t initialize_scheduler()
     vitHW_desc[vi].esp.contig = contig_to_khandle(vitHW_mem[vi]);
   }
 #endif
+
+  // And some stats stuff:
+  for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+    for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	accelerator_allocated_to_MB[ti][ai][bi] = 0;
+      }
+    }
+  }
+
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
 }
@@ -912,7 +924,7 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
     }
   } break;
   default:
-    printf("ERROR : request_execution called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
     exit(-15);
   }
   // Okay, here we should have a good task to schedule...
@@ -997,7 +1009,7 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
     } while (accel_type == no_accelerator_t);
   } break;
  default:
-    printf("ERROR : request_execution called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
     exit(-15);
   }
   // Okay, here we should have a good task to schedule...
@@ -1051,31 +1063,33 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
      #endif
     } break;
     default:
-    printf("ERROR : request_execution called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
     exit(-15);
   }
 
   // Now that we know the set of proposed accelerators,
   //  scan through to find which one will produce the earliest estimated finish time
   for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-    for (int i = 0; i < num_accelerators_of_type[proposed_accel[0]]; ++i) {
-      int bi = accelerator_in_use_by[proposed_accel[0]][i];
+    for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
+      int bi = accelerator_in_use_by[proposed_accel[pi]][i];
       if (bi == -1) { // The accelerator is Free
 	// The estimated task finish time is taken from the task profiling information
-	finish_time = task_metadata_block->task_profile[proposed_accel[0]];
+	finish_time = task_metadata_block->task_profile[proposed_accel[pi]];
       } else { // Accel is running a task
 	// Compute the remaining execution time (estimate) for job currently on accelerator
 	elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.running_start.tv_sec;
 	elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.running_start.tv_usec;
 	total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-	remaining_time = master_metadata_pool[bi].task_profile[proposed_accel[0]] - total_elapsed_usec;
+	remaining_time = master_metadata_pool[bi].task_profile[proposed_accel[pi]] - total_elapsed_usec;
 	// and add that to the projected task run time to get the estimated finish time.
-	finish_time = task_metadata_block->task_profile[proposed_accel[0]] + remaining_time;
+	finish_time = task_metadata_block->task_profile[proposed_accel[pi]] + remaining_time;
       }
       if (finish_time < least_finish_time) {
 	best_accel_id = i;
-	accel_type = proposed_accel[0];
+	accel_type = proposed_accel[pi];
+	least_finish_time = finish_time;
       }
+      //printf("For accel %u %u : bi = %u : finish_time = %lu\n", pi, i, bi, finish_time);
     } // for (i = spin through proposed accelerators)
   } // for (pi goes through proposed_accelerator_types)
   
@@ -1140,6 +1154,7 @@ request_execution(task_metadata_block_t* task_metadata_block)
     }
     int bi = task_metadata_block->block_id; // short name for the block_id
     accelerator_in_use_by[accel_type][accel_id] = bi;
+    accelerator_allocated_to_MB[accel_type][accel_id][bi] += 1;
     //printf("MB%u ALLOCATE accelerator %u %u to  %d cl %u\n", bi, accel_type, accel_id, bi, task_metadata_block->crit_level);
     DEBUG(printf("MB%u ALLOC accelerator %u  %u to %d  : ", bi, accel_type, accel_id, bi);
 	    for (int ai = 0; ai < num_accelerators_of_type[fft_hwr_accel_t]; ai++) {
@@ -1214,6 +1229,41 @@ void shutdown_scheduler()
   for (int i = 0; i < total_metadata_pool_blocks; i++) {
 	  pthread_mutex_destroy(&(master_metadata_pool[i].metadata_mutex));
 	  pthread_cond_destroy(&(master_metadata_pool[i].metadata_condv));
+  }
+
+  // NOW output some overall full-run statistics, etc.
+  printf("\nOverall Accelerator allocation/usage statistics:\n");
+  {
+    unsigned totals[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+    unsigned top_totals[NUM_ACCEL_TYPES-1];
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      top_totals[ti] = 0;
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	totals[ti][ai] = 0;
+      }
+    }
+  printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	  if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
+	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB %u\n", ti, accel_type_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
+	  }
+	  totals[ti][ai] += accelerator_allocated_to_MB[ti][ai][bi];
+	}
+      }
+    }
+    printf("\nPer-Accelerator allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	top_totals[ti]+= totals[ti][ai];
+      }
+    }
+    printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_type_str[ti], top_totals[ti]);
+    }
   }
 
   printf("\nScheduler block allocation/free statistics:\n");
