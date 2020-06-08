@@ -1020,13 +1020,13 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
 void
 fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
 {
-  int proposed_accel0 = no_accelerator_t;
-  int proposed_accel1 = no_accelerator_t;
+  int num_proposed_accel_types = 1;
+  int proposed_accel[2] = {no_accelerator_t, no_accelerator_t};
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  int best_accel_id = -1;
+  int best_accel_id  = -1;
 
-  uint64_t least_finish_time = 0;
+  uint64_t least_finish_time = 0xffffffffffffffffLL; // MAX for a 64-bit value
   uint64_t finish_time = 0;
   uint64_t remaining_time = 0;
 
@@ -1036,112 +1036,54 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
   gettimeofday(&current_time, NULL);
 
   switch(task_metadata_block->job_type) {
-    case FFT_TASK: {
-      // Scheduler should now run this either on CPU or FFT
-      proposed_accel0 = cpu_accel_t;
-      proposed_accel1 = fft_hwr_accel_t;
-
-      for (int i = 0; i < num_accelerators_of_type[proposed_accel0]; ++i) {
-        int bi = accelerator_in_use_by[proposed_accel0][i];
-        if(bi == -1) // Free
-          finish_time = task_metadata_block->task_profile[proposed_accel0];
-        else { // Accel is running a task
-          elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
-          elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
-          total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-          remaining_time = master_metadata_pool[bi].task_profile[proposed_accel0] - total_elapsed_usec;
-          finish_time = task_metadata_block->task_profile[proposed_accel0] + remaining_time;
-        }
-        if (i == 0) {
-          least_finish_time = finish_time;
-          best_accel_id = i;
-          accel_type = proposed_accel0;
-        }
-        if(finish_time < least_finish_time) {
-          best_accel_id = i;
-          accel_type = proposed_accel0;
-        }
-      }
-
-      #ifdef HW_FFT
-      for (int i = 0; i < num_accelerators_of_type[proposed_accel1]; ++i) {
-        int bi = accelerator_in_use_by[proposed_accel1][i];
-        if(bi == -1) // Free
-          finish_time = task_metadata_block->task_profile[proposed_accel1];
-        else {
-          elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
-          elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
-          total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-          remaining_time = master_metadata_pool[bi].task_profile[proposed_accel1] - total_elapsed_usec;
-          finish_time = task_metadata_block->task_profile[proposed_accel1] + remaining_time;
-        }
-        if(finish_time < least_finish_time) {
-          best_accel_id = i;
-          accel_type = proposed_accel1;
-        }
-      }
-      #endif
-
+    case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
+      proposed_accel[0] = cpu_accel_t;
+     #ifdef HW_FFT
+      num_proposed_accel_types = 2;
+      proposed_accel[1] = fft_hwr_accel_t;
+     #endif
     } break;
-    case VITERBI_TASK: {
-      // Scheduler should now run this either on CPU or VIT
-      proposed_accel0 = cpu_accel_t;
-      proposed_accel1 = vit_hwr_accel_t;
-
-      for (int i = 0; i < num_accelerators_of_type[proposed_accel0]; ++i) {
-        int bi = accelerator_in_use_by[proposed_accel0][i];
-        if(bi == -1) // Accel is Free
-          finish_time = task_metadata_block->task_profile[proposed_accel0];
-        else { // Accel is running a task
-          elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
-          elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
-          total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-          remaining_time = master_metadata_pool[bi].task_profile[proposed_accel0] - total_elapsed_usec;
-          finish_time = task_metadata_block->task_profile[proposed_accel0] + remaining_time;
-        }
-        if (i == 0) {
-          least_finish_time = finish_time;
-          best_accel_id = i;
-          accel_type = proposed_accel0;
-        }
-        if(finish_time < least_finish_time) {
-          best_accel_id = i;
-          accel_type = proposed_accel0;
-        }
-      }
-
-      #ifdef HW_VIT
-      for (int i = 0; i < num_accelerators_of_type[proposed_accel1]; ++i) {
-        int bi = accelerator_in_use_by[proposed_accel1][i];
-        if(bi == -1) // Free
-          finish_time = task_metadata_block->task_profile[proposed_accel1];
-        else {
-          elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
-          elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
-          total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-          remaining_time = master_metadata_pool[bi].task_profile[proposed_accel1] - total_elapsed_usec;
-          finish_time = task_metadata_block->task_profile[proposed_accel1] + remaining_time;
-        }
-        if(finish_time < least_finish_time) {
-          best_accel_id = i;
-          accel_type = proposed_accel1;
-        }
-
-      }
-      #endif
+    case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
+      proposed_accel[0] = cpu_accel_t;
+     #ifdef HW_VIT
+      num_proposed_accel_types = 2;
+      proposed_accel[1] = vit_hwr_accel_t;
+     #endif
     } break;
     default:
     printf("ERROR : request_execution called for unknown task type: %u\n", task_metadata_block->job_type);
     exit(-15);
   }
 
+  // Now that we know the set of proposed accelerators,
+  //  scan through to find which one will produce the earliest estimated finish time
+  for (int pi = 0; pi < num_proposed_accel_types; pi++) {
+    for (int i = 0; i < num_accelerators_of_type[proposed_accel[0]]; ++i) {
+      int bi = accelerator_in_use_by[proposed_accel[0]][i];
+      if (bi == -1) { // The accelerator is Free
+	// The estimated task finish time is taken from the task profiling information
+	finish_time = task_metadata_block->task_profile[proposed_accel[0]];
+      } else { // Accel is running a task
+	// Compute the remaining execution time (estimate) for job currently on accelerator
+	elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.running_start.tv_sec;
+	elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.running_start.tv_usec;
+	total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
+	remaining_time = master_metadata_pool[bi].task_profile[proposed_accel[0]] - total_elapsed_usec;
+	// and add that to the projected task run time to get the estimated finish time.
+	finish_time = task_metadata_block->task_profile[proposed_accel[0]] + remaining_time;
+      }
+      if (finish_time < least_finish_time) {
+	best_accel_id = i;
+	accel_type = proposed_accel[0];
+      }
+    } // for (i = spin through proposed accelerators)
+  } // for (pi goes through proposed_accelerator_types)
+  
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
-  // this metablock to best accelerator, until one gets free...
+  // this metablock to best accelerator, until it is free and task is allocated
   while (accel_id < 0) {
-    // printf("Busy accel type: %d id: accel_id: %d\n", accel_type,
-    // best_accel_id);
-
+    // printf("Busy accel type: %d id: accel_id: %d\n", accel_type, best_accel_id);
     if (accelerator_in_use_by[accel_type][best_accel_id] == -1) {  
       // Not in use -- available
       accel_id = best_accel_id;
