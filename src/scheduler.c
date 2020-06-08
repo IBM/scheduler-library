@@ -1256,8 +1256,12 @@ void shutdown_scheduler()
     printf("\nPer-Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-	if (totals[ti][ai] != 0) {
+	if (ai < num_accelerators_of_type[ti]) { 
 	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	} else {
+	  if (totals[ti][ai] != 0) {
+	    printf("ERROR : We have use of non-existent Accelerator %u %s : index %u = %u\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	  }
 	}
 	top_totals[ti]+= totals[ti][ai];
       }
