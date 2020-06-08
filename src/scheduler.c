@@ -1242,7 +1242,7 @@ void shutdown_scheduler()
 	totals[ti][ai] = 0;
       }
     }
-  printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
+    printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
 	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
@@ -1256,7 +1256,9 @@ void shutdown_scheduler()
     printf("\nPer-Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-	printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	if (totals[ti][ai] != 0) {
+	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	}
 	top_totals[ti]+= totals[ti][ai];
       }
     }
