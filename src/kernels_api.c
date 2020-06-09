@@ -136,14 +136,21 @@ uint8_t actual_msg[1600];
 unsigned int      num_viterbi_dictionary_items = 0;
 vit_dict_entry_t* the_viterbi_trace_dict;
 
-unsigned vit_msgs_size = 0; // 0 = default
+unsigned vit_msgs_size;
+unsigned vit_msgs_per_step;
+const char* vit_msgs_size_str[VITERBI_MSG_LENGTHS] = {"SHORT", "MEDIUM", "LONG", "MAXIMUM"};
+const char* vit_msgs_per_step_str[VITERBI_MSGS_PER_STEP] = {"One message per time step",
+							    "One message per obstacle per time step",
+							    "One msg per obstacle + 1 per time step" };
+unsigned viterbi_messages_histogram[VITERBI_MSG_LENGTHS][NUM_MESSAGES];
+
 unsigned total_msgs = 0; // Total messages decoded during the full run
 unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the full run
 
-
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
-//#define DEBUG(X) X
+
+
 
 status_t init_rad_kernel(char* dict_fn)
 {
@@ -154,6 +161,7 @@ status_t init_rad_kernel(char* dict_fn)
   if (!dictF)
   {
     printf("Error: unable to open dictionary file %s\n", dict_fn);
+    fclose(dictF);
     return error;
   }
   // Read the number of definitions
@@ -251,7 +259,6 @@ status_t init_rad_kernel(char* dict_fn)
 
   return success;
 }
-//#define DEBUG(X) 
 
 
 /* This is the initialization of the Viterbi dictionary data, etc.
@@ -289,8 +296,10 @@ status_t init_vit_kernel(char* dict_fn)
   if (the_viterbi_trace_dict == NULL) 
   {
     printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space\n");
+    fclose(dictF);
     return error;
   }
+
   // Read in each dictionary item
   for (int i = 0; i < num_viterbi_dictionary_items; i++) 
   {
@@ -298,7 +307,7 @@ status_t init_vit_kernel(char* dict_fn)
 
     int mnum, mid;
     if (fscanf(dictF, "%d %d\n", &mnum, &mid) != 2) {
-      printf("ERROR reading Viterbi Dictionary entry %u header\n", i);
+      printf("Error reading viterbi kernel dictionary enry %u header: Message_number and Message_id\n", i);
       exit(-2);
     }
     DEBUG(printf(" V_MSG: num %d Id %d\n", mnum, mid));
@@ -314,6 +323,7 @@ status_t init_vit_kernel(char* dict_fn)
       printf("Error reading viterbi kernel dictionary entry %u bpsc, cbps, dbps, encoding and rate info\n", i);
       exit(-2);
     }
+
     DEBUG(printf("  OFDM: %d %d %d %d %d\n", in_bpsc, in_cbps, in_dbps, in_encoding, in_rate));
     the_viterbi_trace_dict[i].ofdm_p.encoding   = in_encoding;
     the_viterbi_trace_dict[i].ofdm_p.n_bpsc     = in_bpsc;
@@ -635,8 +645,9 @@ void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, d
   } else {
     pct_err = abs_err;
   }
+  
   DEBUG(printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err));
-  //printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err);
+  //printf("IDX: %u :: %f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", index, tr_dist, dist, error, abs_err, pct_err);
   if (pct_err == 0.0) {
     hist_pct_errs[set][index][0]++;
   } else if (pct_err < 0.01) {
@@ -717,8 +728,8 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
 
   vit_dict_entry_t* trace_msg; // Will hold msg input data for decode, based on trace input
 
-  // Here we determine short or long messages, based on global vit_msgs_size
-  int msg_offset = vit_msgs_size * NUM_MESSAGES; // messages offset picks a "size" category
+  // Here we determine short or long messages, based on global vit_msgs_size; offset is into the Dictionary
+  int msg_offset = vit_msgs_size * NUM_MESSAGES; // 0 = short messages, 4 = long messages
 
   viterbi_messages_histogram[vit_msgs_size][tr_val]++; 
   switch(tr_val) {
@@ -798,7 +809,6 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   return msg;
 }
 
-
 void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
 {
   total_msgs++;
@@ -841,19 +851,19 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
       case safe_to_move_right_or_left   :
 	/* Bias is move right, UNLESS we are in the Right lane and would then head into the RHazard Lane */
 	if (vehicle_state.lane < right) { 
-		DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state.lane]));
+	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state.lane]));
 	  new_vehicle_state.lane += 1;
 	} else {
-		DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state.lane]));
+	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state.lane]));
 	  new_vehicle_state.lane -= 1;
 	}	  
 	break; // prefer right lane
       case safe_to_move_right_only      :
-	      DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state.lane]));
+	DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state.lane]));
 	new_vehicle_state.lane += 1;
 	break;
       case safe_to_move_left_only       :
-	      DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state.lane]));
+	DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state.lane]));
 	new_vehicle_state.lane -= 1;
 	break;
       case unsafe_to_move_left_or_right :
@@ -862,7 +872,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 	  new_vehicle_state.speed = vehicle_state.speed - car_decel_rate; // was / 2.0;
 	  DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state.lane], vehicle_state.speed, new_vehicle_state.speed));
 	} else {
-		DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state.lane]));
+	  DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state.lane]));
 	  new_vehicle_state.speed = 0.0;
 	}
 	#else
@@ -1011,5 +1021,6 @@ void closeout_vit_kernel()
   }
   printf("\n");
 }
+
 
 

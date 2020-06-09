@@ -61,7 +61,7 @@ void print_usage(char * pname) {
   printf("    -t <trace> : defines the input trace file <trace> to use\n");
 #endif
   printf("    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
-  printf("               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.\n");
+  printf("               :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
   
   printf("    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>     : defines Viterbi message size:\n");
@@ -99,13 +99,13 @@ int main(int argc, char *argv[])
 #ifdef USE_SIM_ENVIRON
   char* world_desc_file_name = "default_world.desc";
 #else
-  char* trace_file;
+  char* trace_file = "";
 #endif
   int opt;
 
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
-  cv_dict[0] = '\0';
+  cv_dict[0]  = '\0';
 
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
@@ -158,7 +158,12 @@ int main(int argc, char *argv[])
       break;
     case 'v':
       vit_msgs_size = atoi(optarg);
-      printf("Using viterbi size %u\n", vit_msgs_size);
+      if (vit_msgs_size >= VITERBI_MSG_LENGTHS) {
+	printf("ERROR: Specified viterbi message size (%u) is larger than max (%u) : from the -v option\n", vit_msgs_size, VITERBI_MSG_LENGTHS);
+	exit(-1);
+      } else {
+	printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
+      }
       break;
     case 'S':
       task_size_variability = atoi(optarg);
@@ -331,7 +336,6 @@ int main(int argc, char *argv[])
  #endif // TIME
 
   printf("Starting the main loop...\n");
-  fflush(stdout);
   /* The input trace contains the per-epoch (time-step) input data */
 #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
