@@ -1233,45 +1233,6 @@ void shutdown_scheduler()
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
-  {
-    unsigned totals[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-    unsigned top_totals[NUM_ACCEL_TYPES-1];
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
-      top_totals[ti] = 0;
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-	totals[ti][ai] = 0;
-      }
-    }
-    printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-	  if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
-	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB %u\n", ti, accel_type_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
-	  }
-	  totals[ti][ai] += accelerator_allocated_to_MB[ti][ai][bi];
-	}
-      }
-    }
-    printf("\nPer-Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-	if (ai < num_accelerators_of_type[ti]) { 
-	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
-	} else {
-	  if (totals[ti][ai] != 0) {
-	    printf("ERROR : We have use of non-existent Accelerator %u %s : index %u = %u\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
-	  }
-	}
-	top_totals[ti]+= totals[ti][ai];
-      }
-    }
-    printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
-      printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_type_str[ti], top_totals[ti]);
-    }
-  }
-
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", task_job_str[ti], allocated_metadata_blocks[ti], freed_metadata_blocks[ti]);
@@ -1405,8 +1366,50 @@ void shutdown_scheduler()
     printf("     depuncture  run time   %15lu usec : %16.3lf average usec\n", total_depunc_usec, avg);
     avg = (double)total_dodec_usec / (double) freed_metadata_blocks[VITERBI_TASK];
     printf("     do-decoding run time   %15lu usec : %16.3lf average usec\n", total_dodec_usec, avg);
-
   }
+
+  printf("\nAccelerator Usage Statistics:\n");
+  {
+    unsigned totals[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+    unsigned top_totals[NUM_ACCEL_TYPES-1];
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      top_totals[ti] = 0;
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	totals[ti][ai] = 0;
+	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	  totals[ti][ai] += accelerator_allocated_to_MB[ti][ai][bi];
+	}
+      }
+    }
+    printf("\nPer-Accelerator allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	if (ai < num_accelerators_of_type[ti]) { 
+	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	} else {
+	  if (totals[ti][ai] != 0) {
+	    printf("ERROR : We have use of non-existent Accelerator %u %s : index %u = %u\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	  }
+	}
+	top_totals[ti]+= totals[ti][ai];
+      }
+    }
+    printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_type_str[ti], top_totals[ti]);
+    }
+    printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
+    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+      for (int ai = 0; ai < num_accelerators_of_type[ti]; ai++) {
+	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	  if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
+	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB %u\n", ti, accel_type_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
+	  }
+	}
+      }
+    }
+ }
+
 
   // Clean up any hardware accelerator stuff
  #ifdef HW_VIT
