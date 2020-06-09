@@ -69,23 +69,36 @@ LDFLAGS += -ltest
 LDFLAGS += -lcontig
 endif
 
-SRC_S = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
 SRC_D = $(wildcard src/*.c)
-HDR_S = $(wildcard include/*.h)
-OBJ_S = $(SRC_S:%.c=obj/%.o)
+HDR_T = $(wildcard include/*.h)
+OBJ_T = $(SRC_T:%.c=obj_t/%.o)
+OBJ_S = $(SRC_T:%.c=obj_s/%.o)
 
 VPATH = ./src
 
 TARGET=test-scheduler.exe
+STARGET=test-scheduler-sim.exe
 
-all: obj $(TARGET)
+all: obj_t obj_s $(TARGET) $(STARGET)
 
-obj/%.o: %.c
+obj_t/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_S): $(HDR_S)
+obj_s/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
 
-$(TARGET): $(OBJ_S)
+$(OBJ_T): $(HDR_T)
+
+$(TARGET): $(OBJ_T)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(STARGET): $(OBJ_S)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -94,14 +107,17 @@ endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	$(RM) $(OBJ_S) $(TARGET)
-	$(RM) -r obj
+	$(RM) $(OBJ_T) $(OBJ_S) $(TARGET) $(STARGET)
+	$(RM) -r obj_t obj_s
 
 clobber: clean
 
 
-obj:
-	mkdir obj
+obj_t:
+	mkdir $@
+
+obj_s:
+	mkdir $@
 
 .PHONY: all clean
 
@@ -140,7 +156,7 @@ src/main.o: ./include/kernels_api.h ./include/calc_fmcw_dist.h
 src/main.o: ./include/utils.h ./include/sim_environs.h
 src/calculate_dist_from_fmcw.o: ./include/fft-1d.h
 src/calculate_dist_from_fmcw.o: ./include/calc_fmcw_dist.h
-src/calculate_dist_from_fmcw.o: ./include/scheduler.h ./include/base_types.h
+qsrc/calculate_dist_from_fmcw.o: ./include/scheduler.h ./include/base_types.h
 src/cpu_fft_accel.o: ./include/scheduler.h
 src/cpu_fft_accel.o: ./include/base_types.h ./include/fft-1d.h
 src/cpu_fft_accel.o: ./include/calc_fmcw_dist.h
