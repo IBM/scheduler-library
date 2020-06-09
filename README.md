@@ -21,6 +21,13 @@ make
 
 The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. The `make` command should produce the `test-scheduler.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
 
+### Targets
+
+The standard ```make``` of the scheduler-library code will produce two executables:
+ - test-scheduler.exe
+ - test-scheduler-sim.exe
+The ```test-scheduler.exe``` program corresponds to the trace-driven  ```mini-era``` executable, while the ```test-scheduler-sim.exe``` corresponds to the simulation version of ```mini-era``` (where the inputs are derived by simulation of arrival events, guided by thresholds and random number selection).  For more details on the simulation versus trae-driven ```mini-era``` programs, please see the documentation in the mini-era github repository.
+
 ### Configuration
 
 The Mini-ERA + SL build supports more than just a basic Linux platform; there is provision to tie this same application into the EPOCHS <a href="https://esp.cs.columbia.edu" target="_blank">ESP-based</a> Soc platform (currently propotyped on an FPGA). As such, there are options to compile this application code within the ESP SoC design environment to cross-compile an output target or the EPOCHS native RISC-V Linux SoC environment. There are also some additional configuration capabilites tied in to the overall make process, and these are controlled in two ways:
@@ -46,6 +53,11 @@ The config file contains a series of definitions, like #define macros or environ
 - CONFIG_GDB=y		  indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
 
 ### Usage
+
+As indicated, there are two executables that will execute the Mini-ERA functionality on the *scheduler-library*, adn their usage is very similar,
+but with a few distinctions owing to the differences in running with a trace input as versus a simulated world  providing inputs.
+
+#### Trace-Driven Version: ```test-scheduler.exe```
 ```
 ./test-scheduler.exe -h
 Usage: ./cmain.exe <OPTIONS>
@@ -73,7 +85,40 @@ Usage: ./cmain.exe <OPTIONS>
                :      2 = Fastest_Finish_Time_First
 ```
 
-To actually execute a trace, one must point to the trace repository. SL does not include a trace directory itself, but instead uses the one from <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a>.
+To actually execute a trace, one must point to the trace in the trace repository (subdirectory ```traces```) using the ```-t``` option.
+
+#### Simulation-Driven Version: ```test-scheduler-sim.exe```
+```
+./test-scheduler-sim.exe  -h
+Usage: ./test-scheduler-sim.exe <OPTIONS>
+ OPTIONS:
+    -h         : print this helpful usage info
+    -o         : print the Visualizer output traace information during the run
+    -R <file>  : defines the input Radar dictionary file <file> to use
+    -V <file>  : defines the input Viterbi dictionary file <file> to use
+    -C <file>  : defines the input CV/CNN dictionary file <file> to use
+    -s <N>     : Sets the max number of time steps to simulate
+    -r <N>     : Sets the rand random number seed to N
+    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)
+    -W <wfile> : defines the world environment parameters description file <wfile> to use
+    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
+               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
+    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
+    -v <N>     : defines Viterbi message size:
+               :      0 = Short messages (4 characters)
+               :      1 = Medium messages (500 characters)
+               :      2 = Long messages (1000 characters)
+               :      3 = Max-sized messages (1500 characters)
+    -M <N>     : Adds <N> additional (non-critical) Viterbi message tasks per time step.
+    -S <N>     : Task-Size Variability: Varies the sizes of input tasks where appropriate
+               :      0 = No variability (e.g. all messages same size, etc.)
+    -P <N>     : defines the Scheduler Accelerator Selection Policy:
+               :      0 = Select_Accelerator_Type_And_Wait
+               :      1 = Fastest_to_Slowest_First_Available
+               :      2 = Fastest_Finish_Time_First
+```
+
+For execution in simulation mode (e.g. using ```test-scheduler-sim.exe```) no trace is necessary, and the simulation provides the inputs.
 
 ## Status
 
@@ -86,7 +131,11 @@ There are currently some example traces in the `traces` subdirectory. Note that 
  - `tt002new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
  - `tt003new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
 
-For additional information, please see the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> main-line README.
+There is a default set of world parameter setings for the simulation-driven mode (```test-scheduler-sim.exe```) as well.
+This file (```default-world.desc```) describes the thresholds for various input occurrences, etc.
+
+For additional information on all aspects of the Mini-ERA baseline workload,
+please see the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> main-line README.
 
 
 ## Contacts and Current Maintainers
