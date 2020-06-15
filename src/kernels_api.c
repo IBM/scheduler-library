@@ -454,7 +454,7 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
 
 label_t run_object_classification_syscall(unsigned tr_val) 
 {
-  DEBUG(printf("Entered run_object_classification...\n"));
+  DEBUG(printf("Entered run_object_classification_syscall...\n"));
   label_t object;	
 #ifdef BYPASS_KERAS_CV_CODE
   object = (label_t)tr_val;
@@ -478,7 +478,7 @@ label_t run_object_classification_syscall(unsigned tr_val)
   int val = atoi(pbuffer);   //the last thing printed by the Keras code is the predicted label 
   object = (label_t)val;
   pclose(testing);
-  DEBUG(printf("run_object_classification returning %u = %u\n", val, object));
+  DEBUG(printf("run_object_classification_syscall returning %u = %u\n", val, object));
 #endif
   return object;  
 }
