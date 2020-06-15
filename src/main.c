@@ -555,36 +555,6 @@ int main(int argc, char *argv[])
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
  #endif // TIME
-  /***
-#ifdef INT_TIME
-  // These are timings taken from called routines...
-  printf("\n");
-  uint64_t fft_tot = (uint64_t) (calc_sec)  * 1000000 + (uint64_t) (calc_usec);
-  printf("  fft-total   run time    %lu usec\n", fft_tot);
- #ifdef HW_FFT
-  uint64_t fft_br    = (uint64_t) (fft_br_sec)  * 1000000 + (uint64_t) (fft_br_usec);
-  printf("  bitrev      run time    %lu usec\n", fft_br);
- #else 
-  uint64_t bitrev    = (uint64_t) (bitrev_sec)  * 1000000 + (uint64_t) (bitrev_usec);
-  printf("  bit-reverse run time    %lu usec\n", bitrev);
- #endif
-  uint64_t fft_cvtin    = (uint64_t) (fft_cvtin_sec)  * 1000000 + (uint64_t) (fft_cvtin_usec);
-  printf("  fft_cvtin   run time    %lu usec\n", fft_cvtin);
-  uint64_t fft_comp    = (uint64_t) (fft_sec)  * 1000000 + (uint64_t) (fft_usec);
-  printf("  fft-comp    run time    %lu usec\n", fft_comp);
-  uint64_t fft_cvtout    = (uint64_t) (fft_cvtout_sec)  * 1000000 + (uint64_t) (fft_cvtout_usec);
-  printf("  fft_cvtout  run time    %lu usec\n", fft_cvtout);
-  uint64_t cdfmcw    = (uint64_t) (cdfmcw_sec)  * 1000000 + (uint64_t) (cdfmcw_usec);
-  printf("  calc-dist   run time    %lu usec\n", cdfmcw);
-
-  printf("\n");
-  uint64_t depunc    = (uint64_t) (depunc_sec)  * 1000000 + (uint64_t) (depunc_usec);
-  printf("  depuncture  run time    %lu usec\n", depunc);
-  uint64_t dodec    = (uint64_t) (dodec_sec)  * 1000000 + (uint64_t) (dodec_usec);
-  printf("  do-decoding run time    %lu usec\n", dodec);
- #endif // INT_TIME
-  ***/
-
   shutdown_scheduler();
   printf("\nDone.\n");
   return 0;
