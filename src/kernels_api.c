@@ -173,12 +173,14 @@ status_t init_rad_kernel(char* dict_fn)
   the_radar_return_dict = (radar_dict_entry_t**)calloc(num_radar_samples_sets, sizeof(radar_dict_entry_t*));
   if (the_radar_return_dict == NULL) {
     printf("ERROR : Cannot allocate Radar Trace Dictionary memory space\n");
+    fclose(dictF);
     return error;
   }
   for (int si = 0; si < num_radar_samples_sets; si++) {
     the_radar_return_dict[si] = (radar_dict_entry_t*)calloc(radar_dict_items_per_set, sizeof(radar_dict_entry_t));
     if (the_radar_return_dict[si] == NULL) {
       printf("ERROR : Cannot allocate Radar Trace Dictionary memory space for set %u\n", si);
+      fclose(dictF);
       return error;
     }
   }
@@ -396,6 +398,7 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
   if (the_cv_object_dict == NULL) 
   {
     printf("ERROR : Cannot allocate Cv Trace Dictionary memory space\n");
+    fclose(dictF);
     return error;
   }
 
