@@ -158,18 +158,18 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
 {
   d_ofdm = ofdm;
   d_frame = frame;
-
+  int tidx = (vit_metadata_block->accelerator_type != cpu_accel_t);
   reset();
 
 #ifdef INT_TIME
-  gettimeofday(&vit_metadata_block->vit_timings.depunc_start, NULL);
+  gettimeofday(&vit_metadata_block->vit_timings[tidx].depunc_start, NULL);
 #endif
   uint8_t *depunctured = depuncture(in);
 #ifdef INT_TIME
   struct timeval depunc_stop;
   gettimeofday(&depunc_stop, NULL);
-  vit_metadata_block->vit_timings.depunc_sec  += depunc_stop.tv_sec  - vit_metadata_block->vit_timings.depunc_start.tv_sec;
-  vit_metadata_block->vit_timings.depunc_usec += depunc_stop.tv_usec - vit_metadata_block->vit_timings.depunc_start.tv_usec;
+  vit_metadata_block->vit_timings[tidx].depunc_sec  += depunc_stop.tv_sec  - vit_metadata_block->vit_timings[tidx].depunc_start.tv_sec;
+  vit_metadata_block->vit_timings[tidx].depunc_usec += depunc_stop.tv_usec - vit_metadata_block->vit_timings[tidx].depunc_start.tv_usec;
 #endif
 
   DO_VERBOSE({

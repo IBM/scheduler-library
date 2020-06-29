@@ -405,6 +405,7 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   uint8_t* in_Mem  = &(vdata->theData[inMem_offset]);
   uint8_t* in_Data = &(vdata->theData[inData_offset]);
   uint8_t* out_Data = &(vdata->theData[outData_offset]);
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   //extern void schedule_viterbi(int n_cbps, int n_traceback, int n_data_bits, uint8_t* inMem, uint8_t* inData, uint8_t* outMem);
   /**
   uint8_t cpuInMem[24852];  // This is "minimally sized for max entries"
@@ -432,7 +433,7 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
     });
   **/
 #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->vit_timings.dodec_start), NULL);
+  gettimeofday(&(task_metadata_block->vit_timings[tidx].dodec_start), NULL);
 #endif
 
   DEBUG(for (int i = 0; i < 20; i++) {
@@ -446,8 +447,8 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
-  task_metadata_block->vit_timings.dodec_sec  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
-  task_metadata_block->vit_timings.dodec_usec += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
+  task_metadata_block->vit_timings[tidx].dodec_sec  += dodec_stop.tv_sec  - task_metadata_block->vit_timings[tidx].dodec_start.tv_sec;
+  task_metadata_block->vit_timings[tidx].dodec_usec += dodec_stop.tv_usec - task_metadata_block->vit_timings[tidx].dodec_start.tv_usec;
 #endif
 
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));

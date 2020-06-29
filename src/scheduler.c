@@ -334,8 +334,9 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   // Then, mark the task as "DONE" with execution
   task_metadata_block->status = TASK_DONE;
   gettimeofday(&task_metadata_block->sched_timings.done_start, NULL);
-  task_metadata_block->sched_timings.running_sec += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
-  task_metadata_block->sched_timings.running_usec += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.queued_start.tv_usec;
+  int idx = task_metadata_block->accelerator_type;
+  task_metadata_block->sched_timings.running_sec[idx] += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
+  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.queued_start.tv_usec;
 
   // And finally, call the call-back if there is one... (which might clear out the metadata_block entirely)
   if (task_metadata_block->atFinish != NULL) {
@@ -533,29 +534,33 @@ status_t initialize_scheduler()
     master_metadata_pool[i].sched_timings.get_usec = 0;
     master_metadata_pool[i].sched_timings.queued_sec = 0;
     master_metadata_pool[i].sched_timings.queued_usec = 0;
-    master_metadata_pool[i].sched_timings.running_sec = 0;
-    master_metadata_pool[i].sched_timings.running_usec = 0;
+    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      master_metadata_pool[i].sched_timings.running_sec[ti] = 0;
+      master_metadata_pool[i].sched_timings.running_usec[ti] = 0;
+    }
     master_metadata_pool[i].sched_timings.done_sec = 0;
     master_metadata_pool[i].sched_timings.done_usec = 0;
-    // FFT task timings
-    master_metadata_pool[i].fft_timings.calc_sec = 0;
-    master_metadata_pool[i].fft_timings.calc_usec = 0;
-    master_metadata_pool[i].fft_timings.fft_sec = 0;
-    master_metadata_pool[i].fft_timings.fft_usec = 0;
-    master_metadata_pool[i].fft_timings.fft_br_sec = 0;
-    master_metadata_pool[i].fft_timings.fft_br_usec = 0;
-    master_metadata_pool[i].fft_timings.fft_cvtin_sec = 0;
-    master_metadata_pool[i].fft_timings.fft_cvtin_usec = 0;
-    master_metadata_pool[i].fft_timings.fft_cvtout_sec = 0;
-    master_metadata_pool[i].fft_timings.fft_cvtout_usec = 0;
-    master_metadata_pool[i].fft_timings.cdfmcw_sec = 0;
-    master_metadata_pool[i].fft_timings.cdfmcw_usec = 0;
-    // Viterbi task timings
-    master_metadata_pool[i].vit_timings.dodec_sec = 0;
-    master_metadata_pool[i].vit_timings.dodec_usec = 0;
-    master_metadata_pool[i].vit_timings.depunc_sec = 0;
-    master_metadata_pool[i].vit_timings.depunc_usec = 0;
-
+    for (int ti = 0; ti < 2; ti++) {
+      // FFT task timings
+      master_metadata_pool[i].fft_timings[ti].calc_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].calc_usec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_usec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_br_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_br_usec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_cvtin_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_cvtin_usec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_cvtout_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].fft_cvtout_usec = 0;
+      master_metadata_pool[i].fft_timings[ti].cdfmcw_sec = 0;
+      master_metadata_pool[i].fft_timings[ti].cdfmcw_usec = 0;
+      // Viterbi task timings
+      master_metadata_pool[i].vit_timings[ti].dodec_sec = 0;
+      master_metadata_pool[i].vit_timings[ti].dodec_usec = 0;
+      master_metadata_pool[i].vit_timings[ti].depunc_sec = 0;
+      master_metadata_pool[i].vit_timings[ti].depunc_usec = 0;
+    }
+    
     pthread_mutex_init(&(master_metadata_pool[i].metadata_mutex), NULL);
     pthread_cond_init(&(master_metadata_pool[i].metadata_condv), NULL);
 
@@ -1272,21 +1277,35 @@ void shutdown_scheduler()
     uint64_t total_idle_usec    = 0;
     uint64_t total_get_usec     = 0;
     uint64_t total_queued_usec  = 0;
-    uint64_t total_running_usec = 0;
+    uint64_t total_running_usec[NUM_ACCEL_TYPES];
+    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      total_running_usec[ti] = 0;
+    }
     uint64_t total_done_usec    = 0;
     for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
       uint64_t this_idle_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.idle_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.idle_usec);
       uint64_t this_get_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.get_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.get_usec);
       uint64_t this_queued_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.queued_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.queued_usec);
-      uint64_t this_running_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.running_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.running_usec);
+      uint64_t this_total_run_usec = 0;
+      uint64_t this_running_usec[NUM_ACCEL_TYPES];
+      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+	this_running_usec[ti] = (uint64_t)(master_metadata_pool[bi].sched_timings.running_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.running_usec[ti]);
+	this_total_run_usec += this_running_usec[ti];
+      }
       uint64_t this_done_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.done_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.done_usec);
-      printf(" Block %3u : IDLE %15lu GET %15lu QUE %15lu RUN %15lu DONE %15lu usec\n", bi, this_idle_usec, this_get_usec, this_queued_usec, this_running_usec,  total_done_usec);
+      printf(" Block %3u : IDLE %15lu GET %15lu QUE %15lu RUN %15lu DONE %15lu usec :", bi, this_idle_usec, this_get_usec, this_queued_usec, this_total_run_usec,  total_done_usec);
+      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+	printf(" %15lu", this_running_usec[ti]);
+      }
+      printf("\n");
       if (this_idle_usec != 0) { total_blocks_used++; }
       
       total_idle_usec    += this_idle_usec;
       total_get_usec     += this_get_usec;
       total_queued_usec  += this_queued_usec;
-      total_running_usec += this_running_usec;
+      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+	total_running_usec[ti] += this_running_usec[ti];
+      }
       total_done_usec    += this_done_usec;
     }
     double avg;
@@ -1297,75 +1316,111 @@ void shutdown_scheduler()
     printf("  Metablocks_GET total run time:     %15lu usec : %16.2lf (average)\n", total_get_usec, avg);
     avg = (double)total_queued_usec/(double)total_blocks_used;
     printf("  Metablocks_QUEUED total run time:  %15lu usec : %16.2lf (average)\n", total_queued_usec, avg);
-    avg = (double)total_running_usec/(double)total_blocks_used;
-    printf("  Metablocks_RUNNING total run time: %15lu usec : %16.2lf (average)\n", total_running_usec, avg);
+    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      avg = (double)total_running_usec[ti]/(double)total_blocks_used;
+      printf("  Metablocks_RUNNING total %u %s run time: %15lu usec : %16.2lf (average)\n", ti, accel_type_str[ti], total_running_usec[ti], avg);
+    }
     avg = (double)total_done_usec/(double)total_blocks_used;
     printf("  Metablocks_DONE total run time:    %15lu usec : %16.2lf (average)\n", total_done_usec, avg);
   }
 
   printf("\nPer-MetaData-Block Job Timing Data:\n");
   printf("\n  Per-MetaData-Block FFT Timing Data:\n");
+  char* ti_label[2] = {"CPU", "HWR"};
   {
     // The FFT Tasks Timing Info
-    uint64_t total_calc_usec = 0;
-    uint64_t total_fft_usec = 0;
-    uint64_t total_fft_br_usec = 0;
-    uint64_t total_bitrev_usec = 0;
-    uint64_t total_fft_cvtin_usec = 0;
-    uint64_t total_fft_cvtout_usec = 0;
-    uint64_t total_cdfmcw_usec = 0;
-    for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      uint64_t this_calc_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.calc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.calc_usec);
-      uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_usec);
-      uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_usec);
-      uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_usec);
-      uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_usec);
-      uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_usec);
-      uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_usec);
-      printf("Block %3u : FFT calc %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu cvto %15lu fmcw %15lu usec\n", bi, this_calc_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
-      total_calc_usec       += this_calc_usec;
-      total_fft_usec        += this_fft_usec;
-      total_fft_br_usec     += this_fft_br_usec;
-      total_bitrev_usec     += this_bitrev_usec;
-      total_fft_cvtin_usec  += this_fft_cvtin_usec;
-      total_fft_cvtout_usec += this_fft_cvtout_usec;
-      total_cdfmcw_usec     += this_cdfmcw_usec;
-    }
-    
+    uint64_t total_calc_usec[3] = {0, 0, 0};
+    uint64_t total_fft_usec[3] = {0, 0, 0};
+    uint64_t total_fft_br_usec[3] = {0, 0, 0};
+    uint64_t total_bitrev_usec[3] = {0, 0, 0};
+    uint64_t total_fft_cvtin_usec[3] = {0, 0, 0};
+    uint64_t total_fft_cvtout_usec[3] = {0, 0, 0};
+    uint64_t total_cdfmcw_usec[3] = {0, 0, 0};
+    for (int ti = 0; ti < 2; ti++) {
+      for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	uint64_t this_calc_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].calc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].calc_usec);
+	uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_usec);
+	uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_br_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_br_usec);
+	uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].bitrev_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].bitrev_usec);
+	uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtin_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtin_usec);
+	uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtout_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtout_usec);
+	uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].cdfmcw_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].cdfmcw_usec);
+	printf("Block %3u : %u %s : FFT calc %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu cvto %15lu fmcw %15lu usec\n", bi, ti, ti_label[ti], this_calc_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
+	// Per acceleration (CPU, HWR)
+	total_calc_usec[ti]       += this_calc_usec;
+	total_fft_usec[ti]        += this_fft_usec;
+	total_fft_br_usec[ti]     += this_fft_br_usec;
+	total_bitrev_usec[ti]     += this_bitrev_usec;
+	total_fft_cvtin_usec[ti]  += this_fft_cvtin_usec;
+	total_fft_cvtout_usec[ti] += this_fft_cvtout_usec;
+	total_cdfmcw_usec[ti]     += this_cdfmcw_usec;
+	// Overall Total
+	total_calc_usec[2]       += this_calc_usec;
+	total_fft_usec[2]        += this_fft_usec;
+	total_fft_br_usec[2]     += this_fft_br_usec;
+	total_bitrev_usec[2]     += this_bitrev_usec;
+	total_fft_cvtin_usec[2]  += this_fft_cvtin_usec;
+	total_fft_cvtout_usec[2] += this_fft_cvtout_usec;
+	total_cdfmcw_usec[2]     += this_cdfmcw_usec;
+      } // for (bi over Metadata blocks)
+    } // for (ti = 0, 1)    
     printf("\nAggregate FFT Tasks Total Timing Data: %u finished FFT tasks\n", freed_metadata_blocks[FFT_TASK]);
-    double avg;
-    avg = (double)total_calc_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft-total run time   %15lu usec : %16.3lf average usec\n", total_calc_usec, avg);
-    avg = (double)total_fft_br_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     bit-reverse run time %15lu usec : %16.3lf average usec\n", total_fft_br_usec, avg);
-    avg = (double)total_bitrev_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     bit-rev run time     %15lu usec : %16.3lf average usec\n", total_bitrev_usec, avg);
-    avg = (double)total_fft_cvtin_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft_cvtin run time   %15lu usec : %16.3lf average usec\n", total_fft_cvtin_usec, avg);
-    avg = (double)total_fft_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft-comp run time    %15lu usec : %16.3lf average usec\n", total_fft_usec, avg);
-    avg = (double)total_fft_cvtout_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft_cvtout run time  %15lu usec : %16.3lf average usec\n", total_fft_cvtout_usec, avg);
-    avg = (double)total_cdfmcw_usec / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     calc-dist run time   %15lu usec : %16.3lf average usec\n", total_cdfmcw_usec, avg);
+    double avg0, avg1, avg2;
+    avg0 = (double)total_calc_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_calc_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_calc_usec[0] + total_calc_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft-total run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_calc_usec[0], avg0, 1, ti_label[1], total_calc_usec[1], avg1, total_calc_usec[2], avg2);
+    avg0= (double)total_fft_br_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_br_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_br_usec[0] + total_fft_br_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     bit-reverse run time %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_br_usec[0], avg0, 1, ti_label[1], total_fft_br_usec[1], avg1, total_fft_br_usec[2], avg2);
+    avg0 = (double)total_bitrev_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_bitrev_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_bitrev_usec[0] + total_bitrev_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     bit-rev run time     %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_bitrev_usec[0], avg0, 1, ti_label[1], total_bitrev_usec[1], avg1, total_bitrev_usec[2], avg2);
+    avg0 = (double)total_fft_cvtin_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_cvtin_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_cvtin_usec[0] + total_fft_cvtin_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft_cvtin run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_cvtin_usec[0], avg0, 1, ti_label[1], total_fft_cvtin_usec[1], avg1, total_fft_cvtin_usec[2], avg2);
+    avg0 = (double)total_fft_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_usec[0] + total_fft_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft-comp run time    %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_usec[0], avg0, 1, ti_label[1], total_fft_usec[1], avg1, total_fft_usec[2], avg2);
+    avg0 = (double)total_fft_cvtout_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_cvtout_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_cvtout_usec[0] + total_fft_cvtout_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft_cvtout run time  %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_cvtout_usec[0], avg0, 1, ti_label[1], total_fft_cvtout_usec[1], avg1, total_fft_cvtout_usec[2], avg2);
+    avg0 = (double)total_cdfmcw_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_cdfmcw_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_cdfmcw_usec[0] + total_cdfmcw_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     calc-dist run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cdfmcw_usec[0], avg0, 1, ti_label[1], total_cdfmcw_usec[1], avg1, total_cdfmcw_usec[2], avg2);
     
     printf("\n  Per-MetaData-Block VITERBI Timing Data: %u finished VITERBI tasks\n", freed_metadata_blocks[VITERBI_TASK]);
     // The Viterbi Task Timing Info
-    uint64_t total_depunc_usec = 0;
-    uint64_t total_dodec_usec = 0;
-    for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      uint64_t this_depunc_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_usec);
-      uint64_t this_dodec_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_usec);
-      printf("Block %3u : VITERBI depunc %15lu dodecode %15lu usec\n", bi, this_depunc_usec, this_dodec_usec);
-
-      total_depunc_usec += this_depunc_usec;
-      total_dodec_usec += this_dodec_usec;
-    }
+    uint64_t total_depunc_usec[3] = {0, 0, 0};
+    uint64_t total_dodec_usec[3] = {0, 0, 0};
+    for (int ti = 0; ti < 2; ti++) {
+      for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	uint64_t this_depunc_usec = (uint64_t)(master_metadata_pool[bi].vit_timings[ti].depunc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings[ti].depunc_usec);
+	uint64_t this_dodec_usec = (uint64_t)(master_metadata_pool[bi].vit_timings[ti].dodec_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings[ti].dodec_usec);
+	printf("Block %3u : VITERBI depunc %15lu dodecode %15lu usec\n", bi, this_depunc_usec, this_dodec_usec);
+	// Per acceleration (CPU, HWR)
+	total_depunc_usec[ti] += this_depunc_usec;
+	total_dodec_usec[ti] += this_dodec_usec;
+	// Overall Total
+	total_depunc_usec[2] += this_depunc_usec;
+	total_dodec_usec[2] += this_dodec_usec;
+      } // for (bi = 1 .. numMetatdataBlocks)
+    } // for (ti = 0, 1)
     printf("\nAggregate VITERBI Tasks Total Timing Data:\n");
-    avg = (double)total_depunc_usec / (double) freed_metadata_blocks[VITERBI_TASK];
-    printf("     depuncture  run time   %15lu usec : %16.3lf average usec\n", total_depunc_usec, avg);
-    avg = (double)total_dodec_usec / (double) freed_metadata_blocks[VITERBI_TASK];
-    printf("     do-decoding run time   %15lu usec : %16.3lf average usec\n", total_dodec_usec, avg);
+    avg0 = (double)total_depunc_usec[0] / (double) freed_metadata_blocks[VITERBI_TASK];
+    avg1 = (double)total_depunc_usec[1] / (double) freed_metadata_blocks[VITERBI_TASK];
+    avg2 = (double)total_depunc_usec[2] / (double) freed_metadata_blocks[VITERBI_TASK];
+    printf("     depuncture  run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_depunc_usec[0], avg0, 1, ti_label[1], total_depunc_usec[1], avg1, total_depunc_usec[2], avg2);
+    avg0 = (double)total_dodec_usec[0] / (double) freed_metadata_blocks[VITERBI_TASK];
+    avg1 = (double)total_dodec_usec[1] / (double) freed_metadata_blocks[VITERBI_TASK];
+    avg2 = (double)total_dodec_usec[2] / (double) freed_metadata_blocks[VITERBI_TASK];
+    printf("     do-decoding run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_dodec_usec[0], avg0, 1, ti_label[1], total_dodec_usec[1], avg1, total_dodec_usec[2], avg2);
   }
 
   printf("\nAccelerator Usage Statistics:\n");

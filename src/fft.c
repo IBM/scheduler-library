@@ -126,19 +126,19 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
   unsigned int transform_length;
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;
-
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   transform_length = 1;
 
   /* bit reversal */
 #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.bitrev_start), NULL);
+  gettimeofday(&(task_metadata_block->fft_timings[tidx].bitrev_start), NULL);
 #endif
   bit_reverse (data, N, logn);
 #ifdef INT_TIME
   struct timeval bitrev_stop;
   gettimeofday(&bitrev_stop, NULL);
-  task_metadata_block->fft_timings.bitrev_sec  += bitrev_stop.tv_sec  - task_metadata_block->fft_timings.bitrev_start.tv_sec;
-  task_metadata_block->fft_timings.bitrev_usec += bitrev_stop.tv_usec - task_metadata_block->fft_timings.bitrev_start.tv_usec;
+  task_metadata_block->fft_timings[tidx].bitrev_sec  += bitrev_stop.tv_sec  - task_metadata_block->fft_timings[tidx].bitrev_start.tv_sec;
+  task_metadata_block->fft_timings[tidx].bitrev_usec += bitrev_stop.tv_usec - task_metadata_block->fft_timings[tidx].bitrev_start.tv_usec;
 #endif
 
   /* calculation */

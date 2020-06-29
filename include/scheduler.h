@@ -100,7 +100,7 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec, running_usec;
+  uint64_t running_sec[NUM_ACCEL_TYPES], running_usec[NUM_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
@@ -158,8 +158,8 @@ typedef struct task_metadata_entry_struct {
   
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  fft_timing_data_t   fft_timings; 
-  vit_timing_data_t   vit_timings;
+  fft_timing_data_t   fft_timings[2];  // One for HWR_ACCEL and one for CPU
+  vit_timing_data_t   vit_timings[2];  // One for HWR_ACCEL and one for CPU
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
