@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
 
   if (rad_dict[0] == '\0') {
-    sprintf(rad_dict, "traces/norm_radar_16k_dictionary.dfn");
+    sprintf(rad_dict, "traces/norm_radar_all_dictionary.dfn");
   }
   if (vit_dict[0] == '\0') {
     sprintf(vit_dict, "traces/vit_dictionary.dfn");
