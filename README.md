@@ -68,6 +68,7 @@ Usage: ./cmain.exe <OPTIONS>
     -V <file>  : defines the input Viterbi dictionary file <file> to use
     -C <file>  : defines the input CV/CNN dictionary file <file> to use
     -t <trace> : defines the input trace file <trace> to use
+    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)
     -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
                :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
     -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
@@ -101,6 +102,7 @@ Usage: ./test-scheduler-sim.exe <OPTIONS>
     -r <N>     : Sets the rand random number seed to N
     -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)
     -W <wfile> : defines the world environment parameters description file <wfile> to use
+    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)
     -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
                :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
     -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
