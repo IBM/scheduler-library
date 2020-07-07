@@ -131,14 +131,14 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
 
   /* bit reversal */
 #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings[tidx].bitrev_start), NULL);
+  gettimeofday(&(task_metadata_block->fft_timings.bitrev_start), NULL);
 #endif
   bit_reverse (data, N, logn);
 #ifdef INT_TIME
   struct timeval bitrev_stop;
   gettimeofday(&bitrev_stop, NULL);
-  task_metadata_block->fft_timings[tidx].bitrev_sec  += bitrev_stop.tv_sec  - task_metadata_block->fft_timings[tidx].bitrev_start.tv_sec;
-  task_metadata_block->fft_timings[tidx].bitrev_usec += bitrev_stop.tv_usec - task_metadata_block->fft_timings[tidx].bitrev_start.tv_usec;
+  task_metadata_block->fft_timings.bitrev_sec[tidx]  += bitrev_stop.tv_sec  - task_metadata_block->fft_timings.bitrev_start.tv_sec;
+  task_metadata_block->fft_timings.bitrev_usec[tidx] += bitrev_stop.tv_usec - task_metadata_block->fft_timings.bitrev_start.tv_usec;
 #endif
 
   /* calculation */

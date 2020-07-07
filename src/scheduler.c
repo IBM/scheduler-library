@@ -45,6 +45,9 @@ void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
 accel_selct_policy_t global_scheduler_selection_policy;
 
+unsigned cv_cpu_run_time_in_usec = 2800000;
+unsigned cv_fake_hwr_run_time_in_usec = 280000;
+
 #define total_metadata_pool_blocks  32
 task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 int free_metadata_pool[total_metadata_pool_blocks];
@@ -72,7 +75,8 @@ int total_critical_tasks = 0;
 
 const char* task_job_str[NUM_JOB_TYPES] = { "NO-JOB",
 					    "FFT-TASK",
-					    "VITERBI-TASK" };
+					    "VITERBI-TASK",
+					    "CV-CNN-TASK" };
 
 const char* task_criticality_str[NUM_TASK_CRIT_LEVELS] = { "NO-TASK",
 							   "BASE-TASK",
@@ -88,6 +92,7 @@ const char* task_status_str[NUM_TASK_STATUS] = {"TASK-FREE",
 const char* accel_type_str[NUM_ACCEL_TYPES] = { "CPU-ACCELERATOR",
 						"FFT-HWR-ACCEL",
 						"VITERBI-HWR-ACCEL",
+						"VISION-HWR-ACCEL",
 						"NO-ACCELERATOR"};
 
 const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_Accelerator_Type_and_Wait_Available",
@@ -442,6 +447,7 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 }
 #endif // HW_FFT
 
+#define NUM_CV_ACCEL 4
 
 
 // NOTE: This is executed by a metadata_block pthread
@@ -465,6 +471,10 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
       DEBUG(printf("Executing Task for MB %d on CPU_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
       execute_cpu_viterbi_accelerator(task_metadata_block);
       break;
+    case CV_TASK:
+      DEBUG(printf("Executing Task for MB %d on CPU_CV_ACCELERATOR\n", task_metadata_block->block_id));
+      execute_cpu_cv_accelerator(task_metadata_block);
+      break;
     default:
       printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->job_type);
       exit(-13);
@@ -477,6 +487,10 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   case vit_hwr_accel_t: {
     DEBUG(printf("Executing Task for MB %d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_viterbi_accelerator(task_metadata_block);
+  } break;
+  case cv_hwr_accel_t: {
+    DEBUG(printf("Executing Task for MB %d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
+    execute_hwr_cv_accelerator(task_metadata_block);
   } break;
   default:
     printf("ERROR : Unknown accelerator type in execute_task_on_accelerator with block:\n");
@@ -542,23 +556,28 @@ status_t initialize_scheduler()
     master_metadata_pool[i].sched_timings.done_usec = 0;
     for (int ti = 0; ti < 2; ti++) {
       // FFT task timings
-      master_metadata_pool[i].fft_timings[ti].calc_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].calc_usec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_usec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_br_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_br_usec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_cvtin_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_cvtin_usec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_cvtout_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].fft_cvtout_usec = 0;
-      master_metadata_pool[i].fft_timings[ti].cdfmcw_sec = 0;
-      master_metadata_pool[i].fft_timings[ti].cdfmcw_usec = 0;
+      master_metadata_pool[i].fft_timings.calc_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.calc_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_br_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_br_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_cvtin_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_cvtin_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_cvtout_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_cvtout_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.cdfmcw_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.cdfmcw_usec[ti] = 0;
       // Viterbi task timings
-      master_metadata_pool[i].vit_timings[ti].dodec_sec = 0;
-      master_metadata_pool[i].vit_timings[ti].dodec_usec = 0;
-      master_metadata_pool[i].vit_timings[ti].depunc_sec = 0;
-      master_metadata_pool[i].vit_timings[ti].depunc_usec = 0;
+      master_metadata_pool[i].vit_timings.dodec_sec[ti] = 0;
+      master_metadata_pool[i].vit_timings.dodec_usec[ti] = 0;
+      master_metadata_pool[i].vit_timings.depunc_sec[ti] = 0;
+      master_metadata_pool[i].vit_timings.depunc_usec[ti] = 0;
+      // CV/CNN task timings
+      master_metadata_pool[i].cv_timings.call_sec[ti] = 0;
+      master_metadata_pool[i].cv_timings.call_usec[ti] = 0;
+      master_metadata_pool[i].cv_timings.parse_sec[ti] = 0;
+      master_metadata_pool[i].cv_timings.parse_usec[ti] = 0;
     }
     
     pthread_mutex_init(&(master_metadata_pool[i].metadata_mutex), NULL);
@@ -590,6 +609,7 @@ status_t initialize_scheduler()
   num_accelerators_of_type[cpu_accel_t] = 10;  // also tested with 1 -- works.
   num_accelerators_of_type[fft_hwr_accel_t] = NUM_FFT_ACCEL;
   num_accelerators_of_type[vit_hwr_accel_t] = NUM_VIT_ACCEL;
+  num_accelerators_of_type[cv_hwr_accel_t]  = NUM_CV_ACCEL;
 
   for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
@@ -774,6 +794,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 
 
 
+
 #ifdef HW_VIT
 static void do_decoding_hw(int *fd, struct vitdodec_access *desc)
 {
@@ -852,6 +873,44 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 }
 
 
+
+void
+execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
+{
+  int fn = task_metadata_block->accelerator_id;
+  TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB %d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
+#ifdef HW_CV
+  // Add the call to the NVDLA stuff here.
+  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
+#else
+ #ifdef FAKE_HW_CV
+
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
+ #endif
+
+  usleep(cv_fake_hwr_run_time_in_usec);
+  
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  task_metadata_block->cv_timings.call_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
+  task_metadata_block->cv_timings.call_usec[tidx] += stop_time.tv_usec - task_metadata_block->cv_timings.call_start.tv_usec;
+ #endif
+
+  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
+ #else  
+  printf("ERROR : This executable DOES NOT support Hardware-CV execution!\n");
+  exit(-2);
+ #endif
+#endif
+}
+
+
 void
 release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 {
@@ -884,15 +943,21 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 
 
 #ifdef HW_FFT
-#define FFT_HW_THRESHOLD 25    // 75% chance of using HWR
+ #define FFT_HW_THRESHOLD 25    // 75% chance of using HWR
 #else
-#define FFT_HW_THRESHOLD 101   // 0% chance of using HWR
+ #define FFT_HW_THRESHOLD 101   // 0% chance of using HWR
 #endif
 
 #ifdef HW_VIT
-#define VITERBI_HW_THRESHOLD 25   // 75% chance to use Viterbi Hardware
+ #define VITERBI_HW_THRESHOLD 25   // 75% chance to use Viterbi Hardware
 #else
-#define VITERBI_HW_THRESHOLD 101  // 0% chance to use Viterbi Hardware
+ #define VITERBI_HW_THRESHOLD 101  // 0% chance to use Viterbi Hardware
+#endif
+
+#if (defined(HW_CV) || defined(FAKE_HW_CV))
+ #define CV_HW_THRESHOLD 25    // 75% chance of using HWR
+#else
+ #define CV_HW_THRESHOLD 101   // 0% chance of using HWR
 #endif
 
 // This is a basic accelerator selection policy:
@@ -923,6 +988,17 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
     if (num >= VITERBI_HW_THRESHOLD) {
       // Execute on hardware
       proposed_accel = vit_hwr_accel_t;
+    } else {
+      // Execute in CPU (softwware)
+      proposed_accel = cpu_accel_t;
+    }
+  } break;
+  case CV_TASK: {
+    // Scheduler should now run this either on CPU or CV:
+    int num = (rand() % (100)); // Return a value from [0,99]
+    if (num >= CV_HW_THRESHOLD) {
+      // Execute on hardware
+      proposed_accel = cv_hwr_accel_t;
     } else {
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
@@ -1013,6 +1089,32 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
       } // if (accel_id < 0) 
     } while (accel_type == no_accelerator_t);
   } break;
+  case CV_TASK: {
+    do {
+      int i = 0;
+     #ifdef HW_CV
+      proposed_accel = cv_hwr_accel_t;
+      while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
+	if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
+	  accel_type = proposed_accel;
+	  accel_id = i;
+	}
+	i++;
+      } // while (loop through HWR CV accelerators)
+     #endif
+      if (accel_id < 0) { // Didn't find one
+	i = 0;
+	proposed_accel = cpu_accel_t;
+	while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
+	  if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
+	    accel_type = proposed_accel;
+	    accel_id = i;
+	  }
+	  i++;
+	} // while (loop through CPU CV accelerators)
+      } // if (accel_id < 0) 
+    } while (accel_type == no_accelerator_t);
+  } break;
  default:
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
     exit(-15);
@@ -1065,6 +1167,13 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
      #ifdef HW_VIT
       num_proposed_accel_types = 2;
       proposed_accel[1] = vit_hwr_accel_t;
+     #endif
+    } break;
+    case CV_TASK: {   // Scheduler should run this either on CPU or CV
+      proposed_accel[0] = cpu_accel_t;
+     #ifdef HW_CV
+      num_proposed_accel_types = 2;
+      proposed_accel[1] = cv_hwr_accel_t;
      #endif
     } break;
     default:
@@ -1338,13 +1447,13 @@ void shutdown_scheduler()
     uint64_t total_cdfmcw_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-	uint64_t this_calc_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].calc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].calc_usec);
-	uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_usec);
-	uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_br_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_br_usec);
-	uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].bitrev_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].bitrev_usec);
-	uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtin_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtin_usec);
-	uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtout_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].fft_cvtout_usec);
-	uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings[ti].cdfmcw_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings[ti].cdfmcw_usec);
+	uint64_t this_calc_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.calc_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.calc_usec[ti]);
+	uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_usec[ti]);
+	uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_usec[ti]);
+	uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_usec[ti]);
+	uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_usec[ti]);
+	uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_usec[ti]);
+	uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_usec[ti]);
 	printf("Block %3u : %u %s : FFT calc %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu cvto %15lu fmcw %15lu usec\n", bi, ti, ti_label[ti], this_calc_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
 	// Per acceleration (CPU, HWR)
 	total_calc_usec[ti]       += this_calc_usec;
@@ -1401,8 +1510,8 @@ void shutdown_scheduler()
     uint64_t total_dodec_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-	uint64_t this_depunc_usec = (uint64_t)(master_metadata_pool[bi].vit_timings[ti].depunc_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings[ti].depunc_usec);
-	uint64_t this_dodec_usec = (uint64_t)(master_metadata_pool[bi].vit_timings[ti].dodec_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings[ti].dodec_usec);
+	uint64_t this_depunc_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_usec[ti]);
+	uint64_t this_dodec_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_usec[ti]);
 	printf("Block %3u : VITERBI depunc %15lu dodecode %15lu usec\n", bi, this_depunc_usec, this_dodec_usec);
 	// Per acceleration (CPU, HWR)
 	total_depunc_usec[ti] += this_depunc_usec;
@@ -1421,7 +1530,35 @@ void shutdown_scheduler()
     avg1 = (double)total_dodec_usec[1] / (double) freed_metadata_blocks[VITERBI_TASK];
     avg2 = (double)total_dodec_usec[2] / (double) freed_metadata_blocks[VITERBI_TASK];
     printf("     do-decoding run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_dodec_usec[0], avg0, 1, ti_label[1], total_dodec_usec[1], avg1, total_dodec_usec[2], avg2);
-  }
+
+    
+    printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);
+    // The CV/CNN Task Timing Info
+    uint64_t total_call_usec[3] = {0, 0, 0};
+    uint64_t total_parse_usec[3] = {0, 0, 0};
+    for (int ti = 0; ti < 2; ti++) {
+      for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+	uint64_t this_call_usec = (uint64_t)(master_metadata_pool[bi].cv_timings.call_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].cv_timings.call_usec[ti]);
+	uint64_t this_parse_usec = (uint64_t)(master_metadata_pool[bi].cv_timings.parse_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].cv_timings.parse_usec[ti]);
+	printf("Block %3u : CV call-time %15lu parse %15lu usec\n", bi, this_call_usec, this_parse_usec);
+	// Per acceleration (CPU, HWR)
+	total_call_usec[ti] += this_call_usec;
+	total_parse_usec[ti] += this_parse_usec;
+	// Overall Total
+	total_call_usec[2] += this_call_usec;
+	total_parse_usec[2] += this_parse_usec;
+      } // for (bi = 1 .. numMetatdataBlocks)
+    } // for (ti = 0, 1)
+    printf("\nAggregate CV Tasks Total Timing Data:\n");
+    avg0 = (double)total_call_usec[0] / (double) freed_metadata_blocks[CV_TASK];
+    avg1 = (double)total_call_usec[1] / (double) freed_metadata_blocks[CV_TASK];
+    avg2 = (double)total_call_usec[2] / (double) freed_metadata_blocks[CV_TASK];
+    printf("     CNN-call  run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_call_usec[0], avg0, 1, ti_label[1], total_call_usec[1], avg1, total_call_usec[2], avg2);
+    avg0 = (double)total_parse_usec[0] / (double) freed_metadata_blocks[CV_TASK];
+    avg1 = (double)total_parse_usec[1] / (double) freed_metadata_blocks[CV_TASK];
+    avg2 = (double)total_parse_usec[2] / (double) freed_metadata_blocks[CV_TASK];
+    printf("     get_label run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_dodec_usec[0], avg0, 1, ti_label[1], total_dodec_usec[1], avg1, total_dodec_usec[2], avg2);
+}
 
   printf("\nAccelerator Usage Statistics:\n");
   {
