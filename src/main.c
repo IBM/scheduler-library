@@ -212,14 +212,13 @@ int main(int argc, char *argv[])
       break;
     case 'P':
       global_scheduler_selection_policy = atoi(optarg);
-      printf("Opting for Scheduler Policy %u\n", global_scheduler_selection_policy);
+      //printf("Opting for Scheduler Policy %u\n", global_scheduler_selection_policy);
       break;
 
     case 'd':
-      printf("FOUND -d ...\n");
      #ifdef FAKE_HW_CV
       cv_fake_hwr_run_time_in_usec = atoi(optarg);
-      printf("  and set cv_fake_hwr_run_time_in_usec to %u\n", cv_fake_hwr_run_time_in_usec);
+      //printf("  and set cv_fake_hwr_run_time_in_usec to %u\n", cv_fake_hwr_run_time_in_usec);
      #else
       printf("ERROR : I don't understand option '-d'\n");
       print_usage(argv[0]);
@@ -228,7 +227,7 @@ int main(int argc, char *argv[])
       break;
     case 'D':
       cv_cpu_run_time_in_usec = atoi(optarg);
-      printf("  and set cv_cpu_run_time_in_usec to %u\n", cv_cpu_run_time_in_usec);
+      //printf("  and set cv_cpu_run_time_in_usec to %u\n", cv_cpu_run_time_in_usec);
       break;
 
     case ':':
@@ -252,6 +251,49 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  printf("Run using Scheduler Policy %u\n", global_scheduler_selection_policy);
+  #ifdef HW_FFT
+  printf("Run has enabled Hardware-FFT\n");
+  #else 
+  printf("Run is using ONLY-CPU-FFT\n");
+  #endif
+  #ifdef HW_VIT
+  printf("Run has enabled Hardware-Viterbi\n");
+  #else 
+  printf("Run is using ONLY-CPU-Viterbi\n");
+  #endif
+  {
+    char* cv0_txt[3] = { "ONLY-CPU-", "CPU-And-", "ONLY-"};
+    char* cv1_txt[3] = { "", "Fake-", "Hardware-" };
+    int i = 0;
+    int is = 0;
+    int ie = 0;
+   #ifdef HW_ONLY_CV
+    i = 2;
+   #endif
+   #ifdef FAKE_HW_CV
+    if (i == 0) { i = 1; }
+    is = 1;
+    ie = 2;
+   #endif
+   #ifdef HW_CV
+    if (i == 0) { i = 1; }
+    if (is == 0) { is = 2; }
+    ie = 2;
+   #endif
+    printf("Run is using %s", cv0_txt[i]);
+    for (int ix = is; ix <= ie; ix++ ){
+      printf("%s", cv1_txt[ix]);
+    }
+    printf("CV\n");
+  }
+ #ifndef HW_ONLY_CV
+  printf(" with cv_cpu_run_time_in_usec set to %u\n", cv_cpu_run_time_in_usec);
+ #endif
+ #ifdef FAKE_HW_CV
+  printf("  and cv_fake_hwr_run_time_in_usec set to %u\n", cv_fake_hwr_run_time_in_usec);
+ #endif
+  
   if (rad_dict[0] == '\0') {
     sprintf(rad_dict, "traces/norm_radar_all_dictionary.dfn");
   }
@@ -525,7 +567,7 @@ int main(int argc, char *argv[])
       start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
     }
 
-    DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->metadata_block_id));
+    DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_rad, NULL);
    #endif
@@ -555,7 +597,7 @@ int main(int argc, char *argv[])
       start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
     }
 
-    DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->metadata_block_id));
+    DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
    #endif
@@ -569,7 +611,7 @@ int main(int argc, char *argv[])
     }
     vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
-    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->metadata_block_id));
+    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->block_id));
     for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile);
       if (vit_mb_ptr_2 == NULL) {

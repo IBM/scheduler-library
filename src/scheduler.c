@@ -45,8 +45,8 @@ void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
 accel_selct_policy_t global_scheduler_selection_policy;
 
-unsigned cv_cpu_run_time_in_usec = 2800000;
-unsigned cv_fake_hwr_run_time_in_usec = 280000;
+unsigned cv_cpu_run_time_in_usec      = 10000;
+unsigned cv_fake_hwr_run_time_in_usec =  1000;
 
 #define total_metadata_pool_blocks  32
 task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
@@ -873,18 +873,61 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 }
 
 
+static inline label_t parse_output_dimg() {
+  FILE *file_p = fopen("./output.dimg", "r");
+  const size_t n_classes = 5;
+  float probs[n_classes];
+  for (size_t i = 0; i< n_classes; i++) {
+    if (fscanf(file_p, "%f", &probs[i]) != 1) {
+      printf("Didn't parse the probs[%ld] from output.dimg\n", i);
+    }
+  }
+  float max_val = 0.0f;
+  size_t max_idx = -1;
+  for (size_t i = 0; i < n_classes; i++) {
+    if (probs[i] > max_val) {
+      max_val = probs[i], max_idx = i;
+    }
+  }
+  return (label_t)max_idx;
+}
 
 void
 execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB %d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
-#ifdef HW_CV
+ #ifdef HW_CV
   // Add the call to the NVDLA stuff here.
+  printf("Doing the system call : './nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump'\n");
+  int sret = system("./nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump");
+  if (sret == -1) {
+    printf(" The system call returned -1 -- an error occured?\n");
+  }
+  
+#ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
+  task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
+  task_metadata_block->cv_timings.call_usec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_usec  - task_metadata_block->cv_timings.call_start.tv_usec;
+#endif
+  label_t pred_label = parse_output_dimg();
+
+#ifdef INT_TIME
+  struct timeval stop;
+  gettimeofday(&(stop), NULL);
+  task_metadata_block->cv_timings.parse_sec[tidx]  += stop.tv_sec  - task_metadata_block->cv_timings.parse_start.tv_sec;
+  task_metadata_block->cv_timings.parse_usec[tidx] += stop.tv_usec - task_metadata_block->cv_timings.parse_start.tv_usec;
+#endif
+  printf("---> Predicted label = %d\n", pred_label);
+  // Set result into the metatdata block
+  task_metadata_block->data_view.cv_data.object_label = pred_label;
+ 
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
+
 #else
- #ifdef FAKE_HW_CV
+#ifdef FAKE_HW_CV
 
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   
@@ -967,6 +1010,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 void
 pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
 {
+  DEBUG(printf("In pick_accel_and_wait_for_available policy for MB%u\n", task_metadata_block->block_id));
   int proposed_accel = no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
@@ -995,6 +1039,10 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
   } break;
   case CV_TASK: {
     // Scheduler should now run this either on CPU or CV:
+    DEBUG(printf(" MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_job_str[task_metadata_block->job_type], CV_HW_THRESHOLD));
+   #ifdef HW_ONLY_CV
+    proposed_accel = cv_hwr_accel_t;
+   #else
     int num = (rand() % (100)); // Return a value from [0,99]
     if (num >= CV_HW_THRESHOLD) {
       // Execute on hardware
@@ -1003,6 +1051,8 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
     }
+   #endif
+    DEBUG(printf("  and the proposed_accel is %u\n", proposed_accel);)
   } break;
   default:
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
@@ -1032,6 +1082,7 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
 void
 fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
 {
+  DEBUG(printf("In fastest_to_slowest_first_available policy for MB%u\n", task_metadata_block->block_id));
   int proposed_accel = no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
@@ -1092,7 +1143,7 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
   case CV_TASK: {
     do {
       int i = 0;
-     #ifdef HW_CV
+     #if (defined(HW_CV) || defined(FAKE_HW_CV))
       proposed_accel = cv_hwr_accel_t;
       while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
 	if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
@@ -1102,6 +1153,7 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
 	i++;
       } // while (loop through HWR CV accelerators)
      #endif
+     #ifndef HW_ONLY_CV
       if (accel_id < 0) { // Didn't find one
 	i = 0;
 	proposed_accel = cpu_accel_t;
@@ -1112,7 +1164,8 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
 	  }
 	  i++;
 	} // while (loop through CPU CV accelerators)
-      } // if (accel_id < 0) 
+      } // if (accel_id < 0)
+     #endif
     } while (accel_type == no_accelerator_t);
   } break;
  default:
@@ -1139,6 +1192,7 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
 void
 fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
 {
+  DEBUG(printf("In fastest_finish_time_first policy for MB%u\n", task_metadata_block->block_id));
   int num_proposed_accel_types = 1;
   int proposed_accel[2] = {no_accelerator_t, no_accelerator_t};
   int accel_type     = no_accelerator_t;
@@ -1170,11 +1224,14 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
      #endif
     } break;
     case CV_TASK: {   // Scheduler should run this either on CPU or CV
-      proposed_accel[0] = cpu_accel_t;
-     #ifdef HW_CV
-      num_proposed_accel_types = 2;
-      proposed_accel[1] = cv_hwr_accel_t;
+      int ii = 0;
+     #ifndef HW_ONLY_CV 
+      proposed_accel[ii++] = cpu_accel_t;
      #endif
+     #if (defined(HW_CV) || defined(FAKE_HW_CV))
+      proposed_accel[ii++] = cv_hwr_accel_t;
+     #endif
+      num_proposed_accel_types = ii;
     } break;
     default:
     printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);

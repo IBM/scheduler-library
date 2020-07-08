@@ -25,7 +25,7 @@ extern uint64_t fft_usec;
 // Putting this into a pthreads invocation mode...
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
-  DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->metadata_block_id, task_metadata_block->criticality_level ));
+  DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int32_t fft_log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);

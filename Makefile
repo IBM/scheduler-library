@@ -48,6 +48,9 @@ endif
 ifdef CONFIG_FAKE_CV_EN
 CFLAGS += -DFAKE_HW_CV
 endif
+ifdef CONFIG_CV_ONLY_HWR
+CFLAGS += -DHW_ONLY_CV
+endif
 ifdef CONFIG_VERBOSE
 CFLAGS += -DVERBOSE
 endif
