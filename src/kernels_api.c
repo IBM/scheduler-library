@@ -380,49 +380,7 @@ status_t init_vit_kernel(char* dict_fn)
 status_t init_cv_kernel(char* py_file, char* dict_fn)
 {
   DEBUG(printf("In the init_cv_kernel routine\n"));
-  /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed
-  // Read in the object images dictionary file
-  FILE *dictF = fopen(dict_fn,"r");
-  if (!dictF)
-  {
-    printf("Error: unable to open dictionary file %s\n", dict_fn);
-    return error;
-  }
-  // Read the number of definitions
-  if (fscanf(dictF, "%u\n", &num_cv_dictionary_items) != 1) {
-    printf("Error reading CV kernel dictionary number of entries\n");
-    exit(-6);
-  }
-  DEBUG(printf("  There are %u dictionary entries\n", num_cv_dictionary_items));
-  the_cv_object_dict = (cv_dict_entry_t*)calloc(num_cv_dictionary_items, sizeof(cv_dict_entry_t));
-  if (the_cv_object_dict == NULL) 
-  {
-    printf("ERROR : Cannot allocate Cv Trace Dictionary memory space\n");
-    fclose(dictF);
-    return error;
-  }
-
-  for (int di = 0; di < num_cv_dictionary_items; di++) {
-    unsigned entry_id;
-    unsigned object_id;
-    if (fscanf(dictF, "%u %u", &entry_id, &object_id) != 2) {
-    printf("Error reading CV kernel dictionary entry %u header: entry_id and object_id\n", di);
-    exit(-6);
-    }
-    DEBUG(printf("  Reading cv dictionary entry %u : %u %u\n", di, entry_id, object_id));
-    the_cv_object_dict[di].image_id = entry_id;
-    the_cv_object_dict[di].object   = object_id;
-    for (int i = 0; i < IMAGE_SIZE; i++) {
-      unsigned fin;
-      if (fscanf(dictF, "%u", &fin) != 1) {
-      printf("Error reading CV kernel dictionary entry %u input data\n", di);
-      exit(-6);
-      }
-      the_cv_object_dict[di].image_data[i] = fin;
-    }
-  }
-  fclose(dictF);
-  **/
+  /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
   // Initialization to run Keras CNN code 
 #ifndef BYPASS_KERAS_CV_CODE
   Py_Initialize();
@@ -555,16 +513,31 @@ label_t iterate_cv_kernel(vehicle_state_t vs)
 }
 
 
-label_t execute_cv_kernel(label_t in_tr_val)
+void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
 {
-  /* 2) Conduct object detection on the image frame */
-  DEBUG(printf("  Calling run_object_detection with in_tr_val tr_val %u %s\n", in_tr_val, object_names[in_tr_val]));
-  // Call Keras Code
-  label_t object = run_object_classification((unsigned)in_tr_val); 
-  //label_t object = the_cv_object_dict[tr_val].object;
+  /* 2) Set up to request object detection on an image frame */
+  int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
+  // Currently we don't send in any data this way (though we should include the input image here)
+  // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
+  mb_ptr->data_view.cv_data.object_label = in_tr_val;
+  
+ #ifdef INT_TIME
+  gettimeofday(&(mb_ptr->cv_timings.call_start), NULL);
+ #endif
+  //  schedule_task(data);
+  request_execution(mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
 
-  DEBUG(printf("  Returning object %u %s : tr_val %u %s\n", object, object_names[object], in_tr_val, object_names[in_tr_val]));
-  return object;
+label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
+{
+  DEBUG(printf("In finish_execution_of_cv_kernel\n"));
+  label_t the_label = mb_ptr->data_view.cv_data.object_label;
+
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+  
+  return the_label;
 }
 
 void post_execute_cv_kernel(label_t tr_val, label_t cv_object)

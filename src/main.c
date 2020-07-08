@@ -40,8 +40,9 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 
 //TODO: profile all possible fft and decoder sizes
 //Dummy numbers for development
-float fft_profile[NUM_ACCEL_TYPES] = {20, 0.2, 0, 0};
-float vit_profile[NUM_ACCEL_TYPES] = {3, 0, 0.03, 0};
+float fft_profile[NUM_ACCEL_TYPES] = {20.0, 0.2, 0.00, 0.0, 0.0};
+float vit_profile[NUM_ACCEL_TYPES] = { 3.0, 0.0, 0.03, 0.0, 0.0};
+float cv_profile[NUM_ACCEL_TYPES]  = { 0.0, 1.0, 1.00, 0.0, 0.0};
 
 bool_t all_obstacle_lanes_mode = false;
 unsigned time_step;
@@ -58,18 +59,23 @@ void print_usage(char * pname) {
   printf("    -C <file>  : defines the input CV/CNN dictionary file <file> to use\n");
   //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
   //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
-#ifdef USE_SIM_ENVIRON
+ #ifdef USE_SIM_ENVIRON
   printf("    -s <N>     : Sets the max number of time steps to simulate\n");
   printf("    -r <N>     : Sets the rand random number seed to N\n");
   printf("    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
   printf("    -W <wfile> : defines the world environment parameters description file <wfile> to use\n");
-#else
+ #else
   printf("    -t <trace> : defines the input trace file <trace> to use\n");
-#endif
+ #endif
   printf("    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
   printf("    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
   printf("               :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
   
+  printf("    -N <N>     : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
+  printf("    -D <N>     : Delay (in usec) of CPU CV Tasks (faked execution)\n");
+ #ifdef FAKE_HW_CV
+  printf("    -d <N>     : Delay (in usec) of HWR CV Tasks (faked execution)\n");
+ #endif
   printf("    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>     : defines Viterbi message size:\n");
   printf("               :      0 = Short messages (4 characters)\n");
@@ -115,6 +121,7 @@ int main(int argc, char *argv[])
   cv_dict[0]  = '\0';
   h264_dict[0]  = '\0';
 
+  unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
 
@@ -123,7 +130,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:")) != -1) {
+  while((opt = getopt(argc, argv, ":hAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -178,6 +185,7 @@ int main(int argc, char *argv[])
       vit_msgs_size = atoi(optarg);
       if (vit_msgs_size >= VITERBI_MSG_LENGTHS) {
 	printf("ERROR: Specified viterbi message size (%u) is larger than max (%u) : from the -v option\n", vit_msgs_size, VITERBI_MSG_LENGTHS);
+	print_usage(argv[0]);
 	exit(-1);
       } else {
 	printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
@@ -199,9 +207,27 @@ int main(int argc, char *argv[])
     case 'M':
       additional_vit_tasks_per_time_step = atoi(optarg);
       break;
+    case 'N':
+      additional_cv_tasks_per_time_step = atoi(optarg);
+      break;
     case 'P':
       global_scheduler_selection_policy = atoi(optarg);
-      printf("Opting for Scheduler Policy %u\n", global_scheduler_selection_policy);
+      //printf("Opting for Scheduler Policy %u\n", global_scheduler_selection_policy);
+      break;
+
+    case 'd':
+     #ifdef FAKE_HW_CV
+      cv_fake_hwr_run_time_in_usec = atoi(optarg);
+      //printf("  and set cv_fake_hwr_run_time_in_usec to %u\n", cv_fake_hwr_run_time_in_usec);
+     #else
+      printf("ERROR : I don't understand option '-d'\n");
+      print_usage(argv[0]);
+      exit(-1);
+     #endif
+      break;
+    case 'D':
+      cv_cpu_run_time_in_usec = atoi(optarg);
+      //printf("  and set cv_cpu_run_time_in_usec to %u\n", cv_cpu_run_time_in_usec);
       break;
 
     case ':':
@@ -220,10 +246,54 @@ int main(int argc, char *argv[])
   }
 
   if (pandc_repeat_factor == 0) {
-    printf("ERROR - Pland-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
+    printf("ERROR - Plan-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
+    print_usage(argv[0]);
     exit(-1);
   }
 
+  printf("Run using Scheduler Policy %u\n", global_scheduler_selection_policy);
+  #ifdef HW_FFT
+  printf("Run has enabled Hardware-FFT\n");
+  #else 
+  printf("Run is using ONLY-CPU-FFT\n");
+  #endif
+  #ifdef HW_VIT
+  printf("Run has enabled Hardware-Viterbi\n");
+  #else 
+  printf("Run is using ONLY-CPU-Viterbi\n");
+  #endif
+  {
+    char* cv0_txt[3] = { "ONLY-CPU-", "CPU-And-", "ONLY-"};
+    char* cv1_txt[3] = { "", "Fake-", "Hardware-" };
+    int i = 0;
+    int is = 0;
+    int ie = 0;
+   #ifdef HW_ONLY_CV
+    i = 2;
+   #endif
+   #ifdef FAKE_HW_CV
+    if (i == 0) { i = 1; }
+    is = 1;
+    ie = 2;
+   #endif
+   #ifdef HW_CV
+    if (i == 0) { i = 1; }
+    if (is == 0) { is = 2; }
+    ie = 2;
+   #endif
+    printf("Run is using %s", cv0_txt[i]);
+    for (int ix = is; ix <= ie; ix++ ){
+      printf("%s", cv1_txt[ix]);
+    }
+    printf("CV\n");
+  }
+ #ifndef HW_ONLY_CV
+  printf(" with cv_cpu_run_time_in_usec set to %u\n", cv_cpu_run_time_in_usec);
+ #endif
+ #ifdef FAKE_HW_CV
+  printf("  and cv_fake_hwr_run_time_in_usec set to %u\n", cv_fake_hwr_run_time_in_usec);
+ #endif
+  
   if (rad_dict[0] == '\0') {
     sprintf(rad_dict, "traces/norm_radar_all_dictionary.dfn");
   }
@@ -267,14 +337,11 @@ int main(int argc, char *argv[])
   initialize_scheduler();
 
 #ifndef USE_SIM_ENVIRON
-  /* Trace filename construction */
-  /* char * trace_file = argv[1]; */
-  //printf("Input trace file: %s\n", trace_file);
-
   /* Trace Reader initialization */
   if (!init_trace_reader(trace_file))
   {
-    printf("Error: the trace reader couldn't be initialized properly.\n");
+    printf("Error: the trace reader couldn't be initialized properly -- check the '-t' option.\n");
+    print_usage(argv[0]);
     return 1;
   }
 #endif
@@ -312,11 +379,13 @@ int main(int argc, char *argv[])
 
   if (crit_fft_samples_set >= num_radar_samples_sets) {
     printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
+    print_usage(argv[0]);
     exit(-1);
   }
     
   if (global_scheduler_selection_policy > NUM_SELECTION_POLICIES) {
     printf("ERROR : Selected Scheduler Policy (%u) is larger than number of policies (%u)\n", global_scheduler_selection_policy, NUM_SELECTION_POLICIES);
+    print_usage(argv[0]);
     exit(-1);
   }
   printf("Scheduler is using Policy %u : %s\n", global_scheduler_selection_policy, scheduler_selection_policy_str[global_scheduler_selection_policy]);
@@ -479,12 +548,27 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
    #endif
-    label = execute_cv_kernel(cv_tr_label);
-   #ifdef TIME
-    gettimeofday(&stop_exec_cv, NULL);
-    exec_cv_sec  += stop_exec_cv.tv_sec  - start_exec_cv.tv_sec;
-    exec_cv_usec += stop_exec_cv.tv_usec - start_exec_cv.tv_usec;
+    // Request a MetadataBlock (for an CV_TASK at Critical Level)
+    task_metadata_block_t* cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile);
+    if (cv_mb_ptr == NULL) {
+      // We ran out of metadata blocks -- PANIC!
+      printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
+      exit (-4);
+    }
+    cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
+    start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
+    for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
+      task_metadata_block_t* cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
+      if (cv_mb_ptr_2 == NULL) {
+	printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
+	exit (-5);
+      }
+      cv_mb_ptr_2->atFinish = base_release_metadata_block;
+      start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
+    }
 
+    DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
+   #ifdef TIME
     gettimeofday(&start_exec_rad, NULL);
    #endif
     // Request a MetadataBlock (for an FFT_TASK at Critical Level)
@@ -510,10 +594,10 @@ int main(int argc, char *argv[])
 	rdentry_p2 = select_random_radar_input();
       }
       float* addl_radar_inputs = rdentry_p2->return_data;
-      start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // Critical RADAR task
+      start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
     }
 
-    DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->metadata_block_id));
+    DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
    #endif
@@ -527,7 +611,7 @@ int main(int argc, char *argv[])
     }
     vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
-    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->metadata_block_id));
+    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->block_id));
     for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile);
       if (vit_mb_ptr_2 == NULL) {
@@ -549,11 +633,6 @@ int main(int argc, char *argv[])
       }
       start_execution_of_vit_kernel(vit_mb_ptr_2, vdentry2_p); // Non-Critical VITERBI task
     }
-   #ifdef TIME
-    gettimeofday(&stop_exec_vit, NULL);
-    exec_vit_sec  += stop_exec_vit.tv_sec  - start_exec_vit.tv_sec;
-    exec_vit_usec += stop_exec_vit.tv_usec - start_exec_vit.tv_usec;
-   #endif
 
    #ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
@@ -570,10 +649,15 @@ int main(int argc, char *argv[])
     
     distance = finish_execution_of_rad_kernel(fft_mb_ptr);
     message = finish_execution_of_vit_kernel(vit_mb_ptr);
+    label_t obj_label = finish_execution_of_cv_kernel(cv_mb_ptr);
    #ifdef TIME
     gettimeofday(&stop_exec_rad, NULL);
     exec_rad_sec  += stop_exec_rad.tv_sec  - start_exec_rad.tv_sec;
     exec_rad_usec += stop_exec_rad.tv_usec - start_exec_rad.tv_usec;
+    exec_vit_sec  += stop_exec_rad.tv_sec  - start_exec_vit.tv_sec;
+    exec_vit_usec += stop_exec_rad.tv_usec - start_exec_vit.tv_usec;
+    exec_cv_sec   += stop_exec_rad.tv_sec  - start_exec_cv.tv_sec;
+    exec_cv_usec  += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
    #endif
 
     // POST-EXECUTE each kernel to gather stats, etc.

@@ -22,4 +22,45 @@
 typedef enum {false, true} bool_t;
 typedef enum {error, success} status_t;
 
+/* Pre-defined labels used by the computer vision kernel */
+typedef enum {
+  myself = -1,
+  no_label = 0,
+  car,
+  truck,
+  pedestrian,
+  bicycle
+} label_t;
+
+
+/* The potential (horizontal) positions of any object (i.e. lane indications) */
+typedef enum {
+  lhazard = 0, 
+  left, 
+  center, 
+  right,
+  rhazard,
+} lane_t;
+
+/* These are some global type defines, etc. */
+typedef struct
+{
+  bool_t active;
+  lane_t lane;
+  float speed;
+} vehicle_state_t;
+
+
+
+/* Pre-defined messages used by the Viterbi decoding kernel */
+/*  These now conform to version 0.4 of the specification   */
+typedef enum {
+  safe_to_move_right_or_left   = 0,
+  safe_to_move_right_only      = 1,
+  safe_to_move_left_only       = 2,
+  unsafe_to_move_left_or_right = 3,
+  num_message_t
+} message_t;
+
+
 #endif

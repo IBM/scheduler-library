@@ -36,6 +36,7 @@
 typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
+	       CV_TASK,
 	       NUM_JOB_TYPES } scheduler_jobs_t;
 
 typedef enum { NO_TASK   = 0,
@@ -55,6 +56,7 @@ typedef enum { TASK_FREE = 0,
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
 	       vit_hwr_accel_t,
+	       cv_hwr_accel_t,
 	       no_accelerator_t,
 	       NUM_ACCEL_TYPES} accelerator_type_t;
 
@@ -69,6 +71,12 @@ extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
 extern const char* task_status_str[NUM_TASK_STATUS];
 extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
+
+// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "FFT" Task view of "data"
+  label_t object_label; // The deteremined label of the object in the image
+}  cv_data_struct_t;
 
 
 // This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
@@ -108,27 +116,37 @@ typedef struct {
 // The following structures are for timing analysis (per job type)
 typedef struct {
   struct timeval calc_start;
-  uint64_t calc_sec, calc_usec;
   struct timeval fft_start;
-  uint64_t fft_sec, fft_usec;
   struct timeval fft_br_start;
-  uint64_t fft_br_sec, fft_br_usec;
   struct timeval bitrev_start;
-  uint64_t bitrev_sec, bitrev_usec;
   struct timeval fft_cvtin_start;
-  uint64_t fft_cvtin_sec, fft_cvtin_usec;
   struct timeval fft_cvtout_start;
-  uint64_t fft_cvtout_sec, fft_cvtout_usec;
   struct timeval cdfmcw_start;
-  uint64_t cdfmcw_sec, cdfmcw_usec;
+  // 0 = timings for cpu_accel_T and 1 = fft_hwr_accel_t
+  uint64_t calc_sec[2], calc_usec[2];
+  uint64_t fft_sec[2], fft_usec[2];
+  uint64_t fft_br_sec[2], fft_br_usec[2];
+  uint64_t bitrev_sec[2], bitrev_usec[2];
+  uint64_t fft_cvtin_sec[2], fft_cvtin_usec[2];
+  uint64_t fft_cvtout_sec[2], fft_cvtout_usec[2];
+  uint64_t cdfmcw_sec[2], cdfmcw_usec[2];
 } fft_timing_data_t;
 
 typedef struct {
   struct timeval dodec_start;
-  uint64_t dodec_sec,  dodec_usec;
   struct timeval depunc_start;
-  uint64_t depunc_sec, depunc_usec;
+  // 0 = timings for cpu_accel_T and 1 = vit_hwr_accel_t
+  uint64_t dodec_sec[2],  dodec_usec[2];
+  uint64_t depunc_sec[2], depunc_usec[2];
 } vit_timing_data_t;
+
+typedef struct {
+  struct timeval call_start;
+  struct timeval parse_start;
+  // 0 = timings for cpu_accel_T and 1 = cv_hwr_accel_t
+  uint64_t call_sec[2],  call_usec[2];
+  uint64_t parse_sec[2], parse_usec[2];
+} cv_timing_data_t;
 
 // This is a metatdata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
@@ -158,13 +176,15 @@ typedef struct task_metadata_entry_struct {
   
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  fft_timing_data_t   fft_timings[2];  // One for HWR_ACCEL and one for CPU
-  vit_timing_data_t   vit_timings[2];  // One for HWR_ACCEL and one for CPU
+  fft_timing_data_t   fft_timings;  
+  vit_timing_data_t   vit_timings; 
+  cv_timing_data_t    cv_timings;  
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
   union { // This union holds job-specific "views" of the data (input/ouput memory for job accelerators)
     uint8_t  raw_data[128*1024];     // 128 KB is the current MAX data size for all jobs
+    cv_data_struct_t      cv_data;   // CV/CNN view of data -- see strucutre typedef above
     fft_data_struct_t     fft_data;  // FFT view of data -- see strucutre typedef above
     viterbi_data_struct_t vit_data;  // Viterbi view of data -- see strucutre typedef above
   } data_view;
@@ -175,6 +195,10 @@ typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
 // This is the accelerator selection policy used by the scheduler
 extern accel_selct_policy_t global_scheduler_selection_policy;
+
+// These are some "fake" times (models the execution of CV timing)
+extern unsigned cv_cpu_run_time_in_usec;
+extern unsigned cv_fake_hwr_run_time_in_usec;
 
 // This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
 extern unsigned crit_fft_samples_set;
