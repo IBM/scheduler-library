@@ -910,6 +910,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
   task_metadata_block->cv_timings.call_usec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_usec  - task_metadata_block->cv_timings.call_start.tv_usec;
+  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
 #endif
   label_t pred_label = parse_output_dimg();
 
@@ -939,6 +940,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&stop_time, NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
   task_metadata_block->cv_timings.call_usec[tidx] += stop_time.tv_usec - task_metadata_block->cv_timings.call_start.tv_usec;
+  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
  #endif
 
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
