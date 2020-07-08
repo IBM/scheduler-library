@@ -355,10 +355,11 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
   return (sizeof(void *) / _st);
 }
 
-#define  NUM_VIT_ACCEL  4
+#define  MAX_NUM_VIT_ACCEL  4
+//#define  NUM_VIT_ACCEL  3
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
-char*    vitAccelName[NUM_VIT_ACCEL] = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3"};
+char*    vitAccelName[MAX_NUM_VIT_ACCEL] = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3"};
 
 int vitHW_fd[NUM_VIT_ACCEL];
 contig_handle_t vitHW_mem[NUM_VIT_ACCEL];
@@ -402,10 +403,11 @@ static void init_vit_parameters(int vn)
 //unsigned crit_fft_log_nsamples = MAX_fft_log_nsamples; // Log2 of num FFT samples in Critical FFT tasks
 unsigned crit_fft_samples_set  = 0; // The sample set used for Critical Task FFT
 
-#define NUM_FFT_ACCEL 4
+#define MAX_NUM_FFT_ACCEL 4
+//#define NUM_FFT_ACCEL 3
 #ifdef HW_FFT
 // These are FFT Hardware Accelerator Variables, etc.
-char* fftAccelName[NUM_FFT_ACCEL] = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3"};
+char* fftAccelName[MAX_NUM_FFT_ACCEL] = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3"};
 
 int fftHW_fd[NUM_FFT_ACCEL];
 contig_handle_t fftHW_mem[NUM_FFT_ACCEL];
@@ -447,7 +449,8 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 }
 #endif // HW_FFT
 
-#define NUM_CV_ACCEL 4
+#define MAX_NUM_CV_ACCEL 4
+//#define NUM_CV_ACCEL 3
 
 
 // NOTE: This is executed by a metadata_block pthread
@@ -760,6 +763,7 @@ static void fft_in_hw(int *fd, struct fftHW_access *desc)
 void
 execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
+  //int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int fn = task_metadata_block->accelerator_id;
   uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   TDEBUG(printf("In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB %d  CL %d  %u log_nsamples\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
@@ -809,6 +813,7 @@ static void do_decoding_hw(int *fd, struct vitdodec_access *desc)
 void
 execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 {
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int vn = task_metadata_block->accelerator_id;
   TDEBUG(printf("In execute_hwr_viterbi_accelerator on FFT_HWR Accel %u : MB %d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_view.vit_data);
@@ -850,8 +855,8 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
-  task_metadata_block->vit_timings.dodec_sec  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
-  task_metadata_block->vit_timings.dodec_usec += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
+  task_metadata_block->vit_timings.dodec_sec[tidx]  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
+  task_metadata_block->vit_timings.dodec_usec[tidx] += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
 #endif
   // Copy output data from HWR memory to Metadata Block Memory.
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {

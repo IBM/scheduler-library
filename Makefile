@@ -29,6 +29,18 @@ endif
 #  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
+
+# This selects the number of each Acceleartor type: MAx for each is 4 (four)
+ifdef CONFIG_NUM_VIT
+CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
+endif
+ifdef CONFIG_NUM_FFT
+CFLAGS += -DNUM_FFT_ACCEL=$(CONFIG_NUM_FFT)
+endif
+ifdef CONFIG_NUM_CV
+CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
+endif
+ 
 ifdef CONFIG_FFT_EN
 CFLAGS += -DHW_FFT
 CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
