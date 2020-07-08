@@ -96,8 +96,8 @@ OBJ_S = $(SRC_T:%.c=obj_s/%.o)
 
 VPATH = ./src
 
-TARGET=test-scheduler.exe
-STARGET=test-scheduler-sim.exe
+TARGET=test-scheduler
+STARGET=test-scheduler-sim
 
 all: obj_t obj_s $(TARGET) $(STARGET)
 
@@ -109,7 +109,13 @@ obj_s/%.o: %.c
 
 $(OBJ_T): $(HDR_T)
 
-$(TARGET): $(OBJ_T)
+$(TARGET): obj_t $(TARGET).exe
+	echo "Done building $@"
+
+$(STARGET): obj_s $(STARGET).exe
+	echo "Done building $@"
+
+$(TARGET).exe: $(OBJ_T)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -117,7 +123,7 @@ ifdef COMPILE_TO_ESP
 endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
-$(STARGET): $(OBJ_S)
+$(STARGET).exe: $(OBJ_S)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
