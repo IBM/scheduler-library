@@ -1557,7 +1557,7 @@ void shutdown_scheduler()
     avg0 = (double)total_parse_usec[0] / (double) freed_metadata_blocks[CV_TASK];
     avg1 = (double)total_parse_usec[1] / (double) freed_metadata_blocks[CV_TASK];
     avg2 = (double)total_parse_usec[2] / (double) freed_metadata_blocks[CV_TASK];
-    printf("     get_label run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_dodec_usec[0], avg0, 1, ti_label[1], total_dodec_usec[1], avg1, total_dodec_usec[2], avg2);
+    printf("     get_label run time   %u %s %15lu usec %16.3lf avg : %u %s %15lu usec %16.3lf avg : TOT %15lu usec %16.3lf avg\n", 0, ti_label[0], total_parse_usec[0], avg0, 1, ti_label[1], total_parse_usec[1], avg1, total_parse_usec[2], avg2);
 }
 
   printf("\nAccelerator Usage Statistics:\n");
