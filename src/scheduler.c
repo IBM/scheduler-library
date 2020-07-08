@@ -928,9 +928,6 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 
 #else
 #ifdef FAKE_HW_CV
-
-  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
  #endif
