@@ -449,7 +449,8 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 }
 #endif // HW_FFT
 
-#define NUM_CV_ACCEL 4
+#define MAX_NUM_CV_ACCEL 4
+#define NUM_CV_ACCEL 3
 
 
 // NOTE: This is executed by a metadata_block pthread
