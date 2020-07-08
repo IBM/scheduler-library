@@ -356,7 +356,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 }
 
 #define  MAX_NUM_VIT_ACCEL  4
-#define  NUM_VIT_ACCEL  3
+//#define  NUM_VIT_ACCEL  3
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
 char*    vitAccelName[MAX_NUM_VIT_ACCEL] = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3"};
@@ -404,7 +404,7 @@ static void init_vit_parameters(int vn)
 unsigned crit_fft_samples_set  = 0; // The sample set used for Critical Task FFT
 
 #define MAX_NUM_FFT_ACCEL 4
-#define NUM_FFT_ACCEL 3
+//#define NUM_FFT_ACCEL 3
 #ifdef HW_FFT
 // These are FFT Hardware Accelerator Variables, etc.
 char* fftAccelName[MAX_NUM_FFT_ACCEL] = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3"};
@@ -450,7 +450,7 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 #endif // HW_FFT
 
 #define MAX_NUM_CV_ACCEL 4
-#define NUM_CV_ACCEL 3
+//#define NUM_CV_ACCEL 3
 
 
 // NOTE: This is executed by a metadata_block pthread
