@@ -109,11 +109,11 @@ int main(int argc, char *argv[])
   label_t label;
   distance_t distance;
   message_t message;
-#ifdef USE_SIM_ENVIRON
+ #ifdef USE_SIM_ENVIRON
   char* world_desc_file_name = "default_world.desc";
-#else
+ #else
   char* trace_file = "";
-#endif
+ #endif
   int opt;
 
   rad_dict[0] = '\0';
@@ -157,29 +157,25 @@ int main(int argc, char *argv[])
       bypass_h264_functions = true;
       break;
     case 's':
-#ifdef USE_SIM_ENVIRON
+     #ifdef USE_SIM_ENVIRON
       max_time_steps = atoi(optarg);
-      printf("Using %u maximum time steps (simulation)\n", max_time_steps);
-#endif
+     #endif
       break;
     case 'p':
       pandc_repeat_factor = atoi(optarg);
-      printf("Using Plan-Adn-Control repeat factor %u\n", pandc_repeat_factor);
       break;
     case 'f':
       crit_fft_samples_set = atoi(optarg);
-      printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
       break;
     case 'r':
-#ifdef USE_SIM_ENVIRON
+     #ifdef USE_SIM_ENVIRON
       rand_seed = atoi(optarg);
-#endif
+     #endif
       break;
     case 't':
-#ifndef USE_SIM_ENVIRON
+     #ifndef USE_SIM_ENVIRON
       trace_file = optarg;
-      printf("Using trace file: %s\n", trace_file);
-#endif
+     #endif
       break;
     case 'v':
       vit_msgs_size = atoi(optarg);
@@ -187,19 +183,15 @@ int main(int argc, char *argv[])
 	printf("ERROR: Specified viterbi message size (%u) is larger than max (%u) : from the -v option\n", vit_msgs_size, VITERBI_MSG_LENGTHS);
 	print_usage(argv[0]);
 	exit(-1);
-      } else {
-	printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
       }
       break;
     case 'S':
       task_size_variability = atoi(optarg);
-      printf("Using task-size variability behavior %u\n", task_size_variability);
       break;
     case 'W':
-#ifdef USE_SIM_ENVIRON
+     #ifdef USE_SIM_ENVIRON
       world_desc_file_name = optarg;
-      printf("Using world description file: %s\n", world_desc_file_name);
-#endif
+     #endif
       break;
     case 'F':
       additional_fft_tasks_per_time_step = atoi(optarg);
@@ -212,13 +204,11 @@ int main(int argc, char *argv[])
       break;
     case 'P':
       global_scheduler_selection_policy = atoi(optarg);
-      //printf("Opting for Scheduler Policy %u\n", global_scheduler_selection_policy);
       break;
 
     case 'd':
      #ifdef FAKE_HW_CV
       cv_fake_hwr_run_time_in_usec = atoi(optarg);
-      //printf("  and set cv_fake_hwr_run_time_in_usec to %u\n", cv_fake_hwr_run_time_in_usec);
      #else
       printf("ERROR : I don't understand option '-d'\n");
       print_usage(argv[0]);
@@ -227,7 +217,6 @@ int main(int argc, char *argv[])
       break;
     case 'D':
       cv_cpu_run_time_in_usec = atoi(optarg);
-      //printf("  and set cv_cpu_run_time_in_usec to %u\n", cv_cpu_run_time_in_usec);
       break;
 
     case ':':
@@ -252,16 +241,16 @@ int main(int argc, char *argv[])
   }
 
   printf("Run using Scheduler Policy %u with %u FFT, %u VIT, and %u CV accelerators\n", global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
-  #ifdef HW_FFT
+ #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
-  #else 
+ #else 
   printf("Run is using ONLY-CPU-FFT\n");
-  #endif
-  #ifdef HW_VIT
+ #endif
+ #ifdef HW_VIT
   printf("Run has enabled Hardware-Viterbi\n");
-  #else 
+ #else 
   printf("Run is using ONLY-CPU-Viterbi\n");
-  #endif
+ #endif
   {
     char* cv0_txt[3] = { "ONLY-CPU-", "CPU-And-", "ONLY-"};
     char* cv1_txt[3] = { "", "Fake-", "Hardware-" };
@@ -294,6 +283,18 @@ int main(int argc, char *argv[])
   printf("  and cv_fake_hwr_run_time_in_usec set to %u\n", cv_fake_hwr_run_time_in_usec);
  #endif
   
+  printf("Using Plan-And-Control repeat factor %u\n", pandc_repeat_factor);
+  printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
+  printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
+  printf("Using task-size variability behavior %u\n", task_size_variability);
+ #ifdef USE_SIM_ENVIRON
+  printf("Using %u maximum time steps (simulation)\n", max_time_steps);
+  printf("Using world description file: %s\n", world_desc_file_name);
+  printf("Using random seed of %u\n", rand_seed);
+ #else
+  printf("Using trace file: %s\n", trace_file);
+ #endif
+      
   if (rad_dict[0] == '\0') {
     sprintf(rad_dict, "traces/norm_radar_all_dictionary.dfn");
   }
