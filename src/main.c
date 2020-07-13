@@ -39,10 +39,17 @@ char vit_dict[256];
 bool_t bypass_h264_functions = false; // This is a global-disable of executing H264 execution functions...
 
 //TODO: profile all possible fft and decoder sizes
-//Dummy numbers for development
-float fft_profile[NUM_ACCEL_TYPES] = {20.0, 0.2, 0.00, 0.0, 0.0};
-float vit_profile[NUM_ACCEL_TYPES] = { 3.0, 0.0, 0.03, 0.0, 0.0};
-float cv_profile[NUM_ACCEL_TYPES]  = { 0.0, 1.0, 1.00, 0.0, 0.0};
+// Numbers taken from runs on Xilinx VCU118 FPGA @ 78MHz -- value in usecs (1.0+13 = "Infinite time")
+// CPU, FFT, VIT, CV, N/A
+// The FFT has 2 profiles depending on input size (1k or 16k samples)
+float fft_profile[2][NUM_ACCEL_TYPES] = { {2295100.0, 179800.0,  1.0e+30, 1.0e+30, 1.0e+30}, // The 1k-sample FFT profile
+					  {3446300.0, 180500.0,  1.0e+30, 1.0e+30, 1.0e+30}}; // The 16k-sample FFT profile
+// The Viterbi has 4 profiles, depending on input size
+float vit_profile[4][NUM_ACCEL_TYPES] = { { 113400.0,  1.0e+30,   5950.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
+					  {1511400.0,  1.0e+30,  67000.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
+					  {2070200.0,  1.0e+30, 135500.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
+					  {4341600.0,  1.0e+30, 191000.0, 1.0e+30, 1.0e+30}}; // The short-message Viterbi
+float cv_profile[NUM_ACCEL_TYPES]  = { 1.0e+30, 1.0e+30, 150000, 1.0e+30, 1.0e+30};
 
 bool_t all_obstacle_lanes_mode = false;
 unsigned time_step;
@@ -573,7 +580,8 @@ int main(int argc, char *argv[])
     gettimeofday(&start_exec_rad, NULL);
    #endif
     // Request a MetadataBlock (for an FFT_TASK at Critical Level)
-    task_metadata_block_t* fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile);
+    task_metadata_block_t* fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+    //printf("FFT Crit Profile: %e %e %e %e %e\n", fft_profile[crit_fft_samples_set][0], fft_profile[crit_fft_samples_set][1], fft_profile[crit_fft_samples_set][2], fft_profile[crit_fft_samples_set][3], fft_profile[crit_fft_samples_set][4]);
     if (fft_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
@@ -582,18 +590,21 @@ int main(int argc, char *argv[])
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_rad_kernel(fft_mb_ptr, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
     for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
-      task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile);
-      if (fft_mb_ptr_2 == NULL) {
-	printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
-	exit (-5);
-      }
-      fft_mb_ptr_2->atFinish = base_release_metadata_block;
       radar_dict_entry_t* rdentry_p2;
       if (task_size_variability == 0) {
 	rdentry_p2 = select_critical_radar_input(rdentry_p);
       } else {
 	rdentry_p2 = select_random_radar_input();
+	//printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set, rdentry_p2->set);
       }
+      int base_fft_samples_set = rdentry_p2->set;
+      //printf("FFT Base Profile: %e %e %e %e %e\n", fft_profile[base_fft_samples_set][0], fft_profile[base_fft_samples_set][1], fft_profile[base_fft_samples_set][2], fft_profile[base_fft_samples_set][3], fft_profile[base_fft_samples_set][4]);
+      task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set]);
+      if (fft_mb_ptr_2 == NULL) {
+	printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
+	exit (-5);
+      }
+      fft_mb_ptr_2->atFinish = base_release_metadata_block;
       float* addl_radar_inputs = rdentry_p2->return_data;
       start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
     }
@@ -604,7 +615,7 @@ int main(int argc, char *argv[])
    #endif
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock (for an VITERBI_TASK at Critical Level)
-    task_metadata_block_t* vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile);
+    task_metadata_block_t* vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size]);
     if (vit_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
@@ -614,24 +625,26 @@ int main(int argc, char *argv[])
     start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->block_id));
     for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
-      task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile);
+      vit_dict_entry_t* vdentry2_p;
+      int base_msg_size;
+      if (task_size_variability == 0) {
+	base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
+	int m_id = vdentry_p->msg_num % NUM_MESSAGES;
+	if (m_id != vdentry_p->msg_id) {
+	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+	}
+	vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
+      } else {
+	DEBUG(printf("Note: electing a random Vit Message for base-task %u\n", vit_mb_ptr_2->block_id));
+	vdentry2_p = select_random_vit_input();
+	base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
+      }
+      task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size]);
       if (vit_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
 	exit (-5);
       }
       vit_mb_ptr_2->atFinish = base_release_metadata_block;
-      vit_dict_entry_t* vdentry2_p;
-      if (task_size_variability == 0) {
-	int lnum = vdentry_p->msg_num / NUM_MESSAGES;
-	int m_id = vdentry_p->msg_num % NUM_MESSAGES;
-	if (m_id != vdentry_p->msg_id) {
-	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, lnum, m_id, vdentry_p->msg_id);
-	}
-	vdentry2_p = select_specific_vit_input(lnum, m_id);
-      } else {
-	DEBUG(printf("Note: electing a random Vit Message for base-task %u\n", vit_mb_ptr_2->block_id));
-	vdentry2_p = select_random_vit_input();
-      }
       start_execution_of_vit_kernel(vit_mb_ptr_2, vdentry2_p); // Non-Critical VITERBI task
     }
 
