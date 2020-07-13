@@ -123,6 +123,7 @@ typedef struct {
   struct timeval fft_cvtout_start;
   struct timeval cdfmcw_start;
   // 0 = timings for cpu_accel_T and 1 = fft_hwr_accel_t
+  unsigned comp_by[2];
   uint64_t calc_sec[2], calc_usec[2];
   uint64_t fft_sec[2], fft_usec[2];
   uint64_t fft_br_sec[2], fft_br_usec[2];
@@ -136,6 +137,7 @@ typedef struct {
   struct timeval dodec_start;
   struct timeval depunc_start;
   // 0 = timings for cpu_accel_T and 1 = vit_hwr_accel_t
+  unsigned comp_by[2];
   uint64_t dodec_sec[2],  dodec_usec[2];
   uint64_t depunc_sec[2], depunc_usec[2];
 } vit_timing_data_t;
@@ -144,6 +146,7 @@ typedef struct {
   struct timeval call_start;
   struct timeval parse_start;
   // 0 = timings for cpu_accel_T and 1 = cv_hwr_accel_t
+  unsigned comp_by[2];
   uint64_t call_sec[2],  call_usec[2];
   uint64_t parse_sec[2], parse_usec[2];
 } cv_timing_data_t;

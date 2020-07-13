@@ -14,6 +14,7 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  task_metadata_block->cv_timings.comp_by[tidx]++;
   
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);

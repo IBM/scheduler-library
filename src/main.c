@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
   printf("   Radar  : %s\n", rad_dict);
   printf("   Viterbi: %s\n", vit_dict);
 
-  printf("\n There are %u additional FFT and %u addtional Viterbi tasks per time step\n", additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step);
+  printf("\n There are %u additional FFT, %u addtional Viterbi and %u Additional CV/CNN tasks per time step\n", additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step, additional_cv_tasks_per_time_step);
   
   /* We plan to use three separate trace files to drive the three different kernels
    * that are part of mini-ERA (CV, radar, Viterbi). All these three trace files

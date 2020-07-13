@@ -406,32 +406,9 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   uint8_t* in_Data = &(vdata->theData[inData_offset]);
   uint8_t* out_Data = &(vdata->theData[outData_offset]);
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  //extern void schedule_viterbi(int n_cbps, int n_traceback, int n_data_bits, uint8_t* inMem, uint8_t* inData, uint8_t* outMem);
-  /**
-  uint8_t cpuInMem[24852];  // This is "minimally sized for max entries"
-  uint8_t cpuOutMem[18585]; // This is "minimally sized for max entries"
 
-  for (int ti = 0; ti < 70; ti ++) {
-    cpuInMem[ti] = inMem[ti];
-  }
-  cpuInMem[70] = 0;
-  cpuInMem[71] = 0;
-  int imi = 72;
-  for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
-    cpuInMem[imi++] = inDat[ti];
-  }
-  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
-    cpuOutMem[ti] = 0;
-  }
-  // Some debugging...
-  DEBUG(for (int ti = 0; ti < 72; ti++) { 
-      printf(" CPU_VIT inMem : %3u %3u : %3u %3u\n", ti, ti, inMem[ti], cpuInMem[ti]);
-    }
-    printf("\n");
-    for (int ti = 0; ti < 28; ti++) { 
-      printf(" CPU_VIT inDat : %3u %3u : %3u %3u\n", ti, 72+ti, inDat[ti], cpuInMem[72+ti]);
-    });
-  **/
+  task_metadata_block->vit_timings.comp_by[tidx]++;
+
 #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->vit_timings.dodec_start), NULL);
 #endif

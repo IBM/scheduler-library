@@ -29,6 +29,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int32_t fft_log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
+  task_metadata_block->fft_timings.comp_by[tidx]++;
 
 #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->fft_timings.calc_start), NULL);
