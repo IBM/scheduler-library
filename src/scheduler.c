@@ -175,7 +175,7 @@ void print_critical_task_list_ids() {
 
 
 
-task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, float * task_profile)
+task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&free_metadata_mutex);
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", free_metadata_blocks));
@@ -1217,6 +1217,7 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
   uint64_t elapsed_sec, elapsed_usec, total_elapsed_usec;
 
   gettimeofday(&current_time, NULL);
+  DEBUG(printf(" Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
 
   switch(task_metadata_block->job_type) {
     case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
@@ -1251,11 +1252,14 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
   // Now that we know the set of proposed accelerators,
   //  scan through to find which one will produce the earliest estimated finish time
   for (int pi = 0; pi < num_proposed_accel_types; pi++) {
+    DEBUG(printf("  Working on Proposed Accel Type %u\n", pi));
     for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
       int bi = accelerator_in_use_by[proposed_accel[pi]][i];
+      DEBUG(printf("   Have Accel Type %u Number %u In-Use-By %d\n", pi, i, bi));
       if (bi == -1) { // The accelerator is Free
 	// The estimated task finish time is taken from the task profiling information
 	finish_time = task_metadata_block->task_profile[proposed_accel[pi]];
+        DEBUG(printf("    So projected finish_time = %lu\n", finish_time));
       } else { // Accel is running a task
 	// Compute the remaining execution time (estimate) for job currently on accelerator
 	elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.running_start.tv_sec;
@@ -1264,11 +1268,15 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
 	remaining_time = master_metadata_pool[bi].task_profile[proposed_accel[pi]] - total_elapsed_usec;
 	// and add that to the projected task run time to get the estimated finish time.
 	finish_time = task_metadata_block->task_profile[proposed_accel[pi]] + remaining_time;
+        DEBUG(printf("    So projected finish_time = %lu + %lu = %lu\n", task_metadata_block->task_profile[proposed_accel[pi]] , remaining_time, finish_time));
       }
+      DEBUG(printf("            finish_time = %lu = 0x%016lx\n", finish_time, finish_time));
+      DEBUG(printf("   vs least_finish_time = %lu = 0x%016lx\n", least_finish_time, least_finish_time));
       if (finish_time < least_finish_time) {
 	best_accel_id = i;
 	accel_type = proposed_accel[pi];
 	least_finish_time = finish_time;
+        DEBUG(printf("NEW best_accel_id = %u with least_finish_time %f\n", best_accel_id, least_finish_time));
       }
       //printf("For accel %u %u : bi = %u : finish_time = %lu\n", pi, i, bi, finish_time);
     } // for (i = spin through proposed accelerators)

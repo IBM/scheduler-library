@@ -42,14 +42,14 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 // Numbers taken from runs on Xilinx VCU118 FPGA @ 78MHz -- value in usecs (1.0+13 = "Infinite time")
 // CPU, FFT, VIT, CV, N/A
 // The FFT has 2 profiles depending on input size (1k or 16k samples)
-float fft_profile[2][NUM_ACCEL_TYPES] = { {2295100.0, 179800.0,  1.0e+30, 1.0e+30, 1.0e+30}, // The 1k-sample FFT profile
-					  {3446300.0, 180500.0,  1.0e+30, 1.0e+30, 1.0e+30}}; // The 16k-sample FFT profile
+uint64_t fft_profile[2][NUM_ACCEL_TYPES] = { {2295100, 179800,  0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The 1k-sample FFT profile
+					  {3446300, 180500,  0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}}; // The 16k-sample FFT profile
 // The Viterbi has 4 profiles, depending on input size
-float vit_profile[4][NUM_ACCEL_TYPES] = { { 113400.0,  1.0e+30,   5950.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
-					  {1511400.0,  1.0e+30,  67000.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
-					  {2070200.0,  1.0e+30, 135500.0, 1.0e+30, 1.0e+30}, // The short-message Viterbi
-					  {4341600.0,  1.0e+30, 191000.0, 1.0e+30, 1.0e+30}}; // The short-message Viterbi
-float cv_profile[NUM_ACCEL_TYPES]  = { 1.0e+30, 1.0e+30, 150000, 1.0e+30, 1.0e+30};
+uint64_t vit_profile[4][NUM_ACCEL_TYPES] = { { 113400,  0x0f00deadbeeff00d,   5950, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
+					  {1511400,  0x0f00deadbeeff00d,  67000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
+					  {2070200,  0x0f00deadbeeff00d, 135500, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
+					  {4341600,  0x0f00deadbeeff00d, 191000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}}; // The short-message Viterbi
+uint64_t cv_profile[NUM_ACCEL_TYPES]  = { 0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 150000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d};
 
 bool_t all_obstacle_lanes_mode = false;
 unsigned time_step;
@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 	}
 	vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
       } else {
-	DEBUG(printf("Note: electing a random Vit Message for base-task %u\n", vit_mb_ptr_2->block_id));
+	DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
 	vdentry2_p = select_random_vit_input();
 	base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
       }

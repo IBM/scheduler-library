@@ -172,7 +172,7 @@ typedef struct task_metadata_entry_struct {
   scheduler_jobs_t job_type;      // see above enumeration
   task_criticality_t crit_level;  // [0 .. ?] ?
 
-  float task_profile[NUM_ACCEL_TYPES];  //Timing profile for task -- maps job to accelerator projected time on accelerator...
+  uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
   
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
@@ -210,7 +210,7 @@ extern unsigned crit_fft_samples_set;
 
 extern status_t initialize_scheduler();
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, float * task_profile);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
