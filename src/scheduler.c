@@ -103,6 +103,32 @@ volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
 int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
+#define  MAX_NUM_VIT_ACCEL  4
+#define  MAX_NUM_FFT_ACCEL  4
+#define  MAX_NUM_CV_ACCEL   4
+struct timeval last_accel_use_update_time;
+uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE][MAX_NUM_FFT_ACCEL][MAX_NUM_VIT_ACCEL][MAX_NUM_CV_ACCEL];
+
+void account_accelerators_in_use_interval()
+{
+  // Count which accelerators are in use
+  int acc_in_use[NUM_ACCEL_TYPES-1];
+  for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
+    acc_in_use[i] = 0;
+    for (int j = 0; j < num_accelerators_of_type[i]; j++) {
+      if (accelerator_in_use_by[i][j] != -1) {
+	acc_in_use[i]++;
+      }
+    }
+  }
+  //Now we have the array of curr-in-use
+  struct timeval now;
+  gettimeofday(&now, NULL);
+
+  in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]] += 1000000*(now.tv_sec - last_accel_use_update_time.tv_sec) + (now.tv_usec - last_accel_use_update_time.tv_usec);
+  last_accel_use_update_time = now;
+}
+  
 void print_base_metadata_block_contents(task_metadata_block_t* mb)
 {
   printf("block_id = %d @ %p\n", mb->block_id, mb);
@@ -355,8 +381,6 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
   return (sizeof(void *) / _st);
 }
 
-#define  MAX_NUM_VIT_ACCEL  4
-//#define  NUM_VIT_ACCEL  3
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
 char*    vitAccelName[MAX_NUM_VIT_ACCEL] = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3"};
@@ -403,8 +427,6 @@ static void init_vit_parameters(int vn)
 //unsigned crit_fft_log_nsamples = MAX_fft_log_nsamples; // Log2 of num FFT samples in Critical FFT tasks
 unsigned crit_fft_samples_set  = 0; // The sample set used for Critical Task FFT
 
-#define MAX_NUM_FFT_ACCEL 4
-//#define NUM_FFT_ACCEL 3
 #ifdef HW_FFT
 // These are FFT Hardware Accelerator Variables, etc.
 char* fftAccelName[MAX_NUM_FFT_ACCEL] = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3"};
@@ -448,9 +470,6 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
   fftHW_size[n] = (fftHW_out_offset[n] * sizeof(fftHW_token_t)) + fftHW_out_size[n];
 }
 #endif // HW_FFT
-
-#define MAX_NUM_CV_ACCEL 4
-//#define NUM_CV_ACCEL 3
 
 
 // NOTE: This is executed by a metadata_block pthread
@@ -535,6 +554,7 @@ status_t initialize_scheduler()
   pthread_mutex_init(&accel_alloc_mutex, NULL);
   struct timeval init_time;
   gettimeofday(&init_time, NULL);
+  last_accel_use_update_time = init_time; // Start accounting at init time... ?
   for (int i = 0; i < total_metadata_pool_blocks; i++) {
     master_metadata_pool[i].block_id = i; // Set the master pool's block_ids
     for (int ji = 0; ji < NUM_JOB_TYPES; ji++) {
@@ -623,6 +643,15 @@ status_t initialize_scheduler()
     }
   }
 
+  for (int i = 0; i < MAX_ACCEL_OF_EACH_TYPE; i++) {
+    for (int j = 0; j < MAX_NUM_FFT_ACCEL; j++) {
+      for (int k = 0; k < MAX_NUM_VIT_ACCEL; k++) {
+	for (int l = 0; l < MAX_NUM_CV_ACCEL; l++) {
+	  in_use_accel_times_array[i][j][k][l] = 0;
+	}
+      }
+    }
+  }
 #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
@@ -987,6 +1016,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 	    printf(" accelerator_in_use_by[ %u ][ %u ] = %d\n", accel_type, ai, accelerator_in_use_by[accel_type][ai]);
     }
   } else {
+    account_accelerators_in_use_interval();
     accelerator_in_use_by[accel_type][accel_id] = -1; // Indicates "Not in Use"
   }
   pthread_mutex_unlock(&accel_alloc_mutex);
@@ -1341,6 +1371,7 @@ request_execution(task_metadata_block_t* task_metadata_block)
       printf("ERROR : request_execution is trying to allocate ACCEL %s %u which is already allocated to Block %u\n", accel_type_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id]);
       exit(-14);
     }
+    account_accelerators_in_use_interval();
     int bi = task_metadata_block->block_id; // short name for the block_id
     accelerator_in_use_by[accel_type][accel_id] = bi;
     accelerator_allocated_to_MB[accel_type][accel_id][bi] += 1;
@@ -1689,6 +1720,19 @@ void shutdown_scheduler()
     }
  }
 
+  printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
+  {
+    printf("ACU_HIST: CPU FFT VIT CNN : Time-in-usec\n");
+    for (int i0 = 0; i0 < num_accelerators_of_type[0]; i0++) {
+      for (int i1 = 0; i1 < num_accelerators_of_type[1]; i1++) {
+	for (int i2 = 0; i2 < num_accelerators_of_type[2]; i2++) {
+	  for (int i3 = 0; i3 < num_accelerators_of_type[3]; i3++) {
+	    printf("ACU_HIST: %3u %3u %3u %3u : %lu\n", i0, i1, i2, i3, in_use_accel_times_array[i0][i1][i2][i3]);
+	  }
+	}
+      }
+    }
+  }
 
   // Clean up any hardware accelerator stuff
  #ifdef HW_VIT
