@@ -464,12 +464,14 @@ int main(int argc, char *argv[])
   /* The input trace contains the per-epoch (time-step) input data */
  #ifdef TIME
   gettimeofday(&start_prog, NULL);
+  init_accelerators_in_use_interval(start_prog);
  #endif
   
  #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
  #else //TRACE DRIVEN MODE
+
   read_next_trace_record(vehicle_state);
   while (!eof_trace_reader())
  #endif

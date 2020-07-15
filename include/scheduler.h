@@ -225,4 +225,6 @@ extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 
 extern void shutdown_scheduler();
 
+extern void init_accelerators_in_use_interval(struct timeval start_prog);
+
 #endif

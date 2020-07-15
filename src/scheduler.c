@@ -107,7 +107,12 @@ int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 #define  MAX_NUM_FFT_ACCEL  4
 #define  MAX_NUM_CV_ACCEL   4
 struct timeval last_accel_use_update_time;
-uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE][MAX_NUM_FFT_ACCEL][MAX_NUM_VIT_ACCEL][MAX_NUM_CV_ACCEL];
+uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE+1][MAX_NUM_FFT_ACCEL+1][MAX_NUM_VIT_ACCEL+1][MAX_NUM_CV_ACCEL+1];
+
+void init_accelerators_in_use_interval(struct timeval start_time) {
+  last_accel_use_update_time = start_time;
+}
+
 
 void account_accelerators_in_use_interval()
 {
@@ -643,10 +648,10 @@ status_t initialize_scheduler()
     }
   }
 
-  for (int i = 0; i < MAX_ACCEL_OF_EACH_TYPE; i++) {
-    for (int j = 0; j < MAX_NUM_FFT_ACCEL; j++) {
-      for (int k = 0; k < MAX_NUM_VIT_ACCEL; k++) {
-	for (int l = 0; l < MAX_NUM_CV_ACCEL; l++) {
+  for (int i = 0; i < MAX_ACCEL_OF_EACH_TYPE+1; i++) {
+    for (int j = 0; j < MAX_NUM_FFT_ACCEL+1; j++) {
+      for (int k = 0; k < MAX_NUM_VIT_ACCEL+1; k++) {
+	for (int l = 0; l < MAX_NUM_CV_ACCEL+1; l++) {
 	  in_use_accel_times_array[i][j][k][l] = 0;
 	}
       }
@@ -1723,10 +1728,10 @@ void shutdown_scheduler()
   printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
     printf("ACU_HIST: CPU FFT VIT CNN : Time-in-usec\n");
-    for (int i0 = 0; i0 < num_accelerators_of_type[0]; i0++) {
-      for (int i1 = 0; i1 < num_accelerators_of_type[1]; i1++) {
-	for (int i2 = 0; i2 < num_accelerators_of_type[2]; i2++) {
-	  for (int i3 = 0; i3 < num_accelerators_of_type[3]; i3++) {
+    for (int i0 = 0; i0 <= num_accelerators_of_type[0]; i0++) {
+      for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
+	for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
+	  for (int i3 = 0; i3 <= num_accelerators_of_type[3]; i3++) {
 	    printf("ACU_HIST: %3u %3u %3u %3u : %lu\n", i0, i1, i2, i3, in_use_accel_times_array[i0][i1][i2][i3]);
 	  }
 	}
