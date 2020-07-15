@@ -52,6 +52,7 @@ uint64_t vit_profile[4][NUM_ACCEL_TYPES] = { { 113400,  0x0f00deadbeeff00d,   59
 uint64_t cv_profile[NUM_ACCEL_TYPES]  = { 0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 150000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d};
 
 bool_t all_obstacle_lanes_mode = false;
+bool_t no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
@@ -137,13 +138,16 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
       exit(0);
     case 'A':
       all_obstacle_lanes_mode = true;
+      break;
+    case 'c':
+      no_crit_cnn_task= true;
       break;
     case 'o':
       output_viz_trace = true;
@@ -281,7 +285,7 @@ int main(int argc, char *argv[])
     for (int ix = is; ix <= ie; ix++ ){
       printf("%s", cv1_txt[ix]);
     }
-    printf("CV\n");
+    printf("CV with no-crit-CV = %u\n", no_crit_cnn_task);
   }
  #ifndef HW_ONLY_CV
   printf(" with cv_cpu_run_time_in_usec set to %u\n", cv_cpu_run_time_in_usec);
@@ -557,14 +561,17 @@ int main(int argc, char *argv[])
     gettimeofday(&start_exec_cv, NULL);
    #endif
     // Request a MetadataBlock (for an CV_TASK at Critical Level)
-    task_metadata_block_t* cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile);
-    if (cv_mb_ptr == NULL) {
-      // We ran out of metadata blocks -- PANIC!
-      printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
-      exit (-4);
+    task_metadata_block_t* cv_mb_ptr = NULL;
+    if (!no_crit_cnn_task) {
+      cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile);
+      if (cv_mb_ptr == NULL) {
+        // We ran out of metadata blocks -- PANIC!
+        printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
+        exit (-4);
+      }
+      cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
+      start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
     }
-    cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-    start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
     for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       task_metadata_block_t* cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
       if (cv_mb_ptr_2 == NULL) {
@@ -574,8 +581,9 @@ int main(int argc, char *argv[])
       cv_mb_ptr_2->atFinish = base_release_metadata_block;
       start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
     }
-
-    DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
+    if (!no_crit_cnn_task) {
+      DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
+    }
    #ifdef TIME
     gettimeofday(&start_exec_rad, NULL);
    #endif
@@ -663,7 +671,9 @@ int main(int argc, char *argv[])
     
     distance = finish_execution_of_rad_kernel(fft_mb_ptr);
     message = finish_execution_of_vit_kernel(vit_mb_ptr);
-    label_t obj_label = finish_execution_of_cv_kernel(cv_mb_ptr);
+    if (!no_crit_cnn_task) {
+      label_t obj_label = finish_execution_of_cv_kernel(cv_mb_ptr);
+    }
    #ifdef TIME
     gettimeofday(&stop_exec_rad, NULL);
     exec_rad_sec  += stop_exec_rad.tv_sec  - start_exec_rad.tv_sec;
