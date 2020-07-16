@@ -1683,6 +1683,20 @@ void shutdown_scheduler()
     printf("     get_label run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cv_comp_by[0], total_parse_usec[0], avg0, 1, ti_label[1], total_cv_comp_by[1], total_parse_usec[1], avg1, total_cv_comp_by[2], total_parse_usec[2], avg2);
 }
 
+  printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
+  {
+    printf("ACU_HIST: CPU FFT VIT CNN : Time-in-usec\n");
+    for (int i0 = 0; i0 <= num_accelerators_of_type[0]; i0++) {
+      for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
+	for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
+	  for (int i3 = 0; i3 <= num_accelerators_of_type[3]; i3++) {
+	    printf("ACU_HIST: %3u %3u %3u %3u : %lu\n", i0, i1, i2, i3, in_use_accel_times_array[i0][i1][i2][i3]);
+	  }
+	}
+      }
+    }
+  }
+
   printf("\nAccelerator Usage Statistics:\n");
   {
     unsigned totals[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
@@ -1719,20 +1733,6 @@ void shutdown_scheduler()
 	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
 	  if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
 	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB %u\n", ti, accel_type_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
-	  }
-	}
-      }
-    }
- }
-
-  printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
-  {
-    printf("ACU_HIST: CPU FFT VIT CNN : Time-in-usec\n");
-    for (int i0 = 0; i0 <= num_accelerators_of_type[0]; i0++) {
-      for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
-	for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
-	  for (int i3 = 0; i3 <= num_accelerators_of_type[3]; i3++) {
-	    printf("ACU_HIST: %3u %3u %3u %3u : %lu\n", i0, i1, i2, i3, in_use_accel_times_array[i0][i1][i2][i3]);
 	  }
 	}
       }
