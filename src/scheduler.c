@@ -933,6 +933,7 @@ static inline label_t parse_output_dimg() {
       max_val = probs[i], max_idx = i;
     }
   }
+  fclose(file_p);
   return (label_t)max_idx;
 }
 
