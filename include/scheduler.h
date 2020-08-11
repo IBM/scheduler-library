@@ -151,7 +151,7 @@ typedef struct {
   uint64_t parse_sec[2], parse_usec[2];
 } cv_timing_data_t;
 
-// This is a metatdata structure; it is used to hold all information for any job
+// This is a metadata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
 //  job type, and all input/output data space for the task
 // The job types are defined above in the scheduler_jobs_t enumeration
