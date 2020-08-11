@@ -50,6 +50,8 @@ unsigned cv_fake_hwr_run_time_in_usec =  1000;
 
 #define total_metadata_pool_blocks  32
 task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
+
+pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
 int free_metadata_pool[total_metadata_pool_blocks];
 int free_metadata_blocks = total_metadata_pool_blocks;
 unsigned allocated_metadata_blocks[NUM_JOB_TYPES];
@@ -62,6 +64,7 @@ typedef struct ready_mb_task_queue_entry_struct {
   struct ready_mb_task_queue_entry_struct * prev;
 } ready_mb_task_queue_entry_t;
 
+pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
 ready_mb_task_queue_entry_t ready_mb_task_queue_pool[total_metadata_pool_blocks];
 ready_mb_task_queue_entry_t* free_ready_mb_task_queue_entries;
 ready_mb_task_queue_entry_t* ready_mb_task_queue_head;
@@ -70,13 +73,12 @@ unsigned num_free_task_queue_entries = 0;
 unsigned num_tasks_in_ready_queue = 0;
 
 
-pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
 pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
-//pthread_mutex_t metadata_mutex[total_metadata_pool_blocks]; // Used to guard access to altering metadata conditional variables
-//pthread_cond_t  metadata_condv[total_metadata_pool_blocks]; // These phthreads conditional variables are used to "signal" a thread to do work
+pthread_t metadata_threads[total_metadata_pool_blocks]; // One thread per metadata block (to exec it in)
 
-pthread_t metadata_threads[total_metadata_pool_blocks];
+pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
+
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
@@ -572,6 +574,8 @@ status_t initialize_scheduler()
   DEBUG(printf("In initialize...\n"));
   pthread_mutex_init(&free_metadata_mutex, NULL);
   pthread_mutex_init(&accel_alloc_mutex, NULL);
+  pthread_mutex_init(&task_queue_mutex, NULL);
+  pthread_mutex_init(&schedule_from_queue_mutex, NULL);
   struct timeval init_time;
   gettimeofday(&init_time, NULL);
   last_accel_use_update_time = init_time; // Start accounting at init time... ?
@@ -1397,6 +1401,8 @@ select_target_accelerator(accel_selct_policy_t policy, task_metadata_block_t* ta
 
 // This routine schedules (the first) ready task from the ready task queue
 void schedule_executions_from_queue() {
+  pthread_mutex_lock(&schedule_from_queue_mutex);
+  
   // If there is nothing on the queue -- return;
   if (num_tasks_in_ready_queue > 0) {
     // Get pointer to the first task on the ready queue
@@ -1407,6 +1413,7 @@ void schedule_executions_from_queue() {
     }
     if (task_metadata_block == NULL) {
       printf("ERROR : First Ready Task Queue entry is NULL?\n");
+      pthread_mutex_unlock(&schedule_from_queue_mutex);
       exit(-19);
     }
     // Select the target accelerator to execute the task
@@ -1432,6 +1439,7 @@ void schedule_executions_from_queue() {
 	    }
 	    printf("\n"));
       // Update the ready task queue... Connect ready_task_entry.prev->next = ready_task_entry.next
+      pthread_mutex_lock(&task_queue_mutex);
       if (ready_task_entry->prev == NULL) {
 	// This was the HEAD of the ready queue
 	ready_mb_task_queue_head = ready_task_entry->next;
@@ -1452,14 +1460,15 @@ void schedule_executions_from_queue() {
 	free_ready_mb_task_queue_entries->next->prev = ready_task_entry;
 	ready_task_entry->next = free_ready_mb_task_queue_entries->next;
       }
-	free_ready_mb_task_queue_entries = ready_task_entry;
-	
+      free_ready_mb_task_queue_entries = ready_task_entry;	
       num_free_task_queue_entries++;
       
       // And clean up the ready task storage...
       ready_task_entry->block_id = -1;
       ready_task_entry->next = NULL;
       ready_task_entry->prev = NULL;
+      // And unlock the task-queue mutex
+      pthread_mutex_unlock(&task_queue_mutex);
 
       // Set the task to "RUNNING" State and account the times...
       task_metadata_block->status = TASK_RUNNING; // running
@@ -1484,6 +1493,7 @@ void schedule_executions_from_queue() {
       print_base_metadata_block_contents(task_metadata_block);
     }
   }
+  pthread_mutex_unlock(&schedule_from_queue_mutex);
 }
 
 
@@ -1497,6 +1507,7 @@ request_execution(task_metadata_block_t* task_metadata_block)
 
   // Put this into the ready-task-queue
   //   Get a ready_task_queue_entry
+  pthread_mutex_lock(&accel_alloc_mutex);
   ready_mb_task_queue_entry_t* my_queue_entry = free_ready_mb_task_queue_entries;
   free_ready_mb_task_queue_entries = free_ready_mb_task_queue_entries->next;
   num_free_task_queue_entries--;
@@ -1514,7 +1525,8 @@ request_execution(task_metadata_block_t* task_metadata_block)
     ready_mb_task_queue_tail->next = my_queue_entry;
   }
   num_tasks_in_ready_queue++;
-
+  pthread_mutex_unlock(&accel_alloc_mutex);
+  
   // NOW we should return -- we can later schedule tasks off the queue...
   schedule_executions_from_queue();
 
