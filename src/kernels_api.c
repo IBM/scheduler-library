@@ -520,7 +520,7 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
   mb_ptr->data_view.cv_data.object_label = in_tr_val;
-  
+  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label, in_tr_val));
  #ifdef INT_TIME
   gettimeofday(&(mb_ptr->cv_timings.call_start), NULL);
  #endif
@@ -533,7 +533,7 @@ label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 {
   DEBUG(printf("In finish_execution_of_cv_kernel\n"));
   label_t the_label = mb_ptr->data_view.cv_data.object_label;
-
+  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label));
   // We've finished the execution and lifetime for this task; free its metadata
   free_task_metadata_block(mb_ptr);
   
@@ -542,6 +542,7 @@ label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 
 void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 {
+  //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
   if (cv_object == tr_val) {
     label_match[cv_object]++;
     label_match[NUM_OBJECTS]++;

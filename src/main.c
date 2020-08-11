@@ -674,7 +674,7 @@ int main(int argc, char *argv[])
     distance = finish_execution_of_rad_kernel(fft_mb_ptr);
     message = finish_execution_of_vit_kernel(vit_mb_ptr);
     if (!no_crit_cnn_task) {
-      label_t obj_label = finish_execution_of_cv_kernel(cv_mb_ptr);
+      label = finish_execution_of_cv_kernel(cv_mb_ptr);
     }
    #ifdef TIME
     gettimeofday(&stop_exec_rad, NULL);
