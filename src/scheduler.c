@@ -808,8 +808,8 @@ status_t initialize_scheduler()
     }
   }
 
-  // Now start the "schedule_executions_from_queue() pthread
-  int pt_ret = pthread_create(&scheduling_thread, NULL, schedule_executions_from_queue, NULL);
+  // Now start the "schedule_executions_from_queue() pthread -- using the DETACHED pt_attr
+  int pt_ret = pthread_create(&scheduling_thread, &pt_attr, schedule_executions_from_queue, NULL);
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     exit(-1);
