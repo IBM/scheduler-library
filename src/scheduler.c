@@ -822,7 +822,7 @@ status_t initialize_scheduler()
    }
    pthread_detach(scheduling_thread);
   **/
-  
+
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
 }
@@ -1650,16 +1650,13 @@ void wait_all_tasks_finish()
 }
 
 
-
-// This is called at the end of run/life to shut down the scheduler
-//  This will also output a bunch of stats abdout timings, etc.
-
-void shutdown_scheduler()
-{
+// This cleans up the state (pthreads, etc.) before exit
+void cleanup_state() {
   // Kill (cancel) the per-metablock threads
   for (int i = 0; i < total_metadata_pool_blocks; i++) {
     pthread_cancel(metadata_threads[i]);
   }
+  pthread_cancel(scheduling_thread);
   // Clean out the pthread mutex and conditional variables
   pthread_mutex_destroy(&free_metadata_mutex);
   pthread_mutex_destroy(&accel_alloc_mutex);
@@ -1668,6 +1665,28 @@ void shutdown_scheduler()
 	  pthread_cond_destroy(&(master_metadata_pool[i].metadata_condv));
   }
 
+  // Clean up any hardware accelerator stuff
+ #ifdef HW_VIT
+  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
+    contig_free(vitHW_mem[vi]);
+    close(vitHW_fd[vi]);
+  }
+#endif
+
+ #ifdef HW_FFT
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
+    contig_free(fftHW_mem[fi]);
+    close(fftHW_fd[fi]);
+  }
+ #endif
+}
+
+
+// This is called at the end of run/life to shut down the scheduler
+//  This will also output a bunch of stats abdout timings, etc.
+
+void shutdown_scheduler()
+{
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
   printf("\nScheduler block allocation/free statistics:\n");
@@ -1950,43 +1969,12 @@ void shutdown_scheduler()
       }
     }
   }
-
-  // Clean up any hardware accelerator stuff
- #ifdef HW_VIT
-  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
-    contig_free(vitHW_mem[vi]);
-    close(vitHW_fd[vi]);
-  }
-#endif
-
- #ifdef HW_FFT
-  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
-    contig_free(fftHW_mem[fi]);
-    close(fftHW_fd[fi]);
-  }
- #endif
+  cleanup_state();
 }
 
 
 
 void cleanup_and_exit(int rval) {
- #ifdef HW_FFT
-  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
-    if (fftHW_mem[fi] != NULL) {
-      contig_free(fftHW_mem[fi]);
-      close(fftHW_fd[fi]);
-    }
-  }
- #endif
-
- #ifdef HW_VIT
-  for (int fi = 0; fi < NUM_VIT_ACCEL; fi++) {
-    if (vitHW_mem[fi] != NULL) {
-      contig_free(vitHW_mem[fi]);
-      close(vitHW_fd[fi]);
-    }
-  }
- #endif
-
+  cleanup_state();
   exit (rval);
 }
