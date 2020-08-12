@@ -269,7 +269,7 @@ task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_
     for (int i = 0; i < total_metadata_pool_blocks; i++) {
       printf("  free_metadata_pool[%2u] = %d\n", i, free_metadata_pool[i]);
     }
-    exit(-16);
+    cleanup_and_exit(-16);
   }
   free_metadata_pool[free_metadata_blocks - 1] = -1;
   free_metadata_blocks -= 1;
@@ -351,7 +351,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
       if (cli == NULL) {
 	printf("ERROR: Critical task NOT on the critical_live_task_list :\n");
 	print_base_metadata_block_contents(mb);
-	exit(-6);
+	cleanup_and_exit(-6);
       }
       // We've found the critical task in critical_live_tasks_list - cli points to it
       int cti = cli->clt_block_id;
@@ -386,7 +386,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     }
     DEBUG(printf("    THE Being-Freed Meta-Data Block:\n");
 	  print_base_metadata_block_contents(mb));
-    exit(-5);
+    cleanup_and_exit(-5);
   }
   TDEBUG(printf(" AFTER_FREE : MB %u : free_metadata_pool : ", bi);
 	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
@@ -530,7 +530,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   case no_accelerator_t: {
     printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    exit(-11);
+    cleanup_and_exit(-11);
   } break;
   case cpu_accel_t: {
     switch(task_metadata_block->job_type) {
@@ -548,7 +548,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
       break;
     default:
       printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->job_type);
-      exit(-13);
+      cleanup_and_exit(-13);
     }
   } break;
   case fft_hwr_accel_t: {
@@ -566,7 +566,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   default:
     printf("ERROR : Unknown accelerator type in execute_task_on_accelerator with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    exit(-12);
+    cleanup_and_exit(-12);
   }
   TDEBUG(printf("DONE Executing Task for MB %d\n", task_metadata_block->block_id));
 }
@@ -696,7 +696,7 @@ status_t initialize_scheduler()
   for (int i = 0; i < total_metadata_pool_blocks; i++) {
     if (pthread_create(&metadata_threads[i], &pt_attr, metadata_thread_wait_for_task, &(master_metadata_pool[i]))) {
       printf("ERROR: Scheduler failed to create thread for metadata block: %d\n", i);
-      exit(-10);
+      cleanup_and_exit(-10);
     }
     master_metadata_pool[i].thread_id = metadata_threads[i];
   }
@@ -738,14 +738,14 @@ status_t initialize_scheduler()
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
       fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
-      exit(EXIT_FAILURE);
+      cleanup_and_exit(EXIT_FAILURE);
     }
 
     printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
     fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
     if (fftHW_lmem[fi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
-      exit(EXIT_FAILURE);
+      cleanup_and_exit(EXIT_FAILURE);
     }
 
     fftHW_li_mem[fi] = &(fftHW_lmem[fi][0]);
@@ -779,13 +779,13 @@ status_t initialize_scheduler()
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
       fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
-      exit(EXIT_FAILURE);
+      cleanup_and_exit(EXIT_FAILURE);
     }
 
     vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
     if (vitHW_lmem[vi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
-      exit(EXIT_FAILURE);
+      cleanup_and_exit(EXIT_FAILURE);
     }
     vitHW_li_mem[vi] = &(vitHW_lmem[vi][0]);
     vitHW_lo_mem[vi] = &(vitHW_lmem[vi][vitHW_out_offset[vi]]);
@@ -812,7 +812,7 @@ status_t initialize_scheduler()
   int pt_ret = pthread_create(&scheduling_thread, &pt_attr, schedule_executions_from_queue, NULL);
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
-    exit(-1);
+    cleanup_and_exit(-1);
   }
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
@@ -868,7 +868,7 @@ static void fft_in_hw(int *fd, struct fftHW_access *desc)
 {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("IOCTL:");
-    exit(EXIT_FAILURE);
+    cleanup_and_exit(EXIT_FAILURE);
   }
 }
 #endif
@@ -905,7 +905,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 
  #else
   printf("ERROR : This executable DOES NOT support Hardware-FFT execution!\n");
-  exit(-2);
+  cleanup_and_exit(-2);
  #endif
 }
 
@@ -918,7 +918,7 @@ static void do_decoding_hw(int *fd, struct vitdodec_access *desc)
 {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("IOCTL:");
-    exit(EXIT_FAILURE);
+    cleanup_and_exit(EXIT_FAILURE);
   }
 }
 #endif
@@ -988,7 +988,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 
 #else // HW_VIT
   printf("ERROR : This executable DOES NOT support Viterbi Hardware execution!\n");
-  exit(-3);
+  cleanup_and_exit(-3);
 #endif // HW_VIT
 }
 
@@ -1069,7 +1069,7 @@ TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB %d  CL %d\n
   mark_task_done(task_metadata_block);
  #else  
   printf("ERROR : This executable DOES NOT support Hardware-CV execution!\n");
-  exit(-2);
+  cleanup_and_exit(-2);
  #endif
 #endif
 }
@@ -1178,7 +1178,7 @@ pick_accel_and_wait_for_available(task_metadata_block_t* task_metadata_block)
   } break;
   default:
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
-    exit(-15);
+    cleanup_and_exit(-15);
   }
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
@@ -1292,7 +1292,7 @@ fastest_to_slowest_first_available(task_metadata_block_t* task_metadata_block)
   } break;
  default:
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
-    exit(-15);
+    cleanup_and_exit(-15);
   }
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
@@ -1358,7 +1358,7 @@ fastest_finish_time_first(task_metadata_block_t* task_metadata_block)
     } break;
     default:
     printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
-    exit(-15);
+    cleanup_and_exit(-15);
   }
 
   // Now that we know the set of proposed accelerators,
@@ -1427,7 +1427,7 @@ select_target_accelerator(accel_selct_policy_t policy, task_metadata_block_t* ta
     break;
   default:
     printf("ERROR : unknown scheduler accelerator selection policy: %u\n", policy);
-    exit(-15);
+    cleanup_and_exit(-15);
   }
 }
 
@@ -1461,7 +1461,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       if (task_metadata_block == NULL) {
 	printf("ERROR : First Ready Task Queue entry is NULL?\n");
 	pthread_mutex_unlock(&schedule_from_queue_mutex);
-	exit(-19);
+	cleanup_and_exit(-19);
       }
       // Select the target accelerator to execute the task
       DEBUG(printf("SCHED: calling select_target_accelerator for task MB%u\n", task_metadata_block->block_id));
@@ -1473,7 +1473,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	// Mark the requested accelerator as "In-USE" by this metadata block
 	if (accelerator_in_use_by[accel_type][accel_id] != -1) {
 	  printf("ERROR : request_execution is trying to allocate ACCEL %s %u which is already allocated to Block %u\n", accel_type_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id]);
-	  exit(-14);
+	  cleanup_and_exit(-14);
 	}
 	account_accelerators_in_use_interval();
 	int bi = task_metadata_block->block_id; // short name for the block_id
@@ -1960,3 +1960,23 @@ void shutdown_scheduler()
 
 
 
+void cleanup_and_exit(int rval) {
+ #ifdef HW_FFT
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
+    if (fftHW_mem[fi] != NULL) {
+      contig_free(fftHW_mem[fi]);
+      close(fftHW_fd[fi]);
+    }
+  }
+ #endif
+
+ #ifdef HW_VIT
+  for (int fi = 0; fi < NUM_VIT_ACCEL; fi++) {
+    if (vitHW_mem[fi] != NULL) {
+      contig_free(vitHW_mem[fi]);
+      close(vitHW_fd[fi]);
+    }
+  }
+ #endif
+  exit (rval);
+}

@@ -227,4 +227,6 @@ extern void shutdown_scheduler();
 
 extern void init_accelerators_in_use_interval(struct timeval start_prog);
 
+extern void cleanup_and_exit(int rval);
+
 #endif
