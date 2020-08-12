@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "scheduler.h" // for cleanup_and_exit
+
 static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 {
         return (sizeof(void *) / _st);
@@ -167,7 +169,7 @@ status_t init_rad_kernel(char* dict_fn)
   // Read the number of definitions
   if (fscanf(dictF, "%u %u\n", &num_radar_samples_sets, &radar_dict_items_per_set) != 2) {
     printf("ERROR reading the number of Radar Dictionary sets and items per set\n");
-    exit(-2);
+    cleanup_and_exit(-2);
   }
   DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, radar_dict_items_per_set));
   the_radar_return_dict = (radar_dict_entry_t**)calloc(num_radar_samples_sets, sizeof(radar_dict_entry_t*));
@@ -189,7 +191,7 @@ status_t init_rad_kernel(char* dict_fn)
   for (int si = 0; si < num_radar_samples_sets; si++) {
     if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
-      exit(-2);
+      cleanup_and_exit(-2);
     }
     DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
     for (int di = 0; di < radar_dict_items_per_set; di++) {
@@ -199,11 +201,11 @@ status_t init_rad_kernel(char* dict_fn)
       unsigned entry_dict_values = 0;
       if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
-	exit(-2);
+	cleanup_and_exit(-2);
       }
       if (radar_log_nsamples_per_dict_set[si] != entry_log_nsamples) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
-	exit(-2);
+	cleanup_and_exit(-2);
       }
 	
       DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
@@ -217,7 +219,7 @@ status_t init_rad_kernel(char* dict_fn)
 	float fin;
 	if (fscanf(dictF, "%f", &fin) != 1) {
 	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
-	  exit(-2);
+	  cleanup_and_exit(-2);
 	}
 	the_radar_return_dict[si][di].return_data[i] = fin;
 	tot_dict_values++;
@@ -277,7 +279,7 @@ status_t init_vit_kernel(char* dict_fn)
   DEBUG(printf("In init_vit_kernel...\n"));
   if (vit_msgs_size >= VITERBI_LENGTHS) {
     printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
-    exit(-1);
+    cleanup_and_exit(-1);
   }
   // Read in the object images dictionary file
   FILE *dictF = fopen(dict_fn,"r");
@@ -291,7 +293,7 @@ status_t init_vit_kernel(char* dict_fn)
   // Read the number of messages
   if (fscanf(dictF, "%u\n", &num_viterbi_dictionary_items) != 1) {
     printf("ERROR reading the number of Viterbi Dictionary items\n");
-    exit(-2);
+    cleanup_and_exit(-2);
   }    
   DEBUG(printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items));
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
@@ -310,12 +312,12 @@ status_t init_vit_kernel(char* dict_fn)
     int mnum, mid;
     if (fscanf(dictF, "%d %d\n", &mnum, &mid) != 2) {
       printf("Error reading viterbi kernel dictionary enry %u header: Message_number and Message_id\n", i);
-      exit(-2);
+      cleanup_and_exit(-2);
     }
     DEBUG(printf(" V_MSG: num %d Id %d\n", mnum, mid));
     if (mnum != i) {
       printf("ERROR : Check Viterbi Dictionary : i = %d but Mnum = %d  (Mid = %d)\n", i, mnum, mid);
-      exit(-5);
+      cleanup_and_exit(-5);
     }
     the_viterbi_trace_dict[i].msg_num = mnum;
     the_viterbi_trace_dict[i].msg_id = mid;
@@ -323,7 +325,7 @@ status_t init_vit_kernel(char* dict_fn)
     int in_bpsc, in_cbps, in_dbps, in_encoding, in_rate; // OFDM PARMS
     if (fscanf(dictF, "%d %d %d %d %d\n", &in_bpsc, &in_cbps, &in_dbps, &in_encoding, &in_rate) != 5) {
       printf("Error reading viterbi kernel dictionary entry %u bpsc, cbps, dbps, encoding and rate info\n", i);
-      exit(-2);
+      cleanup_and_exit(-2);
     }
 
     DEBUG(printf("  OFDM: %d %d %d %d %d\n", in_bpsc, in_cbps, in_dbps, in_encoding, in_rate));
@@ -336,7 +338,7 @@ status_t init_vit_kernel(char* dict_fn)
     int in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits;
     if (fscanf(dictF, "%d %d %d %d %d\n", &in_pdsu_size, &in_sym, &in_pad, &in_encoded_bits, &in_data_bits) != 5) {
       printf("Error reading viterbi kernel dictionary entry %u psdu num_sym, pad, n_encoded_bits and n_data_bits\n", i);
-      exit(-2);
+      cleanup_and_exit(-2);
     }
     DEBUG(printf("  FRAME: %d %d %d %d %d\n", in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits));
     the_viterbi_trace_dict[i].frame_p.psdu_size      = in_pdsu_size;
@@ -351,7 +353,7 @@ status_t init_vit_kernel(char* dict_fn)
       unsigned c;
       if (fscanf(dictF, "%u ", &c) != 1) {
 	printf("Error reading viterbi kernel dictionary entry %u data\n", i);
-	exit(-6);
+	cleanup_and_exit(-6);
       }
       #ifdef SUPER_VERBOSE
       printf("%u ", c);
@@ -505,7 +507,7 @@ label_t iterate_cv_kernel(vehicle_state_t vs)
     case 'C' : tr_val = car; break;
     case 'P' : tr_val = pedestrian; break;
     case 'T' : tr_val = truck; break;
-    default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); exit(-2);
+    default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); cleanup_and_exit(-2);
   }
   label_t d_object = (label_t)tr_val;
 
@@ -859,7 +861,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 	break; /* Stop!!! */
     default:
       printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state.lane], message);
-      //exit(-6);
+      //cleanup_and_exit(-6);
     }
   } else {
     // No obstacle-inspired lane change, so try now to occupy the center lane

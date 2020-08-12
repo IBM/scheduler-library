@@ -814,6 +814,15 @@ status_t initialize_scheduler()
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     cleanup_and_exit(-1);
   }
+
+  /**
+   // Let's make sure these are detached?
+   for (int i = 0; i < total_metadata_pool_blocks; i++) {
+   pthread_detach(metadata_threads[i]);
+   }
+   pthread_detach(scheduling_thread);
+  **/
+  
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
 }
@@ -1978,5 +1987,6 @@ void cleanup_and_exit(int rval) {
     }
   }
  #endif
+
   exit (rval);
 }

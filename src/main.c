@@ -392,13 +392,13 @@ int main(int argc, char *argv[])
   if (crit_fft_samples_set >= num_radar_samples_sets) {
     printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
     print_usage(argv[0]);
-    exit(-1);
+    cleanup_and_exit(-1);
   }
     
   if (global_scheduler_selection_policy > NUM_SELECTION_POLICIES) {
     printf("ERROR : Selected Scheduler Policy (%u) is larger than number of policies (%u)\n", global_scheduler_selection_policy, NUM_SELECTION_POLICIES);
     print_usage(argv[0]);
-    exit(-1);
+    cleanup_and_exit(-1);
   }
   printf("Scheduler is using Policy %u : %s\n", global_scheduler_selection_policy, scheduler_selection_policy_str[global_scheduler_selection_policy]);
   

@@ -55,7 +55,7 @@ get_object_token(char c)
     char objc; 
     if (sscanf(&in_line_buf[last_i], "%c", &objc) != 1) {
       printf("Error reading input trace object token\n");
-      exit(-7);
+      cleanup_and_exit(-7);
     }
     lane_obj[in_lane][obj_in_lane[in_lane]] = objc;
     //if (obj_in_lane[in_lane] == 0) { // LAST is nearest -- but should be safer than that!
@@ -67,7 +67,7 @@ get_object_token(char c)
     printf("ERROR : trace syntax is weird!\n");
     printf(" LINE : %s\n", in_line_buf);
     printf(" TOKN : %u hit %c from %s\n", last_i, c, &in_line_buf[last_i]);
-    exit(-3);
+    cleanup_and_exit(-3);
   }
   in_tok = 1 - in_tok; // Flip to expect distance token
 }
@@ -80,7 +80,7 @@ get_distance_token(char c)
     unsigned distv;
     if (sscanf(&in_line_buf[last_i], "%u", &distv) != 1) {
       printf("Error reading input trace distance token\n");
-      exit(-7);
+      cleanup_and_exit(-7);
     }
     lane_dist[in_lane][obj_in_lane[in_lane]] = distv;
     //if (obj_in_lane[in_lane] == 0) {
@@ -90,7 +90,7 @@ get_distance_token(char c)
     printf("ERROR : trace syntax is weird!\n");
     printf(" LINE : %s\n", in_line_buf);
     printf(" TOKN : %u hit %c from %s\n", last_i, c, &in_line_buf[last_i]);
-    exit(-4);
+    cleanup_and_exit(-4);
   }
   in_tok = 1 - in_tok; // Flip to expect object char token
 }
@@ -101,7 +101,7 @@ bool_t read_next_trace_record(vehicle_state_t vs)
   DEBUG(printf("In read_next_trace_record\n"));
   if (feof(input_trace)) { 
     printf("ERROR : invocation of read_next_trace_record indicates feof\n");
-    exit(-1);
+    cleanup_and_exit(-1);
   }
 
   total_obj = 0;
