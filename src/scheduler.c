@@ -41,6 +41,9 @@
 #include "scheduler.h"
 #include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
 
+
+unsigned int scheduler_holdoff_usec = 1;
+
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
@@ -1564,7 +1567,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
     } else { // if (num_tasks_in_queue > 0)
       // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
-      usleep(1); // This is 1usec (about 78 FPGA clock cycles)
+      usleep(scheduler_holdoff_usec); // This is 1usec (about 78 FPGA clock cycles)
     } 
   } // while (1) 
   pthread_mutex_unlock(&schedule_from_queue_mutex);

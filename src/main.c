@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -166,6 +166,9 @@ int main(int argc, char *argv[])
       break;
     case 'b':
       bypass_h264_functions = true;
+      break;
+    case 'u':
+      scheduler_holdoff_usec = atoi(optarg);
       break;
     case 's':
      #ifdef USE_SIM_ENVIRON
@@ -251,7 +254,7 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u FFT, %u VIT, and %u CV accelerators\n", global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+  printf("Run using Scheduler Policy %u with %u FFT, %u VIT, and %u CV accelerators and hold-off %u\n", global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
  #else 
