@@ -33,37 +33,39 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 
-typedef enum { NO_TASK_JOB = 0,
-	       FFT_TASK,
-	       VITERBI_TASK,
-	       CV_TASK,
-	       NUM_JOB_TYPES } scheduler_jobs_t;
+typedef enum { 
+  NO_TASK_JOB = 0,
+  FFT_TASK,
+  VITERBI_TASK,
+  CV_TASK,
+  NUM_JOB_TYPES } scheduler_jobs_t;
 
-typedef enum { NO_TASK   = 0,
-	       BASE_TASK = 1,
-	       ELEVATED_TASK = 2,
-	       CRITICAL_TASK = 3,
-	       NUM_TASK_CRIT_LEVELS} task_criticality_t;
+typedef enum { 
+  NO_TASK   = 0,
+  BASE_TASK = 1,
+  ELEVATED_TASK = 2,
+  CRITICAL_TASK = 3,
+  NUM_TASK_CRIT_LEVELS} task_criticality_t;
 
 
 typedef enum { TASK_FREE = 0,
-	       TASK_ALLOCATED,
-	       TASK_QUEUED,
-	       TASK_RUNNING,
-	       TASK_DONE,
-	       NUM_TASK_STATUS} task_status_t;
+  TASK_ALLOCATED,
+  TASK_QUEUED,
+  TASK_RUNNING,
+  TASK_DONE,
+  NUM_TASK_STATUS} task_status_t;
 
 typedef enum { cpu_accel_t = 0,
-	       fft_hwr_accel_t,
-	       vit_hwr_accel_t,
-	       cv_hwr_accel_t,
-	       no_accelerator_t,
-	       NUM_ACCEL_TYPES} accelerator_type_t;
+  fft_hwr_accel_t,
+  vit_hwr_accel_t,
+  cv_hwr_accel_t,
+  no_accelerator_t,
+  NUM_ACCEL_TYPES} accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-	       FASTEST_FINISH_TIME_FIRST_POLICY,
-               NUM_SELECTION_POLICIES } accel_selct_policy_t;
+  FAST_TO_SLOW_FIRST_AVAIL_POLICY,
+  FASTEST_FINISH_TIME_FIRST_POLICY,
+  NUM_SELECTION_POLICIES } accel_selct_policy_t;
 
 
 extern const char* task_job_str[NUM_JOB_TYPES];
