@@ -84,6 +84,7 @@ Usage: ./cmain.exe <OPTIONS>
                :      0 = Select_Accelerator_Type_And_Wait
                :      1 = Fastest_to_Slowest_First_Available
                :      2 = Fastest_Finish_Time_First
+               :      3 = Fastest_Finish_Time_First_Queued
 ```
 
 To actually execute a trace, one must point to the trace in the trace repository (subdirectory ```traces```) using the ```-t``` option.
@@ -118,6 +119,7 @@ Usage: ./test-scheduler-sim.exe <OPTIONS>
                :      0 = Select_Accelerator_Type_And_Wait
                :      1 = Fastest_to_Slowest_First_Available
                :      2 = Fastest_Finish_Time_First
+               :      3 = Fastest_Finish_Time_First_Queued
 ```
 
 For execution in simulation mode (e.g. using ```test-scheduler-sim.exe```) no trace is necessary, and the simulation provides the inputs.

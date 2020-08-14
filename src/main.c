@@ -97,6 +97,7 @@ void print_usage(char * pname) {
   printf("               :      0 = Select_Accelerator_Type_And_Wait\n");
   printf("               :      1 = Fastest_to_Slowest_First_Available\n");
   printf("               :      2 = Fastest_Finish_Time_First\n");
+  printf("               :      3 = Fastest_Finish_Time_First_Queued\n");
 }
 
 
