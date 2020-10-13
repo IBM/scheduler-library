@@ -93,6 +93,8 @@ void print_usage(char * pname) {
   printf("    -M <N>     : Adds <N> additional (non-critical) Viterbi message tasks per time step.\n");
   printf("    -S <N>     : Task-Size Variability: Varies the sizes of input tasks where appropriate\n");
   printf("               :      0 = No variability (e.g. all messages same size, etc.)\n");
+  printf("    -u <N>     : Sets the hold-off usec for checks on work in the scheduler queue\n");
+  printf("               :   This reduces the busy-spin-loop rate for the scheduler thread\n");
   printf("    -P <N>     : defines the Scheduler Accelerator Selection Policy:\n");
   printf("               :      0 = Select_Accelerator_Type_And_Wait\n");
   printf("               :      1 = Fastest_to_Slowest_First_Available\n");
