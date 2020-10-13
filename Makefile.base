@@ -43,7 +43,11 @@ endif
 ifdef CONFIG_NUM_CV
 CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
-# This selects the number of each "Small" Acceleartors
+# This selects the number of each "Small" Acceleartor
+# First, the "speed" factor
+ifdef CONFIG_SM_ACCEL_X
+CFLAGS += -DSMFx=$(CONFIG_SM_ACCEL_X)
+endif
 #  Currently, these are the same physical accelerators but executed more slowly
 #  As such, the max for the two combined is the hardware implemented Accelerators, e.g.
 #  NUM_FFT_ACCEL plus NUM_SM_FFT_ACCEL <= Actual_HWR_FFT_Accel
