@@ -125,17 +125,21 @@ const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_A
 								       "Fastest_Finish_Time_First",
 								       "Fastest_Finish_Time_First_Queued" } ;
 
-#define  MAX_ACCEL_OF_EACH_TYPE    10
+#define  MAX_NUM_CPU_ACCEL          4
 #define  MAX_NUM_VIT_ACCEL          4
 #define  MAX_NUM_FFT_ACCEL          4
 #define  MAX_NUM_CV_ACCEL           4
+#define  MAX_NUM_SM_VIT_ACCEL       MAX_NUM_VIT_ACCEL
+#define  MAX_NUM_SM_FFT_ACCEL       MAX_NUM_FFT_ACCEL
+#define  MAX_NUM_SM_CV_ACCEL        MAX_NUM_CV_ACCEL
+#define  MAX_ACCEL_OF_EACH_TYPE     4
 
 volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
 int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
 struct timeval last_accel_use_update_time;
-uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE+1][MAX_NUM_FFT_ACCEL+1][MAX_NUM_VIT_ACCEL+1][MAX_NUM_CV_ACCEL+1];
+uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE+1][MAX_NUM_FFT_ACCEL+1][MAX_NUM_SM_FFT_ACCEL+1][MAX_NUM_VIT_ACCEL+1][MAX_NUM_SM_VIT_ACCEL+1][MAX_NUM_CV_ACCEL+1][MAX_NUM_SM_CV_ACCEL+1];
 
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
@@ -182,8 +186,8 @@ void account_accelerators_in_use_interval()
   //Now we have the array of curr-in-use
   struct timeval now;
   gettimeofday(&now, NULL);
-
-  in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]] += 1000000*(now.tv_sec - last_accel_use_update_time.tv_sec) + (now.tv_usec - last_accel_use_update_time.tv_usec);
+  // This is a 7-Dim by ACCEL type : [CPU][FFT][SM-FFT][VIT][SM-VIT][CV][SM-CV]
+  in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]][acc_in_use[4]][acc_in_use[5]][acc_in_use[6]] += 1000000*(now.tv_sec - last_accel_use_update_time.tv_sec) + (now.tv_usec - last_accel_use_update_time.tv_usec);
   last_accel_use_update_time = now;
 }
 
@@ -729,10 +733,16 @@ status_t initialize_scheduler()
 
   for (int i = 0; i < MAX_ACCEL_OF_EACH_TYPE+1; i++) {
     for (int j = 0; j < MAX_NUM_FFT_ACCEL+1; j++) {
-      for (int k = 0; k < MAX_NUM_VIT_ACCEL+1; k++) {
-        for (int l = 0; l < MAX_NUM_CV_ACCEL+1; l++) {
-          in_use_accel_times_array[i][j][k][l] = 0;
-        }
+      for (int sj = 0; sj < MAX_NUM_FFT_ACCEL+1; sj++) {
+	for (int k = 0; k < MAX_NUM_VIT_ACCEL+1; k++) {
+	  for (int sk = 0; sk < MAX_NUM_VIT_ACCEL+1; sk++) {
+	    for (int l = 0; l < MAX_NUM_CV_ACCEL+1; l++) {
+	      for (int sl = 0; sl < MAX_NUM_CV_ACCEL+1; sl++) {
+		in_use_accel_times_array[i][j][sj][k][sk][l][sl] = 0;
+	      }
+	    }
+	  }
+	}
       }
     }
   }
@@ -918,6 +928,13 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
   }
 
+  // Now, if this is a "Small" FFT accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_fft_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_fft_hwr_accel_t] - task_metadata_block->task_profile[fft_hwr_accel_t];
+    usleep(delay);
+  }
+
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
@@ -1001,6 +1018,13 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 	  printf("%u ", out_Data[ti]);
 	});
 
+  // Now, if this is a "Small" VIT accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t];
+    usleep(delay);
+  }
+
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
@@ -1046,50 +1070,52 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
     printf(" The system call returned -1 -- an error occured?\n");
   }
   
-#ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
   task_metadata_block->cv_timings.call_usec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_usec  - task_metadata_block->cv_timings.call_start.tv_usec;
   DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
-#endif
+ #endif
   label_t pred_label = parse_output_dimg();
-
-#ifdef INT_TIME
+ #ifdef INT_TIME
   struct timeval stop;
   gettimeofday(&(stop), NULL);
   task_metadata_block->cv_timings.parse_sec[tidx]  += stop.tv_sec  - task_metadata_block->cv_timings.parse_start.tv_sec;
   task_metadata_block->cv_timings.parse_usec[tidx] += stop.tv_usec - task_metadata_block->cv_timings.parse_start.tv_usec;
-#endif
-  printf("---> Predicted label = %d\n", pred_label);
+ #endif
+  TDEBG(printf("---> Predicted label = %d\n", pred_label));
   // Set result into the metatdata block
   task_metadata_block->data_view.cv_data.object_label = pred_label;
 
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
-
-#else
-#ifdef FAKE_HW_CV
-#ifdef INT_TIME
+#else // Of #ifdef HW_CV
+ #ifdef FAKE_HW_CV
+  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
-#endif
+  #endif
 
   usleep(cv_fake_hwr_run_time_in_usec);
   
-#ifdef INT_TIME
+  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
   task_metadata_block->cv_timings.call_usec[tidx] += stop_time.tv_usec - task_metadata_block->cv_timings.call_start.tv_usec;
   DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
-#endif
+  #endif
 
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
-#else  
+ #else  
   printf("ERROR : This executable DOES NOT support Hardware-CV execution!\n");
   cleanup_and_exit(-2);
+ #endif
 #endif
-#endif
+  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
+    usleep(delay);
+  }
+  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
 }
 
 
@@ -2195,7 +2221,15 @@ void shutdown_scheduler()
       for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
         for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
           for (int i3 = 0; i3 <= num_accelerators_of_type[3]; i3++) {
-            printf("ACU_HIST: %3u %3u %3u %3u : %lu\n", i0, i1, i2, i3, in_use_accel_times_array[i0][i1][i2][i3]);
+	    for (int i4 = 0; i4 <= num_accelerators_of_type[4]; i4++) {
+	      for (int i5 = 0; i5 <= num_accelerators_of_type[5]; i5++) {
+		for (int i6 = 0; i6 <= num_accelerators_of_type[6]; i6++) {
+		  printf("ACU_HIST: %3u %3u %3u %3u %3u %3u %3u : %3u : %lu\n",
+			 i0, i1, i2, i3, i4, i5, i6, (i1+i2+i3+i4+i5+i6),
+			 in_use_accel_times_array[i0][i1][i2][i3][i4][i5][i6]);
+		}
+	      }
+	    }
           }
         }
       }
