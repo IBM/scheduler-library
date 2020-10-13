@@ -40,16 +40,22 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 
 //TODO: profile all possible fft and decoder sizes
 // Numbers taken from runs on Xilinx VCU118 FPGA @ 78MHz -- value in usecs (1.0+13 = "Infinite time")
-// CPU, FFT, VIT, CV, N/A
-// The FFT has 2 profiles depending on input size (1k or 16k samples)
-uint64_t fft_profile[2][NUM_ACCEL_TYPES] = { {2295100, 179800,  0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The 1k-sample FFT profile
-					  {3446300, 180500,  0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}}; // The 16k-sample FFT profile
-// The Viterbi has 4 profiles, depending on input size
-uint64_t vit_profile[4][NUM_ACCEL_TYPES] = { { 113400,  0x0f00deadbeeff00d,   5950, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
-					  {1511400,  0x0f00deadbeeff00d,  67000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
-					  {2070200,  0x0f00deadbeeff00d, 135500, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}, // The short-message Viterbi
-					  {4341600,  0x0f00deadbeeff00d, 191000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d}}; // The short-message Viterbi
-uint64_t cv_profile[NUM_ACCEL_TYPES]  = { 0x0f00deadbeeff00d, 0x0f00deadbeeff00d, 150000, 0x0f00deadbeeff00d, 0x0f00deadbeeff00d};
+// CPU, FFT, SM-FFT, VIT, SM-VIT, CV, SM-CV, N/A
+#define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
+
+// FFT has 2 profiles depending on input size (1k or 16k samples)
+//                                              CPU     FFT     SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE    
+uint64_t fft_profile[2][NUM_ACCEL_TYPES] = { {2295100, 179800,  179800, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+					     {3446300, 180500,  180500, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+// Viterbi has 4 profiles, depending on input size
+//                                              CPU        FFT      SM-FFT      VIT   SM_VIT     CV        SM_CV      NONE    
+uint64_t vit_profile[4][NUM_ACCEL_TYPES] = { { 113400,  ACINFPROF, ACINFPROF,   5950,   5950, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+					     {1511400,  ACINFPROF, ACINFPROF,  67000,  67000, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+					     {2070200,  ACINFPROF, ACINFPROF, 135500, 135500, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+					     {4341600,  ACINFPROF, ACINFPROF, 191000, 191000, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+
+//                                            CPU      FFT       SM-FFT      VIT       SM_VIT       CV     SM_CV      NONE    
+uint64_t cv_profile[NUM_ACCEL_TYPES]  = { ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, 150000,  150000, ACINFPROF};
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
@@ -257,7 +263,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u FFT, %u VIT, and %u CV accelerators and hold-off %u\n", global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
+  printf("Run using Scheduler Policy %u with %u FFT %u SM-FFT %u VIT %u VIT %u CV acc %u CV accelerators and hold-off %u\n",
+	 global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL, NUM_CV_ACCEL, NUM_SM_CV_ACCEL, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
  #else 

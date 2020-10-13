@@ -28,7 +28,12 @@ endif
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
 
-# This selects the number of each Acceleartor type: MAx for each is 4 (four)
+# This selects the number of each Acceleartor type:
+# MAX for the CPU is up to you -- that is "spawned CPU threads"
+# MAX for others is determined by the hardware run on (So far ~3 each)
+ifdef CONFIG_NUM_CPU
+CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
+endif
 ifdef CONFIG_NUM_VIT
 CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
 endif
@@ -38,6 +43,20 @@ endif
 ifdef CONFIG_NUM_CV
 CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
+# This selects the number of each "Small" Acceleartors
+#  Currently, these are the same physical accelerators but executed more slowly
+#  As such, the max for the two combined is the hardware implemented Accelerators, e.g.
+#  NUM_FFT_ACCEL plus NUM_SM_FFT_ACCEL <= Actual_HWR_FFT_Accel
+ifdef CONFIG_NUM_SM_VIT
+CFLAGS += -DNUM_SM_VIT_ACCEL=$(CONFIG_NUM_SM_VIT)
+endif
+ifdef CONFIG_NUM_SM_FFT
+CFLAGS += -DNUM_SM_FFT_ACCEL=$(CONFIG_NUM_SM_FFT)
+endif
+ifdef CONFIG_NUM_SM_CV
+CFLAGS += -DNUM_SM_CV_ACCEL=$(CONFIG_NUM_SM_CV)
+endif
+
  
 ifdef CONFIG_FFT_EN
 CFLAGS += -DHW_FFT

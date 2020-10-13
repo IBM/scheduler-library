@@ -27,7 +27,6 @@
 #include "base_types.h"
 
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
-#define MAX_ACCEL_OF_EACH_TYPE    10
 
 #define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
@@ -57,8 +56,11 @@ typedef enum { TASK_FREE = 0,
 
 typedef enum { cpu_accel_t = 0,
   fft_hwr_accel_t,
+  sm_fft_hwr_accel_t,
   vit_hwr_accel_t,
+  sm_vit_hwr_accel_t,
   cv_hwr_accel_t,
+  sm_cv_hwr_accel_t,
   no_accelerator_t,
   NUM_ACCEL_TYPES} accelerator_type_t;
 
