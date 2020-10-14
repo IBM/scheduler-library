@@ -568,11 +568,23 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
     DEBUG(printf("Executing Task for MB %d on HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_fft_accelerator(task_metadata_block);
   } break;
+  case sm_fft_hwr_accel_t: {
+    DEBUG(printf("Executing Task for MB %d on HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
+    execute_hwr_fft_accelerator(task_metadata_block);
+  } break;
   case vit_hwr_accel_t: {
     DEBUG(printf("Executing Task for MB %d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_viterbi_accelerator(task_metadata_block);
   } break;
+  case sm_vit_hwr_accel_t: {
+    DEBUG(printf("Executing Task for MB %d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
+    execute_hwr_viterbi_accelerator(task_metadata_block);
+  } break;
   case cv_hwr_accel_t: {
+    DEBUG(printf("Executing Task for MB %d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
+    execute_hwr_cv_accelerator(task_metadata_block);
+  } break;
+  case sm_cv_hwr_accel_t: {
     DEBUG(printf("Executing Task for MB %d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_cv_accelerator(task_metadata_block);
   } break;
