@@ -732,10 +732,13 @@ status_t initialize_scheduler()
   }
   
   // These are brought in at compile time via config parameters
-  num_accelerators_of_type[cpu_accel_t]     = NUM_CPU_ACCEL;
-  num_accelerators_of_type[fft_hwr_accel_t] = NUM_FFT_ACCEL;
-  num_accelerators_of_type[vit_hwr_accel_t] = NUM_VIT_ACCEL;
-  num_accelerators_of_type[cv_hwr_accel_t]  = NUM_CV_ACCEL;
+  num_accelerators_of_type[cpu_accel_t]        = NUM_CPU_ACCEL;
+  num_accelerators_of_type[fft_hwr_accel_t]    = NUM_FFT_ACCEL;
+  num_accelerators_of_type[sm_fft_hwr_accel_t] = NUM_SM_FFT_ACCEL;
+  num_accelerators_of_type[vit_hwr_accel_t]    = NUM_VIT_ACCEL;
+  num_accelerators_of_type[sm_vit_hwr_accel_t] = NUM_SM_VIT_ACCEL;
+  num_accelerators_of_type[cv_hwr_accel_t]     = NUM_CV_ACCEL;
+  num_accelerators_of_type[sm_cv_hwr_accel_t]  = NUM_SM_CV_ACCEL;
 
   for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
@@ -1469,7 +1472,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
   }
   DEBUG(printf("THE-SCHED: In fastest_finish_time_first policy for MB%u\n", task_metadata_block->block_id));
   int num_proposed_accel_types = 1;
-  int proposed_accel[2] = {no_accelerator_t, no_accelerator_t};
+  int proposed_accel[3] = {no_accelerator_t, no_accelerator_t, no_accelerator_t};
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
   int best_accel_id  = -1;
@@ -1652,7 +1655,8 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	// Now that we know the set of proposed accelerators,
 	//  scan through to find which one will produce the earliest estimated finish time
 	for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-	  DEBUG(printf("THE-SCHED:   Working on Proposed Accel Type %u\n", pi));
+	  DEBUG(printf("THE-SCHED:   Working on Proposed Accel Type %u = %s\n", pi, accel_type_str[proposed_accel[pi]]);
+			printf(" num_acc_of_ty = %u\n", num_accelerators_of_type[proposed_accel[pi]]));
 	  for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
 	    int bi = accelerator_in_use_by[proposed_accel[pi]][i];
 
@@ -1714,7 +1718,6 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
   // No task found that can be scheduled on its best accelerator
   return NULL;
 }
-
 
 // This routine selects an available accelerator for the given job, 
 //  The accelerator is selected according to a policy
