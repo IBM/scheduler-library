@@ -951,7 +951,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
   if (task_metadata_block->accelerator_type == sm_fft_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_fft_hwr_accel_t] - task_metadata_block->task_profile[fft_hwr_accel_t];
-    printf("EHFA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay);
+    DEBUG(printf("EHFA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay));
     usleep(delay);
   }
 
@@ -1045,7 +1045,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
   if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t];
-    printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay);
+    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay));
     usleep(delay);
   }
 
@@ -1136,6 +1136,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
   if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
+    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
     usleep(delay);
   }
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
