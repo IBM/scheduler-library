@@ -45,22 +45,22 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 //#define SMFx  2
 
 // FFT has 2 profiles depending on input size (1k or 16k samples)
-//                                              CPU     FFT     SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE    
+//                                              CPU     FFT     SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE
 uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
-//    CPU       FFT          SM-FFT       VIT      SM_VIT      CV         SM_CV      NONE    
-  {2295100, 179800*SMFx,  179800*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {3446300, 180500*SMFx,  180500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+//    CPU     FFT       SM-FFT       VIT      SM_VIT      CV         SM_CV      NONE
+  {2295100, 179800,  179800*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  {3446300, 180500,  180500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT      SM-FFT        VIT         SM_VIT     CV         SM_CV      NONE    
-  { 113400,  ACINFPROF, ACINFPROF,   5950*SMFx,   5950*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1511400,  ACINFPROF, ACINFPROF,  67000*SMFx,  67000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {2070200,  ACINFPROF, ACINFPROF, 135500*SMFx, 135500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4341600,  ACINFPROF, ACINFPROF, 191000*SMFx, 191000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+//    CPU        FFT      SM-FFT     VIT      SM_VIT       CV        SM_CV      NONE
+  { 113400,  ACINFPROF, ACINFPROF,   5950,   5950*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1511400,  ACINFPROF, ACINFPROF,  67000,  67000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {2070200,  ACINFPROF, ACINFPROF, 135500, 135500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4341600,  ACINFPROF, ACINFPROF, 191000, 191000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
 
 uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
-//    CPU      FFT       SM-FFT       VIT        SM_VIT        CV         SM_CV       NONE    
-  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, 150000*SMFx,  150000*SMFx, ACINFPROF};
+//    CPU      FFT       SM-FFT       VIT        SM_VIT     CV        SM_CV       NONE
+  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, 150000,  150000*SMFx, ACINFPROF};
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
