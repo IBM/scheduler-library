@@ -268,8 +268,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u FFT %u SM-FFT %u VIT %u SM-VIT %u CV %u SM-CV accel; hold-off %u\n",
-	 global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL, NUM_CV_ACCEL, NUM_SM_CV_ACCEL, scheduler_holdoff_usec);
+  printf("Run using Scheduler Policy %u with %u FFT %u SM-FFT %u VIT %u SM-VIT %u CV %u SM-CV at SMF %u and hold-off %u\n",
+	 global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL, NUM_CV_ACCEL, NUM_SM_CV_ACCEL, SMFx, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
  #else 
