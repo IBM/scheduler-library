@@ -78,8 +78,8 @@ void print_usage(char * pname) {
   printf("    -C <file>  : defines the input CV/CNN dictionary file <file> to use\n");
   //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
   //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
- #ifdef USE_SIM_ENVIRON
   printf("    -s <N>     : Sets the max number of time steps to simulate\n");
+ #ifdef USE_SIM_ENVIRON
   printf("    -r <N>     : Sets the rand random number seed to N\n");
   printf("    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
   printf("    -W <wfile> : defines the world environment parameters description file <wfile> to use\n");
@@ -185,9 +185,7 @@ int main(int argc, char *argv[])
       scheduler_holdoff_usec = atoi(optarg);
       break;
     case 's':
-     #ifdef USE_SIM_ENVIRON
       max_time_steps = atoi(optarg);
-     #endif
       break;
     case 'p':
       pandc_repeat_factor = atoi(optarg);
@@ -316,8 +314,8 @@ int main(int argc, char *argv[])
   printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
   printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
   printf("Using task-size variability behavior %u\n", task_size_variability);
- #ifdef USE_SIM_ENVIRON
   printf("Using %u maximum time steps (simulation)\n", max_time_steps);
+ #ifdef USE_SIM_ENVIRON
   printf("Using world description file: %s\n", world_desc_file_name);
   printf("Using random seed of %u\n", rand_seed);
  #else
@@ -491,7 +489,7 @@ int main(int argc, char *argv[])
  #else //TRACE DRIVEN MODE
 
   read_next_trace_record(vehicle_state);
-  while (!eof_trace_reader())
+  while ((time_step < max_time_steps) && (!eof_trace_reader()))
  #endif
   {
     DEBUG(printf("Vehicle_State: Lane %u %s Speed %.1f\n", vehicle_state.lane, lane_names[vehicle_state.lane], vehicle_state.speed));
@@ -716,7 +714,7 @@ int main(int argc, char *argv[])
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", pandc_repeat_factor, time_step, message, distance));
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, time_step, message, distance));
     vehicle_state_t new_vehicle_state;
    #ifdef TIME
     gettimeofday(&start_exec_pandc, NULL);
@@ -733,9 +731,7 @@ int main(int argc, char *argv[])
 
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 
-   #ifdef TIME
     time_step++;
-   #endif
 
     // TEST - trying this here.
     //wait_all_tasks_finish();
