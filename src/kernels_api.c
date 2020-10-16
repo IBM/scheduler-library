@@ -632,13 +632,13 @@ void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, d
   } else if (pct_err < 0.01) {
     hist_pct_errs[set][index][1]++;
   } else if (pct_err < 0.1) {
-    printf("RADAR_LT010_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
+    printf("RADAR_LT010_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
     hist_pct_errs[set][index][2]++;
   } else if (pct_err < 1.00) {
-    printf("RADAR_LT100_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
+    printf("RADAR_LT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
     hist_pct_errs[set][index][3]++;
   } else {
-    printf("RADAR_GT100_ERR : %f vs %f : ERROR : %f   PCT_ERR : %f\n", tr_dist, dist, error, pct_err);
+    printf("RADAR_GT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
     hist_pct_errs[set][index][4]++;
   }
 }

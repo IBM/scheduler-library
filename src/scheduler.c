@@ -924,12 +924,12 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   int fn = task_metadata_block->accelerator_id;
   uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   task_metadata_block->fft_timings.comp_by[tidx]++;
-  DEBUG(printf("EHFA: In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
+  DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
 #ifdef HW_FFT
   // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
   init_fft_parameters(fn, log_nsamples);
   
-  DEBUG(printf("EHFA:   converting from float to fixed-point\n"));
+  DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
   // convert input from float to fixed point
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
@@ -938,24 +938,27 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 
   // Call the FFT Accelerator
   //    NOTE: Currently this is blocking-wait for call to complete
-  DEBUG(printf("EHFA:   calling the HW_FFT[%u]\n", fn));
+  DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
 
   // convert output from fixed point to float
   DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
+    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
   }
 
   // Now, if this is a "Small" FFT accelerator, we need to add the additional computation delay...
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
   if (task_metadata_block->accelerator_type == sm_fft_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_fft_hwr_accel_t] - task_metadata_block->task_profile[fft_hwr_accel_t];
-    DEBUG(printf("EHFA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay));
-    usleep(delay);
+    DEBUG(printf("EHFA:   MB%u Adding delay %lu - %lu = %lu usec\n", task_metadata_block->block_id, task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay));
+    if (delay > 0) {
+	    usleep(delay);
+    }
   }
 
-  TDEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
 #else
@@ -1046,7 +1049,9 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t];
     DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay));
-    usleep(delay);
+    if (delay > 0) {
+	    usleep(delay);
+    }
   }
 
   DEBUG(printf("EHVA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
@@ -1137,7 +1142,9 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
     int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
     DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
-    usleep(delay);
+    if (delay > 0) {
+	    usleep(delay);
+    }
   }
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
