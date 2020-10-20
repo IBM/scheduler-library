@@ -126,13 +126,13 @@ const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_A
 								       "Fastest_Finish_Time_First_Queued" } ;
 
 #define  MAX_NUM_CPU_ACCEL          4
-#define  MAX_NUM_VIT_ACCEL          4
-#define  MAX_NUM_FFT_ACCEL          4
-#define  MAX_NUM_CV_ACCEL           4
+#define  MAX_NUM_VIT_ACCEL          6
+#define  MAX_NUM_FFT_ACCEL          2
+#define  MAX_NUM_CV_ACCEL           2
 #define  MAX_NUM_SM_VIT_ACCEL       MAX_NUM_VIT_ACCEL
 #define  MAX_NUM_SM_FFT_ACCEL       MAX_NUM_FFT_ACCEL
 #define  MAX_NUM_SM_CV_ACCEL        MAX_NUM_CV_ACCEL
-#define  MAX_ACCEL_OF_EACH_TYPE     4
+#define  MAX_ACCEL_OF_EACH_TYPE     6
 
 volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
@@ -445,7 +445,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
-char*    vitAccelName[MAX_NUM_VIT_ACCEL] = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3"};
+char    vitAccelName[MAX_NUM_VIT_ACCEL][64]; // = {"/dev/vitdodec.0", "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
 
 int vitHW_fd[MAX_NUM_VIT_ACCEL];
 contig_handle_t vitHW_mem[MAX_NUM_VIT_ACCEL];
@@ -491,7 +491,7 @@ unsigned crit_fft_samples_set  = 0; // The sample set used for Critical Task FFT
 
 #ifdef HW_FFT
 // These are FFT Hardware Accelerator Variables, etc.
-char* fftAccelName[MAX_NUM_FFT_ACCEL] = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3"};
+char fftAccelName[MAX_NUM_FFT_ACCEL][64];// = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3", "/dev/fft.4", "/dev/fft.5"};
 
 int fftHW_fd[MAX_NUM_FFT_ACCEL];
 contig_handle_t fftHW_mem[MAX_NUM_FFT_ACCEL];
@@ -769,7 +769,8 @@ status_t initialize_scheduler()
     printf("Calling init_fft_parameters for Accel %u and LOGN %u\n", fi, MAX_RADAR_LOGN);
     init_fft_parameters(fi, MAX_RADAR_LOGN);
 
-    DEBUG(printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]));
+    snprintf(fftAccelName[fi], 63, "/dev/fft.%u", fi);
+    printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]);
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
       fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
@@ -809,7 +810,7 @@ status_t initialize_scheduler()
   for (int vi = 0; vi < (NUM_VIT_ACCEL + NUM_SM_VIT_ACCEL); vi++) {
     DEBUG(printf("Init Viterbi parameters on acclerator %u\n", vi));
     init_vit_parameters(vi);
-
+    snprintf(vitAccelName[vi], 63, "/dev/vitdodec.%u", vi);
     printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
@@ -1618,13 +1619,13 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
     {
       task_metadata_block = &(master_metadata_pool[selected_task_entry->block_id]);
       if (task_metadata_block == NULL) {
-	printf("ERROR : Ready Task Queue entry is NULL even though num_tasks_in_ready_queue = %d depicts otherwise?\n", num_tasks_in_ready_queue);
+	printf("SCHED-FFFQ: ERROR : Ready Task Queue entry is NULL even though num_tasks_in_ready_queue = %d depicts otherwise?\n", num_tasks_in_ready_queue);
 	pthread_mutex_unlock(&schedule_from_queue_mutex);
 	cleanup_and_exit(-19);
       }
-      DEBUG(printf("In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_job_str[task_metadata_block->job_type]));
+      DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_job_str[task_metadata_block->job_type]));
       if (task_metadata_block->accelerator_type == no_accelerator_t || task_metadata_block->accelerator_id == -1) {
-	      DEBUG(printf("THE-SCHED: In fastest_finish_time_first_queued policy for MB%u\n", task_metadata_block->block_id));
+	      DEBUG(printf("FFFQ: In fastest_finish_time_first_queued policy for MB%u\n", task_metadata_block->block_id));
 	int num_proposed_accel_types = 1;
 	int proposed_accel[5] = {no_accelerator_t, no_accelerator_t, no_accelerator_t, no_accelerator_t, no_accelerator_t};
 	int accel_type     = no_accelerator_t;
@@ -1639,28 +1640,31 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	uint64_t elapsed_sec, elapsed_usec, total_elapsed_usec;
 
 	gettimeofday(&current_time, NULL);
-	DEBUG(printf("THE-SCHED:  Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
+	DEBUG(printf("SCHED-FFFQ:  Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
 
 	switch(task_metadata_block->job_type) {
 	case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
 	  proposed_accel[0] = cpu_accel_t;
         #ifdef HW_FFT
 	  if (NUM_FFT_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
+	    proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
 	  }
 	  if (NUM_SM_FFT_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = sm_fft_hwr_accel_t;
+	    proposed_accel[num_proposed_accel_types++] = sm_fft_hwr_accel_t;
 	  }
         #endif
 	} break;
 	case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
 	  proposed_accel[0] = cpu_accel_t;
+	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
         #ifdef HW_VIT
 	  if (NUM_VIT_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
+	    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
+	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
 	  }
 	  if (NUM_SM_VIT_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = sm_vit_hwr_accel_t;
+	    proposed_accel[num_proposed_accel_types++] = sm_vit_hwr_accel_t;
+	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
 	  }
         #endif
 	} break;
@@ -1673,21 +1677,23 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	  if (NUM_CV_ACCEL > 0) {
 	  proposed_accel[num_proposed_accel_types++] = cv_hwr_accel_t;
 	}
-	  if (NUM_SM_CV_ACCEL > 0) {
+	if (NUM_SM_CV_ACCEL > 0) {
 	  proposed_accel[num_proposed_accel_types++] = sm_cv_hwr_accel_t;
 	}
         #endif
 	} break;
 	default:
-	  printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
+	  printf("SCHED-FFFQ: ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
 	  cleanup_and_exit(-15);
 	}
 
+		DEBUG(printf("SCHED-FFFQ:  Got a total of %u proposed accel types\n", num_proposed_accel_types));
+
 	// Now that we know the set of proposed accelerators,
 	//  scan through to find which one will produce the earliest estimated finish time
-		for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-			DEBUG(printf("THE-SCHED:   Working on Proposed Accel Type %u = %s\n", pi, accel_type_str[proposed_accel[pi]]);
-			printf(" num_acc_of_ty = %u\n", num_accelerators_of_type[proposed_accel[pi]]));
+	for (int pi = 0; pi < num_proposed_accel_types; pi++) {
+		DEBUG(printf("SCHED-FFFQ:   Working on Proposed Accel Type %u = %s\n", pi, accel_type_str[proposed_accel[pi]]));
+		DEBUG(printf("SCHED-FFFQ: num_acc_of_ty = %u\n", num_accelerators_of_type[proposed_accel[pi]]));
 	  for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
 	    int bi = accelerator_in_use_by[proposed_accel[pi]][i];
 
@@ -1703,7 +1709,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	      task_ahead_entry = task_ahead_entry->next;
 	    }
 
-	    DEBUG(printf("THE-SCHED:    Have Accel Type %u Number %u In-Use-By %d\n", pi, i, bi));
+	    DEBUG(printf("SCHED-FFFQ:    Have Accel Type %u Number %u In-Use-By %d\n", pi, i, bi));
 	    if (bi == -1) { // The accelerator is Free
 	      // The estimated task finish time is taken from the task profiling information
 	      finish_time = task_metadata_block->task_profile[proposed_accel[pi]];
@@ -1720,8 +1726,8 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	    }
 	    // and add that to the projected run time of tasks ahead in queue to be scheduled on same accelerator to get the estimated finish time
 	    finish_time += ahead_execution_time;
-	    DEBUG(printf("THE-SCHED:             finish_time = %lu = 0x%016lx\n", finish_time, finish_time));
-	    DEBUG(printf("THE-SCHED:    vs least_finish_time = %lu = 0x%016lx\n", least_finish_time, least_finish_time));
+	    DEBUG(printf("SCHED-FFFQ:             finish_time = %lu = 0x%016lx\n", finish_time, finish_time));
+	    DEBUG(printf("SCHED-FFFQ:    vs least_finish_time = %lu = 0x%016lx\n", least_finish_time, least_finish_time));
 	    if (finish_time < least_finish_time) {
 	      best_accel_id = i;
 	      accel_type = proposed_accel[pi];
@@ -1740,7 +1746,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
       // Check if best accelerator is available
       if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {  
 	// Task is schedulable on the best accelerator
-	// printf("THE-SCHED: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id);
+		DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
 	return selected_task_entry;
       }
 
@@ -1815,10 +1821,10 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       }
       unsigned int accel_type = task_metadata_block->accelerator_type;
       unsigned int accel_id = task_metadata_block->accelerator_id;
-      // printf("SCHED: Selected accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id);
+      DEBUG(printf("SCHED: Selected accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
 
       if (accel_type == no_accelerator_t) {
-        printf("ERROR : Selected Task has no accelerator assigned\n");
+        printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
         pthread_mutex_unlock(&schedule_from_queue_mutex);
         cleanup_and_exit(-19);
       }

@@ -659,6 +659,9 @@ int main(int argc, char *argv[])
 	if (m_id != vdentry_p->msg_id) {
 	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
 	}
+	if (base_msg_size != vit_msgs_size) {
+	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+	}
 	vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
       } else {
 	DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
