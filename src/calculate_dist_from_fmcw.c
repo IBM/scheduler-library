@@ -41,9 +41,6 @@ void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_blo
   gettimeofday(&(fft_metadata_block->fft_timings.calc_start), NULL);
  #endif
 
- #ifdef INT_TIME
-  gettimeofday(&(fft_metadata_block->fft_timings.fft_start), NULL);
- #endif // INT_TIME
   //  schedule_fft(data);
   request_execution(fft_metadata_block);
   // This now ends this block -- we've kicked off execution
@@ -64,8 +61,6 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_metadata_block->fft_timings.fft_sec[tidx]   += stop_time.tv_sec  - fft_metadata_block->fft_timings.fft_start.tv_sec;
-  fft_metadata_block->fft_timings.fft_usec[tidx]  += stop_time.tv_usec - fft_metadata_block->fft_timings.fft_start.tv_usec;
   fft_metadata_block->fft_timings.calc_sec[tidx]  += stop_time.tv_sec  - fft_metadata_block->fft_timings.calc_start.tv_sec;
   fft_metadata_block->fft_timings.calc_usec[tidx] += stop_time.tv_usec - fft_metadata_block->fft_timings.calc_start.tv_usec;
 

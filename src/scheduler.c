@@ -939,15 +939,11 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 
   // Call the FFT Accelerator
   //    NOTE: Currently this is blocking-wait for call to complete
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+ #endif // INT_TIME
   DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
-
-  // convert output from fixed point to float
-  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
-  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
-    data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
-    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
-  }
 
   // Now, if this is a "Small" FFT accelerator, we need to add the additional computation delay...
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
@@ -957,6 +953,19 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
     if (delay > 0) {
 	    usleep(delay);
     }
+  }
+
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  task_metadata_block->fft_timings.fft_sec[tidx]   += stop_time.tv_sec  - task_metadata_block->fft_timings.fft_start.tv_sec;
+  task_metadata_block->fft_timings.fft_usec[tidx]  += stop_time.tv_usec - task_metadata_block->fft_timings.fft_start.tv_usec;
+ #endif
+  // convert output from fixed point to float
+  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
+  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
+    data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
+    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
   }
 
   DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
@@ -1029,6 +1038,16 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("EHVA:   calling do_decoding_hw for HW_VIT[%u]\n", vn));
   do_decoding_hw(&(vitHW_fd[vn]), &(vitHW_desc[vn]));
 
+  // Now, if this is a "Small" VIT accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t];
+    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay));
+    if (delay > 0) {
+	    usleep(delay);
+    }
+  }
+
 #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
@@ -1044,16 +1063,6 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 	for (int ti = 0; ti < 80 /*(MAX_ENCODED_BITS * 3 / 4)*/; ti ++) {
 	  printf("%u ", out_Data[ti]);
 	});
-
-  // Now, if this is a "Small" VIT accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) {
-    int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t];
-    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay));
-    if (delay > 0) {
-	    usleep(delay);
-    }
-  }
 
   DEBUG(printf("EHVA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
@@ -1095,11 +1104,24 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef HW_CV
   // Add the call to the NVDLA stuff here.
   printf("Doing the system call : './nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump'\n");
+  #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
+  #endif
+
   int sret = system("./nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump");
   if (sret == -1) {
     printf(" The system call returned -1 -- an error occured?\n");
   }
   
+  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
+    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
+    if (delay > 0) {
+	    usleep(delay);
+    }
+  }
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
@@ -1124,6 +1146,15 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   #endif
 
   usleep(cv_fake_hwr_run_time_in_usec);
+  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
+  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
+  if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
+    int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
+    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
+    if (delay > 0) {
+	    usleep(delay);
+    }
+  }
   
   #ifdef INT_TIME
   struct timeval stop_time;
@@ -1138,15 +1169,6 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   cleanup_and_exit(-2);
  #endif
 #endif
-  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
-    int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
-    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
-    if (delay > 0) {
-	    usleep(delay);
-    }
-  }
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
