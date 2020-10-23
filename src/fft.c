@@ -143,6 +143,9 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
 
   /* calculation */
   //printf("\nSTART,A,B,I,J,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "2*j", "Data", "2*j+1", "Data", "2*i", "Data", "2*i+1", "Data", "t_real", "t_imag");
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->fft_timings.fft_comp_start), NULL);
+ #endif
   for (bit = 0; bit < logn; bit++) {
     w_real = 1.0;
     w_imag = 0.0;
@@ -183,6 +186,13 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
 
     transform_length *= 2;
   }
+
+ #ifdef INT_TIME
+  struct timeval fft_comp_stop;
+  gettimeofday(&fft_comp_stop, NULL);
+  task_metadata_block->fft_timings.fft_comp_sec[tidx]  += fft_comp_stop.tv_sec  - task_metadata_block->fft_timings.fft_comp_start.tv_sec;
+  task_metadata_block->fft_timings.fft_comp_usec[tidx] += fft_comp_stop.tv_usec - task_metadata_block->fft_timings.fft_comp_start.tv_usec;
+ #endif
 
   return 0;
 }

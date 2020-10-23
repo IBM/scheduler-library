@@ -120,20 +120,22 @@ typedef struct {
 
 // The following structures are for timing analysis (per job type)
 typedef struct {
-  struct timeval calc_start;
+  struct timeval call_start;
   struct timeval fft_start;
   struct timeval fft_br_start;
   struct timeval bitrev_start;
   struct timeval fft_cvtin_start;
+  struct timeval fft_comp_start;
   struct timeval fft_cvtout_start;
   struct timeval cdfmcw_start;
   // 0 = timings for cpu_accel_T and 1 = fft_hwr_accel_t
   unsigned comp_by[2];
-  uint64_t calc_sec[2], calc_usec[2];
+  uint64_t call_sec[2], call_usec[2];
   uint64_t fft_sec[2], fft_usec[2];
   uint64_t fft_br_sec[2], fft_br_usec[2];
   uint64_t bitrev_sec[2], bitrev_usec[2];
   uint64_t fft_cvtin_sec[2], fft_cvtin_usec[2];
+  uint64_t fft_comp_sec[2], fft_comp_usec[2];
   uint64_t fft_cvtout_sec[2], fft_cvtout_usec[2];
   uint64_t cdfmcw_sec[2], cdfmcw_usec[2];
 } fft_timing_data_t;

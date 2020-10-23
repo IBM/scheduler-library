@@ -126,13 +126,13 @@ const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_A
 								       "Fastest_Finish_Time_First_Queued" } ;
 
 #define  MAX_NUM_CPU_ACCEL          4
-#define  MAX_NUM_VIT_ACCEL          6
-#define  MAX_NUM_FFT_ACCEL          2
-#define  MAX_NUM_CV_ACCEL           2
+#define  MAX_NUM_VIT_ACCEL          4
+#define  MAX_NUM_FFT_ACCEL          4
+#define  MAX_NUM_CV_ACCEL           4
 #define  MAX_NUM_SM_VIT_ACCEL       MAX_NUM_VIT_ACCEL
 #define  MAX_NUM_SM_FFT_ACCEL       MAX_NUM_FFT_ACCEL
 #define  MAX_NUM_SM_CV_ACCEL        MAX_NUM_CV_ACCEL
-#define  MAX_ACCEL_OF_EACH_TYPE     6
+#define  MAX_ACCEL_OF_EACH_TYPE     4
 
 volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
@@ -625,6 +625,23 @@ metadata_thread_wait_for_task(void* void_parm_ptr)
 status_t initialize_scheduler()
 {
   DEBUG(printf("In initialize...\n"));
+  int parms_error = 0;
+  if ((NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL) > MAX_NUM_FFT_ACCEL) {
+	  printf("INIT-SCHED: ERROR : (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL) > MAX_NUM_FFT_ACCEL : %u + %u > %u\n", NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, MAX_NUM_FFT_ACCEL);
+	  parms_error = 1;
+  }
+  if ((NUM_VIT_ACCEL + NUM_SM_VIT_ACCEL) > MAX_NUM_VIT_ACCEL) {
+	  printf("INIT-SCHED: ERROR : (NUM_VIT_ACCEL + NUM_SM_VIT_ACCEL) > MAX_NUM_VIT_ACCEL : %u + %u > %u\n", NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL, MAX_NUM_VIT_ACCEL);
+	  parms_error = 1;
+  }
+  if ((NUM_CV_ACCEL + NUM_SM_CV_ACCEL) > MAX_NUM_CV_ACCEL) {
+	  printf("INIT-SCHED: ERROR : (NUM_CV_ACCEL + NUM_SM_CV_ACCEL) > MAX_NUM_CV_ACCEL : %u + %u > %u\n", NUM_CV_ACCEL, NUM_SM_CV_ACCEL, MAX_NUM_CV_ACCEL);
+	  parms_error = 1;
+  }
+  if (parms_error > 0) {
+    printf("... Exiting run...\n");
+    exit(-16);
+  }
   pthread_mutex_init(&free_metadata_mutex, NULL);
   pthread_mutex_init(&accel_alloc_mutex, NULL);
   pthread_mutex_init(&task_queue_mutex, NULL);
@@ -658,14 +675,16 @@ status_t initialize_scheduler()
     for (int ti = 0; ti < 2; ti++) {
       // FFT task timings
       master_metadata_pool[i].fft_timings.comp_by[ti] = 0;
-      master_metadata_pool[i].fft_timings.calc_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.calc_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.call_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.call_usec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_sec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_usec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_br_sec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_br_usec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_cvtin_sec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_cvtin_usec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_comp_sec[ti] = 0;
+      master_metadata_pool[i].fft_timings.fft_comp_usec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_cvtout_sec[ti] = 0;
       master_metadata_pool[i].fft_timings.fft_cvtout_usec[ti] = 0;
       master_metadata_pool[i].fft_timings.cdfmcw_sec[ti] = 0;
@@ -749,11 +768,11 @@ status_t initialize_scheduler()
 
   for (int i = 0; i < MAX_ACCEL_OF_EACH_TYPE+1; i++) {
     for (int j = 0; j < MAX_NUM_FFT_ACCEL+1; j++) {
-      for (int sj = 0; sj < MAX_NUM_FFT_ACCEL+1; sj++) {
+      for (int sj = 0; sj < MAX_NUM_SM_FFT_ACCEL+1; sj++) {
 	for (int k = 0; k < MAX_NUM_VIT_ACCEL+1; k++) {
-	  for (int sk = 0; sk < MAX_NUM_VIT_ACCEL+1; sk++) {
+	  for (int sk = 0; sk < MAX_NUM_SM_VIT_ACCEL+1; sk++) {
 	    for (int l = 0; l < MAX_NUM_CV_ACCEL+1; l++) {
-	      for (int sl = 0; sl < MAX_NUM_CV_ACCEL+1; sl++) {
+	      for (int sl = 0; sl < MAX_NUM_SM_CV_ACCEL+1; sl++) {
 		in_use_accel_times_array[i][j][sj][k][sk][l][sl] = 0;
 	      }
 	    }
@@ -764,9 +783,10 @@ status_t initialize_scheduler()
   }
 #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
+  printf("Initializing the %u + %u = %u total FFT Accelerators...\n", NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL));
   for (int fi = 0; fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL); fi++) {
     // Inititalize to the "largest legal" FFT size
-    printf("Calling init_fft_parameters for Accel %u and LOGN %u\n", fi, MAX_RADAR_LOGN);
+    printf("Calling init_fft_parameters for Accel %u (of %u) [%u] and LOGN %u\n", fi, (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL), fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL), MAX_RADAR_LOGN);
     init_fft_parameters(fi, MAX_RADAR_LOGN);
 
     snprintf(fftAccelName[fi], 63, "/dev/fft.%u", fi);
@@ -926,21 +946,33 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   task_metadata_block->fft_timings.comp_by[tidx]++;
   DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+ #endif // INT_TIME
 #ifdef HW_FFT
   // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
   init_fft_parameters(fn, log_nsamples);
   
   DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->fft_timings.fft_cvtin_start), NULL);
+ #endif // INT_TIME
   // convert input from float to fixed point
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
   }
+ #ifdef INT_TIME
+  struct timeval cvtin_stop;
+  gettimeofday(&cvtin_stop, NULL);
+  task_metadata_block->fft_timings.fft_cvtin_sec[tidx]   += cvtin_stop.tv_sec  - task_metadata_block->fft_timings.fft_cvtin_start.tv_sec;
+  task_metadata_block->fft_timings.fft_cvtin_usec[tidx]  += cvtin_stop.tv_usec - task_metadata_block->fft_timings.fft_cvtin_start.tv_usec;
+ #endif // INT_TIME
 
   // Call the FFT Accelerator
   //    NOTE: Currently this is blocking-wait for call to complete
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+  gettimeofday(&(task_metadata_block->fft_timings.fft_comp_start), NULL);
  #endif // INT_TIME
   DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
@@ -951,22 +983,36 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
     int delay = task_metadata_block->task_profile[sm_fft_hwr_accel_t] - task_metadata_block->task_profile[fft_hwr_accel_t];
     DEBUG(printf("EHFA:   MB%u Adding delay %lu - %lu = %lu usec\n", task_metadata_block->block_id, task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay));
     if (delay > 0) {
-	    usleep(delay);
+      usleep(delay);
     }
   }
 
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  task_metadata_block->fft_timings.fft_sec[tidx]   += stop_time.tv_sec  - task_metadata_block->fft_timings.fft_start.tv_sec;
-  task_metadata_block->fft_timings.fft_usec[tidx]  += stop_time.tv_usec - task_metadata_block->fft_timings.fft_start.tv_usec;
+  task_metadata_block->fft_timings.fft_comp_sec[tidx]   += stop_time.tv_sec  - task_metadata_block->fft_timings.fft_comp_start.tv_sec;
+  task_metadata_block->fft_timings.fft_comp_usec[tidx]  += stop_time.tv_usec - task_metadata_block->fft_timings.fft_comp_start.tv_usec;
  #endif
   // convert output from fixed point to float
   DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
+ #ifdef INT_TIME
+  gettimeofday(&(task_metadata_block->fft_timings.fft_cvtout_start), NULL);
+ #endif // INT_TIME
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
     DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
   }
+ #ifdef INT_TIME
+  struct timeval cvtout_stop;
+  gettimeofday(&cvtout_stop, NULL);
+  task_metadata_block->fft_timings.fft_cvtout_sec[tidx]   += cvtout_stop.tv_sec  - task_metadata_block->fft_timings.fft_cvtout_start.tv_sec;
+  task_metadata_block->fft_timings.fft_cvtout_usec[tidx]  += cvtout_stop.tv_usec - task_metadata_block->fft_timings.fft_cvtout_start.tv_usec;
+  /* #ifdef INT_TIME */
+  /*  struct timeval stop_time; */
+  /*  gettimeofday(&stop_time, NULL); */
+  task_metadata_block->fft_timings.fft_sec[tidx]   += cvtout_stop.tv_sec  - task_metadata_block->fft_timings.fft_start.tv_sec;
+  task_metadata_block->fft_timings.fft_usec[tidx]  += cvtout_stop.tv_usec - task_metadata_block->fft_timings.fft_start.tv_usec;
+ #endif // INT_TIME
 
   DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
@@ -1152,7 +1198,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
     int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
     DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
     if (delay > 0) {
-	    usleep(delay);
+      usleep(delay);
     }
   }
   
@@ -2155,50 +2201,58 @@ void shutdown_scheduler()
   {
     // The FFT Tasks Timing Info
     unsigned total_fft_comp_by[3] = {0, 0, 0};
-    uint64_t total_calc_usec[3] = {0, 0, 0};
+    uint64_t total_call_usec[3] = {0, 0, 0};
     uint64_t total_fft_usec[3] = {0, 0, 0};
     uint64_t total_fft_br_usec[3] = {0, 0, 0};
     uint64_t total_bitrev_usec[3] = {0, 0, 0};
     uint64_t total_fft_cvtin_usec[3] = {0, 0, 0};
+    uint64_t total_fft_comp_usec[3] = {0, 0, 0};
     uint64_t total_fft_cvtout_usec[3] = {0, 0, 0};
     uint64_t total_cdfmcw_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
         unsigned this_comp_by = (unsigned)(master_metadata_pool[bi].fft_timings.comp_by[ti]);
-        uint64_t this_calc_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.calc_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.calc_usec[ti]);
+        uint64_t this_call_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.call_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.call_usec[ti]);
         uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_usec[ti]);
         uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_usec[ti]);
         uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_usec[ti]);
         uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_usec[ti]);
+        uint64_t this_fft_comp_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_comp_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_comp_usec[ti]);
         uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_usec[ti]);
         uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_usec[ti]);
-        printf("Block %3u : %u %s : FFT CB %8u calc %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu cvto %15lu fmcw %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_calc_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
+        printf("Block %3u : %u %s : FFT CB %8u call %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu calc %15lu cvto %15lu fmcw %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_call_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_comp_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
         // Per acceleration (CPU, HWR)
         total_fft_comp_by[ti]     += this_comp_by;
-        total_calc_usec[ti]       += this_calc_usec;
+        total_call_usec[ti]       += this_call_usec;
         total_fft_usec[ti]        += this_fft_usec;
         total_fft_br_usec[ti]     += this_fft_br_usec;
         total_bitrev_usec[ti]     += this_bitrev_usec;
         total_fft_cvtin_usec[ti]  += this_fft_cvtin_usec;
+        total_fft_comp_usec[ti]   += this_fft_comp_usec;
         total_fft_cvtout_usec[ti] += this_fft_cvtout_usec;
         total_cdfmcw_usec[ti]     += this_cdfmcw_usec;
 	// Overall Total
         total_fft_comp_by[2]     += this_comp_by;
-        total_calc_usec[2]       += this_calc_usec;
+        total_call_usec[2]       += this_call_usec;
         total_fft_usec[2]        += this_fft_usec;
         total_fft_br_usec[2]     += this_fft_br_usec;
         total_bitrev_usec[2]     += this_bitrev_usec;
         total_fft_cvtin_usec[2]  += this_fft_cvtin_usec;
+        total_fft_comp_usec[2]   += this_fft_comp_usec;
         total_fft_cvtout_usec[2] += this_fft_cvtout_usec;
         total_cdfmcw_usec[2]     += this_cdfmcw_usec;
       } // for (bi over Metadata blocks)
     } // for (ti = 0, 1)    
     printf("\nAggregate FFT Tasks Total Timing Data: %u finished FFT tasks\n", freed_metadata_blocks[FFT_TASK]);
     double avg0, avg1, avg2;
-    avg0 = (double)total_calc_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
-    avg1 = (double)total_calc_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
-    avg2 = (double)(total_calc_usec[0] + total_calc_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft-total run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_calc_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_calc_usec[1], avg1, total_fft_comp_by[2], total_calc_usec[2], avg2);
+    avg0 = (double)total_call_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_call_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_call_usec[0] + total_call_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft-call run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_call_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_call_usec[1], avg1, total_fft_comp_by[2], total_call_usec[2], avg2);
+    avg0 = (double)total_fft_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_usec[0] + total_fft_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft-total run time    %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_usec[1], avg1, total_fft_comp_by[2], total_fft_usec[2], avg2);
     avg0= (double)total_fft_br_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
     avg1 = (double)total_fft_br_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
     avg2 = (double)(total_fft_br_usec[0] + total_fft_br_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
@@ -2210,15 +2264,15 @@ void shutdown_scheduler()
     avg0 = (double)total_fft_cvtin_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
     avg1 = (double)total_fft_cvtin_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
     avg2 = (double)(total_fft_cvtin_usec[0] + total_fft_cvtin_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft_cvtin run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_cvtin_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_cvtin_usec[1], avg1, total_fft_comp_by[2], total_fft_cvtin_usec[2], avg2);
-    avg0 = (double)total_fft_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
-    avg1 = (double)total_fft_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
-    avg2 = (double)(total_fft_usec[0] + total_fft_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft-comp run time    %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_usec[1], avg1, total_fft_comp_by[2], total_fft_usec[2], avg2);
+    printf("     fft-cvtin run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_cvtin_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_cvtin_usec[1], avg1, total_fft_comp_by[2], total_fft_cvtin_usec[2], avg2);
+    avg0 = (double)total_fft_comp_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
+    avg1 = (double)total_fft_comp_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
+    avg2 = (double)(total_fft_comp_usec[0] + total_fft_comp_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
+    printf("     fft-comp run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_comp_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_comp_usec[1], avg1, total_fft_comp_by[2], total_fft_comp_usec[2], avg2);
     avg0 = (double)total_fft_cvtout_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
     avg1 = (double)total_fft_cvtout_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
     avg2 = (double)(total_fft_cvtout_usec[0] + total_fft_cvtout_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
-    printf("     fft_cvtout run time  %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_cvtout_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_cvtout_usec[1], avg1, total_fft_comp_by[2], total_fft_cvtout_usec[2], avg2);
+    printf("     fft-cvtout run time  %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_fft_cvtout_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_fft_cvtout_usec[1], avg1, total_fft_comp_by[2], total_fft_cvtout_usec[2], avg2);
     avg0 = (double)total_cdfmcw_usec[0] / (double) freed_metadata_blocks[FFT_TASK];
     avg1 = (double)total_cdfmcw_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
     avg2 = (double)(total_cdfmcw_usec[0] + total_cdfmcw_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
@@ -2259,7 +2313,7 @@ void shutdown_scheduler()
     printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);
     // The CV/CNN Task Timing Info
     unsigned total_cv_comp_by[3] = {0, 0, 0};
-    uint64_t total_call_usec[3] = {0, 0, 0};
+    //uint64_t total_call_usec[3] = {0, 0, 0}; // re-use the FFT one by same name...
     uint64_t total_parse_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {

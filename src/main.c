@@ -47,16 +47,18 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 // FFT has 2 profiles depending on input size (1k or 16k samples)
 //                                              CPU     FFT     SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE
 uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
-//    CPU     FFT       SM-FFT       VIT      SM_VIT      CV         SM_CV      NONE
-  {2295100, 179800,  179800*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {3446300, 180500,  180500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+//   CPU     FFT    SM-FFT       VIT      SM_VIT      CV         SM_CV      NONE
+  { 16000,  6000,  6000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  {540000, 12000, 12000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+  //{2295100, 179800,  179800*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  //{3446300, 180500,  180500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT      SM-FFT     VIT      SM_VIT       CV        SM_CV      NONE
-  { 113400,  ACINFPROF, ACINFPROF,   5950,   5950*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1511400,  ACINFPROF, ACINFPROF,  67000,  67000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {2070200,  ACINFPROF, ACINFPROF, 135500, 135500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4341600,  ACINFPROF, ACINFPROF, 191000, 191000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+//    CPU        FFT      SM-FFT     VIT     SM_VIT       CV        SM_CV      NONE
+  { 115000,  ACINFPROF, ACINFPROF,   5950,   5950*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1510000,  ACINFPROF, ACINFPROF,  67000,  67000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {2070000,  ACINFPROF, ACINFPROF, 135000, 135000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4340000,  ACINFPROF, ACINFPROF, 191000, 191000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
 
 uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
 //    CPU      FFT       SM-FFT       VIT        SM_VIT     CV        SM_CV       NONE
@@ -119,6 +121,16 @@ void print_usage(char * pname) {
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
   TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  free_task_metadata_block(mb);
+  // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
+}
+
+void radar_release_metadata_block(task_metadata_block_t* mb)
+{
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  // Call this so we get final stats (call-time)
+  distance_t distance = finish_execution_of_rad_kernel(mb);
+
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }

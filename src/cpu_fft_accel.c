@@ -11,17 +11,6 @@
 
 #include "calc_fmcw_dist.h"
 
-#ifdef INT_TIME
-extern struct timeval calc_start, calc_stop;
-extern uint64_t calc_sec;
-extern uint64_t calc_usec;
-
-extern struct timeval fft_stop, fft_start;
-extern uint64_t fft_sec;
-extern uint64_t fft_usec;
-
-#endif
-
 // Putting this into a pthreads invocation mode...
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
@@ -30,10 +19,6 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   int32_t fft_log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
   task_metadata_block->fft_timings.comp_by[tidx]++;
-
-#ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.calc_start), NULL);
- #endif
 
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
@@ -47,8 +32,6 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&stop_time, NULL);
   task_metadata_block->fft_timings.fft_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->fft_timings.fft_start.tv_sec;
   task_metadata_block->fft_timings.fft_usec[tidx] += stop_time.tv_usec - task_metadata_block->fft_timings.fft_start.tv_usec;
-  task_metadata_block->fft_timings.calc_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->fft_timings.calc_start.tv_sec;
-  task_metadata_block->fft_timings.calc_usec[tidx] += stop_time.tv_usec - task_metadata_block->fft_timings.calc_start.tv_usec;
  #endif
 
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
