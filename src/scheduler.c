@@ -141,6 +141,8 @@ int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 struct timeval last_accel_use_update_time;
 uint64_t in_use_accel_times_array[MAX_ACCEL_OF_EACH_TYPE+1][MAX_NUM_FFT_ACCEL+1][MAX_NUM_SM_FFT_ACCEL+1][MAX_NUM_VIT_ACCEL+1][MAX_NUM_SM_VIT_ACCEL+1][MAX_NUM_CV_ACCEL+1][MAX_NUM_SM_CV_ACCEL+1];
 
+uint64_t scheduler_decision_time_usec = 0;
+uint32_t scheduler_decisions = 0;
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
 
@@ -1409,6 +1411,10 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
     cleanup_and_exit(-19);
   }
   DEBUG(printf("THE-SCHED: In fastest_to_slowest_first_available policy for MB%u\n", task_metadata_block->block_id));
+ #ifdef INT_TIME
+  struct timeval current_time;
+  gettimeofday(&current_time, NULL);
+ #endif
   int proposed_accel = no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
@@ -1522,6 +1528,13 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
     cleanup_and_exit(-15);
   }
+
+ #ifdef INT_TIME
+  struct timeval decis_time;
+  gettimeofday(&decis_time, NULL);
+  scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  scheduler_decisions++;
+ #endif
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
@@ -1623,15 +1636,15 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
     cleanup_and_exit(-15);
   }
 
-	    DEBUG(printf("SCHED_FFF:  There are %u  proposed accel types:\n", num_proposed_accel_types);
-  for (int pi = 0; pi < num_proposed_accel_types; pi++) {
+  DEBUG(printf("SCHED_FFF:  There are %u  proposed accel types:\n", num_proposed_accel_types);
+	  for (int pi = 0; pi < num_proposed_accel_types; pi++) {
 	  printf("SCHED_FFF:       prop_acc[%u] = %u = %s\n", pi, proposed_accel[pi], accel_type_str[proposed_accel[pi]]);
   });
 
   // Now that we know the set of proposed accelerators,
   //  scan through to find which one will produce the earliest estimated finish time
   for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-	    DEBUG(printf("SCHED_FFF:   Working on Proposed Accel Type %u  %s (there are %u)\n", pi, accel_type_str[proposed_accel[pi]], num_accelerators_of_type[proposed_accel[pi]]));
+     DEBUG(printf("SCHED_FFF:   Working on Proposed Accel Type %u  %s (there are %u)\n", pi, accel_type_str[proposed_accel[pi]], num_accelerators_of_type[proposed_accel[pi]]));
     for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
       int bi = accelerator_in_use_by[proposed_accel[pi]][i];
       DEBUG(printf("SCHED_FFF:      Have Accel Type %u Number %u In-Use-By %d\n", pi, i, bi));
@@ -1661,11 +1674,17 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
     } // for (i = spin through proposed accelerators)
   } // for (pi goes through proposed_accelerator_types)
   
+ #ifdef INT_TIME
+  struct timeval decis_time;
+  gettimeofday(&decis_time, NULL);
+  scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  scheduler_decisions++;
+ #endif
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   // this metablock to best accelerator, until it is free and task is allocated
   while (accel_id < 0) {
-	    printf("SCHED_FFF: Busy accel type: %d id: accel_id: %d\n", accel_type, best_accel_id);
+    DEBUG(printf("SCHED_FFF: Busy accel type: %d id: accel_id: %d\n", accel_type, best_accel_id));
     if (accelerator_in_use_by[accel_type][best_accel_id] == -1) {  
       // Not in use -- available
       accel_id = best_accel_id;
@@ -1755,7 +1774,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	  cleanup_and_exit(-15);
 	}
 
-		DEBUG(printf("SCHED-FFFQ:  Got a total of %u proposed accel types\n", num_proposed_accel_types));
+	DEBUG(printf("SCHED-FFFQ:  Got a total of %u proposed accel types\n", num_proposed_accel_types));
 
 	// Now that we know the set of proposed accelerators,
 	//  scan through to find which one will produce the earliest estimated finish time
@@ -1805,16 +1824,22 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	    //printf("THE-SCHED: For accel %u %u : bi = %u : finish_time = %lu\n", pi, i, bi, finish_time);
 	  } // for (i = spin through proposed accelerators)
 	} // for (pi goes through proposed_accelerator_types)
-      
+
 	// Assign tasks to the least finish time accelerator
 	task_metadata_block->accelerator_type = accel_type;
 	task_metadata_block->accelerator_id = best_accel_id;
-      }
 
+       #ifdef INT_TIME
+        struct timeval decis_time;
+        gettimeofday(&decis_time, NULL);
+	scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+        scheduler_decisions++;
+       #endif
+      }
       // Check if best accelerator is available
       if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {  
 	// Task is schedulable on the best accelerator
-		DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
+	DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
 	return selected_task_entry;
       }
 
@@ -2106,8 +2131,11 @@ void cleanup_state() {
 
 void shutdown_scheduler()
 {
+
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
+  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %u decisions\n", scheduler_decision_time_usec, scheduler_decisions);
+
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", task_job_str[ti], allocated_metadata_blocks[ti], freed_metadata_blocks[ti]);
