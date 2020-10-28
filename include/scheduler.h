@@ -26,43 +26,52 @@
 
 #include "base_types.h"
 
+// Some Profiling Data:
+#define LgFFT0  6000
+#define LgFFT1 12000
+
+#define LgVIT0   5950
+#define LgVIT1  67000
+#define LgVIT2 135000
+#define LgVIT3 191000
+
+#define LgCV   150000
+
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 
 #define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 
-typedef enum { 
-  NO_TASK_JOB = 0,
-  FFT_TASK,
-  VITERBI_TASK,
-  CV_TASK,
-  NUM_JOB_TYPES } scheduler_jobs_t;
+typedef enum { NO_TASK_JOB = 0,
+	       FFT_TASK,
+	       VITERBI_TASK,
+	       CV_TASK,
+	       NUM_JOB_TYPES } scheduler_jobs_t;
 
-typedef enum { 
-  NO_TASK   = 0,
-  BASE_TASK = 1,
-  ELEVATED_TASK = 2,
-  CRITICAL_TASK = 3,
-  NUM_TASK_CRIT_LEVELS} task_criticality_t;
+typedef enum { NO_TASK   = 0,
+	       BASE_TASK = 1,
+	       ELEVATED_TASK = 2,
+	       CRITICAL_TASK = 3,
+	       NUM_TASK_CRIT_LEVELS} task_criticality_t;
 
 
 typedef enum { TASK_FREE = 0,
-  TASK_ALLOCATED,
-  TASK_QUEUED,
-  TASK_RUNNING,
-  TASK_DONE,
-  NUM_TASK_STATUS} task_status_t;
+	       TASK_ALLOCATED,
+	       TASK_QUEUED,
+	       TASK_RUNNING,
+	       TASK_DONE,
+	       NUM_TASK_STATUS} task_status_t;
 
 typedef enum { cpu_accel_t = 0,
-  fft_hwr_accel_t,
-  sm_fft_hwr_accel_t,
-  vit_hwr_accel_t,
-  sm_vit_hwr_accel_t,
-  cv_hwr_accel_t,
-  sm_cv_hwr_accel_t,
-  no_accelerator_t,
-  NUM_ACCEL_TYPES} accelerator_type_t;
+	       fft_hwr_accel_t,
+	       sm_fft_hwr_accel_t,
+	       vit_hwr_accel_t,
+	       sm_vit_hwr_accel_t,
+	       cv_hwr_accel_t,
+	       sm_cv_hwr_accel_t,
+	       no_accelerator_t,
+	       NUM_ACCEL_TYPES} accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
   FAST_TO_SLOW_FIRST_AVAIL_POLICY,
@@ -180,6 +189,7 @@ typedef struct task_metadata_entry_struct {
   task_criticality_t crit_level;  // [0 .. ?] ?
 
   uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
+  uint64_t base_profile[NUM_ACCEL_TYPES];  //Timing profile base for task (in usec) -- used for simulating smaller/slower accelerators
   
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
@@ -219,7 +229,7 @@ extern unsigned int scheduler_holdoff_usec;
 
 extern status_t initialize_scheduler();
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile, uint64_t * task_base_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
@@ -231,6 +241,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block);
 extern void print_base_metadata_block_contents(task_metadata_block_t* mb);
 extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
 extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
+extern void dump_all_metadata_blocks_states();
 
 extern void shutdown_scheduler();
 

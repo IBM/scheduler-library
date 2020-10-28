@@ -28,9 +28,16 @@ endif
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
 
+# This sets the maximum number of any Acceleartor type in this build
+#  This should be equal to the largest number of any of FFT, SM_FFT, etc.
+#  But it could be a larger value as well
+ifdef CONFIG_MAX_ACCEL_ANY_TYPE
+CFLAGS += -DMAX_ACCEL_OF_EACH_TYPE=$(CONFIG_MAX_ACCEL_ANY_TYPE)
+endif
+
 # This selects the number of each Acceleartor type:
 # MAX for the CPU is up to you -- that is "spawned CPU threads"
-# MAX for others is determined by the hardware run on (So far ~3 each)
+# MAX for others is determined by the hardware run on
 ifdef CONFIG_NUM_CPU
 CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
 endif
@@ -43,11 +50,7 @@ endif
 ifdef CONFIG_NUM_CV
 CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
-# This selects the number of each "Small" Acceleartor
-# First, the "speed" factor
-ifdef CONFIG_SM_ACCEL_X
-CFLAGS += -DSMFx=$(CONFIG_SM_ACCEL_X)
-endif
+# This sets the number of "Small" accelerators
 #  Currently, these are the same physical accelerators but executed more slowly
 #  As such, the max for the two combined is the hardware implemented Accelerators, e.g.
 #  NUM_FFT_ACCEL plus NUM_SM_FFT_ACCEL <= Actual_HWR_FFT_Accel
@@ -59,6 +62,29 @@ CFLAGS += -DNUM_SM_FFT_ACCEL=$(CONFIG_NUM_SM_FFT)
 endif
 ifdef CONFIG_NUM_SM_CV
 CFLAGS += -DNUM_SM_CV_ACCEL=$(CONFIG_NUM_SM_CV)
+endif
+
+# These set the "speed" factor of the accelerators
+#  This is a "slow-down multiplier" factor, e.g. 2 => 2x as long to finish
+# First the "Large" Accelerators
+ifdef CONFIG_LG_FFT_X
+CFLAGS += -DLgFFTx=$(CONFIG_LG_FFT_X)
+endif
+ifdef CONFIG_LG_VIT_X
+CFLAGS += -DLgVITx=$(CONFIG_LG_VIT_X)
+endif
+ifdef CONFIG_LG_CV_X
+CFLAGS += -DLgCVx=$(CONFIG_LG_CV_X)
+endif
+# Then the "Small" Accelerators
+ifdef CONFIG_SM_FFT_X
+CFLAGS += -DSmFFTx=$(CONFIG_SM_FFT_X)
+endif
+ifdef CONFIG_SM_VIT_X
+CFLAGS += -DSmVITx=$(CONFIG_SM_VIT_X)
+endif
+ifdef CONFIG_SM_CV_X
+CFLAGS += -DSmCVx=$(CONFIG_SM_CV_X)
 endif
 
  

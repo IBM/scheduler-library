@@ -32,6 +32,7 @@ int last_i = 0;
 int in_tok = 0;
 int in_lane = 0;
 
+extern unsigned time_step;
 
 status_t init_trace_reader(char* trace_filename)
 {
@@ -125,10 +126,10 @@ bool_t read_next_trace_record(vehicle_state_t vs)
   DEBUG(printf("IN_LINE : %s\n", in_line_buf));
   if (output_viz_trace) {
     if (!vs.active) {
-      printf("  VizTrace: %d,%s\n", -vs.lane, in_line_buf);
+      printf("%4u  VizTrace: %d,%s\n", time_step, -vs.lane, in_line_buf);
     } else {
-      printf("  VizTrace: %d,%s\n", vs.lane, in_line_buf);
-    }      
+      printf("%4u  VizTrace: %d,%s\n", time_step, vs.lane, in_line_buf);
+    }
   }
 
   last_i = 0;

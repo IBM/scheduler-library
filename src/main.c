@@ -30,6 +30,7 @@
 
 #define TIME
 
+#define get_mb_holdoff 10  // usec
 
 char h264_dict[256]; 
 char cv_dict[256]; 
@@ -39,30 +40,55 @@ char vit_dict[256];
 bool_t bypass_h264_functions = false; // This is a global-disable of executing H264 execution functions...
 
 //TODO: profile all possible fft and decoder sizes
-// Numbers taken from runs on Xilinx VCU118 FPGA @ 78MHz -- value in usecs (1.0+13 = "Infinite time")
+// Numbers taken from runs on Xilinx VCU118 FPGA @ 78MHz -- value in usecs
 // CPU, FFT, SM-FFT, VIT, SM-VIT, CV, SM-CV, N/A
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
-//#define SMFx  2
+
+
+// These are now defined in terms of measurements (recorded in macro definitions, in scheduler.h)
+// There is a paralle definition of "base_profile" below, used to simulate smaller, slower accelerators too.
 
 // FFT has 2 profiles depending on input size (1k or 16k samples)
-//                                              CPU     FFT     SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE
+//   CPU     LG-FFT    SM-FFT    VIT       SM_VIT      CV         SM_CV      NONE
 uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
-//   CPU     FFT    SM-FFT       VIT      SM_VIT      CV         SM_CV      NONE
-  { 16000,  6000,  6000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {540000, 12000, 12000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
-  //{2295100, 179800,  179800*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  //{3446300, 180500,  180500*SMFx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+//   CPU      LG-FFT        SM-FFT      LG-VIT     SM-VIT     LG-CV      SM-CV      NONE
+  { 23000, LgFFT0*LgFFTx, LgFFT0*SmFFTx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  {540000, LgFFT1*LgFFTx, LgFFT1*SmFFTx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+
+
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT      SM-FFT     VIT     SM_VIT       CV        SM_CV      NONE
-  { 115000,  ACINFPROF, ACINFPROF,   5950,   5950*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1510000,  ACINFPROF, ACINFPROF,  67000,  67000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {2070000,  ACINFPROF, ACINFPROF, 135000, 135000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4340000,  ACINFPROF, ACINFPROF, 191000, 191000*SMFx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+//    CPU        FFT      SM-FFT         VIT          SM-VIT       CV         SM-CV      NONE
+  { 170000,  ACINFPROF, ACINFPROF, LgVIT0*LgVITx, LgVIT0*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1700000,  ACINFPROF, ACINFPROF, LgVIT1*LgVITx, LgVIT1*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {3400000,  ACINFPROF, ACINFPROF, LgVIT2*LgVITx, LgVIT2*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4800000,  ACINFPROF, ACINFPROF, LgVIT3*LgVITx, LgVIT3*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
 
 uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
-//    CPU      FFT       SM-FFT       VIT        SM_VIT     CV        SM_CV       NONE
-  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, 150000,  150000*SMFx, ACINFPROF};
+//    CPU      FFT       SM-FFT       VIT        SM-VIT       CV          SM-CV       NONE
+  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, LgCV*LgCVx,  LgCV*SmCVx, ACINFPROF};
+
+// These are the "baseline" (full-speed) timing measure/profile
+// These are used in the modeling of "Small" versions (generalized to 2 kinds of versions)
+uint64_t fft_base_profile[2][NUM_ACCEL_TYPES] = {
+//   CPU   BaseFFT BaseFFT   LG-VIT     SM-VIT     LG-CV      SM-CV      NONE
+  { 23000, LgFFT0, LgFFT0, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  {540000, LgFFT1, LgFFT1, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+
+
+// Viterbi has 4 profiles, depending on input size
+uint64_t vit_base_profile[4][NUM_ACCEL_TYPES] = {
+//    CPU        FFT      SM-FFT   BaseVIT BaseVIT    CV        SM-CV      NONE
+  { 170000,  ACINFPROF, ACINFPROF, LgVIT0, LgVIT0, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1700000,  ACINFPROF, ACINFPROF, LgVIT1, LgVIT1, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {3400000,  ACINFPROF, ACINFPROF, LgVIT2, LgVIT2, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4800000,  ACINFPROF, ACINFPROF, LgVIT3, LgVIT3, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+
+uint64_t cv_base_profile[NUM_ACCEL_TYPES]  = {
+//    CPU      FFT       SM-FFT       VIT        SM-VIT   BaseCV  BaseCV       NONE
+  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, LgCV,   LgCV, ACINFPROF};
+
+
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
@@ -278,8 +304,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u FFT %u SM-FFT %u VIT %u SM-VIT %u CV %u SM-CV at SMF %u and hold-off %u\n",
-	 global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL, NUM_CV_ACCEL, NUM_SM_CV_ACCEL, SMFx, scheduler_holdoff_usec);
+  printf("Run using Scheduler Policy %u with FFT %u at %u sFFT %u at %u VIT %u at %u sVIT %u at %u CV %u at %u sCV %u at %u and hold-off %u\n",
+	global_scheduler_selection_policy, NUM_FFT_ACCEL, LgFFTx, NUM_SM_FFT_ACCEL, SmFFTx, NUM_VIT_ACCEL, LgVITx, NUM_SM_VIT_ACCEL, SmVITx, NUM_CV_ACCEL, LgCVx, NUM_SM_CV_ACCEL, SmCVx, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
  #else 
@@ -479,6 +505,16 @@ int main(int argc, char *argv[])
   uint64_t exec_cv_usec  = 0LL;
   uint64_t exec_h264_usec  = 0LL;
 
+  uint64_t exec_get_rad_sec = 0LL;
+  uint64_t exec_get_vit_sec = 0LL;
+  uint64_t exec_get_cv_sec  = 0LL;
+  uint64_t exec_get_h264_sec  = 0LL;
+
+  uint64_t exec_get_rad_usec = 0LL;
+  uint64_t exec_get_vit_usec = 0LL;
+  uint64_t exec_get_cv_usec  = 0LL;
+  uint64_t exec_get_h264_usec  = 0LL;
+
   struct timeval stop_exec_pandc , start_exec_pandc;
   uint64_t exec_pandc_sec  = 0LL;
   uint64_t exec_pandc_usec  = 0LL;
@@ -593,19 +629,44 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an CV_TASK at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile);
+      do {
+        cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile, cv_base_profile);
+	usleep(get_mb_holdoff);
+      } while (cv_mb_ptr == NULL);
+     #ifdef TIME
+      struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_cv_sec  += got_time.tv_sec  - start_exec_cv.tv_sec;
+      exec_get_cv_usec += got_time.tv_usec - start_exec_cv.tv_usec;
+     #endif
       if (cv_mb_ptr == NULL) {
         // We ran out of metadata blocks -- PANIC!
         printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
+	dump_all_metadata_blocks_states();
         exit (-4);
       }
       cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
       start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
     }
     for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
-      task_metadata_block_t* cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
+     #ifdef TIME
+      struct timeval get_time;
+      gettimeofday(&get_time, NULL);
+     #endif
+      task_metadata_block_t* cv_mb_ptr_2 = NULL;
+      do {
+        cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile, cv_base_profile);
+	usleep(get_mb_holdoff);
+      } while (cv_mb_ptr_2 == NULL);
+     #ifdef TIME
+      struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_cv_sec  += got_time.tv_sec  - get_time.tv_sec;
+      exec_get_cv_usec += got_time.tv_usec - get_time.tv_usec;
+     #endif
       if (cv_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
+	dump_all_metadata_blocks_states();
 	exit (-5);
       }
       cv_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -618,11 +679,22 @@ int main(int argc, char *argv[])
     gettimeofday(&start_exec_rad, NULL);
    #endif
     // Request a MetadataBlock (for an FFT_TASK at Critical Level)
-    task_metadata_block_t* fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+      task_metadata_block_t* fft_mb_ptr = NULL;
+      do {
+        fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set], fft_base_profile[crit_fft_samples_set]);
+	usleep(get_mb_holdoff);
+      } while (fft_mb_ptr == NULL);
+     #ifdef TIME
+      struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_rad_sec  += got_time.tv_sec  - start_exec_rad.tv_sec;
+      exec_get_rad_usec += got_time.tv_usec - start_exec_rad.tv_usec;
+     #endif
     //printf("FFT Crit Profile: %e %e %e %e %e\n", fft_profile[crit_fft_samples_set][0], fft_profile[crit_fft_samples_set][1], fft_profile[crit_fft_samples_set][2], fft_profile[crit_fft_samples_set][3], fft_profile[crit_fft_samples_set][4]);
     if (fft_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
+      dump_all_metadata_blocks_states();
       exit (-4);
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
@@ -637,9 +709,24 @@ int main(int argc, char *argv[])
       }
       int base_fft_samples_set = rdentry_p2->set;
       //printf("FFT Base Profile: %e %e %e %e %e\n", fft_profile[base_fft_samples_set][0], fft_profile[base_fft_samples_set][1], fft_profile[base_fft_samples_set][2], fft_profile[base_fft_samples_set][3], fft_profile[base_fft_samples_set][4]);
-      task_metadata_block_t* fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set]);
+     #ifdef TIME
+      struct timeval get_time;
+      gettimeofday(&get_time, NULL);
+     #endif
+      task_metadata_block_t* fft_mb_ptr_2 = NULL;
+      do {
+	fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set], fft_base_profile[base_fft_samples_set]);
+	usleep(get_mb_holdoff);
+      } while (fft_mb_ptr_2 == NULL);
+     #ifdef TIME
+      //struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_rad_sec  += got_time.tv_sec  - get_time.tv_sec;
+      exec_get_rad_usec += got_time.tv_usec - get_time.tv_usec;
+     #endif
       if (fft_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
+	dump_all_metadata_blocks_states();
 	exit (-5);
       }
       fft_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -653,10 +740,21 @@ int main(int argc, char *argv[])
    #endif
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock (for an VITERBI_TASK at Critical Level)
-    task_metadata_block_t* vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size]);
+    task_metadata_block_t* vit_mb_ptr = NULL;
+    do {
+      vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size], vit_base_profile[vit_msgs_size]);
+      usleep(get_mb_holdoff);
+    } while (vit_mb_ptr == NULL);
+     #ifdef TIME
+      //struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
+      exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
+     #endif
     if (vit_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
+	dump_all_metadata_blocks_states();
       exit (-4);
     }
     vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
@@ -680,9 +778,24 @@ int main(int argc, char *argv[])
 	vdentry2_p = select_random_vit_input();
 	base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
       }
-      task_metadata_block_t* vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size]);
+     #ifdef TIME
+      struct timeval get_time;
+      gettimeofday(&get_time, NULL);
+     #endif
+      task_metadata_block_t* vit_mb_ptr_2 = NULL;
+      do {
+        vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size], vit_base_profile[base_msg_size]);
+	usleep(get_mb_holdoff);
+      } while (vit_mb_ptr_2 == NULL);
+     #ifdef TIME
+      struct timeval got_time;
+      gettimeofday(&got_time, NULL);
+      exec_get_vit_sec  += got_time.tv_sec  - get_time.tv_sec;
+      exec_get_vit_usec += got_time.tv_usec - get_time.tv_usec;
+     #endif
       if (vit_mb_ptr_2 == NULL) {
 	printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
+	dump_all_metadata_blocks_states();
 	exit (-5);
       }
       vit_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -785,6 +898,10 @@ int main(int argc, char *argv[])
     uint64_t exec_vit   = (uint64_t) (exec_vit_sec) * 1000000 + (uint64_t) (exec_vit_usec);
     uint64_t exec_cv    = (uint64_t) (exec_cv_sec)  * 1000000 + (uint64_t) (exec_cv_usec);
     //uint64_t exec_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
+    uint64_t exec_get_rad   = (uint64_t) (exec_get_rad_sec) * 1000000 + (uint64_t) (exec_get_rad_usec);
+    uint64_t exec_get_vit   = (uint64_t) (exec_get_vit_sec) * 1000000 + (uint64_t) (exec_get_vit_usec);
+    uint64_t exec_get_cv    = (uint64_t) (exec_get_cv_sec)  * 1000000 + (uint64_t) (exec_get_cv_usec);
+    //uint64_t exec_get_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
     uint64_t exec_pandc = (uint64_t) (exec_pandc_sec) * 1000000 + (uint64_t) (exec_pandc_usec);
     uint64_t wait_all_crit   = (uint64_t) (wait_all_crit_sec) * 1000000 + (uint64_t) (wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
@@ -795,6 +912,9 @@ int main(int argc, char *argv[])
     printf("  Crit execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("  Crit execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("  Crit execute_cv_kernel run time   %lu usec\n", exec_cv);
+    printf("    GET_MB execute_rad_kernel run time  %lu usec\n", exec_rad);
+    printf("    GET_MB execute_vit_kernel run time  %lu usec\n", exec_vit);
+    printf("    GET_MB execute_cv_kernel run time   %lu usec\n", exec_cv);
     //printf("  execute_h264_kernel run time      %lu usec\n", exec_h264);
     printf("  plan_and_control run time         %lu usec at %u factor\n", exec_pandc, pandc_repeat_factor);
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
