@@ -632,7 +632,7 @@ int main(int argc, char *argv[])
       do {
         cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile, cv_base_profile);
 	usleep(get_mb_holdoff);
-      } while (cv_mb_ptr == NULL);
+     } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -657,7 +657,7 @@ int main(int argc, char *argv[])
       do {
         cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile, cv_base_profile);
 	usleep(get_mb_holdoff);
-      } while (cv_mb_ptr_2 == NULL);
+} while (0); //(cv_mb_ptr_2 == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -683,7 +683,7 @@ int main(int argc, char *argv[])
       do {
         fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set], fft_base_profile[crit_fft_samples_set]);
 	usleep(get_mb_holdoff);
-      } while (fft_mb_ptr == NULL);
+      } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -717,7 +717,7 @@ int main(int argc, char *argv[])
       do {
 	fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set], fft_base_profile[base_fft_samples_set]);
 	usleep(get_mb_holdoff);
-      } while (fft_mb_ptr_2 == NULL);
+      } while (0); //(fft_mb_ptr_2 == NULL);
      #ifdef TIME
       //struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -744,13 +744,13 @@ int main(int argc, char *argv[])
     do {
       vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size], vit_base_profile[vit_msgs_size]);
       usleep(get_mb_holdoff);
-    } while (vit_mb_ptr == NULL);
-     #ifdef TIME
-      //struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
-      exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
-     #endif
+    } while (0); //(vit_mb_ptr == NULL);
+   #ifdef TIME
+    //struct timeval got_time;
+    gettimeofday(&got_time, NULL);
+    exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
+    exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
+   #endif
     if (vit_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
@@ -786,7 +786,7 @@ int main(int argc, char *argv[])
       do {
         vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size], vit_base_profile[base_msg_size]);
 	usleep(get_mb_holdoff);
-      } while (vit_mb_ptr_2 == NULL);
+      } while (0); // (vit_mb_ptr_2 == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
