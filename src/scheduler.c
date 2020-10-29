@@ -113,11 +113,8 @@ const char* task_status_str[NUM_TASK_STATUS] = {"TASK-FREE",
 
 const char* accel_type_str[NUM_ACCEL_TYPES] = { "CPU-ACCELERATOR",
 						"FFT-HWR-ACCEL",
-						"SMALL-FFT-HWR-ACCEL",
 						"VITERBI-HWR-ACCEL",
-						"SMALL-VITERBI-HWR-ACCEL",
 						"VISION-HWR-ACCEL",
-						"SMALL-VISION-HWR-ACCEL",
 						"NO-ACCELERATOR"};
 
 const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_Accelerator_Type_and_Wait_Available",
@@ -132,7 +129,7 @@ unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TY
 int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
 struct timeval last_accel_use_update_time;
-uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_SM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_SM_VIT_ACCEL+1][NUM_CV_ACCEL+1][NUM_SM_CV_ACCEL+1];
+uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
 
 uint64_t scheduler_decision_time_usec = 0;
 uint32_t scheduler_decisions = 0;
@@ -183,8 +180,8 @@ void account_accelerators_in_use_interval()
   //Now we have the array of curr-in-use
   struct timeval now;
   gettimeofday(&now, NULL);
-  // This is a 7-Dim by ACCEL type : [CPU][FFT][SM-FFT][VIT][SM-VIT][CV][SM-CV]
-  in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]][acc_in_use[4]][acc_in_use[5]][acc_in_use[6]] += 1000000*(now.tv_sec - last_accel_use_update_time.tv_sec) + (now.tv_usec - last_accel_use_update_time.tv_usec);
+  // This is a 4-Dim by ACCEL type : [CPU][FFT][VIT][CV]
+  in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]] += 1000000*(now.tv_sec - last_accel_use_update_time.tv_sec) + (now.tv_usec - last_accel_use_update_time.tv_usec);
   last_accel_use_update_time = now;
 }
 
@@ -264,7 +261,7 @@ void print_critical_task_list_ids() {
 //  Currently, we have to return, or else the scheduler task cannot make progress and free
 //  additional metablocks.... so we require the caller to do the "while" loop...
 
-task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile, uint64_t * task_base_profile)
+task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&free_metadata_mutex);
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", free_metadata_blocks));
@@ -294,7 +291,6 @@ task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_
   master_metadata_pool[bi].crit_level = crit_level;
   for (int i = 0; i < NUM_ACCEL_TYPES; ++i) {
     master_metadata_pool[bi].task_profile[i] = task_profile[i];
-    master_metadata_pool[bi].base_profile[i] = task_base_profile[i];
   }
   master_metadata_pool[bi].data_size = 0;
   master_metadata_pool[bi].accelerator_type = no_accelerator_t;
@@ -570,24 +566,12 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
     DEBUG(printf("Executing Task for MB%d on HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_fft_accelerator(task_metadata_block);
   } break;
-  case sm_fft_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on SMALL HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_fft_accelerator(task_metadata_block);
-  } break;
   case vit_hwr_accel_t: {
     DEBUG(printf("Executing Task for MB%d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_viterbi_accelerator(task_metadata_block);
   } break;
-  case sm_vit_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on SMALL HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_viterbi_accelerator(task_metadata_block);
-  } break;
   case cv_hwr_accel_t: {
     DEBUG(printf("Executing Task for MB%d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_cv_accelerator(task_metadata_block);
-  } break;
-  case sm_cv_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on SMALL HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
     execute_hwr_cv_accelerator(task_metadata_block);
   } break;
   default:
@@ -635,24 +619,12 @@ status_t initialize_scheduler()
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_FFT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_FFT_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_SM_FFT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_SM_FFT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_SM_FFT_ACCEL);
-    parms_error = 1;
-  }
   if (MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL) {
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_VIT_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_SM_VIT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_SM_VIT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_SM_VIT_ACCEL);
-    parms_error = 1;
-  }
   if (MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL) {
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_SM_CV_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_SM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_SM_CV_ACCEL);
     parms_error = 1;
   }
   if (parms_error > 0) {
@@ -770,11 +742,8 @@ status_t initialize_scheduler()
   // These are brought in at compile time via config parameters
   num_accelerators_of_type[cpu_accel_t]        = NUM_CPU_ACCEL;
   num_accelerators_of_type[fft_hwr_accel_t]    = NUM_FFT_ACCEL;
-  num_accelerators_of_type[sm_fft_hwr_accel_t] = NUM_SM_FFT_ACCEL;
   num_accelerators_of_type[vit_hwr_accel_t]    = NUM_VIT_ACCEL;
-  num_accelerators_of_type[sm_vit_hwr_accel_t] = NUM_SM_VIT_ACCEL;
   num_accelerators_of_type[cv_hwr_accel_t]     = NUM_CV_ACCEL;
-  num_accelerators_of_type[sm_cv_hwr_accel_t]  = NUM_SM_CV_ACCEL;
 
   for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
@@ -784,25 +753,19 @@ status_t initialize_scheduler()
 
   for (int i = 0; i < NUM_CPU_ACCEL+1; i++) {
     for (int j = 0; j < NUM_FFT_ACCEL+1; j++) {
-      for (int sj = 0; sj < NUM_SM_FFT_ACCEL+1; sj++) {
-	for (int k = 0; k < NUM_VIT_ACCEL+1; k++) {
-	  for (int sk = 0; sk < NUM_SM_VIT_ACCEL+1; sk++) {
-	    for (int l = 0; l < NUM_CV_ACCEL+1; l++) {
-	      for (int sl = 0; sl < NUM_SM_CV_ACCEL+1; sl++) {
-		in_use_accel_times_array[i][j][sj][k][sk][l][sl] = 0;
-	      }
-	    }
-	  }
+      for (int k = 0; k < NUM_VIT_ACCEL+1; k++) {
+        for (int l = 0; l < NUM_CV_ACCEL+1; l++) {
+	  in_use_accel_times_array[i][j][k][l] = 0;
 	}
       }
     }
   }
 #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
-  printf("Initializing the %u + %u = %u total FFT Accelerators...\n", NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL, (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL));
-  for (int fi = 0; fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL); fi++) {
+  printf("Initializing the %u total FFT Accelerators...\n", NUM_FFT_ACCEL);
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
     // Inititalize to the "largest legal" FFT size
-    printf("Calling init_fft_parameters for Accel %u (of %u) [%u] and LOGN %u\n", fi, (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL), fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL), MAX_RADAR_LOGN);
+    printf("Calling init_fft_parameters for Accel %u (of %u) and LOGN %u\n", fi, NUM_FFT_ACCEL, MAX_RADAR_LOGN);
     init_fft_parameters(fi, MAX_RADAR_LOGN);
 
     snprintf(fftAccelName[fi], 63, "/dev/fft.%u", fi);
@@ -843,7 +806,7 @@ status_t initialize_scheduler()
 
 #ifdef HW_VIT
   // This initializes the Viterbi Accelerator Pool
-  for (int vi = 0; vi < (NUM_VIT_ACCEL + NUM_SM_VIT_ACCEL); vi++) {
+  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
     DEBUG(printf("Init Viterbi parameters on acclerator %u\n", vi));
     init_vit_parameters(vi);
     snprintf(vitAccelName[vi], 63, "/dev/vitdodec.%u", vi);
@@ -992,17 +955,6 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #endif // INT_TIME
   DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
-
-  // Now, if this is a "Small" FFT accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  //if (task_metadata_block->accelerator_type == sm_fft_hwr_accel_t) {
-  int delay = task_metadata_block->task_profile[task_metadata_block->accelerator_type] - task_metadata_block->base_profile[task_metadata_block->accelerator_type];
-  DEBUG(printf("EHFA:   MB%u Adding delay %lu - %lu = %lu usec\n", task_metadata_block->block_id, task_metadata_block->task_profile[sm_fft_hwr_accel_t], task_metadata_block->task_profile[fft_hwr_accel_t], delay));
-  if (delay > 0) {
-      usleep(delay);
-  }
-  //}
-
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
@@ -1094,29 +1046,17 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
     out_Data[ti] = 0;
   }
 
-#ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->vit_timings.dodec_start), NULL);
-#endif
+ #endif
   DEBUG(printf("EHVA:   calling do_decoding_hw for HW_VIT[%u]\n", vn));
   do_decoding_hw(&(vitHW_fd[vn]), &(vitHW_desc[vn]));
-
-  // Now, if this is a "Small" VIT accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  /* if (task_metadata_block->accelerator_type == sm_vit_hwr_accel_t) { */
-  /*   int delay = task_metadata_block->task_profile[sm_vit_hwr_accel_t] - task_metadata_block->task_profile[vit_hwr_accel_t]; */
-  int delay = task_metadata_block->task_profile[task_metadata_block->accelerator_type] - task_metadata_block->base_profile[task_metadata_block->accelerator_type];
-  DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_vit_hwr_accel_t], task_metadata_block->task_profile[vit_hwr_accel_t], delay));
-  if (delay > 0) {
-	  usleep(delay);
-  }
-//  }
-
-#ifdef INT_TIME
+ #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
   task_metadata_block->vit_timings.dodec_sec[tidx]  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
   task_metadata_block->vit_timings.dodec_usec[tidx] += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
-#endif
+ #endif
   // Copy output data from HWR memory to Metadata Block Memory.
   DEBUG(printf("EHVA:   copying out the HW_VIT result data\n"));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
@@ -1175,17 +1115,6 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   if (sret == -1) {
     printf(" The system call returned -1 -- an error occured?\n");
   }
-  
-  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  /* if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) { */
-  /*   int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t]; */
-  int delay = task_metadata_block->task_profile[task_metadata_block->accelerator_type] - task_metadata_block->base_profile[task_metadata_block->accelerator_type];
-  DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
-  if (delay > 0) {
-	  usleep(delay);
-  }
-  //  }
  #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
   task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
@@ -1208,18 +1137,8 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
   #endif
-
+  // This usleep call stands in as the "Fake" CNN accelerator
   usleep(cv_fake_hwr_run_time_in_usec);
-  // Now, if this is a "Small" CV accelerator, we need to add the additional computation delay...
-  //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
-  if (task_metadata_block->accelerator_type == sm_cv_hwr_accel_t) {
-    int delay = task_metadata_block->task_profile[sm_cv_hwr_accel_t] - task_metadata_block->task_profile[cv_hwr_accel_t];
-    DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[sm_cv_hwr_accel_t], task_metadata_block->task_profile[cv_hwr_accel_t], delay));
-    if (delay > 0) {
-      usleep(delay);
-    }
-  }
-  
   #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
@@ -1321,14 +1240,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
     int num = (rand() % (100)); // Return a value from [0,99]
     if (num >= FFT_HW_THRESHOLD) {
       // Execute on hardware
-	    if (NUM_FFT_ACCEL > 0) {
       proposed_accel = fft_hwr_accel_t;
-	    } else if (NUM_SM_FFT_ACCEL > 0) {
-      proposed_accel = sm_fft_hwr_accel_t;
-	    } else {
-      printf("Cannot allocate FFT_TASK to non-existent HWR FFT ACCEL\n");
-      cleanup_and_exit(-9);
-	    }
     } else {
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
@@ -1339,14 +1251,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
     int num = (rand() % (100)); // Return a value from [0,99]
     if (num >= VITERBI_HW_THRESHOLD) {
       // Execute on hardware
-      if (NUM_VIT_ACCEL > 0) {
-		    proposed_accel = vit_hwr_accel_t;
-	    } else if (NUM_SM_VIT_ACCEL > 0) {
-      proposed_accel = sm_vit_hwr_accel_t;
-	    } else {
-      printf("Cannot allocate VIT_TASK to non-existent HWR VIT ACCEL\n");
-      cleanup_and_exit(-9);
-	    }
+      proposed_accel = vit_hwr_accel_t;
     } else {
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
@@ -1357,26 +1262,12 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
     DEBUG(printf("THE-SCHED: MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_job_str[task_metadata_block->job_type], CV_HW_THRESHOLD));
 #ifdef HW_ONLY_CV
       // Execute on hardware
-    if (NUM_CV_ACCEL > 0) {
-      proposed_accel = cv_hwr_accel_t;
-    } else if (NUM_SM_CV_ACCEL > 0) {
-      proposed_accel = sm_cv_hwr_accel_t;
-    } else {
-      printf("Cannot allocate CV_TASK to non-existent HWR CV ACCEL\n");
-      cleanup_and_exit(-9);
-    }
+    proposed_accel = cv_hwr_accel_t;
 #else
     int num = (rand() % (100)); // Return a value from [0,99]
     if (num >= CV_HW_THRESHOLD) {
       // Execute on hardware
-	    if (NUM_CV_ACCEL > 0) {
       proposed_accel = cv_hwr_accel_t;
-	    } else if (NUM_SM_CV_ACCEL > 0) {
-      proposed_accel = sm_cv_hwr_accel_t;
-	    } else {
-      printf("Cannot allocate CV_TASK to non-existent HWR CV ACCEL\n");
-      cleanup_and_exit(-9);
-	    }
     } else {
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
@@ -1436,19 +1327,11 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
   int accel_id       = -1;
   switch(task_metadata_block->job_type) {
   case FFT_TASK: {
-    // Scheduler should now run this either on CPU or FFT or SM-FFT:
+    // Scheduler should now run this either on CPU or FFT
     do {
       int i = 0;
 #ifdef HW_FFT
       proposed_accel = fft_hwr_accel_t;
-      while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-        if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-          accel_type = proposed_accel;
-          accel_id = i;
-        }
-        i++;
-      } // while (loop through HWR FFT accelerators)
-      proposed_accel = sm_fft_hwr_accel_t;
       while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
         if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
           accel_type = proposed_accel;
@@ -1482,14 +1365,6 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
         }
         i++;
       } // while (loop through HWR VITERBI accelerators)
-      proposed_accel = sm_vit_hwr_accel_t;
-      while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-        if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-          accel_type = proposed_accel;
-          accel_id = i;
-        }
-        i++;
-      } // while (loop through HWR VITERBI accelerators)
 #endif
       if (accel_id < 0) { // Didn't find one
         i = 0;
@@ -1509,14 +1384,6 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
       int i = 0;
 #if (defined(HW_CV) || defined(FAKE_HW_CV))
       proposed_accel = cv_hwr_accel_t;
-      while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-        if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-          accel_type = proposed_accel;
-          accel_id = i;
-        }
-        i++;
-      } // while (loop through HWR CV accelerators)
-      proposed_accel = sm_cv_hwr_accel_t;
       while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
         if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
           accel_type = proposed_accel;
@@ -1605,30 +1472,22 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
   switch(task_metadata_block->job_type) {
   case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
     proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
-    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT and %u SM-FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL));
+    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], NUM_FFT_ACCEL));
 //#ifdef HW_FFT
-    DEBUG(printf("SCHED_FFF:     Have HW_FFT : NUM_FFT_ACCEL = %u and NUM_SM_FFT_ACCEL = %u\n", NUM_FFT_ACCEL, NUM_SM_FFT_ACCEL));
+    DEBUG(printf("SCHED_FFF:     Have HW_FFT : NUM_FFT_ACCEL = %u\n", NUM_FFT_ACCEL));
     if (NUM_FFT_ACCEL > 0) {
 	  proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
-	  DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
-    }
-    if (NUM_SM_FFT_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = sm_fft_hwr_accel_t;
 	  DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
     }
 //#endif
   } break;
   case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
     proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
-    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT and %u SM-VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL));
+    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], NUM_VIT_ACCEL));
 #ifdef HW_VIT
-    DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u and NUM_SM_VIT_ACCEL = %u\n", NUM_VIT_ACCEL, NUM_SM_VIT_ACCEL));
+    DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u\n", NUM_VIT_ACCEL));
     if (NUM_VIT_ACCEL > 0) {
     proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
-    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
-    }
-    if (NUM_SM_VIT_ACCEL > 0) {
-    proposed_accel[num_proposed_accel_types++] = sm_vit_hwr_accel_t;
     DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
     }
 #endif
@@ -1640,10 +1499,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 #endif
 #if (defined(HW_CV) || defined(FAKE_HW_CV))
     if (NUM_CV_ACCEL > 0) {
-    proposed_accel[num_proposed_accel_types++] = cv_hwr_accel_t;
-	    }
-    if (NUM_SM_CV_ACCEL > 0) {
-    proposed_accel[num_proposed_accel_types++] = sm_cv_hwr_accel_t;
+      proposed_accel[num_proposed_accel_types++] = cv_hwr_accel_t;
     }
 #endif
   } break;
@@ -1752,9 +1608,6 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	  if (NUM_FFT_ACCEL > 0) {
 	    proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
 	  }
-	  if (NUM_SM_FFT_ACCEL > 0) {
-	    proposed_accel[num_proposed_accel_types++] = sm_fft_hwr_accel_t;
-	  }
         #endif
 	} break;
 	case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
@@ -1763,10 +1616,6 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
         #ifdef HW_VIT
 	  if (NUM_VIT_ACCEL > 0) {
 	    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
-	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
-	  }
-	  if (NUM_SM_VIT_ACCEL > 0) {
-	    proposed_accel[num_proposed_accel_types++] = sm_vit_hwr_accel_t;
 	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
 	  }
         #endif
@@ -1779,9 +1628,6 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
         #if (defined(HW_CV) || defined(FAKE_HW_CV))
 	  if (NUM_CV_ACCEL > 0) {
 	  proposed_accel[num_proposed_accel_types++] = cv_hwr_accel_t;
-	}
-	if (NUM_SM_CV_ACCEL > 0) {
-	  proposed_accel[num_proposed_accel_types++] = sm_cv_hwr_accel_t;
 	}
         #endif
 	} break;
@@ -2127,14 +1973,14 @@ void cleanup_state() {
 
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
-  for (int vi = 0; vi < (NUM_VIT_ACCEL + NUM_SM_VIT_ACCEL); vi++) {
+  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
     contig_free(vitHW_mem[vi]);
     close(vitHW_fd[vi]);
   }
 #endif
 
 #ifdef HW_FFT
-  for (int fi = 0; fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL); fi++) {
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
     contig_free(fftHW_mem[fi]);
     close(fftHW_fd[fi]);
   }
@@ -2393,15 +2239,7 @@ void shutdown_scheduler()
       for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
         for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
           for (int i3 = 0; i3 <= num_accelerators_of_type[3]; i3++) {
-	    for (int i4 = 0; i4 <= num_accelerators_of_type[4]; i4++) {
-	      for (int i5 = 0; i5 <= num_accelerators_of_type[5]; i5++) {
-		for (int i6 = 0; i6 <= num_accelerators_of_type[6]; i6++) {
-		  printf("ACU_HIST: %4u %4u %4u %4u %4u %4u %4u : %4u %4u %4u %4u : %lu\n",
-			  i0, i1, i2, i3, i4, i5, i6, (i1+i2+i3+i4+i5+i6),(i1+i2), (i3+i4), (i5+i6),
-			  in_use_accel_times_array[i0][i1][i2][i3][i4][i5][i6]);
-		}
-	      }
-	    }
+	    printf("ACU_HIST: %4u %4u %4u %4u : %4u : %lu\n", i0, i1, i2, i3, (i1+i2+i3), in_use_accel_times_array[i0][i1][i2][i3]);
           }
         }
       }

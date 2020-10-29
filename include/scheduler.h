@@ -27,15 +27,17 @@
 #include "base_types.h"
 
 // Some Profiling Data:
-#define LgFFT0  6000
-#define LgFFT1 12000
+#define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-#define LgVIT0   5950
-#define LgVIT1  67000
-#define LgVIT2 135000
-#define LgVIT3 191000
+#define usecHwrFFT0  6000
+#define usecHwrFFT1 12000
 
-#define LgCV   150000
+#define usecHwrVIT0   5950
+#define usecHwrVIT1  67000
+#define usecHwrVIT2 135000
+#define usecHwrVIT3 191000
+
+#define usecHwrCV   150000
 
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 
@@ -65,11 +67,8 @@ typedef enum { TASK_FREE = 0,
 
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
-	       sm_fft_hwr_accel_t,
 	       vit_hwr_accel_t,
-	       sm_vit_hwr_accel_t,
 	       cv_hwr_accel_t,
-	       sm_cv_hwr_accel_t,
 	       no_accelerator_t,
 	       NUM_ACCEL_TYPES} accelerator_type_t;
 
@@ -189,7 +188,6 @@ typedef struct task_metadata_entry_struct {
   task_criticality_t crit_level;  // [0 .. ?] ?
 
   uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
-  uint64_t base_profile[NUM_ACCEL_TYPES];  //Timing profile base for task (in usec) -- used for simulating smaller/slower accelerators
   
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
@@ -229,7 +227,7 @@ extern unsigned int scheduler_holdoff_usec;
 
 extern status_t initialize_scheduler();
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile, uint64_t * task_base_profile);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
