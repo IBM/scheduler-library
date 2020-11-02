@@ -2007,7 +2007,7 @@ void shutdown_scheduler()
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
-  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %u decisions\n", scheduler_decision_time_usec, scheduler_decisions);
+  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %u decisions spanning %u checks\n", scheduler_decision_time_usec, scheduler_decisions, scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
