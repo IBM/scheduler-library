@@ -133,6 +133,7 @@ uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCE
 
 uint64_t scheduler_decision_time_usec = 0;
 uint32_t scheduler_decisions = 0;
+uint32_t scheduler_decision_checks = 0;
 
 
 
@@ -1245,6 +1246,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
     }
+    scheduler_decision_checks++;
   } break;
   case VITERBI_TASK: {
     // Scheduler should now run this either on CPU or VITERBI:
@@ -1256,6 +1258,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
       // Execute in CPU (softwware)
       proposed_accel = cpu_accel_t;
     }
+    scheduler_decision_checks++;
   } break;
   case CV_TASK: {
     // Scheduler should now run this either on CPU or CV:
@@ -1273,8 +1276,9 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
       proposed_accel = cpu_accel_t;
     }
 #endif
-    DEBUG(printf("THE-SCHED:  and the proposed_accel is %u\n", proposed_accel);)
-      } break;
+    scheduler_decision_checks++;
+    DEBUG(printf("THE-SCHED:  and the proposed_accel is %u\n", proposed_accel));
+  } break;
   default:
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
     cleanup_and_exit(-15);
@@ -1339,6 +1343,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
         }
         i++;
       } // while (loop through HWR FFT accelerators)
+      scheduler_decision_checks += i;
 #endif
       if (accel_id < 0) { // Didn't find one
         i = 0;
@@ -1350,6 +1355,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
           }
           i++;
         } // while (loop through CPU FFT accelerators)
+	scheduler_decision_checks += i;
       } // if (accel_id < 0) 
     } while (accel_type == no_accelerator_t);
   } break;
@@ -1365,6 +1371,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
         }
         i++;
       } // while (loop through HWR VITERBI accelerators)
+      scheduler_decision_checks += i;
 #endif
       if (accel_id < 0) { // Didn't find one
         i = 0;
@@ -1376,6 +1383,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
           }
           i++;
         } // while (loop through CPU VITERBI accelerators)
+	scheduler_decision_checks += i;
       } // if (accel_id < 0) 
     } while (accel_type == no_accelerator_t);
   } break;
@@ -1391,6 +1399,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
         }
         i++;
       } // while (loop through HWR CV accelerators)
+      scheduler_decision_checks += i;
 #endif
 #ifndef HW_ONLY_CV
       if (accel_id < 0) { // Didn't find one
@@ -1403,6 +1412,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
           }
           i++;
         } // while (loop through CPU CV accelerators)
+	scheduler_decision_checks += i;
       } // if (accel_id < 0)
 #endif
     } while (accel_type == no_accelerator_t);
@@ -1544,6 +1554,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
       }
       //printf("SCHED_FFF: For accel %u %u : bi = %u : finish_time = %lu\n", pi, i, bi, finish_time);
     } // for (i = spin through proposed accelerators)
+    scheduler_decision_checks += num_accelerators_of_type[proposed_accel[pi]];
   } // for (pi goes through proposed_accelerator_types)
   
  #ifdef INT_TIME
