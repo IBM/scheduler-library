@@ -1232,6 +1232,10 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
   }
   
   DEBUG(printf("THE-SCHED: In pick_accel_and_wait_for_available policy for MB%u\n", task_metadata_block->block_id));
+ #ifdef INT_TIME
+  struct timeval current_time;
+  gettimeofday(&current_time, NULL);
+ #endif
   int proposed_accel = no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
@@ -1286,6 +1290,12 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
+ #ifdef INT_TIME
+  struct timeval decis_time;
+  gettimeofday(&decis_time, NULL);
+  scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+ #endif
+  scheduler_decisions++;
   do {
     int i = 0;
     while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
@@ -1426,8 +1436,8 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
   scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
-  scheduler_decisions++;
  #endif
+  scheduler_decisions++;
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
