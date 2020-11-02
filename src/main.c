@@ -48,12 +48,12 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
 //   CPU        FFT        VIT        CV        NONE
   { 23000, usecHwrFFT0, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {540000, usecHwrFFT1, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+  {600000, usecHwrFFT1, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
 //    CPU        FFT        VIT          CV        NONE
-  { 170000,  ACINFPROF, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
+  { 120000,  ACINFPROF, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
   {1700000,  ACINFPROF, usecHwrVIT1, ACINFPROF, ACINFPROF},  // medium-message Vit
   {3400000,  ACINFPROF, usecHwrVIT2, ACINFPROF, ACINFPROF},  // long-message Vit
   {4800000,  ACINFPROF, usecHwrVIT3, ACINFPROF, ACINFPROF}}; // max-message Vit
@@ -779,7 +779,7 @@ int main(int argc, char *argv[])
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
 
-    TDEBUG(printf("MAIN: Calling wait_all_critical\n"));
+    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
     wait_all_critical();
 
    #ifdef TIME

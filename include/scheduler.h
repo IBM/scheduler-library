@@ -29,8 +29,8 @@
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-#define usecHwrFFT0  6000
-#define usecHwrFFT1 12000
+#define usecHwrFFT0   6000
+#define usecHwrFFT1 143000
 
 #define usecHwrVIT0   5950
 #define usecHwrVIT1  67000
