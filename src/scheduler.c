@@ -1706,6 +1706,8 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	    }
 	    //printf("THE-SCHED: For accel %u %u : bi = %u : finish_time = %lu\n", pi, i, bi, finish_time);
 	  } // for (i = spin through proposed accelerators)
+	  scheduler_decision_checks += num_accelerators_of_type[proposed_accel[pi]];
+
 	} // for (pi goes through proposed_accelerator_types)
 
 	// Assign tasks to the least finish time accelerator
