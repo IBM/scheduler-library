@@ -27,8 +27,8 @@
 #include "base_types.h"
 
 // Some Profiling Data:
-#define LgFFT0  6000
-#define LgFFT1 12000
+#define LgFFT0   6000
+#define LgFFT1 143000
 
 #define LgVIT0   5950
 #define LgVIT1  67000

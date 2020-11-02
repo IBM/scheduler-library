@@ -53,13 +53,13 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
 //   CPU      LG-FFT        SM-FFT      LG-VIT     SM-VIT     LG-CV      SM-CV      NONE
   { 23000, LgFFT0*LgFFTx, LgFFT0*SmFFTx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {540000, LgFFT1*LgFFTx, LgFFT1*SmFFTx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+  {600000, LgFFT1*LgFFTx, LgFFT1*SmFFTx, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 
 
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
 //    CPU        FFT      SM-FFT         VIT          SM-VIT       CV         SM-CV      NONE
-  { 170000,  ACINFPROF, ACINFPROF, LgVIT0*LgVITx, LgVIT0*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  { 120000,  ACINFPROF, ACINFPROF, LgVIT0*LgVITx, LgVIT0*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
   {1700000,  ACINFPROF, ACINFPROF, LgVIT1*LgVITx, LgVIT1*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
   {3400000,  ACINFPROF, ACINFPROF, LgVIT2*LgVITx, LgVIT2*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
   {4800000,  ACINFPROF, ACINFPROF, LgVIT3*LgVITx, LgVIT3*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
