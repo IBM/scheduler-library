@@ -277,8 +277,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u\n",
-	global_scheduler_selection_policy, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
+  printf("Run using Scheduler Policy %u with %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u\n",
+	  global_scheduler_selection_policy, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT\n");
  #else 
