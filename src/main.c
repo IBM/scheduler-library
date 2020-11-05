@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
   unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
+  unsigned max_additional_tasks_per_time_step = 0;
 
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
@@ -352,7 +353,13 @@ int main(int argc, char *argv[])
   printf("   Viterbi: %s\n", vit_dict);
 
   printf("\n There are %u additional FFT, %u addtional Viterbi and %u Additional CV/CNN tasks per time step\n", additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step, additional_cv_tasks_per_time_step);
-  
+  max_additional_tasks_per_time_step = additional_fft_tasks_per_time_step;
+  if (additional_vit_tasks_per_time_step > max_additional_tasks_per_time_step) {
+    max_additional_tasks_per_time_step = additional_vit_tasks_per_time_step;
+  }
+  if (additional_cv_tasks_per_time_step > max_additional_tasks_per_time_step) {
+    max_additional_tasks_per_time_step = additional_cv_tasks_per_time_step;
+  }
   /* We plan to use three separate trace files to drive the three different kernels
    * that are part of mini-ERA (CV, radar, Viterbi). All these three trace files
    * are required to have the same base name, using the file extension to indicate
@@ -621,30 +628,6 @@ int main(int argc, char *argv[])
       cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
       start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
     }
-    for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
-     #ifdef TIME
-      struct timeval get_time;
-      gettimeofday(&get_time, NULL);
-     #endif
-      task_metadata_block_t* cv_mb_ptr_2 = NULL;
-      do {
-        cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
-	usleep(get_mb_holdoff);
-} while (0); //(cv_mb_ptr_2 == NULL);
-     #ifdef TIME
-      struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_cv_sec  += got_time.tv_sec  - get_time.tv_sec;
-      exec_get_cv_usec += got_time.tv_usec - get_time.tv_usec;
-     #endif
-      if (cv_mb_ptr_2 == NULL) {
-	printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states();
-	exit (-5);
-      }
-      cv_mb_ptr_2->atFinish = base_release_metadata_block;
-      start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
-    }
     if (!no_crit_cnn_task) {
       DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
     }
@@ -672,41 +655,6 @@ int main(int argc, char *argv[])
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_rad_kernel(fft_mb_ptr, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
-    for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
-      radar_dict_entry_t* rdentry_p2;
-      if (task_size_variability == 0) {
-	rdentry_p2 = select_critical_radar_input(rdentry_p);
-      } else {
-	rdentry_p2 = select_random_radar_input();
-	//printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set, rdentry_p2->set);
-      }
-      int base_fft_samples_set = rdentry_p2->set;
-      //printf("FFT Base Profile: %e %e %e %e %e\n", fft_profile[base_fft_samples_set][0], fft_profile[base_fft_samples_set][1], fft_profile[base_fft_samples_set][2], fft_profile[base_fft_samples_set][3], fft_profile[base_fft_samples_set][4]);
-     #ifdef TIME
-      struct timeval get_time;
-      gettimeofday(&get_time, NULL);
-     #endif
-      task_metadata_block_t* fft_mb_ptr_2 = NULL;
-      do {
-	fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set]);
-	usleep(get_mb_holdoff);
-      } while (0); //(fft_mb_ptr_2 == NULL);
-     #ifdef TIME
-      //struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_rad_sec  += got_time.tv_sec  - get_time.tv_sec;
-      exec_get_rad_usec += got_time.tv_usec - get_time.tv_usec;
-     #endif
-      if (fft_mb_ptr_2 == NULL) {
-	printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states();
-	exit (-5);
-      }
-      fft_mb_ptr_2->atFinish = base_release_metadata_block;
-      float* addl_radar_inputs = rdentry_p2->return_data;
-      start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
-    }
-
     DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
@@ -733,48 +681,114 @@ int main(int argc, char *argv[])
     vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->block_id));
-    for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
-      vit_dict_entry_t* vdentry2_p;
-      int base_msg_size;
-      if (task_size_variability == 0) {
-	base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
-	int m_id = vdentry_p->msg_num % NUM_MESSAGES;
-	if (m_id != vdentry_p->msg_id) {
-	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-	}
-	if (base_msg_size != vit_msgs_size) {
-	  printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-	}
-	vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
-      } else {
-	DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
-	vdentry2_p = select_random_vit_input();
-	base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
-      }
-     #ifdef TIME
-      struct timeval get_time;
-      gettimeofday(&get_time, NULL);
-     #endif
-      task_metadata_block_t* vit_mb_ptr_2 = NULL;
-      do {
-        vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size]);
-	usleep(get_mb_holdoff);
-      } while (0); // (vit_mb_ptr_2 == NULL);
-     #ifdef TIME
-      struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_vit_sec  += got_time.tv_sec  - get_time.tv_sec;
-      exec_get_vit_usec += got_time.tv_usec - get_time.tv_usec;
-     #endif
-      if (vit_mb_ptr_2 == NULL) {
-	printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states();
-	exit (-5);
-      }
-      vit_mb_ptr_2->atFinish = base_release_metadata_block;
-      start_execution_of_vit_kernel(vit_mb_ptr_2, vdentry2_p); // Non-Critical VITERBI task
-    }
 
+    // Now we add in the additional non-critical tasks...
+    for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
+      // Aditional CV Tasks
+      //for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
+      if (i < additional_cv_tasks_per_time_step) {
+       #ifdef TIME
+        struct timeval get_time;
+        gettimeofday(&get_time, NULL);
+       #endif
+        task_metadata_block_t* cv_mb_ptr_2 = NULL;
+        do {
+          cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
+	  //usleep(get_mb_holdoff);
+        } while (0); //(cv_mb_ptr_2 == NULL);
+       #ifdef TIME
+        struct timeval got_time;
+        gettimeofday(&got_time, NULL);
+        exec_get_cv_sec  += got_time.tv_sec  - get_time.tv_sec;
+        exec_get_cv_usec += got_time.tv_usec - get_time.tv_usec;
+       #endif
+        if (cv_mb_ptr_2 == NULL) {
+  	  printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
+  	  dump_all_metadata_blocks_states();
+	  exit (-5);
+        }
+        cv_mb_ptr_2->atFinish = base_release_metadata_block;
+        start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
+      } // if (i < additional CV tasks)
+      //for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
+      if (i < additional_fft_tasks_per_time_step) {
+        radar_dict_entry_t* rdentry_p2;
+	if (task_size_variability == 0) {
+	  rdentry_p2 = select_critical_radar_input(rdentry_p);
+	} else {
+	  rdentry_p2 = select_random_radar_input();
+	  //printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set, rdentry_p2->set);
+	}
+	int base_fft_samples_set = rdentry_p2->set;
+	//printf("FFT Base Profile: %e %e %e %e %e\n", fft_profile[base_fft_samples_set][0], fft_profile[base_fft_samples_set][1], fft_profile[base_fft_samples_set][2], fft_profile[base_fft_samples_set][3], fft_profile[base_fft_samples_set][4]);
+       #ifdef TIME
+	struct timeval get_time;
+	gettimeofday(&get_time, NULL);
+       #endif
+	task_metadata_block_t* fft_mb_ptr_2 = NULL;
+        do {
+	  fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  //usleep(get_mb_holdoff);
+        } while (0); //(fft_mb_ptr_2 == NULL);
+       #ifdef TIME
+        //struct timeval got_time;
+        gettimeofday(&got_time, NULL);
+	exec_get_rad_sec  += got_time.tv_sec  - get_time.tv_sec;
+	exec_get_rad_usec += got_time.tv_usec - get_time.tv_usec;
+       #endif
+        if (fft_mb_ptr_2 == NULL) {
+  	  printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
+	  dump_all_metadata_blocks_states();
+	  exit (-5);
+        }
+        fft_mb_ptr_2->atFinish = base_release_metadata_block;
+	float* addl_radar_inputs = rdentry_p2->return_data;
+	start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
+      } // if (i < additional FFT tasks)
+
+      //for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
+      if (i < additional_vit_tasks_per_time_step) {
+        vit_dict_entry_t* vdentry2_p;
+	int base_msg_size;
+        if (task_size_variability == 0) {
+	  base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
+	  int m_id = vdentry_p->msg_num % NUM_MESSAGES;
+	  if (m_id != vdentry_p->msg_id) {
+	    printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+          }
+	  if (base_msg_size != vit_msgs_size) {
+	    printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n", vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+	  }
+	  vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
+        } else {
+	  DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
+	  vdentry2_p = select_random_vit_input();
+	  base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
+        }
+       #ifdef TIME
+        struct timeval get_time;
+	gettimeofday(&get_time, NULL);
+       #endif
+        task_metadata_block_t* vit_mb_ptr_2 = NULL;
+        do {
+          vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size]);
+	  //usleep(get_mb_holdoff);
+        } while (0); // (vit_mb_ptr_2 == NULL);
+       #ifdef TIME
+        struct timeval got_time;
+	gettimeofday(&got_time, NULL);
+	exec_get_vit_sec  += got_time.tv_sec  - get_time.tv_sec;
+	exec_get_vit_usec += got_time.tv_usec - get_time.tv_usec;
+       #endif
+        if (vit_mb_ptr_2 == NULL) {
+  	  printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
+	  dump_all_metadata_blocks_states();
+	  exit (-5);
+        }
+        vit_mb_ptr_2->atFinish = base_release_metadata_block;
+        start_execution_of_vit_kernel(vit_mb_ptr_2, vdentry2_p); // Non-Critical VITERBI task
+      } // if (i < Additional VIT tasks)
+    } // for (i over MAX_additional_tasks)
    #ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
