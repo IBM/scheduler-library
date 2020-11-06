@@ -54,6 +54,9 @@ endif
 #  Currently, these are the same physical accelerators but executed more slowly
 #  As such, the max for the two combined is the hardware implemented Accelerators, e.g.
 #  NUM_FFT_ACCEL plus NUM_SM_FFT_ACCEL <= Actual_HWR_FFT_Accel
+ifdef CONFIG_NUM_MD_VIT
+CFLAGS += -DNUM_MD_VIT_ACCEL=$(CONFIG_NUM_MD_VIT)
+endif
 ifdef CONFIG_NUM_SM_VIT
 CFLAGS += -DNUM_SM_VIT_ACCEL=$(CONFIG_NUM_SM_VIT)
 endif
