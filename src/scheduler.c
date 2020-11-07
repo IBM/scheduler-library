@@ -1112,7 +1112,8 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 
   // Determine whether there is additional delay needed 
   int delay = task_metadata_block->task_profile[task_metadata_block->accelerator_type] - task_metadata_block->base_profile[task_metadata_block->accelerator_type];
-  DEBUG(printf("EHVA:   MB%u Adding delay %lu - %lu = %lu usec\n", task_metadata_block->block_id, task_metadata_block->task_profile[task_metadata_block->accelerator_type], task_metadata_block->base_profile[task_metadata_block->accelerator_type], delay)).
+  DEBUG(printf("EHVA:   MB%u Adding delay %lu - %lu = %lu usec\n", task_metadata_block->block_id, task_metadata_block->task_profile[task_metadata_block->accelerator_type], task_metadata_block->base_profile[task_metadata_block->accelerator_type], delay));
+
   if (delay > 0) {
     DEBUG(printf("Calling usleep %u\n", delay));
     usleep(delay);
