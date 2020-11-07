@@ -231,7 +231,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
   }
   // Call the do_decoding routine
   //  NOTE: We are sending addresses in our space -- the accelerator should xfer the data in this model.
-  DEBUG(printf("Calling schedule_task for viterbi_task with nDb %u nCb %u nTrb %u\n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
+  DEBUG(printf("Calling schedule_task for viterbi_task MB%u with nDb %u nCb %u nTrb %u\n", vit_metadata_block->block_id, frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
   //schedule_viterbi(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, depunctured, d_decoded);
   request_execution(vit_metadata_block);
 }
