@@ -1114,7 +1114,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   // Now, if this is a "Small" VIT accelerator, we need to add the additional computation delay...
   //  This is to "fake" it taking longer by some factor (defined at compile-time in the config file)
   int delay = task_metadata_block->task_profile[task_metadata_block->accelerator_type] - task_metadata_block->base_profile[task_metadata_block->accelerator_type];
-  DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[task_metadata_block->accelerator_type], task_metadata_block->base_profile[task_metadata_block->accelerator_type], delay)).
+  DEBUG(printf("EHVA:   Adding delay %lu - %lu = %lu usec\n", task_metadata_block->task_profile[task_metadata_block->accelerator_type], task_metadata_block->base_profile[task_metadata_block->accelerator_type], delay));
   if (delay > 0) {
     usleep(delay);
   }
