@@ -42,13 +42,13 @@ ifdef CONFIG_NUM_CPU
 CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
 endif
 ifdef CONFIG_NUM_VIT
-CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
+CFLAGS += -DNUM_LG_VIT_ACCEL=$(CONFIG_NUM_VIT)
 endif
 ifdef CONFIG_NUM_FFT
-CFLAGS += -DNUM_FFT_ACCEL=$(CONFIG_NUM_FFT)
+CFLAGS += -DNUM_LG_FFT_ACCEL=$(CONFIG_NUM_FFT)
 endif
 ifdef CONFIG_NUM_CV
-CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
+CFLAGS += -DNUM_LG_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
 # This sets the number of "Medium" accelerators
 #  Currently, these are the same physical accelerators but executed more slowly

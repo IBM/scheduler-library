@@ -64,12 +64,12 @@ typedef enum { TASK_FREE = 0,
 	       NUM_TASK_STATUS} task_status_t;
 
 typedef enum { cpu_accel_t = 0,
-	       fft_hwr_accel_t,
+	       lg_fft_hwr_accel_t,
 	       sm_fft_hwr_accel_t,
-	       vit_hwr_accel_t,
+	       lg_vit_hwr_accel_t,
 	       md_vit_hwr_accel_t,
 	       sm_vit_hwr_accel_t,
-	       cv_hwr_accel_t,
+	       lg_cv_hwr_accel_t,
 	       sm_cv_hwr_accel_t,
 	       no_accelerator_t,
 	       NUM_ACCEL_TYPES} accelerator_type_t;
