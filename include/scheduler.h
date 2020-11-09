@@ -75,10 +75,10 @@ typedef enum { cpu_accel_t = 0,
 	       NUM_ACCEL_TYPES} accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-  FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-  FASTEST_FINISH_TIME_FIRST_POLICY,
-  FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-  NUM_SELECTION_POLICIES } accel_selct_policy_t;
+	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
+	       NUM_SELECTION_POLICIES } accel_selct_policy_t;
 
 
 extern const char* task_job_str[NUM_JOB_TYPES];
