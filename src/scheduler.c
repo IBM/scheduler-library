@@ -115,11 +115,12 @@ const char* task_status_str[NUM_TASK_STATUS] = {"TASK-FREE",
 						"TASK-DONE"};
 
 const char* accel_type_str[NUM_ACCEL_TYPES] = { "CPU-ACCELERATOR",
-						"FFT-HWR-ACCEL",
+						"LARGE-FFT-HWR-ACCEL",
 						"SMALL-FFT-HWR-ACCEL",
-						"VITERBI-HWR-ACCEL",
+						"LARGE-VITERBI-HWR-ACCEL",
+						"MEDIUM-VITERBI-HWR-ACCEL",
 						"SMALL-VITERBI-HWR-ACCEL",
-						"VISION-HWR-ACCEL",
+						"LARGE-VISION-HWR-ACCEL",
 						"SMALL-VISION-HWR-ACCEL",
 						"NO-ACCELERATOR"};
 
@@ -470,7 +471,7 @@ static void init_vit_parameters(int vn)
 {
   size_t vitHW_in_words_adj;
   size_t vitHW_out_words_adj;
-  printf("Doing init_vit_parameters for vn = %u\n", vn);
+  DEBUG(printf("Doing init_vit_parameters for vn = %u\n", vn));
   if (DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)) == 0) {
     vitHW_in_words_adj  = 24852;
     vitHW_out_words_adj = 18585;
@@ -816,21 +817,21 @@ status_t initialize_scheduler()
   printf("Initializing the %u + %u = %u total FFT Accelerators...\n", NUM_LG_FFT_ACCEL, NUM_SM_FFT_ACCEL, NUM_FFT_ACCEL);
   for (int fi = 0; fi < (NUM_FFT_ACCEL + NUM_SM_FFT_ACCEL); fi++) {
     // Inititalize to the "largest legal" FFT size
-    printf("Calling init_fft_parameters for Accel %u (of %u) [%u] and LOGN %u\n", fi, NUM_FFT_ACCEL, fi < NUM_FFT_ACCEL, MAX_RADAR_LOGN);
+    DEBUG(printf("Calling init_fft_parameters for Accel %u (of %u) [%u] and LOGN %u\n", fi, NUM_FFT_ACCEL, fi < NUM_FFT_ACCEL, MAX_RADAR_LOGN));
     init_fft_parameters(fi, MAX_RADAR_LOGN);
 
     snprintf(fftAccelName[fi], 63, "/dev/fft.%u", fi);
     printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]);
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
-      fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
+      printf("Error: cannot open %s", fftAccelName[fi]);
       cleanup_and_exit(EXIT_FAILURE);
     }
 
-    printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
+    DEBUG(printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]));
     fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
     if (fftHW_lmem[fi] == NULL) {
-      fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
+      printf("Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
       cleanup_and_exit(EXIT_FAILURE);
     }
 
@@ -862,21 +863,21 @@ status_t initialize_scheduler()
 	  (printf("Init Viterbi parameters on acclerator %u\n", vi));
     init_vit_parameters(vi);
     snprintf(vitAccelName[vi], 63, "/dev/vitdodec.%u", vi);
-    printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
+    DEBUG(printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]));
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
-      fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
+      printf("Error: cannot open %s", vitAccelName[vi]);
       cleanup_and_exit(EXIT_FAILURE);
     }
 
     vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
     if (vitHW_lmem[vi] == NULL) {
-      fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
+      printf("Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
       cleanup_and_exit(EXIT_FAILURE);
     }
     vitHW_li_mem[vi] = &(vitHW_lmem[vi][0]);
     vitHW_lo_mem[vi] = &(vitHW_lmem[vi][vitHW_out_offset[vi]]);
-    printf(" Set vitHW_li_mem = %p  AND vitHW_lo_mem = %p\n", vitHW_li_mem[vi], vitHW_lo_mem[vi]);
+    DEBUG(printf(" Set vitHW_li_mem = %p  AND vitHW_lo_mem = %p\n", vitHW_li_mem[vi], vitHW_lo_mem[vi]));
 
     vitHW_desc[vi].esp.run = true;
     vitHW_desc[vi].esp.coherence = ACC_COH_NONE;
@@ -1030,7 +1031,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #endif // INT_TIME
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
-    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
+    //DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
   }
  #ifdef INT_TIME
   struct timeval cvtout_stop;
@@ -2155,7 +2156,7 @@ void cleanup_state() {
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
-	  printf("Calling contig_free for vitHW_mem %u\n", vi);
+    DEBUG(printf("Calling contig_free for vitHW_mem %u\n", vi));
     contig_free(vitHW_mem[vi]);
     close(vitHW_fd[vi]);
   }
@@ -2163,7 +2164,7 @@ void cleanup_state() {
 
 #ifdef HW_FFT
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
-	  printf("Calling contig_free for fftHW_mem %u\n", fi);
+    DEBUG(printf("Calling contig_free for fftHW_mem %u\n", fi));
     contig_free(fftHW_mem[fi]);
     close(fftHW_fd[fi]);
   }
@@ -2417,7 +2418,7 @@ void shutdown_scheduler()
 
   printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
-    printf("ACU_HIST:  CPU  FFT SFFT  VIT SVIT  CNN SCNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
+    printf("ACU_HIST:  CPU LFFT SFFT LVIT MVIT SVIT LCNN SCNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
     for (int i0 = 0; i0 <= num_accelerators_of_type[0]; i0++) {
       for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
         for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
@@ -2425,9 +2426,11 @@ void shutdown_scheduler()
 	    for (int i4 = 0; i4 <= num_accelerators_of_type[4]; i4++) {
 	      for (int i5 = 0; i5 <= num_accelerators_of_type[5]; i5++) {
 		for (int i6 = 0; i6 <= num_accelerators_of_type[6]; i6++) {
-		  printf("ACU_HIST: %4u %4u %4u %4u %4u %4u %4u : %4u %4u %4u %4u : %lu\n",
-			  i0, i1, i2, i3, i4, i5, i6, (i1+i2+i3+i4+i5+i6),(i1+i2), (i3+i4), (i5+i6),
-			  in_use_accel_times_array[i0][i1][i2][i3][i4][i5][i6]);
+  		  for (int i7 = 0; i7 <= num_accelerators_of_type[6]; i7++) {
+		    printf("ACU_HIST: %4u %4u %4u %4u %4u %4u %4u %4u : %4u %4u %4u %4u : %lu\n",
+			    i0, i1, i2, i3, i4, i5, i6, i7, (i1+i2+i3+i4+i5+i6+i7),(i1+i2), (i3+i4+i5), (i6+i7),
+			    in_use_accel_times_array[i0][i1][i2][i3][i4][i5][i6][i7]);
+		  }
 		}
 	      }
 	    }
