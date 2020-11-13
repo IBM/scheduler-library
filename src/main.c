@@ -30,7 +30,7 @@
 
 #define TIME
 
-#define get_mb_holdoff 10  // usec
+//#define get_mb_holdoff 10  // usec
 
 char h264_dict[256]; 
 char cv_dict[256]; 
@@ -64,28 +64,28 @@ uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
   {4800000,  ACINFPROF, ACINFPROF, LgVIT3*LgVITx, LgVIT3*MdVITx, LgVIT3*SmVITx, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
 
 uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
-//    CPU      FFT       SM-FFT       VIT        SM-VIT       CV          SM-CV       NONE
-  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, LgCV*LgCVx,  LgCV*SmCVx, ACINFPROF};
+//    CPU      FFT       SM-FFT     LG-VIT     MD-VIT     SM-VIT       CV          SM-CV       NONE
+  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, LgCV*LgCVx,  LgCV*SmCVx, ACINFPROF};
 
 // These are the "baseline" (full-speed) timing measure/profile
 // These are used in the modeling of "Small" versions (generalized to 2 kinds of versions)
 uint64_t fft_base_profile[2][NUM_ACCEL_TYPES] = {
-//   CPU   BaseFFT BaseFFT   LG-VIT     SM-VIT     LG-CV      SM-CV      NONE
-  { 23000, LgFFT0, LgFFT0, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {540000, LgFFT1, LgFFT1, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+//   CPU   LG-FFT  LG-FFT   LG-VIT     MD-VIT     SM-VIT     LG-CV      SM-CV      NONE
+  { 23000, LgFFT0, LgFFT0, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
+  {540000, LgFFT1, LgFFT1, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 
 
 // Viterbi has 4 profiles, depending on input size
 uint64_t vit_base_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT      SM-FFT   BaseVIT BaseVIT    CV        SM-CV      NONE
-  { 170000,  ACINFPROF, ACINFPROF, LgVIT0, LgVIT0, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1700000,  ACINFPROF, ACINFPROF, LgVIT1, LgVIT1, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {3400000,  ACINFPROF, ACINFPROF, LgVIT2, LgVIT2, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4800000,  ACINFPROF, ACINFPROF, LgVIT3, LgVIT3, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
+//    CPU     LG-FFT     SM-FFT    LG-VIT  MD-VIT  MD-VIT    LG-CV      SM-CV      NONE
+  { 170000,  ACINFPROF, ACINFPROF, LgVIT0, LgVIT0, LgVIT0, ACINFPROF, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1700000,  ACINFPROF, ACINFPROF, LgVIT1, LgVIT1, LgVIT1, ACINFPROF, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {3400000,  ACINFPROF, ACINFPROF, LgVIT2, LgVIT2, LgVIT2, ACINFPROF, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4800000,  ACINFPROF, ACINFPROF, LgVIT3, LgVIT3, LgVIT3, ACINFPROF, ACINFPROF, ACINFPROF}}; // max-message Vit
 
 uint64_t cv_base_profile[NUM_ACCEL_TYPES]  = {
-//    CPU      FFT       SM-FFT       VIT        SM-VIT   BaseCV  BaseCV       NONE
-  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF,  ACINFPROF, LgCV,   LgCV, ACINFPROF};
+//    CPU     LG-FFT     SM-FFT     LG-VIT     MD-VIT     SM-VIT    LG-CV  SM-CV       NONE
+  ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, ACINFPROF, LgCV,  LgCV, ACINFPROF};
 
 
 
@@ -524,12 +524,14 @@ int main(int argc, char *argv[])
  #endif // TIME
 
   printf("Starting the main loop...\n");
+  fflush(stdout);
+
   /* The input trace contains the per-epoch (time-step) input data */
  #ifdef TIME
   gettimeofday(&start_prog, NULL);
   init_accelerators_in_use_interval(start_prog);
  #endif
-  
+
  #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
@@ -628,10 +630,10 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an CV_TASK at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      do {
-        cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile, cv_base_profile);
-	usleep(get_mb_holdoff);
-     } while (0); // (cv_mb_ptr == NULL);
+      //do {
+      cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile, cv_base_profile);
+      //usleep(get_mb_holdoff);
+      //} while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -653,10 +655,10 @@ int main(int argc, char *argv[])
       gettimeofday(&get_time, NULL);
      #endif
       task_metadata_block_t* cv_mb_ptr_2 = NULL;
-      do {
-        cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile, cv_base_profile);
-	usleep(get_mb_holdoff);
-} while (0); //(cv_mb_ptr_2 == NULL);
+      //do {
+      cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile, cv_base_profile);
+      //usleep(get_mb_holdoff);
+      //} while (0); //(cv_mb_ptr_2 == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -679,10 +681,10 @@ int main(int argc, char *argv[])
    #endif
     // Request a MetadataBlock (for an FFT_TASK at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
-      do {
-        fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set], fft_base_profile[crit_fft_samples_set]);
-	usleep(get_mb_holdoff);
-      } while (0); //(fft_mb_ptr == NULL);
+      //do {
+      fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set], fft_base_profile[crit_fft_samples_set]);
+      //usleep(get_mb_holdoff);
+      //} while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -713,10 +715,10 @@ int main(int argc, char *argv[])
       gettimeofday(&get_time, NULL);
      #endif
       task_metadata_block_t* fft_mb_ptr_2 = NULL;
-      do {
-	fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set], fft_base_profile[base_fft_samples_set]);
-	usleep(get_mb_holdoff);
-      } while (0); //(fft_mb_ptr_2 == NULL);
+      //do {
+      fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set], fft_base_profile[base_fft_samples_set]);
+      //usleep(get_mb_holdoff);
+      //} while (0); //(fft_mb_ptr_2 == NULL);
      #ifdef TIME
       //struct timeval got_time;
       gettimeofday(&got_time, NULL);
@@ -740,10 +742,10 @@ int main(int argc, char *argv[])
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock (for an VITERBI_TASK at Critical Level)
     task_metadata_block_t* vit_mb_ptr = NULL;
-    do {
-      vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size], vit_base_profile[vit_msgs_size]);
-      usleep(get_mb_holdoff);
-    } while (0); //(vit_mb_ptr == NULL);
+    //do {
+    vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size], vit_base_profile[vit_msgs_size]);
+    //usleep(get_mb_holdoff);
+    //} while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
     //struct timeval got_time;
     gettimeofday(&got_time, NULL);
@@ -782,10 +784,10 @@ int main(int argc, char *argv[])
       gettimeofday(&get_time, NULL);
      #endif
       task_metadata_block_t* vit_mb_ptr_2 = NULL;
-      do {
-        vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size], vit_base_profile[base_msg_size]);
-	usleep(get_mb_holdoff);
-      } while (0); // (vit_mb_ptr_2 == NULL);
+      //do {
+      vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size], vit_base_profile[base_msg_size]);
+      //usleep(get_mb_holdoff);
+      //} while (0); // (vit_mb_ptr_2 == NULL);
      #ifdef TIME
       struct timeval got_time;
       gettimeofday(&got_time, NULL);
