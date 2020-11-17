@@ -18,7 +18,7 @@ ifdef COMPILE_TO_ESP
 INCDIR += -I$(ESP_DRIVERS)/include
 endif
 
-CFLAGS ?= -O
+CFLAGS ?= -O2
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
