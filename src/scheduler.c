@@ -428,7 +428,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   gettimeofday(&task_metadata_block->sched_timings.done_start, NULL);
   int idx = task_metadata_block->accelerator_type;
   task_metadata_block->sched_timings.running_sec[idx] += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
-  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.queued_start.tv_usec;
+  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.running_start.tv_usec;
 
   // And finally, call the call-back if there is one... (which might clear out the metadata_block entirely)
   if (task_metadata_block->atFinish != NULL) {
