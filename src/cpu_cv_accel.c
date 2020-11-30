@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "verbose.h"
+#include "debug.h"
 #include "scheduler.h"
 
 

@@ -22,22 +22,21 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-//#include "verbose.h"
+#include "debug.h"
 
 #include "base_types.h"
 
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-#define usecHwrFFT0   6000
-#define usecHwrFFT1 143000
+#define usecHwrFFT64    6000
+#define usecHwrFFT01k   6000
+#define usecHwrFFT16k 143000
 
-#define usecHwrVIT0   5950
-#define usecHwrVIT1  67000
-#define usecHwrVIT2 135000
-#define usecHwrVIT3 191000
-
-#define usecHwrCV   150000
+#define usecHwrVIT_T   5950
+#define usecHwrVIT_S  67000
+#define usecHwrVIT_M 135000
+#define usecHwrVIT_L 191000
 
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 
@@ -48,7 +47,6 @@
 typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
-	       CV_TASK,
 	       NUM_JOB_TYPES } scheduler_jobs_t;
 
 typedef enum { NO_TASK   = 0,
@@ -68,7 +66,6 @@ typedef enum { TASK_FREE = 0,
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
 	       vit_hwr_accel_t,
-	       cv_hwr_accel_t,
 	       no_accelerator_t,
 	       NUM_ACCEL_TYPES} accelerator_type_t;
 
@@ -84,13 +81,6 @@ extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
 extern const char* task_status_str[NUM_TASK_STATUS];
 extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
-
-// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "FFT" Task view of "data"
-  label_t object_label; // The deteremined label of the object in the image
-}  cv_data_struct_t;
-
 
 // This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
@@ -157,15 +147,6 @@ typedef struct {
   uint64_t depunc_sec[2], depunc_usec[2];
 } vit_timing_data_t;
 
-typedef struct {
-  struct timeval call_start;
-  struct timeval parse_start;
-  // 0 = timings for cpu_accel_T and 1 = cv_hwr_accel_t
-  unsigned comp_by[2];
-  uint64_t call_sec[2],  call_usec[2];
-  uint64_t parse_sec[2], parse_usec[2];
-} cv_timing_data_t;
-
 // This is a metadata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
 //  job type, and all input/output data space for the task
@@ -198,13 +179,11 @@ typedef struct task_metadata_entry_struct {
   sched_timing_data_t sched_timings;
   fft_timing_data_t   fft_timings;  
   vit_timing_data_t   vit_timings; 
-  cv_timing_data_t    cv_timings;  
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
   union { // This union holds job-specific "views" of the data (input/ouput memory for job accelerators)
     uint8_t  raw_data[128*1024];     // 128 KB is the current MAX data size for all jobs
-    cv_data_struct_t      cv_data;   // CV/CNN view of data -- see strucutre typedef above
     fft_data_struct_t     fft_data;  // FFT view of data -- see strucutre typedef above
     viterbi_data_struct_t vit_data;  // Viterbi view of data -- see strucutre typedef above
   } data_view;
@@ -215,10 +194,6 @@ typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
 // This is the accelerator selection policy used by the scheduler
 extern accel_selct_policy_t global_scheduler_selection_policy;
-
-// These are some "fake" times (models the execution of CV timing)
-extern unsigned cv_cpu_run_time_in_usec;
-extern unsigned cv_fake_hwr_run_time_in_usec;
 
 // This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
 extern unsigned crit_fft_samples_set;

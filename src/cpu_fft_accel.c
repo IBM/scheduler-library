@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-#include "verbose.h"
+#include "debug.h"
 #include "scheduler.h"
 
 #include "fft-1d.h"
