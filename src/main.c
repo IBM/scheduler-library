@@ -10,19 +10,13 @@
 #include <sys/time.h>
 
 #include "globals.h"
+#include "debug.h"
 #include "getopt.h"
 
-#include "scheduler.h"
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
-
-// Some global defines used throughout
-
-#define TIME
-#define get_mb_holdoff 10  // usec
-
 
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.
@@ -94,24 +88,12 @@ uint64_t pd_combGrids_usec = 0LL;
 
 #endif
 
-// The Scheduler PROFILE information
-//   Currently there are FFT and Viterbi tasks?
+int counter = 0;
 
-// FFT has 3 profiles depending on input size (64, 1k or 16k samples)
-//   CPU     FFT     VIT        CV         NONE
-uint64_t fft_profile[3][NUM_ACCEL_TYPES] = {
-//   CPU        FFT        VIT       NONE
-  {  1500, usecHwrFFT64,  ACINFPROF, ACINFPROF},  //  64-sample FFT (guesstimate)
-  { 23000, usecHwrFFT01k, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {600000, usecHwrFFT16k, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+unsigned odo_count = 0;
+unsigned lidar_count = 0;
+unsigned xmit_recv_count = 0;
 
-// Viterbi has 4 profiles, depending on input size
-uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT        VIT         NONE
-  { 120000,  ACINFPROF, usecHwrVIT_T, ACINFPROF},  // tiny, 4-byte message Vit
-  {1700000,  ACINFPROF, usecHwrVIT_S, ACINFPROF},  // small, 500-byte message Vit
-  {3400000,  ACINFPROF, usecHwrVIT_M, ACINFPROF},  // medium, 1000-byte message Vit
-  {4800000,  ACINFPROF, usecHwrVIT_L, ACINFPROF}}; // long, 1500-byte message Vit
 
 // Forward Declarations
 void print_usage(char * pname);
@@ -141,13 +123,32 @@ void INThandler(int dummy)
 }
 
 
+#ifdef HW_VIT
+ extern void init_VIT_HW_ACCEL();
+ extern void free_VIT_HW_RESOURCES();
+#endif
+
+
+// This cleans up the state before exit
 void closeout_and_exit(int rval)
 {
-  dump_final_run_statistics();
+  if (lidar_count > 0) {
+    dump_final_run_statistics();
+  }
   printf("closeout_and_exit -- Closing the connection and exiting %d\n", rval);
-  close(bag_sock);
-  close(xmit_sock);
-  close(recv_sock);
+  if (bag_sock != 0) {
+    close(bag_sock);
+  }
+  if (xmit_sock != 0) {
+    close(xmit_sock);
+  }
+  if (recv_sock != 0) {
+    close(recv_sock);
+  }
+
+ #ifdef HW_VIT
+  free_VIT_HW_RESOURCES();
+ #endif // HW_VIT
   exit(rval);
 }
 
@@ -161,22 +162,6 @@ void closeout_and_exit(int rval)
    return f;
    }
 */
-
-int counter = 0;
-
-unsigned odo_count = 0;
-unsigned lidar_count = 0;
-unsigned xmit_recv_count = 0;
-
-// This is just a call-through to the scheduler routine, but we can also print a message here...
-//  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
-void base_release_metadata_block(task_metadata_block_t* mb)
-{
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
-  free_task_metadata_block(mb);
-  // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
-}
-
 
 void write_array_to_file(unsigned char * data, long size)
 {
@@ -444,12 +429,12 @@ void process_data(char* data, int data_size)
 	 print_ascii_costmap(local_map));
 
   // Write the combined map to a file
+ #ifdef WRITE_FUSED_MAPS
   write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
-	
+ #endif
   DBGOUT(printf("Returning from process_data\n"));
   fflush(stdout);
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -461,11 +446,13 @@ int main(int argc, char *argv[])
   snprintf(bag_inet_addr_str, 20, "127.0.0.1");
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 
-  printf("Doing initialization tasks...\n");
-  initialize_scheduler();
+ #ifdef HW_VIT
+  DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
+  init_VIT_HW_ACCEL();
+ #endif
   init_occgrid_state(); // Initialize the occgrid functions, state, etc.
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
-	
+
   signal(SIGINT, INThandler);
 
   // Use getopt to read in run-time options
@@ -582,7 +569,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  // This is the "Main Loop" portion of the code...
  #ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
  #endif
@@ -698,10 +684,6 @@ int main(int argc, char *argv[])
   close(bag_sock);
   close(xmit_sock);
   close(recv_sock);
-
-  shutdown_scheduler();
-  printf("\nDone.\n");
-  return 0;
 }
 
 
@@ -710,7 +692,7 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
-  printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
+  printf("\nFinal Run Stats, %u Lidar Steps, %u by %u grid, res %lf ray_r %u\n", lidar_count, GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
   printf("Timing (in usec):\n");
  #ifdef INT_TIME
@@ -755,6 +737,12 @@ void dump_final_run_statistics()
   uint64_t r_eqlz     = (uint64_t)(r_eqlz_sec)  * 1000000 + (uint64_t)(r_eqlz_usec);
   uint64_t r_decsignl = (uint64_t)(r_decsignl_sec)  * 1000000 + (uint64_t)(r_decsignl_usec);
   uint64_t r_descrmbl = (uint64_t)(r_descrmbl_sec)  * 1000000 + (uint64_t)(r_descrmbl_usec);
+
+  // This is the ofdm.c decode-signal breakdown
+  uint64_t rdec_total    = (uint64_t)(rdec_total_sec)  * 1000000 + (uint64_t)(rdec_total_usec);
+  uint64_t rdec_map_bitr = (uint64_t)(rdec_map_bitr_sec)  * 1000000 + (uint64_t)(rdec_map_bitr_usec);
+  uint64_t rdec_get_bits = (uint64_t)(rdec_get_bits_sec)  * 1000000 + (uint64_t)(rdec_get_bits_usec);
+  uint64_t rdec_dec_call = (uint64_t)(rdec_dec_call_sec)  * 1000000 + (uint64_t)(rdec_dec_call_usec);
   
   printf(" Total workload main-loop : %10lu usec\n", total_exec);
   printf("   Total proc Read-Bag      : %10lu usec\n", proc_rdbag);
@@ -788,6 +776,10 @@ void dump_final_run_statistics()
   printf("         R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
   printf("         R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
   printf("         R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
+  printf("           R-Dec Total Time     : %10lu usec\n", rdec_total);
+  printf("           R-Dec Map-BitR Time  : %10lu usec\n", rdec_map_bitr);
+  printf("           R-Dec Get-Bits Time  : %10lu usec\n", rdec_get_bits);
+  printf("           R-Dec Decode Call    : %10lu usec\n", rdec_dec_call);
   printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
   printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
   printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
