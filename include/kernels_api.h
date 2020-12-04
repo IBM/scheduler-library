@@ -18,7 +18,7 @@
 #ifndef _kernels_api_h
 #define _kernels_api_h
 
-#include "verbose.h"
+#include "debug.h"
 
 #define TIME
 
