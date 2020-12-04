@@ -29,7 +29,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "utils.h"
 //#define VERBOSE
 #include "debug.h"
