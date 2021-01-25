@@ -769,7 +769,7 @@ status_t initialize_scheduler()
     printf("Calling init_fft_parameters for Accel %u (of %u) and LOGN %u\n", fi, NUM_FFT_ACCEL, MAX_RADAR_LOGN);
     init_fft_parameters(fi, MAX_RADAR_LOGN);
 
-    snprintf(fftAccelName[fi], 63, "/dev/fft.%u", fi);
+    snprintf(fftAccelName[fi], 63, "%s.%u", FFT_DEV_BASE, fi);
     printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]);
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
@@ -810,7 +810,7 @@ status_t initialize_scheduler()
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
     DEBUG(printf("Init Viterbi parameters on acclerator %u\n", vi));
     init_vit_parameters(vi);
-    snprintf(vitAccelName[vi], 63, "/dev/vitdodec.%u", vi);
+    snprintf(vitAccelName[vi], 63, "%s.%u", VIT_DEV_BASE, vi);
     printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
