@@ -119,8 +119,13 @@ OBJ_S = $(SRC_T:%.c=obj_s/%.o)
 
 VPATH = ./src
 
-TARGET=test-scheduler$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
-STARGET=test-scheduler$(EXE_EXTENSION)-sim-fft$(CONFIG_FFT_ACCEL_VER)
+ifdef CONFIG_FFT_EN
+ TARGET=test-scheduler$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
+ STARGET=test-scheduler-sim$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
+else
+ TARGET=test-scheduler$(EXE_EXTENSION)
+ STARGET=test-scheduler-sim$(EXE_EXTENSION)
+endif
 
 $(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
 $(info $$TARGET is [${TARGET}])
