@@ -47,50 +47,58 @@ typedef float fftHW_native_t;
 #define FX_IL 14
 #endif /* FFT_FX_WIDTH */
 
-#if USE_FFT_ACCEL_VERSION == 1
+#if (USE_FFT_ACCEL_VERSION == 1)  // fft_stratus
 /* <<--params-def-->> */
-/* #define FFTHW_LOGN_SAMPLES     14 */
-/* #define FFTHW_LEN         (1 << FFTHW_LOGN_SAMPLES) */
+/* #define FFTHW_LOG_LEN     14 */
+/* #define FFTHW_LEN         (1 << FFTHW_LOG_LEN) */
 #define FFTHW_NO_BITREV    0
 #define FFTHW_DO_BITREV    1
+
 /* <<--params-->> */
 //const int32_t fftHW_do_bitrev = FFTHW_DO_BITREV;
 //const int32_t fftHW_len = FFTHW_LEN;
-//const int32_t fftHW_logn_samples = FFTHW_LOGN_SAMPLES;
+//const int32_t fftHW_log_len = FFTHW_LOG_LEN;
 
- struct fftHW_access {
+struct fftHW_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
-	unsigned logn_samples;
+	unsigned log_len;
 	unsigned do_bitrev;
 	unsigned src_offset;
 	unsigned dst_offset;
- };
-#elif USE_FFT_ACCEL_VERSION == 2
- /* <<--params-def-->> */
- #define FFTHW_NO_INVERSE    0
- #define FFTHW_NO_SHIFT      0
- #define FFTHW_DO_INVERSE    1
- #define FFTHW_DO_SHIFT      1
- /* <<--params-->> */
+};
 
- struct fftHW_access {
+#elif (USE_FFT_ACCEL_VERSION == 2) // fft2_stratus
+
+/* <<--params-def-->> */
+#define FFTHW_NO_INVERSE    0
+#define FFTHW_NO_SHIFT      0
+#define FFTHW_DO_INVERSE    1
+#define FFTHW_DO_SHIFT      1
+
+#define LOGN_SAMPLES 6
+#define NUM_FFTS     1
+#define DO_INVERSE   0
+#define DO_SHIFT     1
+#define SCALE_FACTOR 0
+
+#define NACC 1
+
+/* <<--params-->> */
+
+struct fftHW_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
-	unsigned logn_samples;
-	unsigned num_ffts;
+	unsigned scale_factor;
 	unsigned do_inverse;
+	unsigned logn_samples;
 	unsigned do_shift;
-	unsigned scale_factor; // (not used)
+	unsigned num_ffts;
 	unsigned src_offset;
 	unsigned dst_offset;
- };
-#else
- struct fftHW_acess { 
-	unsigned NOT_A_VALID_FFT_ACCE_VERSION;
- };
+};
 #endif
-#define FFTHW_IOC_ACCESS	_IOW ('S', 0, struct fftHW_access)
 
+#define FFTHW_IOC_ACCESS	_IOW ('S', 0, struct fftHW_access)
 
 #endif /* _MINI_ERA_H_ */

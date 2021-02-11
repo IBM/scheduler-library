@@ -513,7 +513,22 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
   size_t fftHW_out_words_adj;
   int len = 1 << log_nsamples;
   DEBUG(printf("  In init_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
-  fftHW_desc[n].logn_samples    = log_nsamples; 
+ #if (USE_FFT_ACCEL_VERSION == 1) // fft_stratus
+  #ifdef HW_FFT_BITREV
+  fftHW_desc[n].do_bitrev  = FFTHW_DO_BITREV;
+  #else
+  fftHW_desc[n].do_bitrev  = FFTHW_NO_BITREV;
+  #endif
+  fftHW_desc[n].log_len    = log_nsamples;
+
+ #elif (USE_FFT_ACCEL_VERSION == 2) // fft2_stratus
+  fftHW_desc[n].scale_factor = 0;
+  fftHW_desc[n].logn_samples = log_nsamples;
+  fftHW_desc[n].num_ffts     = 1;
+  fftHW_desc[n].do_inverse   = 0;
+  fftHW_desc[n].do_shift     = 0;
+  fftHW_desc[n].do_inverse   = 0;
+ #endif
 
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
     fftHW_in_words_adj  = 2 * len;
