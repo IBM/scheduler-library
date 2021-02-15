@@ -527,7 +527,6 @@ static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
   fftHW_desc[n].num_ffts     = 1;
   fftHW_desc[n].do_inverse   = 0;
   fftHW_desc[n].do_shift     = 0;
-  fftHW_desc[n].do_inverse   = 0;
  #endif
 
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
