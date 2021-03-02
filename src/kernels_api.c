@@ -17,6 +17,7 @@
 
 #ifndef BYPASS_KERAS_CV_CODE
 #include <Python.h>
+#include <pythonrun.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,8 +78,8 @@ PyObject *pArgs, *pValue, *pretValue;
 #define PY_SSIZE_T_CLEAN
 
 char *python_module = "mio";
-char *python_func = "predict";	  
-char *python_func_load = "loadmodel";	  
+char *python_func = "predict";
+char *python_func_load = "loadmodel";
 #endif
 
 
@@ -97,7 +98,7 @@ cv_dict_entry_t* the_cv_object_dict;
 unsigned label_match[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0};  // Times CNN matched dictionary
 unsigned label_lookup[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0}; // Times we used CNN for object classification
 unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
-  
+
 
 /* These are some top-level defines needed for RADAR */
 /* typedef struct { */
@@ -207,7 +208,7 @@ status_t init_rad_kernel(char* dict_fn)
 	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
 	cleanup_and_exit(-2);
       }
-	
+
       DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
       the_radar_return_dict[si][di].index = tot_index++;  // Set, and increment total index
       the_radar_return_dict[si][di].set = si;
@@ -240,7 +241,7 @@ status_t init_rad_kernel(char* dict_fn)
 	printf("Next char is %c = %u = 0x%x\n", c, c, c);
       }
     }
-    //if (!feof(dictF)) { printf("and still no EOF\n"); } 
+    //if (!feof(dictF)) { printf("and still no EOF\n"); }
   }
   fclose(dictF);
 
@@ -269,7 +270,7 @@ status_t init_rad_kernel(char* dict_fn)
  * The format is:
  *  <n> = number of dictionary entries (message types)
  * For each dictionary entry:
- *  n1 n2 n3 n4 n5 : OFDM parms: 
+ *  n1 n2 n3 n4 n5 : OFDM parms:
  *  m1 m2 m3 m4 m5 : FRAME parms:
  *  x1 x2 x3 ...   : The message bits (input to decode routine)
  */
@@ -294,10 +295,10 @@ status_t init_vit_kernel(char* dict_fn)
   if (fscanf(dictF, "%u\n", &num_viterbi_dictionary_items) != 1) {
     printf("ERROR reading the number of Viterbi Dictionary items\n");
     cleanup_and_exit(-2);
-  }    
+  }
   DEBUG(printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items));
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
-  if (the_viterbi_trace_dict == NULL) 
+  if (the_viterbi_trace_dict == NULL)
   {
     printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space\n");
     fclose(dictF);
@@ -305,7 +306,7 @@ status_t init_vit_kernel(char* dict_fn)
   }
 
   // Read in each dictionary item
-  for (int i = 0; i < num_viterbi_dictionary_items; i++) 
+  for (int i = 0; i < num_viterbi_dictionary_items; i++)
   {
     DEBUG(printf("  Reading vit dictionary entry %u\n", i)); //the_viterbi_trace_dict[i].msg_id));
 
@@ -349,7 +350,7 @@ status_t init_vit_kernel(char* dict_fn)
 
     int num_in_bits = in_encoded_bits + 10; // strlen(str3)+10; //additional 10 values
     DEBUG(printf("  Reading %u in_bits\n", num_in_bits));
-    for (int ci = 0; ci < num_in_bits; ci++) { 
+    for (int ci = 0; ci < num_in_bits; ci++) {
       unsigned c;
       if (fscanf(dictF, "%u ", &c) != 1) {
 	printf("Error reading viterbi kernel dictionary entry %u data\n", i);
@@ -383,7 +384,7 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
 {
   DEBUG(printf("In the init_cv_kernel routine\n"));
   /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
-  // Initialization to run Keras CNN code 
+  // Initialization to run Keras CNN code
 #ifndef BYPASS_KERAS_CV_CODE
   Py_Initialize();
   pName = PyUnicode_DecodeFSDefault(python_module);
@@ -408,17 +409,17 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
     Py_XDECREF(pFunc_load);
   }
   DEBUG(printf("CV Kernel Init done\n"));
-#endif  
+#endif
   return success;
 }
 
 
 
 
-label_t run_object_classification_syscall(unsigned tr_val) 
+label_t run_object_classification_syscall(unsigned tr_val)
 {
   DEBUG(printf("Entered run_object_classification_syscall...\n"));
-  label_t object;	
+  label_t object;
 #ifdef BYPASS_KERAS_CV_CODE
   object = (label_t)tr_val;
 #else
@@ -438,15 +439,15 @@ label_t run_object_classification_syscall(unsigned tr_val)
   }
   DEBUG(printf("Label Prediction done \n"));
   DEBUG(printf("pbuffer : %s\n", pbuffer));
-  int val = atoi(pbuffer);   //the last thing printed by the Keras code is the predicted label 
+  int val = atoi(pbuffer);   //the last thing printed by the Keras code is the predicted label
   object = (label_t)val;
   pclose(testing);
   DEBUG(printf("run_object_classification_syscall returning %u = %u\n", val, object));
 #endif
-  return object;  
+  return object;
 }
 
-label_t run_object_classification(unsigned tr_val) 
+label_t run_object_classification(unsigned tr_val)
 {
   DEBUG(printf("Entered run_object_classification... tr_val = %u\n", tr_val));
   label_t object = (label_t)tr_val;
@@ -454,7 +455,7 @@ label_t run_object_classification(unsigned tr_val)
   if (pModule != NULL) {
     DEBUG(printf("  Starting call to pModule...\n"));
     pFunc = PyObject_GetAttrString(pModule, python_func);
-  
+
     if (pFunc && PyCallable_Check(pFunc)) {
       pArgs = PyTuple_New(1);
       pValue = PyLong_FromLong(tr_val);
@@ -470,7 +471,7 @@ label_t run_object_classification(unsigned tr_val)
       Py_DECREF(pArgs);
       if (pretValue != NULL) {
 	DEBUG(printf("Predicted label from Python program: %ld\n", PyLong_AsLong(pretValue)));
-	int val = PyLong_AsLong(pretValue);    
+	int val = PyLong_AsLong(pretValue);
 	object = (label_t)val;
 	DEBUG(printf("run_object_classification returning %u = %u\n", val, object));
 	Py_DECREF(pretValue);
@@ -492,7 +493,7 @@ label_t run_object_classification(unsigned tr_val)
     //Py_DECREF(pModule);
   }
 #endif
-  return object;  
+  return object;
 }
 
 
@@ -538,7 +539,7 @@ label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
   //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label));
   // We've finished the execution and lifetime for this task; free its metadata
   free_task_metadata_block(mb_ptr);
-  
+
   return the_label;
 }
 
@@ -573,7 +574,7 @@ radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
   radar_inputs_histogram[rdentry_p->set][rdentry_p->index_in_set]++;
   return rdentry_p;
 }
-  
+
 
 radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs)
 {
@@ -582,7 +583,7 @@ radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs)
   radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
   return &(the_radar_return_dict[crit_fft_samples_set][tr_val]);
 }
-  
+
 
 void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
 {
@@ -600,7 +601,7 @@ distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
 
   // We've finished the execution and lifetime for this task; free its metadata
   free_task_metadata_block(mb_ptr);
-  
+
   DEBUG(printf("  Returning distance = %.1f\n", dist));
   return dist;
 }
@@ -624,7 +625,7 @@ void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, d
   } else {
     pct_err = abs_err;
   }
-  
+
   DEBUG(printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err));
   //printf("IDX: %u :: %f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", index, tr_dist, dist, error, abs_err, pct_err);
   if (pct_err == 0.0) {
@@ -644,9 +645,9 @@ void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, d
 }
 
 
-/* Each time-step of the trace, we read in the 
+/* Each time-step of the trace, we read in the
  * trace values for the left, middle and right lanes
- * (i.e. which message if the autonomous car is in the 
+ * (i.e. which message if the autonomous car is in the
  *  left, middle or right lane).
  */
 vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
@@ -659,9 +660,9 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
     {
       unsigned nd_1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       DEBUG(printf("  Lane %u : obj in %u is %c at %u\n", vs.lane, vs.lane+1, nearest_obj[vs.lane+1], nd_1));
-      if ((nearest_obj[1] != 'N') && (nd_1 < VIT_CLEAR_THRESHOLD)) {  
+      if ((nearest_obj[1] != 'N') && (nd_1 < VIT_CLEAR_THRESHOLD)) {
 	// Some object is in the left lane within threshold distance
-	tr_val = 3; // Unsafe to move from lhazard lane into the left lane 
+	tr_val = 3; // Unsafe to move from lhazard lane into the left lane
       } else {
 	tr_val = 1;
       }
@@ -674,7 +675,7 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       tr_val = 0;
-      DEBUG(printf("  Lane %u : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, 
+      DEBUG(printf("  Lane %u : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane,
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
       if ((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) {
@@ -703,14 +704,14 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
     break;
   }
 
-  DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], tr_val));	
+  DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], tr_val));
 
   vit_dict_entry_t* trace_msg; // Will hold msg input data for decode, based on trace input
 
   // Here we determine short or long messages, based on global vit_msgs_size; offset is into the Dictionary
   int msg_offset = vit_msgs_size * NUM_MESSAGES; // 0 = short messages, 4 = long messages
 
-  viterbi_messages_histogram[vit_msgs_size][tr_val]++; 
+  viterbi_messages_histogram[vit_msgs_size][tr_val]++;
   switch(tr_val) {
   case 0: // safe_to_move_right_or_left
     trace_msg = &(the_viterbi_trace_dict[0 + msg_offset]);
@@ -764,7 +765,7 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   // descramble the output - put it in result
   DEBUG(printf("  Calling the viterbi descrambler routine; psdusize = %u\n", psdusize));
   descrambler(result, psdusize, msg_text, NULL /*descram_ref*/, NULL /*msg*/);
- 
+
  #if(0)
   printf("MB%u PSDU %u : Msg : = `", mb_ptr->metadata.block_id, psdusize);
   for (int ci = 0; ci < (psdusize - 26); ci++) {
@@ -931,7 +932,7 @@ void closeout_cv_kernel()
 #ifndef BYPASS_KERAS_CV_CODE
     Py_DECREF(pModule);
     Py_Finalize();
-#endif   
+#endif
 }
 
 void closeout_rad_kernel()
@@ -946,7 +947,7 @@ void closeout_rad_kernel()
 
   printf("\nHistogram of Radar Distance ABS-PCT-ERROR:\n");
   unsigned totals[] = {0, 0, 0, 0, 0};
-  
+
   for (int si = 0; si < num_radar_samples_sets; si++) {
     for (int di = 0; di < radar_dict_items_per_set; di++) {
       printf("    Set %u Entry %u Id %u Distance %f Occurs %u Histogram:\n", si, di, the_radar_return_dict[si][di].index, the_radar_return_dict[si][di].distance, hist_distances[si][di]);

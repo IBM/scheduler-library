@@ -282,12 +282,12 @@ int main(int argc, char *argv[])
 	  global_scheduler_selection_policy, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
- #else 
+ #else
   printf("Run is using ONLY-CPU-FFT\n");
  #endif
  #ifdef HW_VIT
   printf("Run has enabled Hardware-Viterbi : Device base is %s\n", VIT_DEV_BASE);
- #else 
+ #else
   printf("Run is using ONLY-CPU-Viterbi\n");
  #endif
   {

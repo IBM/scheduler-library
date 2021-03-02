@@ -1127,11 +1127,13 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef HW_CV
   // Add the call to the NVDLA stuff here.
   printf("Doing the system call : './nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump'\n");
+  //printf("Doing the system call : './nvdla_runtime --loadable mio_loadable.nvdla --image three.jpg'\n");
   #ifdef INT_TIME
   gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
   #endif
 
-  int sret = system("./nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump");
+  int sret = system("./nvdla_runtime --loadable hpvm-mod.nvdla --image 0003_0.jpg --rawdump");
+  //int sret = system("./nvdla_runtime --loadable mio_loadable.nvdla --image three.jpg");
   if (sret == -1) {
     printf(" The system call returned -1 -- an error occured?\n");
   }
@@ -1148,7 +1150,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   task_metadata_block->cv_timings.parse_sec[tidx]  += stop.tv_sec  - task_metadata_block->cv_timings.parse_start.tv_sec;
   task_metadata_block->cv_timings.parse_usec[tidx] += stop.tv_usec - task_metadata_block->cv_timings.parse_start.tv_usec;
  #endif
-  TDEBG(printf("---> Predicted label = %d\n", pred_label));
+  TDEBUG(printf("---> Predicted label = %d\n", pred_label));
   // Set result into the metatdata block
   task_metadata_block->data_view.cv_data.object_label = pred_label;
 
@@ -1522,10 +1524,10 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
   } break;
   case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
     proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
-    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], NUM_VIT_ACCEL));
+    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[vit_hwr_accel_t])); //NUM_VIT_ACCEL));
 #ifdef HW_VIT
-    DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u\n", NUM_VIT_ACCEL));
-    if (NUM_VIT_ACCEL > 0) {
+    DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u num_accel_of_type[VIT] = %u\n", NUM_VIT_ACCEL, num_accelerators_of_type[vit_hwr_accel_t]));
+    if (num_accelerators_of_type[vit_hwr_accel_t]/*NUM_VIT_ACCEL*/ > 0) {
     proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
     DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
     }
@@ -1654,7 +1656,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	  proposed_accel[0] = cpu_accel_t;
 	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
         #ifdef HW_VIT
-	  if (NUM_VIT_ACCEL > 0) {
+	  if (num_accelerators_of_type[vit_hwr_accel_t] /*NUM_VIT_ACCEL*/ > 0) {
 	    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
 	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
 	  }
