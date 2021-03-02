@@ -79,22 +79,32 @@ endif
 
 ifdef CONFIG_KERAS_CV_BYPASS
  CFLAGS += -DBYPASS_KERAS_CV_CODE
+else
+ CFLAGS += -I/usr/include/python2.7
 endif
 ifdef CONFIG_CV_EN
- SW_STR =
- CA_STR = CH
- CFLAGS += -DHW_CV
- CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"'
-endif
-ifdef CONFIG_FAKE_CV_EN
- SW_STR =
- CA_STR = Cf
- CFLAGS += -DFAKE_HW_CV
-endif
-ifdef CONFIG_CV_ONLY_HWR
- SW_STR =
- CA_STR = Ch
- CFLAGS += -DHW_ONLY_CV
+ ifdef CONFIG_CV_ONLY_HWR
+  SW_STR =
+  CA_STR = CHo
+  CFLAGS += -DHW_CV -DHW_ONLY_CV
+ else
+  SW_STR =
+  CA_STR = CH
+  CFLAGS += -DHW_CV
+ endif
+ #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
+else # Not using the HWR accelerator
+ ifdef CONFIG_FAKE_CV_EN
+  SW_STR =
+  CA_STR = CF
+  CFLAGS += -DFAKE_HW_CV
+ else # Not FAKE HW_CV
+  ifdef CONFIG_CV_ONLY_HWR
+   SW_STR =
+   CA_STR = CFo
+   CFLAGS += -DHW_ONLY_CV
+  endif
+ endif
 endif
 
 ifdef CONFIG_VERBOSE
@@ -114,7 +124,9 @@ ifdef COMPILE_TO_ESP
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/libesp
 endif
-
+ifndef CONFIG_KERAS_CV_BYPASS
+ LDLIBS += 
+endif
 LDFLAGS ?=
 LDFLAGS += -lm
 LDFLAGS += -lpthread
@@ -123,6 +135,9 @@ ifdef COMPILE_TO_ESP
  LDFLAGS += -lesp
  LDFLAGS += -ltest
  LDFLAGS += -lcontig
+endif
+ifndef CONFIG_KERAS_CV_BYPASS
+ LDFLAGS += -lpython2.7
 endif
 
 SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))

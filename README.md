@@ -15,11 +15,24 @@ The installation and execution are fairly standard, via github clone and makefil
 
 ```
 git clone https://github.com/IBM/mini-era.git
+cd mini-era
 make clean
 make
 ```
 
-The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. The `make` command should produce the `test-scheduler.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
+The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. The `make` command should produce the `test-scheduler*.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
+
+The `make` process uses the contents of a `.config` file to set various compile-time parameters.  The current version of this software produces an executable target that includes soe representation of these configuration parameters.  This, the output executable will likely have a name like `test-scheduler-CF-P3V0F0N0` which indicates:
+ - this is the `test-scheduler` trace-driven (as opposed to `test-scheduler-sim` simulation-driven) run-type
+ - the build uses the "fake" CV/CNN accelerators (`CF`)
+ - the build allows for 'P3' three CPU accelerators (processors), 'V0' and zero hardware Viterbi accelerators, 'F0' and zero FFT accelerators, and 'N0' zero CV/CNN
+When building for hardware that includes hardware accelerators (e.g. 3 FFT, 2 Viterbi, and 1 CV/CNN) then the name would reflect that, e.g. the target executable could read `test-scheduler-RV-F2VCHo-P3V2F3N1` which indicates:
+ - this is the `test-scheduler` trace-driven (as opposed to `test-scheduler-sim` simulation-driven) run-type
+ - it was cross-compiled for `RV` (Risc-V) target architecture
+ - the build include use of the `F2` fft2 hardware accelerator, 'V' Viterbi hardware accelerator, and `CHo` Hardware (NVDLA) only (i.e. no processor-based execution of CV/CNN tasks)
+ - and the build allows for 'P3' three CPU accelerators (processors), 'V2' and two hardware Viterbi accelerators, 'F3' and three hardware FFT accelerators, and 'N1' one CV/CNN hardware NVDLA accelerator
+
+This new naming convention is primarily used to make clearer the target plaftforms on which the executable can be expected to function.  The "all-software" executable can execute on any platform.  The example above that uses hardware accelerators (`test-scheduler-RV-F2VCHo-P3V2F3N1`) can therefore be executed on a RISC-V based system that includes at least 2 hardware Viterbi, 3 hardware FFT, and 1 CV/CNN NVDLA accelerator.
 
 ### Targets
 
