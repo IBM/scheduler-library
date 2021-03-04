@@ -58,6 +58,7 @@ SW_STR = S
 FA_STR =
 VA_STR =
 CA_STR =
+CB_STR =
 ifdef CONFIG_FFT_EN
  SW_STR =
  FA_STR = F$(CONFIG_FFT_ACCEL_VER)
@@ -82,29 +83,22 @@ ifdef CONFIG_KERAS_CV_BYPASS
 else
  CFLAGS += -I/usr/include/python2.7
 endif
+
 ifdef CONFIG_CV_EN
- ifdef CONFIG_CV_ONLY_HWR
-  SW_STR =
-  CA_STR = CHo
-  CFLAGS += -DHW_CV -DHW_ONLY_CV
- else
-  SW_STR =
-  CA_STR = CH
-  CFLAGS += -DHW_CV
- endif
+ SW_STR =
+ CA_STR = CH
+ CFLAGS += -DHW_CV
  #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
 else # Not using the HWR accelerator
- ifdef CONFIG_FAKE_CV_EN
-  SW_STR =
-  CA_STR = CF
-  CFLAGS += -DFAKE_HW_CV
- else # Not FAKE HW_CV
-  ifdef CONFIG_CV_ONLY_HWR
-   SW_STR =
-   CA_STR = CFo
-   CFLAGS += -DHW_ONLY_CV
-  endif
- endif
+ SW_STR =
+ CA_STR = CF
+ CFLAGS += -DFAKE_HW_CV
+endif
+
+ifdef CONFIG_CV_ONLY_HWR
+ SW_STR =
+ CB_STR = o
+ CFLAGS += -DHW_ONLY_CV
 endif
 
 ifdef CONFIG_VERBOSE
@@ -152,8 +146,8 @@ VPATH = ./src
 # TARGET=test-scheduler$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
 # STARGET=test-scheduler-sim$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
 #else
-TARGET=test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
-STARGET=test-scheduler-sim$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
+TARGET=test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
+STARGET=test-scheduler-sim$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 #endif
 
 $(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
