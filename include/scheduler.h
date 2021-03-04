@@ -225,6 +225,11 @@ extern unsigned crit_fft_samples_set;
 
 extern unsigned int scheduler_holdoff_usec;
 
+extern unsigned input_cpu_accel_limit;
+extern unsigned input_cv_accel_limit;
+extern unsigned input_fft_accel_limit;
+extern unsigned input_vit_accel_limit;
+
 extern status_t initialize_scheduler();
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);

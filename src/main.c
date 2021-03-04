@@ -112,6 +112,9 @@ void print_usage(char * pname) {
   printf("               :      1 = Fastest_to_Slowest_First_Available\n");
   printf("               :      2 = Fastest_Finish_Time_First\n");
   printf("               :      3 = Fastest_Finish_Time_First_Queued\n");
+  printf("    -L <tuple> : Sets the limits on number of each accelerator type available in this run.\n");
+  printf("               :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
+
 }
 
 
@@ -164,7 +167,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -257,6 +260,23 @@ int main(int argc, char *argv[])
       cv_cpu_run_time_in_usec = atoi(optarg);
       break;
 
+    case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
+    {
+      unsigned in_cpu = 0;
+      unsigned in_cv = 0;
+      unsigned in_fft = 0;
+      unsigned in_vit = 0;
+      if (sscanf(optarg, "%u,%u,%u,%u", &in_cpu, &in_fft, &in_vit, &in_cv) != 4) {
+        printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
+	exit(-1);
+      }
+      input_cpu_accel_limit = in_cpu;
+      input_fft_accel_limit = in_fft;
+      input_vit_accel_limit = in_vit;
+      input_cv_accel_limit  = in_cv;
+    }
+    break;
+
     case ':':
       printf("option needs a value\n");
       break;
@@ -278,8 +298,9 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  printf("Run using Scheduler Policy %u with %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u\n",
-	  global_scheduler_selection_policy, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, scheduler_holdoff_usec);
+  printf("Run using Scheduler Policy %u using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
+	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
+	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
  #else
@@ -447,7 +468,9 @@ int main(int argc, char *argv[])
 
   #ifdef USE_SIM_ENVIRON
   // In simulation mode, we could start the main car is a different state (lane, speed)
-  init_sim_environs(world_desc_file_name, &vehicle_state);
+  if (init_sim_environs(world_desc_file_name, &vehicle_state) == error) {
+    cleanup_and_exit(-1);
+  }
   #endif
 
 /*** MAIN LOOP -- iterates until all the traces are fully consumed ***/
