@@ -74,3 +74,6 @@ utils/vistracegen
 erav3-app/erav3c
 erav3-app/verbose_erav3c
 
+#Executables in root
+test-scheduler-*
+
