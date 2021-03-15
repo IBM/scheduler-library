@@ -14,8 +14,8 @@ Other platforms should also work; this implementation does NOT support (yet) the
 The installation and execution are fairly standard, via github clone and makefiles:
 
 ```
-git clone https://github.com/IBM/mini-era.git
-cd mini-era
+git clone https://github.com/IBM/scheduler-library.git
+cd scheduler-library
 make clean
 make
 ```
