@@ -76,7 +76,7 @@ typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
   FAST_TO_SLOW_FIRST_AVAIL_POLICY,
   FASTEST_FINISH_TIME_FIRST_POLICY,
   FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-  NUM_SELECTION_POLICIES } accel_selct_policy_t;
+  NUM_SELECTION_POLICIES } accel_select_policy_t;
 
 
 extern const char* task_job_str[NUM_JOB_TYPES];
@@ -214,7 +214,7 @@ typedef struct task_metadata_entry_struct {
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
 // This is the accelerator selection policy used by the scheduler
-extern accel_selct_policy_t global_scheduler_selection_policy;
+extern accel_select_policy_t global_scheduler_selection_policy;
 
 // These are some "fake" times (models the execution of CV timing)
 extern unsigned cv_cpu_run_time_in_usec;

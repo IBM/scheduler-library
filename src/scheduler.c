@@ -47,7 +47,7 @@ unsigned int scheduler_holdoff_usec = 1;
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
-accel_selct_policy_t global_scheduler_selection_policy;
+accel_select_policy_t global_scheduler_selection_policy = 1;
 
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
@@ -1795,7 +1795,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 //  The accelerator is selected according to a policy
 //  The policies are implemented in separate functions.
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator(accel_selct_policy_t policy, ready_mb_task_queue_entry_t* ready_task_entry)
+select_task_and_target_accelerator(accel_select_policy_t policy, ready_mb_task_queue_entry_t* ready_task_entry)
 {
   ready_mb_task_queue_entry_t* selected_task_entry = NULL;
   switch(policy) { 
