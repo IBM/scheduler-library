@@ -22,28 +22,26 @@ make
 
 The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. The `make` command should produce the `test-scheduler*.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
 
-The `make` process uses the contents of a `.config` file to set various compile-time parameters.  The current version of this software produces an executable target that includes soe representation of these configuration parameters.  This, the output executable will likely have a name like `test-scheduler-CF-P3V0F0N0` which indicates:
+The `make` process uses the contents of a `.config` file to set various compile-time parameters.  The current version of this software produces an executable target that includes some representation of these configuration parameters.  Thus, the output executable will likely have a name like `test-scheduler-CF-P3V0F0N0` which indicates:
  - this is the `test-scheduler` trace-driven (as opposed to `test-scheduler-sim` simulation-driven) run-type
  - the build uses the "fake" CV/CNN accelerators (`CF`)
  - the build allows for 'P3' three CPU accelerators (processors), 'V0' and zero hardware Viterbi accelerators, 'F0' and zero FFT accelerators, and 'N0' zero CV/CNN
 When building for hardware that includes hardware accelerators (e.g. 3 FFT, 2 Viterbi, and 1 CV/CNN) then the name would reflect that, e.g. the target executable could read `test-scheduler-RV-F2VCHo-P3V2F3N1` which indicates:
- - this is the `test-scheduler` trace-driven (as opposed to `test-scheduler-sim` simulation-driven) run-type
- - it was cross-compiled for `RV` (Risc-V) target architecture
- - the build include use of the `F2` fft2 hardware accelerator, 'V' Viterbi hardware accelerator, and `CHo` Hardware (NVDLA) only (i.e. no processor-based execution of CV/CNN tasks)
+ - it was cross-compiled for `RV` (RISC-V) target architecture
+ - the build uses the `F2` fft2 hardware accelerator, 'V' Viterbi hardware accelerator, and `CHo` Hardware (NVDLA) only (i.e. no processor-based execution of CV/CNN tasks)
  - and the build allows for 'P3' three CPU accelerators (processors), 'V2' and two hardware Viterbi accelerators, 'F3' and three hardware FFT accelerators, and 'N1' one CV/CNN hardware NVDLA accelerator
 
-This new naming convention is primarily used to make clearer the target plaftforms on which the executable can be expected to function.  The "all-software" executable can execute on any platform.  The example above that uses hardware accelerators (`test-scheduler-RV-F2VCHo-P3V2F3N1`) can therefore be executed on a RISC-V based system that includes at least 2 hardware Viterbi, 3 hardware FFT, and 1 CV/CNN NVDLA accelerator.
+This new naming convention is primarily used to make clearer the target plaftforms on which the executable can be expected to function.  The _all-software_ executable can execute on any platform.  The example above that uses hardware accelerators (`test-scheduler-RV-F2VCHo-P3V2F3N1`) can therefore be executed on a RISC-V based system that includes at least 2 hardware Viterbi, 3 hardware FFT, and 1 CV/CNN NVDLA accelerator.
 
 ### Targets
 
 The standard ```make``` of the scheduler-library code will produce two executables:
- - test-scheduler.exe
- - test-scheduler-sim.exe
-The ```test-scheduler.exe``` program corresponds to the trace-driven  ```mini-era``` executable, while the ```test-scheduler-sim.exe``` corresponds to the simulation version of ```mini-era``` (where the inputs are derived by simulation of arrival events, guided by thresholds and random number selection).  For more details on the simulation versus trae-driven ```mini-era``` programs, please see the documentation in the mini-era github repository.
+ - `test-scheduler.exe`: corresponds to the trace-driven `mini-era` executable.
+ - `test-scheduler-sim.exe`: corresponds to the simulation version of `mini-era` (where the inputs are derived by simulation of arrival events, guided by thresholds and random number selection).  For more details on the simulation versus trae-driven `mini-era` programs, please see the documentation in the mini-era github repository.
 
 ### Configuration
 
-The Mini-ERA + SL build supports more than just a basic Linux platform; there is provision to tie this same application into the EPOCHS <a href="https://esp.cs.columbia.edu" target="_blank">ESP-based</a> Soc platform (currently propotyped on an FPGA). As such, there are options to compile this application code within the ESP SoC design environment to cross-compile an output target or the EPOCHS native RISC-V Linux SoC environment. There are also some additional configuration capabilites tied in to the overall make process, and these are controlled in two ways:
+The Mini-ERA + SL build supports more than just a basic Linux platform; there is provision to tie this same application into the EPOCHS <a href="https://esp.cs.columbia.edu" target="_blank">ESP-based</a> SoC platform (currently propotyped on an FPGA). As such, there are options to compile this application code within the ESP SoC design environment to cross-compile an output target for the EPOCHS native RISC-V Linux SoC environment. There are also some additional configuration capabilites tied in to the overall make process, and these are controlled in two ways:
 
 1. Build using an explicit Makefile, e.g. to build the local (native to this system) version, invoke `make -f Makefile.local` which will use the native gcc and compile to a version that does not include the use of ESP-based SoC hardware; to compile explicitly to the ESP-based SoC RISC-V system, build with `make -f Makefile.riscv`
 
@@ -51,26 +49,26 @@ The Mini-ERA + SL build supports more than just a basic Linux platform; there is
 
 ### The `.config` File Contents
 
-The config file contains a series of definitions, like #define macros or environment variables, wused to guide the default make behavior. These contents are:
+The config file contains a series of definitions, like #define macros or environment variables, used to guide the default make behavior. These contents are:
 
-- DO_CROSS_COMPILATION=y  indicates we are cross-compiling (uses the cross-compiler defined in Makefile)
-- COMPILE_TO_ESP=y	  indicates we are compiling to target the ESP RISC-V SoC environment
-- CONFIG_ESP_INTERFACE=y  this should always be set -- historical control to choose between some function interfaces.
-- CONFIG_FFT_EN=y	  enable FFT Hardware Accelerators
-- CONFIG_FFT_FX=32	  indicates FFT accelerators use 32-bit FXP format (can specify 64)
-- CONFIG_FFT_BITREV=y	  indicates FFT accelerators include the bit-reverse operation
-- CONFIG_VITERBI_EN=y	  enable Viterbi Decode Hardware Accelerators
-- CONFIG_KERAS_CV_BYPASS=y	 turns off the Tensorflow code, etc. -- Leave this enabled!
-- CONFIG_VERBOSE=y	  turns on a LOT of debugging output
-- CONFIG_DBG_THREADS=y	  turns on debugging output for the threads 
-- CONFIG_GDB=y		  indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
+- `DO_CROSS_COMPILATION=y`  indicates we are cross-compiling (uses the cross-compiler defined in Makefile)
+- `COMPILE_TO_ESP=y`	  indicates we are compiling to target the ESP RISC-V SoC environment
+- `CONFIG_ESP_INTERFACE=y`  this should always be set -- historical control to choose between some function interfaces.
+- `CONFIG_FFT_EN=y`	  enable FFT Hardware Accelerators
+- `CONFIG_FFT_FX=32`	  indicates FFT accelerators use 32-bit FXP format (can specify 64)
+- `CONFIG_FFT_BITREV=y`	  indicates FFT accelerators include the bit-reverse operation
+- `CONFIG_VITERBI_EN=y`	  enable Viterbi Decode Hardware Accelerators
+- `CONFIG_KERAS_CV_BYPASS=y`	 turns off the Tensorflow code, etc. -- Leave this enabled!
+- `CONFIG_VERBOSE=y`	  turns on a LOT of debugging output
+- `CONFIG_DBG_THREADS=y`	  turns on debugging output for the threads 
+- `CONFIG_GDB=y`		  indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
 
 ### Usage
 
-As indicated, there are two executables that will execute the Mini-ERA functionality on the *scheduler-library*, adn their usage is very similar,
+As indicated, there are two executables that will execute the Mini-ERA functionality on the SL, and their usage is very similar,
 but with a few distinctions owing to the differences in running with a trace input as versus a simulated world  providing inputs.
 
-#### Trace-Driven Version: ```test-scheduler.exe```
+#### Trace-Driven Version: `test-scheduler.exe`
 ```
 ./test-scheduler.exe -h
 Usage: ./cmain.exe <OPTIONS>
