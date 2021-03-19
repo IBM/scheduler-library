@@ -210,6 +210,14 @@ typedef struct task_metadata_entry_struct {
   } data_view;
 } task_metadata_block_t;
 
+// This is the Ready Task Queue -- it holds Metadata Block IDs
+typedef struct ready_mb_task_queue_entry_struct {
+  short  unique_id;
+  short  block_id;
+  struct ready_mb_task_queue_entry_struct * next;
+  struct ready_mb_task_queue_entry_struct * prev;
+} ready_mb_task_queue_entry_t;
+
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 

@@ -61,14 +61,6 @@ int free_metadata_blocks = total_metadata_pool_blocks;
 unsigned allocated_metadata_blocks[NUM_JOB_TYPES];
 unsigned freed_metadata_blocks[NUM_JOB_TYPES];
 
-// This is the Ready Task Queue -- it holds Metadata Block IDs
-typedef struct ready_mb_task_queue_entry_struct {
-  short  unique_id;
-  short  block_id;
-  struct ready_mb_task_queue_entry_struct * next;
-  struct ready_mb_task_queue_entry_struct * prev;
-} ready_mb_task_queue_entry_t;
-
 pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
 ready_mb_task_queue_entry_t ready_mb_task_queue_pool[total_metadata_pool_blocks];
 ready_mb_task_queue_entry_t* free_ready_mb_task_queue_entries;
