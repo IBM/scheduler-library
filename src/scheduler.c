@@ -703,35 +703,13 @@ status_t initialize_scheduler()
     }
     master_metadata_pool[i].sched_timings.done_sec = 0;
     master_metadata_pool[i].sched_timings.done_usec = 0;
-    for (int ti = 0; ti < 2; ti++) {
-      // FFT task timings
-      master_metadata_pool[i].fft_timings.comp_by[ti] = 0;
-      master_metadata_pool[i].fft_timings.call_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.call_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_br_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_br_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_cvtin_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_cvtin_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_comp_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_comp_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_cvtout_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.fft_cvtout_usec[ti] = 0;
-      master_metadata_pool[i].fft_timings.cdfmcw_sec[ti] = 0;
-      master_metadata_pool[i].fft_timings.cdfmcw_usec[ti] = 0;
-      // Viterbi task timings
-      master_metadata_pool[i].vit_timings.comp_by[ti] = 0;
-      master_metadata_pool[i].vit_timings.dodec_sec[ti] = 0;
-      master_metadata_pool[i].vit_timings.dodec_usec[ti] = 0;
-      master_metadata_pool[i].vit_timings.depunc_sec[ti] = 0;
-      master_metadata_pool[i].vit_timings.depunc_usec[ti] = 0;
-      // CV/CNN task timings
-      master_metadata_pool[i].cv_timings.comp_by[ti] = 0;
-      master_metadata_pool[i].cv_timings.call_sec[ti] = 0;
-      master_metadata_pool[i].cv_timings.call_usec[ti] = 0;
-      master_metadata_pool[i].cv_timings.parse_sec[ti] = 0;
-      master_metadata_pool[i].cv_timings.parse_usec[ti] = 0;
+    // Reset all the per-task type and targets timing data, too.
+    for (int ti = 0; ti < MAX_TASK_TYPES; ti++) {
+      for (int tii = 0; tii < MAX_TASK_TARGETS; tii++) {
+	master_metadata_pool[i].task_timings[ti].comp_by[tii] = 0;
+	master_metadata_pool[i].task_timings[ti].time_sec[tii] = 0;
+	master_metadata_pool[i].task_timings[ti].time_usec[tii] = 0;
+      }
     }
     
     pthread_mutex_init(&(master_metadata_pool[i].metadata_mutex), NULL);
@@ -970,11 +948,15 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int fn = task_metadata_block->accelerator_id;
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[FFT_TASK]);
+  //fft_data_struct_t * fft_data_p = task_metadata_block->task_timings[FFT_TASK];
   uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
-  task_metadata_block->fft_timings.comp_by[tidx]++;
+  //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
+  fft_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+  //gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_start), NULL);
  #endif // INT_TIME
 #ifdef HW_FFT
   // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
@@ -982,7 +964,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   
   DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_cvtin_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_cvtin_start), NULL);
  #endif // INT_TIME
   // convert input from float to fixed point
   float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
@@ -992,27 +974,27 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #ifdef INT_TIME
   struct timeval cvtin_stop;
   gettimeofday(&cvtin_stop, NULL);
-  task_metadata_block->fft_timings.fft_cvtin_sec[tidx]   += cvtin_stop.tv_sec  - task_metadata_block->fft_timings.fft_cvtin_start.tv_sec;
-  task_metadata_block->fft_timings.fft_cvtin_usec[tidx]  += cvtin_stop.tv_usec - task_metadata_block->fft_timings.fft_cvtin_start.tv_usec;
+  fft_timings_p->fft_cvtin_sec[tidx]   += cvtin_stop.tv_sec  - fft_timings_p->fft_cvtin_start.tv_sec;
+  fft_timings_p->fft_cvtin_usec[tidx]  += cvtin_stop.tv_usec - fft_timings_p->fft_cvtin_start.tv_usec;
  #endif // INT_TIME
 
   // Call the FFT Accelerator
   //    NOTE: Currently this is blocking-wait for call to complete
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_comp_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
  #endif // INT_TIME
   DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
   fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  task_metadata_block->fft_timings.fft_comp_sec[tidx]   += stop_time.tv_sec  - task_metadata_block->fft_timings.fft_comp_start.tv_sec;
-  task_metadata_block->fft_timings.fft_comp_usec[tidx]  += stop_time.tv_usec - task_metadata_block->fft_timings.fft_comp_start.tv_usec;
+  fft_timings_p->fft_comp_sec[tidx]   += stop_time.tv_sec  - fft_timings_p->fft_comp_start.tv_sec;
+  fft_timings_p->fft_comp_usec[tidx]  += stop_time.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
  #endif
   // convert output from fixed point to float
   DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_cvtout_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_cvtout_start), NULL);
  #endif // INT_TIME
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
@@ -1021,13 +1003,13 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #ifdef INT_TIME
   struct timeval cvtout_stop;
   gettimeofday(&cvtout_stop, NULL);
-  task_metadata_block->fft_timings.fft_cvtout_sec[tidx]   += cvtout_stop.tv_sec  - task_metadata_block->fft_timings.fft_cvtout_start.tv_sec;
-  task_metadata_block->fft_timings.fft_cvtout_usec[tidx]  += cvtout_stop.tv_usec - task_metadata_block->fft_timings.fft_cvtout_start.tv_usec;
+  fft_timings_p->fft_cvtout_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_cvtout_start.tv_sec;
+  fft_timings_p->fft_cvtout_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_cvtout_start.tv_usec;
   /* #ifdef INT_TIME */
   /*  struct timeval stop_time; */
   /*  gettimeofday(&stop_time, NULL); */
-  task_metadata_block->fft_timings.fft_sec[tidx]   += cvtout_stop.tv_sec  - task_metadata_block->fft_timings.fft_start.tv_sec;
-  task_metadata_block->fft_timings.fft_usec[tidx]  += cvtout_stop.tv_usec - task_metadata_block->fft_timings.fft_start.tv_usec;
+  fft_timings_p->fft_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_start.tv_sec;
+  fft_timings_p->fft_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
  #endif // INT_TIME
 
   DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
@@ -1059,7 +1041,9 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int vn = task_metadata_block->accelerator_id;
-  task_metadata_block->vit_timings.comp_by[tidx]++;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[VITERBI_TASK]);
+  //task_metadata_block->vit_timings.comp_by[tidx]++;
+  vit_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHVA: In execute_hwr_viterbi_accelerator on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_view.vit_data);
   int32_t  in_cbps = vdata->n_cbps;
@@ -1095,15 +1079,15 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   }
 
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->vit_timings.dodec_start), NULL);
+  gettimeofday(&(vit_timings_p->dodec_start), NULL);
  #endif
   DEBUG(printf("EHVA:   calling do_decoding_hw for HW_VIT[%u]\n", vn));
   do_decoding_hw(&(vitHW_fd[vn]), &(vitHW_desc[vn]));
  #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
-  task_metadata_block->vit_timings.dodec_sec[tidx]  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
-  task_metadata_block->vit_timings.dodec_usec[tidx] += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
+  vit_timings_p->dodec_sec[tidx]  += dodec_stop.tv_sec  - vit_timings_p->dodec_start.tv_sec;
+  vit_timings_p->dodec_usec[tidx] += dodec_stop.tv_usec - vit_timings_p->\dodec_start.tv_usec;
  #endif
   // Copy output data from HWR memory to Metadata Block Memory.
   DEBUG(printf("EHVA:   copying out the HW_VIT result data\n"));
@@ -1150,14 +1134,15 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  task_metadata_block->cv_timings.comp_by[tidx]++;
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[CV_TASK]);
+  cv_timings_p->comp_by[tidx]++;
   TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
 #ifdef HW_CV
   // Add the call to the NVDLA stuff here.
   printf("Doing the system call : './nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump'\n");
   //printf("Doing the system call : './nvdla_runtime --loadable mio_loadable.nvdla --image three.jpg'\n");
   #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
+  gettimeofday(&(cv_timings_p->call_start), NULL);
   #endif
 
   int sret = system("./nvdla_runtime --loadable hpvm-mod.nvdla --image 0003_0.jpg --rawdump");
@@ -1166,17 +1151,17 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
     printf(" The system call returned -1 -- an error occured?\n");
   }
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->cv_timings.parse_start), NULL);
-  task_metadata_block->cv_timings.call_sec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
-  task_metadata_block->cv_timings.call_usec[tidx]  += task_metadata_block->cv_timings.parse_start.tv_usec  - task_metadata_block->cv_timings.call_start.tv_usec;
-  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
+  gettimeofday(&(cv_timings_p->parse_start), NULL);
+  cv_timings_p->call_sec[tidx]  += cv_timings_p->parse_start.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[tidx]  += cv_timings_p->parse_start.tv_usec  - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", cv_timings_p->call_sec[tidx], cv_timings_p->call_usec[tidx]));
  #endif
   label_t pred_label = parse_output_dimg();
  #ifdef INT_TIME
   struct timeval stop;
   gettimeofday(&(stop), NULL);
-  task_metadata_block->cv_timings.parse_sec[tidx]  += stop.tv_sec  - task_metadata_block->cv_timings.parse_start.tv_sec;
-  task_metadata_block->cv_timings.parse_usec[tidx] += stop.tv_usec - task_metadata_block->cv_timings.parse_start.tv_usec;
+  cv_timings_p->parse_sec[tidx]  += stop.tv_sec  - cv_timings_p->parse_start.tv_sec;
+  cv_timings_p->parse_usec[tidx] += stop.tv_usec - cv_timings_p->parse_start.tv_usec;
  #endif
   TDEBUG(printf("---> Predicted label = %d\n", pred_label));
   // Set result into the metatdata block
@@ -1185,16 +1170,16 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 #else // Of #ifdef HW_CV
  #ifdef FAKE_HW_CV
   #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->cv_timings.call_start), NULL);
+  gettimeofday(&(cv_timings_p->call_start), NULL);
   #endif
   // This usleep call stands in as the "Fake" CNN accelerator
   usleep(cv_fake_hwr_run_time_in_usec);
   #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  task_metadata_block->cv_timings.call_sec[tidx]  += stop_time.tv_sec  - task_metadata_block->cv_timings.call_start.tv_sec;
-  task_metadata_block->cv_timings.call_usec[tidx] += stop_time.tv_usec - task_metadata_block->cv_timings.call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, task_metadata_block->cv_timings.call_sec[tidx], task_metadata_block->cv_timings.call_usec[tidx]));
+  cv_timings_p->call_sec[tidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, cv_timings_p->call_sec[tidx], cv_timings_p->call_usec[tidx]));
   #endif
 
  #else  
@@ -2173,15 +2158,16 @@ void shutdown_scheduler()
     uint64_t total_cdfmcw_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-        unsigned this_comp_by = (unsigned)(master_metadata_pool[bi].fft_timings.comp_by[ti]);
-        uint64_t this_fft_call_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.call_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.call_usec[ti]);
-        uint64_t this_fft_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_usec[ti]);
-        uint64_t this_fft_br_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_br_usec[ti]);
-        uint64_t this_bitrev_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.bitrev_usec[ti]);
-        uint64_t this_fft_cvtin_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtin_usec[ti]);
-        uint64_t this_fft_comp_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_comp_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_comp_usec[ti]);
-        uint64_t this_fft_cvtout_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.fft_cvtout_usec[ti]);
-        uint64_t this_cdfmcw_usec = (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].fft_timings.cdfmcw_usec[ti]);
+	fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(master_metadata_pool[bi].task_timings[FFT_TASK]);
+        unsigned this_comp_by = (unsigned)(fft_timings_p->comp_by[ti]);
+        uint64_t this_fft_call_usec = (uint64_t)(fft_timings_p->call_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->call_usec[ti]);
+        uint64_t this_fft_usec = (uint64_t)(fft_timings_p->fft_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->fft_usec[ti]);
+        uint64_t this_fft_br_usec = (uint64_t)(fft_timings_p->fft_br_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->fft_br_usec[ti]);
+        uint64_t this_bitrev_usec = (uint64_t)(fft_timings_p->bitrev_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->bitrev_usec[ti]);
+        uint64_t this_fft_cvtin_usec = (uint64_t)(fft_timings_p->fft_cvtin_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->fft_cvtin_usec[ti]);
+        uint64_t this_fft_comp_usec = (uint64_t)(fft_timings_p->fft_comp_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->fft_comp_usec[ti]);
+        uint64_t this_fft_cvtout_usec = (uint64_t)(fft_timings_p->fft_cvtout_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->fft_cvtout_usec[ti]);
+        uint64_t this_cdfmcw_usec = (uint64_t)(fft_timings_p->cdfmcw_sec[ti]) * 1000000 + (uint64_t)(fft_timings_p->cdfmcw_usec[ti]);
         printf("Block %3u : %u %s : FFT CB %8u call %15lu fft %15lu fft_br %15lu br %15lu cvtin %15lu calc %15lu cvto %15lu fmcw %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_fft_call_usec, this_fft_usec, this_fft_br_usec, this_bitrev_usec, this_fft_cvtin_usec, this_fft_comp_usec, this_fft_cvtout_usec, this_cdfmcw_usec);
         // Per acceleration (CPU, HWR)
         total_fft_comp_by[ti]     += this_comp_by;
@@ -2247,9 +2233,10 @@ void shutdown_scheduler()
     uint64_t total_dodec_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-        unsigned this_comp_by = (unsigned)(master_metadata_pool[bi].vit_timings.comp_by[ti]);
-        uint64_t this_depunc_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.depunc_usec[ti]);
-        uint64_t this_dodec_usec = (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].vit_timings.dodec_usec[ti]);
+	vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(master_metadata_pool[bi].task_timings[VITERBI_TASK]);
+        unsigned this_comp_by = (unsigned)(vit_timings_p->comp_by[ti]);
+        uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ti]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ti]);
+        uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ti]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ti]);
         printf("Block %3u : %u %s : VITERBI %8u depunc %15lu dodecode %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_depunc_usec, this_dodec_usec);
         // Per acceleration (CPU, HWR)
         total_vit_comp_by[ti] += this_comp_by;
@@ -2279,9 +2266,10 @@ void shutdown_scheduler()
     uint64_t total_parse_usec[3] = {0, 0, 0};
     for (int ti = 0; ti < 2; ti++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-        unsigned this_comp_by = (unsigned)(master_metadata_pool[bi].cv_timings.comp_by[ti]);
-        uint64_t this_cv_call_usec = (uint64_t)(master_metadata_pool[bi].cv_timings.call_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].cv_timings.call_usec[ti]);
-        uint64_t this_parse_usec = (uint64_t)(master_metadata_pool[bi].cv_timings.parse_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].cv_timings.parse_usec[ti]);
+	cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(master_metadata_pool[bi].task_timings[CV_TASK]);
+	unsigned this_comp_by = (unsigned)(cv_timings_p->comp_by[ti]);
+        uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ti]);
+        uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ti]);
         printf("Block %3u : %u %s : CV %8u call-time %15lu parse %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_cv_call_usec, this_parse_usec);
         // Per acceleration (CPU, HWR)
         total_cv_comp_by[ti] += this_comp_by;

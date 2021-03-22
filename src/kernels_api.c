@@ -520,12 +520,13 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 {
   /* 2) Set up to request object detection on an image frame */
   int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[CV_TASK]);
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
   mb_ptr->data_view.cv_data.object_label = in_tr_val;
   //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label, in_tr_val));
  #ifdef INT_TIME
-  gettimeofday(&(mb_ptr->cv_timings.call_start), NULL);
+  gettimeofday(&(cv_timings_p->call_start), NULL);
  #endif
   //  schedule_task(data);
   request_execution(mb_ptr);
