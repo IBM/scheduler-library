@@ -18,9 +18,13 @@
 #ifndef H_ACCELERATORS_H
 #define H_ACCELERATORS_H
 
+extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
+extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
+
 extern void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
 extern void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
 
+extern void init_vit_parameters(int vn);
 extern void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 extern void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 

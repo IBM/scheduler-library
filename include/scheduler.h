@@ -191,8 +191,4 @@ extern void cleanup_and_exit(int rval);
 
 
 
-extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
-extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
-
-
 #endif
