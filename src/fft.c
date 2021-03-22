@@ -127,24 +127,25 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[FFT_TASK]);
   transform_length = 1;
 
   /* bit reversal */
 #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.bitrev_start), NULL);
+  gettimeofday(&(fft_timings_p->bitrev_start), NULL);
 #endif
   bit_reverse (data, N, logn);
 #ifdef INT_TIME
   struct timeval bitrev_stop;
   gettimeofday(&bitrev_stop, NULL);
-  task_metadata_block->fft_timings.bitrev_sec[tidx]  += bitrev_stop.tv_sec  - task_metadata_block->fft_timings.bitrev_start.tv_sec;
-  task_metadata_block->fft_timings.bitrev_usec[tidx] += bitrev_stop.tv_usec - task_metadata_block->fft_timings.bitrev_start.tv_usec;
+  fft_timings_p->bitrev_sec[tidx]  += bitrev_stop.tv_sec  - fft_timings_p->bitrev_start.tv_sec;
+  fft_timings_p->bitrev_usec[tidx] += bitrev_stop.tv_usec - fft_timings_p->bitrev_start.tv_usec;
 #endif
 
   /* calculation */
   //printf("\nSTART,A,B,I,J,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "2*j", "Data", "2*j+1", "Data", "2*i", "Data", "2*i+1", "Data", "t_real", "t_imag");
  #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->fft_timings.fft_comp_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
  #endif
   for (bit = 0; bit < logn; bit++) {
     w_real = 1.0;
@@ -190,8 +191,8 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
  #ifdef INT_TIME
   struct timeval fft_comp_stop;
   gettimeofday(&fft_comp_stop, NULL);
-  task_metadata_block->fft_timings.fft_comp_sec[tidx]  += fft_comp_stop.tv_sec  - task_metadata_block->fft_timings.fft_comp_start.tv_sec;
-  task_metadata_block->fft_timings.fft_comp_usec[tidx] += fft_comp_stop.tv_usec - task_metadata_block->fft_timings.fft_comp_start.tv_usec;
+  fft_timings_p->fft_comp_sec[tidx]  += fft_comp_stop.tv_sec  - fft_timings_p->fft_comp_start.tv_sec;
+  fft_timings_p->fft_comp_usec[tidx] += fft_comp_stop.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
  #endif
 
   return 0;

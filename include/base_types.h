@@ -18,6 +18,9 @@
 #ifndef H_BASE_TYPES_H
 #define H_BASE_TYPES_H
 
+#define MAX_TASK_TYPES     4  // MUST BE >= NUM_JOB_TYPES
+#define MAX_TASK_TARGETS   2
+
 /* Types definitions */
 typedef enum {false, true} bool_t;
 typedef enum {error, success} status_t;

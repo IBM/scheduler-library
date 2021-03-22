@@ -407,10 +407,11 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   uint8_t* out_Data = &(vdata->theData[outData_offset]);
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
 
-  task_metadata_block->vit_timings.comp_by[tidx]++;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[VITERBI_TASK]);
+  vit_timings_p->comp_by[tidx]++;
 
 #ifdef INT_TIME
-  gettimeofday(&(task_metadata_block->vit_timings.dodec_start), NULL);
+  gettimeofday(&(vit_timings_p->dodec_start), NULL);
 #endif
 
   DEBUG(for (int i = 0; i < 20; i++) {
@@ -424,8 +425,8 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
-  task_metadata_block->vit_timings.dodec_sec[tidx]  += dodec_stop.tv_sec  - task_metadata_block->vit_timings.dodec_start.tv_sec;
-  task_metadata_block->vit_timings.dodec_usec[tidx] += dodec_stop.tv_usec - task_metadata_block->vit_timings.dodec_start.tv_usec;
+  vit_timings_p->dodec_sec[tidx]  += dodec_stop.tv_sec  - vit_timings_p->dodec_start.tv_sec;
+  vit_timings_p->dodec_usec[tidx] += dodec_stop.tv_usec - vit_timings_p->dodec_start.tv_usec;
 #endif
 
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
