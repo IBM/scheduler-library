@@ -26,12 +26,18 @@
 
 #include "base_types.h"
 
-#include "sched_fft.h"
-#include "sched_vit.h"
-#include "sched_cv.h"
-
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
+
+#define usecHwrFFT0   6000
+#define usecHwrFFT1 143000
+
+#define usecHwrVIT0   5950
+#define usecHwrVIT1  67000
+#define usecHwrVIT2 135000
+#define usecHwrVIT3 191000
+
+#define usecHwrCV   150000
 
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 
@@ -79,6 +85,32 @@ extern const char* task_status_str[NUM_TASK_STATUS];
 extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
 
+// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "FFT" Task view of "data"
+  label_t object_label; // The deteremined label of the object in the image
+}  cv_data_struct_t;
+
+
+// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "FFT" Task view of "data"
+  int32_t log_nsamples;       // The Log2 of the number of samples in this FFT
+  float   theData[2* (1<<14)]; // MAx supported samples (2^14) * 2 float per complex input/output
+}  fft_data_struct_t;
+
+// This is a struutre that defines the "Viterbi" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "Viterbi" view of "data"
+  int32_t n_data_bits;
+  int32_t n_cbps;
+  int32_t n_traceback;
+  int32_t psdu_size;
+  int32_t inMem_size;    // The first inMem_size bytes of theData are the inMem (input memories)
+  int32_t inData_size;   // The next inData_size bytes of theData are the inData (input data)
+  int32_t outData_size;  // The next outData_size bytes of theData are the outData (output data)
+  uint8_t theData[64*1024]; // This is larger than needed (~24780 + 18585) but less than FFT requires (so okay)
+}  viterbi_data_struct_t;
 
 // This is a timing analysis structure for the scheduler functions, etc.
 typedef struct {
@@ -94,12 +126,45 @@ typedef struct {
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
 
-typedef struct { // This allows each task to track up to 32 total task timings...
-  struct timeval time_val[16];
-  unsigned comp_by[MAX_TASK_TARGETS]; 
-  uint64_t time_sec[16*MAX_TASK_TARGETS];
-  uint64_t time_usec[16*MAX_TASK_TARGETS];
-} task_timing_data_t;
+// The following structures are for timing analysis (per job type)
+typedef struct {
+  struct timeval call_start;
+  struct timeval fft_start;
+  struct timeval fft_br_start;
+  struct timeval bitrev_start;
+  struct timeval fft_cvtin_start;
+  struct timeval fft_comp_start;
+  struct timeval fft_cvtout_start;
+  struct timeval cdfmcw_start;
+  // 0 = timings for cpu_accel_T and 1 = fft_hwr_accel_t
+  unsigned comp_by[2];
+  uint64_t call_sec[2], call_usec[2];
+  uint64_t fft_sec[2], fft_usec[2];
+  uint64_t fft_br_sec[2], fft_br_usec[2];
+  uint64_t bitrev_sec[2], bitrev_usec[2];
+  uint64_t fft_cvtin_sec[2], fft_cvtin_usec[2];
+  uint64_t fft_comp_sec[2], fft_comp_usec[2];
+  uint64_t fft_cvtout_sec[2], fft_cvtout_usec[2];
+  uint64_t cdfmcw_sec[2], cdfmcw_usec[2];
+} fft_timing_data_t;
+
+typedef struct {
+  struct timeval dodec_start;
+  struct timeval depunc_start;
+  // 0 = timings for cpu_accel_T and 1 = vit_hwr_accel_t
+  unsigned comp_by[2];
+  uint64_t dodec_sec[2],  dodec_usec[2];
+  uint64_t depunc_sec[2], depunc_usec[2];
+} vit_timing_data_t;
+
+typedef struct {
+  struct timeval call_start;
+  struct timeval parse_start;
+  // 0 = timings for cpu_accel_T and 1 = cv_hwr_accel_t
+  unsigned comp_by[2];
+  uint64_t call_sec[2],  call_usec[2];
+  uint64_t parse_sec[2], parse_usec[2];
+} cv_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
@@ -131,7 +196,9 @@ typedef struct task_metadata_entry_struct {
   
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
+  fft_timing_data_t   fft_timings;  
+  vit_timing_data_t   vit_timings; 
+  cv_timing_data_t    cv_timings;  
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
@@ -143,14 +210,6 @@ typedef struct task_metadata_entry_struct {
   } data_view;
 } task_metadata_block_t;
 
-// This is the Ready Task Queue -- it holds Metadata Block IDs
-typedef struct ready_mb_task_queue_entry_struct {
-  short  unique_id;
-  short  block_id;
-  struct ready_mb_task_queue_entry_struct * next;
-  struct ready_mb_task_queue_entry_struct * prev;
-} ready_mb_task_queue_entry_t;
-
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
@@ -161,6 +220,8 @@ extern accel_select_policy_t global_scheduler_selection_policy;
 extern unsigned cv_cpu_run_time_in_usec;
 extern unsigned cv_fake_hwr_run_time_in_usec;
 
+// This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
+extern unsigned crit_fft_samples_set;
 
 extern unsigned int scheduler_holdoff_usec;
 
@@ -181,6 +242,8 @@ extern void wait_all_tasks_finish();
 void mark_task_done(task_metadata_block_t* task_metadata_block);
 
 extern void print_base_metadata_block_contents(task_metadata_block_t* mb);
+extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
+extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 extern void dump_all_metadata_blocks_states();
 
 extern void shutdown_scheduler();
@@ -188,11 +251,5 @@ extern void shutdown_scheduler();
 extern void init_accelerators_in_use_interval(struct timeval start_prog);
 
 extern void cleanup_and_exit(int rval);
-
-
-
-extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
-extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
-
 
 #endif
