@@ -47,6 +47,10 @@ unsigned int scheduler_holdoff_usec = 1;
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
+
+unsigned num_job_types = MAX_JOB_TYPES;
+unsigned num_accel_types = MAX_ACCEL_TYPES;
+
 accel_select_policy_t global_scheduler_selection_policy = 1;
 
 unsigned cv_cpu_run_time_in_usec      = 10000;
@@ -57,8 +61,8 @@ task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
 int free_metadata_pool[total_metadata_pool_blocks];
 int free_metadata_blocks = total_metadata_pool_blocks;
-unsigned allocated_metadata_blocks[NUM_JOB_TYPES];
-unsigned freed_metadata_blocks[NUM_JOB_TYPES];
+unsigned allocated_metadata_blocks[MAX_JOB_TYPES];
+unsigned freed_metadata_blocks[MAX_JOB_TYPES];
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
 //typedef struct ready_mb_task_queue_entry_struct {
@@ -94,7 +98,7 @@ int free_critlist_entries = total_metadata_pool_blocks;
 int total_critical_tasks = 0;
 
 
-const char* task_job_str[NUM_JOB_TYPES] = { "NO-JOB",
+const char* task_job_str[MAX_JOB_TYPES] = { "NO-JOB",
 					    "FFT-TASK",
 					    "VITERBI-TASK",
 					    "CV-CNN-TASK" };
@@ -110,22 +114,28 @@ const char* task_status_str[NUM_TASK_STATUS] = {"TASK-FREE",
 						"TASK-RUNNING",
 						"TASK-DONE"};
 
-const char* accel_type_str[NUM_ACCEL_TYPES] = { "CPU-ACCELERATOR",
-						"FFT-HWR-ACCEL",
-						"VITERBI-HWR-ACCEL",
-						"VISION-HWR-ACCEL",
-						"NO-ACCELERATOR"};
+const char* accel_type_str[MAX_ACCEL_TYPES] = { "CPU-ACCELERATOR",
+                                                "FFT-HWR-ACCEL",
+                                                "VITERBI-HWR-ACCEL",
+                                                "VISION-HWR-ACCEL",
+                                                "NO-ACCELERATOR"};
 
 const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_Accelerator_Type_and_Wait_Available",
 								       "Fastest_to_Slowest_First_Available",
 								       "Fastest_Finish_Time_First",
 								       "Fastest_Finish_Time_First_Queued" } ;
 
+// This is a table of the execution functions for the various Task Types in the scheduler
+//  We set this up with one "set" of entries per JOB_TYPE
+//   where each set has one execute function per possible TASK TARGET (on which it can execute)
+//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+sched_execute_task_function_t scheduler_execute_task_function[MAX_JOB_TYPES][MAX_TASK_TARGETS];
+
 //#define  MAX_ACCEL_OF_EACH_TYPE     8
 
-volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-unsigned int accelerator_allocated_to_MB[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
-int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
+volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
+int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
 
 struct timeval last_accel_use_update_time;
 uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
@@ -134,10 +144,7 @@ uint64_t scheduler_decision_time_usec = 0;
 uint32_t scheduler_decisions = 0;
 uint32_t scheduler_decision_checks = 0;
 
-unsigned input_cpu_accel_limit = NUM_CPU_ACCEL;
-unsigned input_cv_accel_limit  = NUM_CV_ACCEL;
-unsigned input_fft_accel_limit = NUM_FFT_ACCEL;
-unsigned input_vit_accel_limit = NUM_VIT_ACCEL;
+unsigned input_accel_limit[MAX_ACCEL_TYPES] = {NUM_CPU_ACCEL, NUM_CV_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, 0};
 
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
@@ -172,8 +179,8 @@ void init_accelerators_in_use_interval(struct timeval start_time) {
 void account_accelerators_in_use_interval()
 {
   // Count which accelerators are in use
-  int acc_in_use[NUM_ACCEL_TYPES-1];
-  for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
+  int acc_in_use[MAX_ACCEL_TYPES-1];
+  for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
     acc_in_use[i] = 0;
     for (int j = 0; j < num_accelerators_of_type[i]; j++) {
       if (accelerator_in_use_by[i][j] != -1) {
@@ -199,7 +206,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
     printf(" ** status = %d <= NOT a legal value!\n",  mb->status);
   }
   unsigned job_type = mb->job_type;
-  if (job_type < NUM_JOB_TYPES) {
+  if (job_type < MAX_JOB_TYPES) {
     printf("    job_type = %s\n", task_job_str[job_type]);
   } else {
     printf(" ** job_type = %d <= NOT a legal value!\n", mb->job_type);
@@ -264,11 +271,11 @@ task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_
   master_metadata_pool[bi].gets_by_type[task_type]++;
   master_metadata_pool[bi].status = TASK_ALLOCATED;
   master_metadata_pool[bi].crit_level = crit_level;
-  for (int i = 0; i < NUM_ACCEL_TYPES; ++i) {
+  for (int i = 0; i < MAX_ACCEL_TYPES; ++i) {
     master_metadata_pool[bi].task_profile[i] = task_profile[i];
   }
   master_metadata_pool[bi].data_size = 0;
-  master_metadata_pool[bi].accelerator_type = no_accelerator_t;
+  master_metadata_pool[bi].accelerator_type = num_accel_types;
   master_metadata_pool[bi].accelerator_id   = -1;
   master_metadata_pool[bi].atFinish = NULL;  // NO finish call-back function
   
@@ -357,7 +364,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     master_metadata_pool[bi].atFinish = NULL; // Ensure this is now set to NULL (safety safety)
     // For neatness (not "security") we'll clear the meta-data in the block (not the data data, though)
     freed_metadata_blocks[master_metadata_pool[bi].job_type]++;
-    master_metadata_pool[bi].job_type = NO_TASK_JOB; // unset
+    master_metadata_pool[bi].job_type = 0; // NO_TASK_JOB; // unset
     master_metadata_pool[bi].status = TASK_FREE;   // free
     gettimeofday(&master_metadata_pool[bi].sched_timings.idle_start, NULL);
     master_metadata_pool[bi].sched_timings.done_sec += master_metadata_pool[bi].sched_timings.idle_start.tv_sec - master_metadata_pool[bi].sched_timings.done_start.tv_sec;
@@ -416,48 +423,19 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 void
 execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
-	DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
-  switch(task_metadata_block->accelerator_type) {
-  case no_accelerator_t: {
-    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
-    print_base_metadata_block_contents(task_metadata_block);
-    cleanup_and_exit(-11);
-  } break;
-  case cpu_accel_t: {
-    switch(task_metadata_block->job_type) {
-    case FFT_TASK:
-      DEBUG(printf("Executing FFT-Task for MB%d on CPU_FFT_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_fft_accelerator(task_metadata_block);
-      break;
-    case VITERBI_TASK:
-      DEBUG(printf("Executing VIT-Task for MB%d on CPU_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_viterbi_accelerator(task_metadata_block);
-      break;
-    case CV_TASK:
-      DEBUG(printf("Executing CV-Task for MB%d on CPU_CV_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_cv_accelerator(task_metadata_block);
-      break;
-    default:
+  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+  if (task_metadata_block->accelerator_type != no_accelerator_t) {
+    if ((task_metadata_block->job_type > 0) && (task_metadata_block->job_type < num_job_types)) {
+      DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->job_type, task_metadata_block->accelerator_type));
+      scheduler_execute_task_function[task_metadata_block->job_type][task_metadata_block->accelerator_type](task_metadata_block);
+    } else {
       printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->job_type);
       cleanup_and_exit(-13);
     }
-  } break;
-  case fft_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_fft_accelerator(task_metadata_block);
-  } break;
-  case vit_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_viterbi_accelerator(task_metadata_block);
-  } break;
-  case cv_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_cv_accelerator(task_metadata_block);
-  } break;
-  default:
-    printf("ERROR : Unknown accelerator type in execute_task_on_accelerator with block:\n");
+  } else {
+    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    cleanup_and_exit(-12);
+    cleanup_and_exit(-11);
   }
   TDEBUG(printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
 }
@@ -507,37 +485,15 @@ status_t initialize_scheduler()
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_cpu_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_cpu_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_cpu_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_fft_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_fft_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_fft_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_vit_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_vit_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_vit_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_cv_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_cv_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_cv_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_CPU_ACCEL < input_cpu_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_CPU_ACCEL < input_cpu_accel_limit : %u < %u\n", NUM_CPU_ACCEL, input_cpu_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_FFT_ACCEL < input_fft_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_FFT_ACCEL < input_fft_accel_limit : %u < %u\n", NUM_FFT_ACCEL, input_fft_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_VIT_ACCEL < input_vit_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_VIT_ACCEL < input_vit_accel_limit : %u < %u\n", NUM_VIT_ACCEL, input_vit_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_CV_ACCEL < input_cv_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_CV_ACCEL < input_cv_accel_limit : %u < %u\n", NUM_CV_ACCEL, input_cv_accel_limit);
-    parms_error = 1;
+  for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
+    if (MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[i]) {
+      printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[%u] : %u < %u\n", i, MAX_ACCEL_OF_EACH_TYPE, input_accel_limit[i]);
+      parms_error = 1;
+    }
+    if (NUM_CPU_ACCEL < input_accel_limit[i]) {
+      printf("INIT-SCHED: ERROR : NUM_CPU_ACCEL < input_accel_limit[%u] : %u < %u\n", i, NUM_CPU_ACCEL, input_accel_limit[i]);
+      parms_error = 1;
+    }
   }
   if (parms_error > 0) {
     printf("... Exiting run...\n");
@@ -553,7 +509,7 @@ status_t initialize_scheduler()
   last_accel_use_update_time = init_time; // Start accounting at init time... ?
   for (int i = 0; i < total_metadata_pool_blocks; i++) {
     master_metadata_pool[i].block_id = i; // Set the master pool's block_ids
-    for (int ji = 0; ji < NUM_JOB_TYPES; ji++) {
+    for (int ji = 0; ji < MAX_JOB_TYPES; ji++) {
       master_metadata_pool[i].gets_by_type[ji] = 0;
       master_metadata_pool[i].frees_by_type[ji] = 0;
     }
@@ -566,7 +522,7 @@ status_t initialize_scheduler()
     master_metadata_pool[i].sched_timings.get_usec = 0;
     master_metadata_pool[i].sched_timings.queued_sec = 0;
     master_metadata_pool[i].sched_timings.queued_usec = 0;
-    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+    for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
       master_metadata_pool[i].sched_timings.running_sec[ti] = 0;
       master_metadata_pool[i].sched_timings.running_usec[ti] = 0;
     }
@@ -624,18 +580,17 @@ status_t initialize_scheduler()
     master_metadata_pool[i].thread_id = metadata_threads[i];
   }
 
-  for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
+  for (int ti = 0; ti < MAX_JOB_TYPES; ti++) {
     allocated_metadata_blocks[ti] = 0;
     freed_metadata_blocks[ti] = 0;
   }
   
   // These are brought in at compile time via config parameters
-  num_accelerators_of_type[cpu_accel_t]        = input_cpu_accel_limit;
-  num_accelerators_of_type[fft_hwr_accel_t]    = input_fft_accel_limit;
-  num_accelerators_of_type[vit_hwr_accel_t]    = input_vit_accel_limit;
-  num_accelerators_of_type[cv_hwr_accel_t]     = input_cv_accel_limit;
-
-  for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
+  for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
+    num_accelerators_of_type[i] = input_accel_limit[i];
+  }
+  
+  for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
       accelerator_in_use_by[i][j] = -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
     }
@@ -654,7 +609,7 @@ status_t initialize_scheduler()
   do_task_type_initialization();
 
   // And some stats stuff:
-  for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+  for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
     for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
       for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
         accelerator_allocated_to_MB[ti][ai][bi] = 0;
@@ -702,7 +657,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
     printf("  this occurred on finish of block:\n");
     print_base_metadata_block_contents(task_metadata_block);
     printf("Accelerators Info:\n");
-    for (int ai = 0; ai < num_accelerators_of_type[fft_hwr_accel_t]; ai++) {
+    for (int ai = 0; ai < num_accelerators_of_type[accel_type]; ai++) {
       printf(" accelerator_in_use_by[ %u ][ %u ] = %d\n", accel_type, ai, accelerator_in_use_by[accel_type][ai]);
     }
   } else {
@@ -715,23 +670,11 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 
 
 
-#ifdef HW_FFT
-#define FFT_HW_THRESHOLD 25    // 75% chance of using HWR
-#else
-#define FFT_HW_THRESHOLD 101   // 0% chance of using HWR
-#endif
+unsigned HW_THRESHOLD[MAX_JOB_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
+							    {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
+							    {101, 101,  25, 101},   // VIT : 75% chance on HWR on VIT_HWR
+							    {101, 101, 101,  25} }; // CV  : 75% chance on HWR on CV_HWR
 
-#ifdef HW_VIT
-#define VITERBI_HW_THRESHOLD 25   // 75% chance to use Viterbi Hardware
-#else
-#define VITERBI_HW_THRESHOLD 101  // 0% chance to use Viterbi Hardware
-#endif
-
-#if (defined(HW_CV) || defined(FAKE_HW_CV))
-#define CV_HW_THRESHOLD 25    // 75% chance of using HWR
-#else
-#define CV_HW_THRESHOLD 101   // 0% chance of using HWR
-#endif
 
 // This is a basic accelerator selection policy:
 //   This one selects an accelerator type (HWR or CPU) randomly
@@ -761,54 +704,20 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
  #endif
-  int proposed_accel = no_accelerator_t;
+  int proposed_accel = cpu_accel_t; //no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  switch(task_metadata_block->job_type) {
-  case FFT_TASK: {
-    // Scheduler should now run this either on CPU or FFT:
+  if (task_metadata_block->job_type > 0) {
+    // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= FFT_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = fft_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
+    for (int i = 1; i < MAX_ACCEL_TYPES-1; i++) {
+      if (num >= HW_THRESHOLD[task_metadata_block->job_type][i]) {
+	// Execute on hardware
+	proposed_accel = i; // hwr_accel_t;
+      }
+      scheduler_decision_checks++;
     }
-    scheduler_decision_checks++;
-  } break;
-  case VITERBI_TASK: {
-    // Scheduler should now run this either on CPU or VITERBI:
-    int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= VITERBI_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = vit_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
-    }
-    scheduler_decision_checks++;
-  } break;
-  case CV_TASK: {
-    // Scheduler should now run this either on CPU or CV:
-    DEBUG(printf("THE-SCHED: MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_job_str[task_metadata_block->job_type], CV_HW_THRESHOLD));
-#ifdef HW_ONLY_CV
-      // Execute on hardware
-    proposed_accel = cv_hwr_accel_t;
-#else
-    int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= CV_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = cv_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
-    }
-#endif
-    scheduler_decision_checks++;
-    DEBUG(printf("THE-SCHED:  and the proposed_accel is %u\n", proposed_accel));
-  } break;
-  default:
+  } else {
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
     cleanup_and_exit(-15);
   }
@@ -1535,26 +1444,26 @@ void output_run_statistics()
   printf("\nTotal Scheduler Decision-Making Time was %lu usec for %u decisions spanning %u checks\n", scheduler_decision_time_usec, scheduler_decisions, scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
-  for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
+  for (int ti = 0; ti < MAX_JOB_TYPES; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", task_job_str[ti], allocated_metadata_blocks[ti], freed_metadata_blocks[ti]);
   }
   printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", allocated_metadata_blocks[NO_TASK_JOB], freed_metadata_blocks[NO_TASK_JOB]);
 
   printf("\nPer-MetaData-Block Scheduler Allocation/Frees by Job-Type Data:\n");
   printf("%6s ", "Block");
-  for (int ji = 1; ji < NUM_JOB_TYPES; ji++) {
+  for (int ji = 1; ji < MAX_JOB_TYPES; ji++) {
     printf("%12s_G %12s_F ", task_job_str[ji], task_job_str[ji]);
   }
   printf("\n");
-  unsigned type_gets[NUM_JOB_TYPES];
-  unsigned type_frees[NUM_JOB_TYPES];
-  for (int ji = 0; ji < NUM_JOB_TYPES; ji++) {
+  unsigned type_gets[MAX_JOB_TYPES];
+  unsigned type_frees[MAX_JOB_TYPES];
+  for (int ji = 0; ji < MAX_JOB_TYPES; ji++) {
     type_gets[ji] = 0;
     type_frees[ji] = 0;
   }
   for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
     printf("%6u ", bi);
-    for (int ji = 1; ji < NUM_JOB_TYPES; ji++) {
+    for (int ji = 1; ji < MAX_JOB_TYPES; ji++) {
       type_gets[ji]  += master_metadata_pool[bi].gets_by_type[ji];
       type_frees[ji] += master_metadata_pool[bi].frees_by_type[ji];
       printf("%14u %14u ", master_metadata_pool[bi].gets_by_type[ji], master_metadata_pool[bi].frees_by_type[ji]);
@@ -1562,7 +1471,7 @@ void output_run_statistics()
     printf("\n");
   }
   printf("%6s ", "Total");
-  for (int ji = 1; ji < NUM_JOB_TYPES; ji++) {
+  for (int ji = 1; ji < MAX_JOB_TYPES; ji++) {
     printf("%14u %14u ", type_gets[ji], type_frees[ji]);
   }
   printf("\n");
@@ -1573,8 +1482,8 @@ void output_run_statistics()
     uint64_t total_idle_usec    = 0;
     uint64_t total_get_usec     = 0;
     uint64_t total_queued_usec  = 0;
-    uint64_t total_running_usec[NUM_ACCEL_TYPES];
-    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+    uint64_t total_running_usec[MAX_ACCEL_TYPES];
+    for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
       total_running_usec[ti] = 0;
     }
     uint64_t total_done_usec    = 0;
@@ -1583,14 +1492,14 @@ void output_run_statistics()
       uint64_t this_get_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.get_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.get_usec);
       uint64_t this_queued_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.queued_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.queued_usec);
       uint64_t this_total_run_usec = 0;
-      uint64_t this_running_usec[NUM_ACCEL_TYPES];
-      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      uint64_t this_running_usec[MAX_ACCEL_TYPES];
+      for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
         this_running_usec[ti] = (uint64_t)(master_metadata_pool[bi].sched_timings.running_sec[ti]) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.running_usec[ti]);
         this_total_run_usec += this_running_usec[ti];
       }
       uint64_t this_done_usec = (uint64_t)(master_metadata_pool[bi].sched_timings.done_sec) * 1000000 + (uint64_t)(master_metadata_pool[bi].sched_timings.done_usec);
       printf(" Block %3u : IDLE %15lu GET %15lu QUE %15lu RUN %15lu DONE %15lu usec :", bi, this_idle_usec, this_get_usec, this_queued_usec, this_total_run_usec,  total_done_usec);
-      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
         printf(" %15lu", this_running_usec[ti]);
       }
       printf("\n");
@@ -1600,7 +1509,7 @@ void output_run_statistics()
       total_idle_usec    += this_idle_usec;
       total_get_usec     += this_get_usec;
       total_queued_usec  += this_queued_usec;
-      for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+      for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
         total_running_usec[ti] += this_running_usec[ti];
       }
       total_done_usec    += this_done_usec;
@@ -1613,7 +1522,7 @@ void output_run_statistics()
     printf("  Metablocks_GET total run time:     %15lu usec : %16.2lf (average)\n", total_get_usec, avg);
     avg = (double)total_queued_usec/(double)total_blocks_used;
     printf("  Metablocks_QUEUED total run time:  %15lu usec : %16.2lf (average)\n", total_queued_usec, avg);
-    for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+    for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
       avg = (double)total_running_usec[ti]/(double)total_blocks_used;
       printf("  Metablocks_RUNNING total %u %s run time: %15lu usec : %16.2lf (average)\n", ti, accel_type_str[ti], total_running_usec[ti], avg);
     }
@@ -1639,9 +1548,9 @@ void output_run_statistics()
 
   printf("\nAccelerator Usage Statistics:\n");
   {
-    unsigned totals[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-    unsigned top_totals[NUM_ACCEL_TYPES-1];
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+    unsigned totals[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+    unsigned top_totals[MAX_ACCEL_TYPES-1];
+    for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       top_totals[ti] = 0;
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
         totals[ti][ai] = 0;
@@ -1651,7 +1560,7 @@ void output_run_statistics()
       }
     }
     printf("\nPer-Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+    for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
         if (ai < num_accelerators_of_type[ti]) { 
           printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
@@ -1664,11 +1573,11 @@ void output_run_statistics()
       }
     }
     printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+    for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_type_str[ti], top_totals[ti]);
     }
     printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < NUM_ACCEL_TYPES-1; ti++) {
+    for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < num_accelerators_of_type[ti]; ai++) {
         for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
           if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
@@ -1709,15 +1618,15 @@ void dump_all_metadata_blocks_states()
 		}
 		printf("\n");
 	}
-	//unsigned allocated_metadata_blocks[NUM_JOB_TYPES];
+	//unsigned allocated_metadata_blocks[MAX_JOB_TYPES];
 	printf("Total Allocated MBs:  ");
-	for (int i = 0; i < NUM_JOB_TYPES; i++) {
+	for (int i = 0; i < MAX_JOB_TYPES; i++) {
 		printf("( %s, %u ) ", task_job_str[i], allocated_metadata_blocks[i]);
 	}
 	printf("\n");
-	//unsigned freed_metadata_blocks[NUM_JOB_TYPES];
+	//unsigned freed_metadata_blocks[MAX_JOB_TYPES];
 	printf("Total Freed MBs:  ");
-	for (int i = 0; i < NUM_JOB_TYPES; i++) {
+	for (int i = 0; i < MAX_JOB_TYPES; i++) {
 		printf("( %s, %u ) ", task_job_str[i], freed_metadata_blocks[i]);
 	}
 	printf("\n");
@@ -1729,12 +1638,12 @@ void dump_all_metadata_blocks_states()
 			master_metadata_pool[mbi].job_type, //task_job_str[master_metadata_pool[mbi].job_type],
 			master_metadata_pool[mbi].crit_level);
 		printf("  MB%u GETS:  ", mbi);
-		for (int i = 0; i < NUM_JOB_TYPES; i++) {
+		for (int i = 0; i < MAX_JOB_TYPES; i++) {
 			printf("( %s, %u ) ", task_job_str[i], master_metadata_pool[mbi].gets_by_type[i]);
 		}
 		printf("\n");
 		printf("  MB%u FREES:  ", mbi);
-		for (int i = 0; i < NUM_JOB_TYPES; i++) {
+		for (int i = 0; i < MAX_JOB_TYPES; i++) {
 			printf("( %s, %u ) ", task_job_str[i], master_metadata_pool[mbi].frees_by_type[i]);
 		}
 		printf("\n");
@@ -1746,7 +1655,7 @@ void dump_all_metadata_blocks_states()
 		  master_metadata_pool[mbi].sched_timings.get_usec = 0;
 		  master_metadata_pool[mbi].sched_timings.queued_sec = 0;
 		  master_metadata_pool[mbi].sched_timings.queued_usec = 0;
-		  for (int ti = 0; ti < NUM_ACCEL_TYPES; ti++) {
+		  for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
 		  master_metadata_pool[mbi].sched_timings.running_sec[ti] = 0;
 		  master_metadata_pool[mbi].sched_timings.running_usec[ti] = 0;
 		  }

@@ -160,7 +160,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
   d_ofdm = ofdm;
   d_frame = frame;
   int tidx = (vit_metadata_block->accelerator_type != cpu_accel_t);
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->job_type]); //VITERBI_TASK]);
   reset();
 
 #ifdef INT_TIME
