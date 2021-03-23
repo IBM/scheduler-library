@@ -52,10 +52,6 @@ accel_select_policy_t global_scheduler_selection_policy = 1;
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
 
-<<<<<<< HEAD
-=======
-//#define total_metadata_pool_blocks  32
->>>>>>> origin/master
 task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 
 pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
