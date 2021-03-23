@@ -18,6 +18,9 @@
 #ifndef H_ACCELERATORS_H
 #define H_ACCELERATORS_H
 
+extern void do_task_type_initialization();
+extern void do_task_type_closeout();
+
 extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
 extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 

@@ -16,13 +16,13 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[CV_TASK]);
   cv_timings_p->comp_by[tidx]++;
-  
+
  #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
  #endif
 
   usleep(cv_cpu_run_time_in_usec);
-  
+
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);

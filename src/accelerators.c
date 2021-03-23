@@ -97,7 +97,7 @@ size_t vitHW_size[NUM_VIT_ACCEL];
 struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 
 
-static void init_vit_parameters(int vn)
+void init_vit_parameters(int vn)
 {
   size_t vitHW_in_words_adj;
   size_t vitHW_out_words_adj;
@@ -256,13 +256,13 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 #ifdef HW_FFT
   // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
   init_fft_parameters(fn, log_nsamples);
-  
+
   DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
  #ifdef INT_TIME
   gettimeofday(&(fft_timings_p->fft_cvtin_start), NULL);
  #endif // INT_TIME
   // convert input from float to fixed point
-  float * data = (float*)(task_metadata_block->data_view.fft_data.theData);
+  float * data = (float*)(fft_data_p->theData);
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
   }
@@ -382,7 +382,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
   vit_timings_p->dodec_sec[tidx]  += dodec_stop.tv_sec  - vit_timings_p->dodec_start.tv_sec;
-  vit_timings_p->dodec_usec[tidx] += dodec_stop.tv_usec - vit_timings_p->\dodec_start.tv_usec;
+  vit_timings_p->dodec_usec[tidx] += dodec_stop.tv_usec - vit_timings_p->dodec_start.tv_usec;
  #endif
   // Copy output data from HWR memory to Metadata Block Memory.
   DEBUG(printf("EHVA:   copying out the HW_VIT result data\n"));
@@ -486,3 +486,107 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   mark_task_done(task_metadata_block);
 }
 
+
+
+void
+do_task_type_initialization()
+{
+ #ifdef HW_FFT
+  // This initializes the FFT Accelerator Pool
+  printf("Initializing the %u total FFT Accelerators...\n", NUM_FFT_ACCEL);
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
+    // Inititalize to the "largest legal" FFT size
+    printf("Calling init_fft_parameters for Accel %u (of %u) and LOGN %u\n", fi, NUM_FFT_ACCEL, MAX_RADAR_LOGN);
+    init_fft_parameters(fi, MAX_RADAR_LOGN);
+
+    snprintf(fftAccelName[fi], 63, "%s.%u", FFT_DEV_BASE, fi);
+    printf(" Acclerator %u opening FFT device %s\n", fi, fftAccelName[fi]);
+    fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
+    if (fftHW_fd[fi] < 0) {
+      fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
+      cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
+    fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
+    if (fftHW_lmem[fi] == NULL) {
+      fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
+      cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    fftHW_li_mem[fi] = &(fftHW_lmem[fi][0]);
+    fftHW_lo_mem[fi] = &(fftHW_lmem[fi][fftHW_out_offset[fi]]);
+    printf(" Set fftHW_li_mem = %p  AND fftHW_lo_mem = %p\n", fftHW_li_mem[fi], fftHW_lo_mem[fi]);
+
+    fftHW_desc[fi].esp.run = true;
+    fftHW_desc[fi].esp.coherence = ACC_COH_NONE;
+    fftHW_desc[fi].esp.p2p_store = 0;
+    fftHW_desc[fi].esp.p2p_nsrcs = 0;
+    //fftHW_desc[fi].esp.p2p_srcs = {"", "", "", ""};
+    fftHW_desc[fi].esp.contig = contig_to_khandle(fftHW_mem[fi]);
+
+   #if USE_FFT_ACCEL_VERSION == 1
+    // Always use BIT-REV in HW for now -- simpler interface, etc.
+    fftHW_desc[fi].do_bitrev  = FFTHW_DO_BITREV;
+   #elif USE_FFT_ACCEL_VERSION == 2
+    fftHW_desc[fi].num_ffts      = 1;  // We only use one at a time in this applciation.
+    fftHW_desc[fi].do_inverse    = FFTHW_NO_INVERSE;
+    fftHW_desc[fi].do_shift      = FFTHW_NO_SHIFT;
+    fftHW_desc[fi].scale_factor = 1;
+   #endif
+    //fftHW_desc[fi].logn_samples  = log_nsamples; 
+    fftHW_desc[fi].src_offset = 0;
+    fftHW_desc[fi].dst_offset = 0;
+  }
+ #endif
+
+ #ifdef HW_VIT
+  // This initializes the Viterbi Accelerator Pool
+  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
+    DEBUG(printf("Init Viterbi parameters on acclerator %u\n", vi));
+    init_vit_parameters(vi);
+    snprintf(vitAccelName[vi], 63, "%s.%u", VIT_DEV_BASE, vi);
+    printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
+    vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
+    if(vitHW_fd < 0) {
+      fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
+      cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
+    if (vitHW_lmem[vi] == NULL) {
+      fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
+      cleanup_and_exit(EXIT_FAILURE);
+    }
+    vitHW_li_mem[vi] = &(vitHW_lmem[vi][0]);
+    vitHW_lo_mem[vi] = &(vitHW_lmem[vi][vitHW_out_offset[vi]]);
+    printf(" Set vitHW_li_mem = %p  AND vitHW_lo_mem = %p\n", vitHW_li_mem[vi], vitHW_lo_mem[vi]);
+
+    vitHW_desc[vi].esp.run = true;
+    vitHW_desc[vi].esp.coherence = ACC_COH_NONE;
+    vitHW_desc[vi].esp.p2p_store = 0;
+    vitHW_desc[vi].esp.p2p_nsrcs = 0;
+    vitHW_desc[vi].esp.contig = contig_to_khandle(vitHW_mem[vi]);
+  }
+ #endif
+}
+
+
+void
+do_task_type_closeout()
+{
+  // Clean up any hardware accelerator stuff
+ #ifdef HW_VIT
+  for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
+    contig_free(vitHW_mem[vi]);
+    close(vitHW_fd[vi]);
+  }
+ #endif
+
+ #ifdef HW_FFT
+  for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
+    contig_free(fftHW_mem[fi]);
+    close(fftHW_fd[fi]);
+  }
+ #endif
+}
