@@ -29,11 +29,13 @@ void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_blo
 {
   int tidx = 0; // (fft_metadata_block->accelerator_type != cpu_accel_t);
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[FFT_TASK]);
-  fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  //fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
+  fft_data_p->log_nsamples = fft_log_nsamples;
   fft_metadata_block->data_size = 2 * (1<<fft_log_nsamples) * sizeof(float);
   // Copy over our task data to the MetaData Block
   //fft_metadata_block->data = (uint8_t*)data;
-  float* mdataptr = (float*)fft_metadata_block->data_view.fft_data.theData;
+  float* mdataptr = (float*)fft_data_p->theData;
   for (int i = 0; i < 2*(1<<fft_log_nsamples); i++) {
     mdataptr[i] = data[i];
   }
@@ -57,8 +59,9 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
 {
   int tidx = (fft_metadata_block->accelerator_type != cpu_accel_t);
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[FFT_TASK]);
-  uint32_t fft_log_nsamples = fft_metadata_block->data_view.fft_data.log_nsamples;
-  float*   data = (float*)fft_metadata_block->data_view.fft_data.theData;
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  uint32_t fft_log_nsamples = fft_data_p->log_nsamples;
+  float*   data = (float*)fft_data_p->theData;
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);

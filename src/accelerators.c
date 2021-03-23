@@ -54,7 +54,7 @@ void print_fft_metadata_block_contents(task_metadata_block_t* mb) {
 void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
 {  
   print_base_metadata_block_contents(mb);
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(mb->data_view.vit_data);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(mb->data_space);
   int32_t  inMem_offset = 0;
   int32_t  inData_offset = vdata->inMem_size;
   int32_t  outData_offset = inData_offset + vdata->inData_size;
@@ -244,8 +244,8 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int fn = task_metadata_block->accelerator_id;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[FFT_TASK]);
-  //fft_data_struct_t * fft_data_p = task_metadata_block->task_timings[FFT_TASK];
-  uint32_t log_nsamples = task_metadata_block->data_view.fft_data.log_nsamples;
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
+  uint32_t log_nsamples = fft_data_p->log_nsamples;
   //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
   fft_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
@@ -340,7 +340,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   //task_metadata_block->vit_timings.comp_by[tidx]++;
   vit_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHVA: In execute_hwr_viterbi_accelerator on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_view.vit_data);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
   int32_t  in_data_bits = vdata->n_data_bits;

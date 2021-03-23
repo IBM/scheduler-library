@@ -204,7 +204,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
     printf(" ** crit_level = %d <= NOT a legal value!\n",  mb->crit_level);
   }
   printf("    data_size  = %d\n",  mb->data_size);
-  printf("    data_view  @ %p\n", &(mb->data_view));
+  printf("    data_space @ %p\n", &(mb->data_space));
 }
 
 

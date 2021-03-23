@@ -135,12 +135,7 @@ typedef struct task_metadata_entry_struct {
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  union { // This union holds job-specific "views" of the data (input/ouput memory for job accelerators)
-    uint8_t  raw_data[128*1024];     // 128 KB is the current MAX data size for all jobs
-    cv_data_struct_t      cv_data;   // CV/CNN view of data -- see strucutre typedef above
-    fft_data_struct_t     fft_data;  // FFT view of data -- see strucutre typedef above
-    viterbi_data_struct_t vit_data;  // Viterbi view of data -- see strucutre typedef above
-  } data_view;
+  uint8_t  data_space[128*1024];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
