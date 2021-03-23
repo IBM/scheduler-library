@@ -70,6 +70,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include "fft-1d.h"
+#include "sched_fft.h"
 
 #ifndef M_PI
  #define M_PI 3.14159265358979323846

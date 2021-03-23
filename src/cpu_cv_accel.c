@@ -8,7 +8,7 @@
 
 #include "verbose.h"
 #include "scheduler.h"
-
+#include "sched_cv.h"
 
 void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {

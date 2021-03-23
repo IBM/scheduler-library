@@ -33,6 +33,7 @@
 #include "viterbi_standalone.h"
 
 #include "scheduler.h"
+#include "sched_vit.h"
 
 /* #undef DEBUG */
 /*  #define DEBUG(x) x */

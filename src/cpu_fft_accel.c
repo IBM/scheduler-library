@@ -6,6 +6,7 @@
 
 #include "verbose.h"
 #include "scheduler.h"
+#include "sched_fft.h"
 
 #include "fft-1d.h"
 

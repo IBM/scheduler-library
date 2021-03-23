@@ -24,6 +24,10 @@
 #include "verbose.h"
 
 #include "scheduler.h"
+#include "sched_fft.h"
+#include "sched_vit.h"
+#include "sched_cv.h"
+
 #include "kernels_api.h"
 #include "sim_environs.h"
 #include "getopt.h"

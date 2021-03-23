@@ -26,9 +26,11 @@
 
 #include "base_types.h"
 
-#include "sched_fft.h"
-#include "sched_vit.h"
-#include "sched_cv.h"
+//#include "sched_fft.h"
+//#include "sched_vit.h"
+//#include "sched_cv.h"
+
+#define total_metadata_pool_blocks  32
 
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
@@ -148,6 +150,11 @@ typedef struct ready_mb_task_queue_entry_struct {
 
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
+
+// This is the master pool of Metadata Blocks
+extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
+// This is the count of freed (completed tasks) Metadata Blocks by Job Type
+extern unsigned freed_metadata_blocks[NUM_JOB_TYPES];
 
 // This is the accelerator selection policy used by the scheduler
 extern accel_select_policy_t global_scheduler_selection_policy;
