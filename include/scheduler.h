@@ -171,6 +171,17 @@ extern unsigned input_cv_accel_limit;
 extern unsigned input_fft_accel_limit;
 extern unsigned input_vit_accel_limit;
 
+#define total_metadata_pool_blocks 32
+extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
+
+extern int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
+
+extern volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+
+extern uint64_t scheduler_decision_time_usec;
+extern uint32_t scheduler_decisions;
+extern uint32_t scheduler_decision_checks;
+
 extern status_t initialize_scheduler();
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);
