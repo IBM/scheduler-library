@@ -49,20 +49,20 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 
 // FFT has 2 profiles depending on input size (1k or 16k samples)
 //   CPU     FFT     VIT        CV         NONE
-uint64_t fft_profile[2][MAX_ACCEL_TYPES] = {
+uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
 //   CPU        FFT        VIT        CV        NONE
   { 23000, usecHwrFFT0, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
   {600000, usecHwrFFT1, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
 
 // Viterbi has 4 profiles, depending on input size
-uint64_t vit_profile[4][MAX_ACCEL_TYPES] = {
+uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
 //    CPU        FFT        VIT          CV        NONE
   { 120000,  ACINFPROF, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
   {1700000,  ACINFPROF, usecHwrVIT1, ACINFPROF, ACINFPROF},  // medium-message Vit
   {3400000,  ACINFPROF, usecHwrVIT2, ACINFPROF, ACINFPROF},  // long-message Vit
   {4800000,  ACINFPROF, usecHwrVIT3, ACINFPROF, ACINFPROF}}; // max-message Vit
 
-uint64_t cv_profile[MAX_ACCEL_TYPES]  = {
+uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
 //    CPU       FFT        VIT         CV       NONE
   ACINFPROF, ACINFPROF, ACINFPROF, usecHwrCV, ACINFPROF};
 
@@ -274,10 +274,10 @@ int main(int argc, char *argv[])
         printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
 	exit(-1);
       }
-      input_accel_limit[0] = in_cpu;
-      input_accel_limit[1] = in_fft;
-      input_accel_limit[2] = in_vit;
-      input_accel_limit[3] = in_cv;
+      input_cpu_accel_limit = in_cpu;
+      input_fft_accel_limit = in_fft;
+      input_vit_accel_limit = in_vit;
+      input_cv_accel_limit  = in_cv;
     }
     break;
 
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
   }
 
   printf("Run using Scheduler Policy %u using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-	  global_scheduler_selection_policy, input_accel_limit[0], input_accel_limit[1], input_accel_limit[2], input_accel_limit[3], scheduler_holdoff_usec,
+	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
 	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, time_step, message, distance));
     vehicle_state_t new_vehicle_state;
    #ifdef TIME
     gettimeofday(&start_exec_pandc, NULL);

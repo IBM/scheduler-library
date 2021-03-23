@@ -40,14 +40,12 @@
 #define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
-#define MAX_JOB_TYPES  4
-typedef enum { NO_TASK_JOB = 0, // } scheduler_jobs_enum_t;
+
+typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
-               VITERBI_TASK,
-               CV_TASK,
-               NUM_JOB_TYPES } scheduler_jobs_enum_t;
-extern unsigned num_job_types;
-typedef unsigned scheduler_jobs_t;
+	       VITERBI_TASK,
+	       CV_TASK,
+	       NUM_JOB_TYPES } scheduler_jobs_t;
 
 typedef enum { NO_TASK   = 0,
 	       BASE_TASK = 1,
@@ -63,14 +61,12 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
-#define MAX_ACCEL_TYPES  5
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
-               vit_hwr_accel_t,
-               cv_hwr_accel_t,
-               no_accelerator_t} accel_predef_type_t;
-typedef unsigned accelerator_type_t;
-extern unsigned num_accel_types;
+	       vit_hwr_accel_t,
+	       cv_hwr_accel_t,
+	       no_accelerator_t,
+	       NUM_ACCEL_TYPES} accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
   FAST_TO_SLOW_FIRST_AVAIL_POLICY,
@@ -79,10 +75,10 @@ typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
   NUM_SELECTION_POLICIES } accel_select_policy_t;
 
 
-extern const char* task_job_str[MAX_JOB_TYPES];
+extern const char* task_job_str[NUM_JOB_TYPES];
 extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
 extern const char* task_status_str[NUM_TASK_STATUS];
-extern const char* accel_type_str[MAX_ACCEL_TYPES];
+extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
 
 
@@ -95,7 +91,7 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec[MAX_ACCEL_TYPES], running_usec[MAX_ACCEL_TYPES];
+  uint64_t running_sec[NUM_ACCEL_TYPES], running_usec[NUM_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
@@ -107,7 +103,6 @@ typedef struct { // This allows each task to track up to 32 total task timings..
   uint64_t time_usec[16*MAX_TASK_TARGETS];
 } task_timing_data_t;
 
-
 // This is a metadata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
 //  job type, and all input/output data space for the task
@@ -118,8 +113,8 @@ typedef struct { // This allows each task to track up to 32 total task timings..
 
 typedef struct task_metadata_entry_struct {
   // This portion is management, control, and scheduler stuff...
-  int32_t         block_id;       // master-pool-index; a unique ID per metadata task
-  task_status_t   status;         // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
+  int32_t  block_id;              // master-pool-index; a unique ID per metadata task
+  task_status_t  status;          // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
   pthread_t       thread_id;      // set when we invoke pthread_create (at least for CPU)
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata conditional variables
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
@@ -129,12 +124,12 @@ typedef struct task_metadata_entry_struct {
   scheduler_jobs_t job_type;      // see above enumeration
   task_criticality_t crit_level;  // [0 .. ?] ?
 
-  uint64_t task_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
+  uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
   
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  unsigned gets_by_type[MAX_JOB_TYPES]; // Count of times this metadata block allocated per job type.
-  unsigned frees_by_type[MAX_JOB_TYPES]; // Count of times this metadata block allocated per job type.
+  unsigned gets_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
+  unsigned frees_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
   
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
@@ -144,15 +139,6 @@ typedef struct task_metadata_entry_struct {
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
   uint8_t  data_space[128*1024];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
-
-
-// This is  atypedef for an execution function called by the scheduler (e.g. to execute a task)
-typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
-// This is a table of the execution functions for the various Task Types in the scheduler
-//  We set this up with one "set" of entries per JOB_TYPE
-//   where each set has one execute function per possible TASK TARGET (on which it can execute)
-//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-extern sched_execute_task_function_t scheduler_execute_task_function[MAX_JOB_TYPES][MAX_TASK_TARGETS];
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
 typedef struct ready_mb_task_queue_entry_struct {
@@ -168,7 +154,7 @@ typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 // This is the master pool of Metadata Blocks
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 // This is the count of freed (completed tasks) Metadata Blocks by Job Type
-extern unsigned freed_metadata_blocks[MAX_JOB_TYPES];
+extern unsigned freed_metadata_blocks[NUM_JOB_TYPES];
 
 // This is the accelerator selection policy used by the scheduler
 extern accel_select_policy_t global_scheduler_selection_policy;
@@ -180,14 +166,17 @@ extern unsigned cv_fake_hwr_run_time_in_usec;
 
 extern unsigned int scheduler_holdoff_usec;
 
-extern unsigned input_accel_limit[MAX_ACCEL_TYPES];
+extern unsigned input_cpu_accel_limit;
+extern unsigned input_cv_accel_limit;
+extern unsigned input_fft_accel_limit;
+extern unsigned input_vit_accel_limit;
 
 #define total_metadata_pool_blocks 32
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 
-extern int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
+extern int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
-extern volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+extern volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 
 extern uint64_t scheduler_decision_time_usec;
 extern uint32_t scheduler_decisions;
