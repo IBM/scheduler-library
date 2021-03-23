@@ -210,6 +210,14 @@ typedef struct task_metadata_entry_struct {
   } data_view;
 } task_metadata_block_t;
 
+// This is the Ready Task Queue -- it holds Metadata Block IDs
+typedef struct ready_mb_task_queue_entry_struct {
+  short  unique_id;
+  short  block_id;
+  struct ready_mb_task_queue_entry_struct * next;
+  struct ready_mb_task_queue_entry_struct * prev;
+} ready_mb_task_queue_entry_t;
+
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
@@ -229,6 +237,17 @@ extern unsigned input_cpu_accel_limit;
 extern unsigned input_cv_accel_limit;
 extern unsigned input_fft_accel_limit;
 extern unsigned input_vit_accel_limit;
+
+#define total_metadata_pool_blocks 32
+extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
+
+extern int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
+
+extern volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+
+extern uint64_t scheduler_decision_time_usec;
+extern uint32_t scheduler_decisions;
+extern uint32_t scheduler_decision_checks;
 
 extern status_t initialize_scheduler();
 

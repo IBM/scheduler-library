@@ -52,7 +52,7 @@ accel_select_policy_t global_scheduler_selection_policy = 1;
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
 
-#define total_metadata_pool_blocks  32
+//#define total_metadata_pool_blocks  32
 task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 
 pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
@@ -62,12 +62,12 @@ unsigned allocated_metadata_blocks[NUM_JOB_TYPES];
 unsigned freed_metadata_blocks[NUM_JOB_TYPES];
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
-typedef struct ready_mb_task_queue_entry_struct {
-  short  unique_id;
-  short  block_id;
-  struct ready_mb_task_queue_entry_struct * next;
-  struct ready_mb_task_queue_entry_struct * prev;
-} ready_mb_task_queue_entry_t;
+//typedef struct ready_mb_task_queue_entry_struct {
+//  short  unique_id;
+//  short  block_id;
+//  struct ready_mb_task_queue_entry_struct * next;
+//  struct ready_mb_task_queue_entry_struct * prev;
+//} ready_mb_task_queue_entry_t;
 
 pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
 ready_mb_task_queue_entry_t ready_mb_task_queue_pool[total_metadata_pool_blocks];
