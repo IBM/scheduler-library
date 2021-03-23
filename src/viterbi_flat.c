@@ -34,6 +34,7 @@
 
 #include "scheduler.h"
 #include "sched_vit.h"
+#include "accelerators.h"
 
 /* #undef DEBUG */
 /*  #define DEBUG(x) x */

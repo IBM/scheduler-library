@@ -624,6 +624,22 @@ status_t initialize_scheduler()
     cleanup_and_exit(-1);
   }
 
+  // Set this up (for now by hand)
+  for (int i = 0; i < MAX_JOB_TYPES; i++) {
+    for (int j = 0; j < MAX_TASK_TARGETS; j++) {
+      scheduler_execute_task_function[i][j] = NULL; // Set all to default to NULL
+    }
+  }
+  // Now set up those that "make sense"
+  scheduler_execute_task_function[FFT_TASK][cpu_accel_t]     = &execute_cpu_fft_accelerator;
+  scheduler_execute_task_function[FFT_TASK][fft_hwr_accel_t] = &execute_hwr_fft_accelerator;
+
+  scheduler_execute_task_function[VITERBI_TASK][cpu_accel_t]     = &execute_cpu_viterbi_accelerator;
+  scheduler_execute_task_function[VITERBI_TASK][vit_hwr_accel_t] = &execute_hwr_viterbi_accelerator;
+
+  scheduler_execute_task_function[CV_TASK][cpu_accel_t]    = &execute_cpu_cv_accelerator;
+  scheduler_execute_task_function[CV_TASK][cv_hwr_accel_t] = &execute_hwr_cv_accelerator;
+
   /**
    // Let's make sure these are detached?
    for (int i = 0; i < total_metadata_pool_blocks; i++) {
@@ -1158,7 +1174,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
       // Check if best accelerator is available
       if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {  
 	// Task is schedulable on the best accelerator
-	DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
+	DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
 	return selected_task_entry;
       }
 
@@ -1233,7 +1249,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       }
       unsigned int accel_type = task_metadata_block->accelerator_type;
       unsigned int accel_id = task_metadata_block->accelerator_id;
-      DEBUG(printf("SCHED: Selected accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
+      DEBUG(printf("SCHED: Selected accel type: %d id: accel_id: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
 
       if (accel_type == no_accelerator_t) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
