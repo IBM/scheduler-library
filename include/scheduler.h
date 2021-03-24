@@ -26,6 +26,9 @@
 
 #define total_metadata_pool_blocks  32
 
+#define MAX_TASK_TYPES     4  // MUST BE >= NUM_JOB_TYPES
+#define MAX_TASK_TARGETS   2
+
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
