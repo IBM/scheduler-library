@@ -246,7 +246,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int fn = task_metadata_block->accelerator_id;
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[FFT_TASK]);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // FFT_TASK]);
   fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
   uint32_t log_nsamples = fft_data_p->log_nsamples;
   //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
@@ -339,7 +339,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int vn = task_metadata_block->accelerator_id;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // VITERBI_TASK]);
   //task_metadata_block->vit_timings.comp_by[tidx]++;
   vit_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHVA: In execute_hwr_viterbi_accelerator on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
@@ -432,7 +432,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[CV_TASK]);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // CV_TASK]);
   cv_timings_p->comp_by[tidx]++;
   TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
 #ifdef HW_CV
@@ -681,7 +681,7 @@ output_task_type_run_stats()
     avg1 = (double)total_cdfmcw_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
     avg2 = (double)(total_cdfmcw_usec[0] + total_cdfmcw_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
     printf("     calc-dist run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_cdfmcw_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_cdfmcw_usec[1], avg1, total_fft_comp_by[2], total_cdfmcw_usec[2], avg2);
-    
+
     printf("\n  Per-MetaData-Block VITERBI Timing Data: %u finished VITERBI tasks\n", freed_metadata_blocks[VITERBI_TASK]);
     // The Viterbi Task Timing Info
     unsigned total_vit_comp_by[3] = {0, 0, 0};
@@ -714,7 +714,7 @@ output_task_type_run_stats()
     avg2 = (double)total_dodec_usec[2] / (double) freed_metadata_blocks[VITERBI_TASK];
     printf("     do-decoding run time   %u %s%8u  %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_vit_comp_by[0], total_dodec_usec[0], avg0, 1, ti_label[1], total_vit_comp_by[1], total_dodec_usec[1], avg1, total_vit_comp_by[2], total_dodec_usec[2], avg2);
 
-    
+
     printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);
     // The CV/CNN Task Timing Info
     unsigned total_cv_comp_by[3] = {0, 0, 0};

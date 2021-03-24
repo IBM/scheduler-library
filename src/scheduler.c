@@ -731,7 +731,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
     pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
-  
+
   DEBUG(printf("THE-SCHED: In pick_accel_and_wait_for_available policy for MB%u\n", task_metadata_block->block_id));
  #ifdef INT_TIME
   struct timeval current_time;

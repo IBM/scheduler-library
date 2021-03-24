@@ -523,7 +523,7 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 {
   /* 2) Set up to request object detection on an image frame */
   int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[CV_TASK]);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->job_type]); // CV_TASK]);
   cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)

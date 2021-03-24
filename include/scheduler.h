@@ -123,12 +123,12 @@ typedef struct task_metadata_entry_struct {
   task_criticality_t crit_level;  // [0 .. ?] ?
 
   uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
-  
+
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
   unsigned gets_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
   unsigned frees_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
-  
+
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
   task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)

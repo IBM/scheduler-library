@@ -14,7 +14,7 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[CV_TASK]);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // CV_TASK]);
   cv_timings_p->comp_by[tidx]++;
 
  #ifdef INT_TIME

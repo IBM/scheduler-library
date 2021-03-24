@@ -128,7 +128,7 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[FFT_TASK]);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // FFT_TASK]);
   transform_length = 1;
 
   /* bit reversal */
