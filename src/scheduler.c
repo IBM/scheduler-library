@@ -580,7 +580,7 @@ status_t initialize_scheduler()
     allocated_metadata_blocks[ti] = 0;
     freed_metadata_blocks[ti] = 0;
   }
-  
+
   // These are brought in at compile time via config parameters
   num_accelerators_of_type[cpu_accel_t]        = input_accel_limit[cpu_accel_t];
   num_accelerators_of_type[fft_hwr_accel_t]    = input_accel_limit[fft_hwr_accel_t];
@@ -670,7 +670,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
     printf("  this occurred on finish of block:\n");
     print_base_metadata_block_contents(task_metadata_block);
     printf("Accelerators Info:\n");
-    for (int ai = 0; ai < num_accelerators_of_type[fft_hwr_accel_t]; ai++) {
+    for (int ai = 0; ai < num_accelerators_of_type[accel_type]; ai++) {
       printf(" accelerator_in_use_by[ %u ][ %u ] = %d\n", accel_type, ai, accelerator_in_use_by[accel_type][ai]);
     }
   } else {
