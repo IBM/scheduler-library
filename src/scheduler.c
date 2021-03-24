@@ -1395,8 +1395,8 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
       usleep(scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
-    } 
-  } // while (1) 
+    }
+  } // while (1)
   pthread_mutex_unlock(&schedule_from_queue_mutex);
   return NULL;
 }

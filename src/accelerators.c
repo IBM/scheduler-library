@@ -480,7 +480,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, cv_timings_p->call_sec[tidx], cv_timings_p->call_usec[tidx]));
   #endif
 
- #else  
+ #else
   printf("ERROR : This executable DOES NOT support Hardware-CV execution!\n");
   cleanup_and_exit(-2);
  #endif

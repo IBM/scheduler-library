@@ -22,13 +22,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-//#include "verbose.h"
-
 #include "base_types.h"
-
-//#include "sched_fft.h"
-//#include "sched_vit.h"
-//#include "sched_cv.h"
 
 #define total_metadata_pool_blocks  32
 
@@ -45,7 +39,9 @@ typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
 	       CV_TASK,
-	       NUM_JOB_TYPES } scheduler_jobs_t;
+	       NUM_JOB_TYPES } scheduler_jobs_enum_t;
+typedef unsigned scheduler_jobs_t;
+
 
 typedef enum { NO_TASK   = 0,
 	       BASE_TASK = 1,
@@ -61,19 +57,21 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
+
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
 	       vit_hwr_accel_t,
 	       cv_hwr_accel_t,
 	       no_accelerator_t,
-	       NUM_ACCEL_TYPES} accelerator_type_t;
+	       NUM_ACCEL_TYPES} accelerator_type_enum_t;
+typedef unsigned accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-  FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-  FASTEST_FINISH_TIME_FIRST_POLICY,
-  FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-  NUM_SELECTION_POLICIES } accel_select_policy_t;
-
+	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
+	       NUM_SELECTION_POLICIES } accel_select_policy_enum_t;
+typedef unsigned  accel_select_policy_t;
 
 extern const char* task_job_str[NUM_JOB_TYPES];
 extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
