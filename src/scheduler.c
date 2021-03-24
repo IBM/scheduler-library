@@ -772,8 +772,11 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
 
 
 // This is a basic accelerator selection policy:
-//   This one selects a hardware (if implemented) and then if none available, 
-//   tries for a CPU, and then repeats this scan until one becomes available.
+//   This one scans through all the potential accelerators, and if the accelerator can
+//    execute this type of job, AND the proposed accelerator is FASTER than any
+//    prior (selected) accelerator, then it prefers that accelerator.
+//   The seeking for an accelerator repeats until an eligible is found.
+// This is "blocking" in that it spins until this task is allocated to an accelerator.
 ready_mb_task_queue_entry_t*
 fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry)
 {
@@ -797,18 +800,29 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
 	int proposed_accel = no_accelerator_t;
 	int accel_type     = no_accelerator_t;
 	int accel_id       = -1;
+	uint64_t prop_time = ACINFPROF;
 	if (task_metadata_block->job_type != NO_TASK_JOB) {
 		// Find an acceptable accelerator for this task (job_type)
-		for (proposed_accel = NUM_ACCEL_TYPES-1; proposed_accel >= 0; proposed_accel--) { // Last accel is "no-accelerator"
-			if (scheduler_execute_task_function[task_metadata_block->job_type][proposed_accel] != NULL) {
-				int i = 0;
-				while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-					if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-						accel_type = proposed_accel;
-						accel_id = i;
+		//for (proposed_accel = NUM_ACCEL_TYPES-2; proposed_accel >= 0; proposed_accel--) { // Last accel is "no-accelerator"
+		for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
+			DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
+			if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
+				DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016llx prop_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
+				if (task_metadata_block->task_profile[check_accel] < prop_time) {
+					int i = 0;
+					DEBUG(printf("F2S_FA:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
+					while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
+						DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+						if (accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
+							proposed_accel = check_accel;
+							accel_type = proposed_accel;
+							accel_id = i;
+							prop_time = task_metadata_block->task_profile[proposed_accel];
+							DEBUG(printf("F2S_FA:   SELECT: prop_acc %u acc_ty %u acc_id %u prop_time %lu\n", proposed_accel, accel_type, accel_id, prop_time));
+						}
+						i++;
+						scheduler_decision_checks += i;
 					}
-					i++;
-					scheduler_decision_checks += i;
 				} // while (loop through all possible accelerators)
 			} // if (accelerator can execute this job_type)
 		} while (accel_type == no_accelerator_t);
