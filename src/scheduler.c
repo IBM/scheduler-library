@@ -121,6 +121,12 @@ const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_A
 								       "Fastest_Finish_Time_First",
 								       "Fastest_Finish_Time_First_Queued" } ;
 
+// This is a table of the execution functions for the various Task Types in the scheduler
+//  We set this up with one "set" of entries per JOB_TYPE
+//   where each set has one execute function per possible TASK TARGET (on which it can execute)
+//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+sched_execute_task_function_t scheduler_execute_task_function[NUM_JOB_TYPES][NUM_ACCEL_TYPES];
+
 //#define  MAX_ACCEL_OF_EACH_TYPE     8
 
 volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
@@ -414,52 +420,22 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 void
 execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
-	DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
-  switch(task_metadata_block->accelerator_type) {
-  case no_accelerator_t: {
-    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
-    print_base_metadata_block_contents(task_metadata_block);
-    cleanup_and_exit(-11);
-  } break;
-  case cpu_accel_t: {
-    switch(task_metadata_block->job_type) {
-    case FFT_TASK:
-      DEBUG(printf("Executing FFT-Task for MB%d on CPU_FFT_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_fft_accelerator(task_metadata_block);
-      break;
-    case VITERBI_TASK:
-      DEBUG(printf("Executing VIT-Task for MB%d on CPU_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_viterbi_accelerator(task_metadata_block);
-      break;
-    case CV_TASK:
-      DEBUG(printf("Executing CV-Task for MB%d on CPU_CV_ACCELERATOR\n", task_metadata_block->block_id));
-      execute_cpu_cv_accelerator(task_metadata_block);
-      break;
-    default:
+  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+  if (task_metadata_block->accelerator_type != no_accelerator_t) {
+    if ((task_metadata_block->job_type > 0) && (task_metadata_block->job_type < NUM_JOB_TYPES)) {
+      DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->job_type, task_metadata_block->accelerator_type));
+      scheduler_execute_task_function[task_metadata_block->job_type][task_metadata_block->accelerator_type](task_metadata_block);
+    } else {
       printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->job_type);
       cleanup_and_exit(-13);
     }
-  } break;
-  case fft_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_FFT_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_fft_accelerator(task_metadata_block);
-  } break;
-  case vit_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_VITERBI_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_viterbi_accelerator(task_metadata_block);
-  } break;
-  case cv_hwr_accel_t: {
-    DEBUG(printf("Executing Task for MB%d on HWR_CV_ACCELERATOR\n", task_metadata_block->block_id));
-    execute_hwr_cv_accelerator(task_metadata_block);
-  } break;
-  default:
-    printf("ERROR : Unknown accelerator type in execute_task_on_accelerator with block:\n");
+  } else {
+    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    cleanup_and_exit(-12);
+    cleanup_and_exit(-11);
   }
   TDEBUG(printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
 }
-
 
 void*
 metadata_thread_wait_for_task(void* void_parm_ptr)
@@ -556,7 +532,7 @@ status_t initialize_scheduler()
 	master_metadata_pool[i].task_timings[ti].time_usec[tii] = 0;
       }
     }
-    
+
     pthread_mutex_init(&(master_metadata_pool[i].metadata_mutex), NULL);
     pthread_cond_init(&(master_metadata_pool[i].metadata_condv), NULL);
 
@@ -637,6 +613,22 @@ status_t initialize_scheduler()
       }
     }
   }
+
+  // Set up the Scheduler's Execution-Task-Function Table (for now by hand)
+  for (int i = 0; i < NUM_JOB_TYPES; i++) {
+    for (int j = 0; j < NUM_ACCEL_TYPES; j++) {
+      scheduler_execute_task_function[i][j] = NULL; // Set all to default to NULL
+    }
+  }
+  // Now set up those that "make sense"
+  scheduler_execute_task_function[FFT_TASK][cpu_accel_t]     = &execute_cpu_fft_accelerator;
+  scheduler_execute_task_function[FFT_TASK][fft_hwr_accel_t] = &execute_hwr_fft_accelerator;
+
+  scheduler_execute_task_function[VITERBI_TASK][cpu_accel_t]     = &execute_cpu_viterbi_accelerator;
+  scheduler_execute_task_function[VITERBI_TASK][vit_hwr_accel_t] = &execute_hwr_viterbi_accelerator;
+
+  scheduler_execute_task_function[CV_TASK][cpu_accel_t]    = &execute_cpu_cv_accelerator;
+  scheduler_execute_task_function[CV_TASK][cv_hwr_accel_t] = &execute_hwr_cv_accelerator;
 
   // Now start the "schedule_executions_from_queue() pthread -- using the DETACHED pt_attr
   int pt_ret = pthread_create(&scheduling_thread, &pt_attr, schedule_executions_from_queue, NULL);

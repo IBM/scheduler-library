@@ -149,6 +149,14 @@ typedef struct ready_mb_task_queue_entry_struct {
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
+// This is a typedef for an execution function called by the scheduler (e.g. to execute a task)
+typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
+// This is a table of the execution functions for the various Task Types in the scheduler
+//  We set this up with one "set" of entries per JOB_TYPE
+//   where each set has one execute function per possible TASK TARGET (on which it can execute)
+//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+extern sched_execute_task_function_t scheduler_execute_task_function[NUM_JOB_TYPES][NUM_ACCEL_TYPES];
+
 // This is the master pool of Metadata Blocks
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 // This is the count of freed (completed tasks) Metadata Blocks by Job Type
