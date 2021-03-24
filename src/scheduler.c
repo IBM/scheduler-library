@@ -134,10 +134,8 @@ uint64_t scheduler_decision_time_usec = 0;
 uint32_t scheduler_decisions = 0;
 uint32_t scheduler_decision_checks = 0;
 
-unsigned input_cpu_accel_limit = NUM_CPU_ACCEL;
-unsigned input_cv_accel_limit  = NUM_CV_ACCEL;
-unsigned input_fft_accel_limit = NUM_FFT_ACCEL;
-unsigned input_vit_accel_limit = NUM_VIT_ACCEL;
+// This is defined per accelerator type            CPU            FFT            VIT            CV        None
+unsigned input_accel_limit[NUM_ACCEL_TYPES] = {NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, 0};
 
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
@@ -507,37 +505,15 @@ status_t initialize_scheduler()
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_cpu_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_cpu_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_cpu_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_fft_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_fft_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_fft_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_vit_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_vit_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_vit_accel_limit);
-    parms_error = 1;
-  }
-  if (MAX_ACCEL_OF_EACH_TYPE < input_cv_accel_limit) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_cv_accel_limit : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, input_cv_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_CPU_ACCEL < input_cpu_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_CPU_ACCEL < input_cpu_accel_limit : %u < %u\n", NUM_CPU_ACCEL, input_cpu_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_FFT_ACCEL < input_fft_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_FFT_ACCEL < input_fft_accel_limit : %u < %u\n", NUM_FFT_ACCEL, input_fft_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_VIT_ACCEL < input_vit_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_VIT_ACCEL < input_vit_accel_limit : %u < %u\n", NUM_VIT_ACCEL, input_vit_accel_limit);
-    parms_error = 1;
-  }
-  if (NUM_CV_ACCEL < input_cv_accel_limit) {
-    printf("INIT-SCHED: ERROR : NUM_CV_ACCEL < input_cv_accel_limit : %u < %u\n", NUM_CV_ACCEL, input_cv_accel_limit);
-    parms_error = 1;
+  for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
+    if (MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[i]) {
+      printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[%u] : %u < %u\n", i, MAX_ACCEL_OF_EACH_TYPE, input_accel_limit[i]);
+      parms_error = 1;
+    }
+    if (NUM_CPU_ACCEL < input_accel_limit[i]) {
+      printf("INIT-SCHED: ERROR : NUM_CPU_ACCEL < input_accel_limit[%u] : %u < %u\n", i, NUM_CPU_ACCEL, input_accel_limit[i]);
+      parms_error = 1;
+    }
   }
   if (parms_error > 0) {
     printf("... Exiting run...\n");
@@ -630,10 +606,10 @@ status_t initialize_scheduler()
   }
   
   // These are brought in at compile time via config parameters
-  num_accelerators_of_type[cpu_accel_t]        = input_cpu_accel_limit;
-  num_accelerators_of_type[fft_hwr_accel_t]    = input_fft_accel_limit;
-  num_accelerators_of_type[vit_hwr_accel_t]    = input_vit_accel_limit;
-  num_accelerators_of_type[cv_hwr_accel_t]     = input_cv_accel_limit;
+  num_accelerators_of_type[cpu_accel_t]        = input_accel_limit[cpu_accel_t];
+  num_accelerators_of_type[fft_hwr_accel_t]    = input_accel_limit[fft_hwr_accel_t];
+  num_accelerators_of_type[vit_hwr_accel_t]    = input_accel_limit[vit_hwr_accel_t];
+  num_accelerators_of_type[cv_hwr_accel_t]     = input_accel_limit[cv_hwr_accel_t];
 
   for (int i = 0; i < NUM_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {

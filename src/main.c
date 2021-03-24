@@ -274,10 +274,10 @@ int main(int argc, char *argv[])
         printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
 	exit(-1);
       }
-      input_cpu_accel_limit = in_cpu;
-      input_fft_accel_limit = in_fft;
-      input_vit_accel_limit = in_vit;
-      input_cv_accel_limit  = in_cv;
+      input_accel_limit[cpu_accel_t] = in_cpu;
+      input_accel_limit[fft_hwr_accel_t] = in_fft;
+      input_accel_limit[vit_hwr_accel_t] = in_vit;
+      input_accel_limit[cv_hwr_accel_t]  = in_cv;
     }
     break;
 
@@ -303,8 +303,9 @@ int main(int argc, char *argv[])
   }
 
   printf("Run using Scheduler Policy %u using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
-	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+	  global_scheduler_selection_policy, input_accel_limit[cpu_accel_t],
+	  input_accel_limit[fft_hwr_accel_t], input_accel_limit[vit_hwr_accel_t], input_accel_limit[cv_hwr_accel_t], 
+	  scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
  #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
  #else

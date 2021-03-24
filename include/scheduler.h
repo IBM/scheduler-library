@@ -166,10 +166,7 @@ extern unsigned cv_fake_hwr_run_time_in_usec;
 
 extern unsigned int scheduler_holdoff_usec;
 
-extern unsigned input_cpu_accel_limit;
-extern unsigned input_cv_accel_limit;
-extern unsigned input_fft_accel_limit;
-extern unsigned input_vit_accel_limit;
+extern unsigned input_accel_limit[NUM_ACCEL_TYPES];
 
 #define total_metadata_pool_blocks 32
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
