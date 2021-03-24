@@ -23,7 +23,7 @@ extern void do_task_type_closeout();
 extern void output_task_type_run_stats();
 
 
-extern void init_fft_parameters(int fn);
+extern void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
 extern void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
 extern void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);

@@ -147,7 +147,7 @@ struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 
 
 /* User-defined code */
-static void init_fft_parameters(unsigned n, uint32_t log_nsamples)
+void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 {
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
