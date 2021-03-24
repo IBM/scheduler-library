@@ -114,8 +114,8 @@ typedef struct { // This allows each task to track up to 32 total task timings..
 
 typedef struct task_metadata_entry_struct {
   // This portion is management, control, and scheduler stuff...
-  int32_t  block_id;              // master-pool-index; a unique ID per metadata task
-  task_status_t  status;          // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
+  int32_t         block_id;       // master-pool-index; a unique ID per metadata task
+  task_status_t   status;         // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
   pthread_t       thread_id;      // set when we invoke pthread_create (at least for CPU)
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata conditional variables
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
