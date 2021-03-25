@@ -839,16 +839,16 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
 	// Okay, here we should have a good task to schedule...
 	// Creating a "busy spin loop" where we constantly try to allocate
 	//  This metablock to an accelerator, until one gets free...
-	do {
-		int i = 0;
-		while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-			if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-				accel_type = proposed_accel;
-				accel_id = i;
-			}
-			i++;
-		}
-	} while (accel_type == no_accelerator_t);
+	/* do { */
+	/* 	int i = 0; */
+	/* 	while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) { */
+	/* 		if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available */
+	/* 			accel_type = proposed_accel; */
+	/* 			accel_id = i; */
+	/* 		} */
+	/* 		i++; */
+	/* 	} */
+	/* } while (accel_type == no_accelerator_t); */
 	task_metadata_block->accelerator_type = accel_type;
 	task_metadata_block->accelerator_id = accel_id;
 
@@ -941,19 +941,19 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 	scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
 #endif
 	scheduler_decisions++;
-	// Okay, here we should have a good task to schedule...
-	// Creating a "busy spin loop" where we constantly try to allocate
-	//  This metablock to an accelerator, until one gets free...
-	do {
-		int i = 0;
-		while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-			if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
-				accel_type = proposed_accel;
-				accel_id = i;
-			}
-			i++;
-		}
-	} while (accel_type == no_accelerator_t);
+	/* // Okay, here we should have a good task to schedule... */
+	/* // Creating a "busy spin loop" where we constantly try to allocate */
+	/* //  This metablock to an accelerator, until one gets free... */
+	/* do { */
+	/* 	int i = 0; */
+	/* 	while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) { */
+	/* 		if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available */
+	/* 			accel_type = proposed_accel; */
+	/* 			accel_id = i; */
+	/* 		} */
+	/* 		i++; */
+	/* 	} */
+	/* } while (accel_type == no_accelerator_t); */
 	task_metadata_block->accelerator_type = accel_type;
 	task_metadata_block->accelerator_id = accel_id;
 
