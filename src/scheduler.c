@@ -802,29 +802,31 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
 	int accel_id       = -1;
 	uint64_t prop_time = ACINFPROF;
 	if (task_metadata_block->job_type != NO_TASK_JOB) {
-		// Find an acceptable accelerator for this task (job_type)
-		for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-			DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
-			if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
-				DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016llx prop_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
-				if (task_metadata_block->task_profile[check_accel] < prop_time) {
-					int i = 0;
-					DEBUG(printf("F2S_FA:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
-					while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
-						DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
-						if (accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
-							proposed_accel = check_accel;
-							accel_type = proposed_accel;
-							accel_id = i;
-							prop_time = task_metadata_block->task_profile[proposed_accel];
-							DEBUG(printf("F2S_FA:   SELECT: prop_acc %u acc_ty %u acc_id %u prop_time %lu\n", proposed_accel, accel_type, accel_id, prop_time));
+		do { // We will spin (in this policy) until we find an available accelerator...
+			// Find an acceptable accelerator for this task (job_type)
+			for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
+				DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
+				if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
+					DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016llx prop_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
+					if (task_metadata_block->task_profile[check_accel] < prop_time) {
+						int i = 0;
+						DEBUG(printf("F2S_FA:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
+						while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
+							DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+							if (accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
+								proposed_accel = check_accel;
+								accel_type = proposed_accel;
+								accel_id = i;
+								prop_time = task_metadata_block->task_profile[proposed_accel];
+								DEBUG(printf("F2S_FA:   SELECT: prop_acc %u acc_ty %u acc_id %u prop_time %lu\n", proposed_accel, accel_type, accel_id, prop_time));
+							}
+							i++;
+							scheduler_decision_checks += i;
 						}
-						i++;
-						scheduler_decision_checks += i;
-					}
-				} // while (loop through all possible accelerators)
-			} // if (accelerator can execute this job_type)
-		} // for (int check_accel = ...
+					} // if (accelerator is currently available)
+				} // if (accelerator can execute this job_type)
+			} // for (int check_accel = ...
+		} while(accel_type == no_accelerator_t);
 	} else {
 		printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
 		cleanup_and_exit(-15);
@@ -851,7 +853,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
 	/* } while (accel_type == no_accelerator_t); */
 	task_metadata_block->accelerator_type = accel_type;
 	task_metadata_block->accelerator_id = accel_id;
-
+	printf("F2SFA : task %u accel_ty %u accel %u\n", task_metadata_block->job_type, accel_type, accel_id);
 	return selected_task_entry;
 }
 
@@ -881,7 +883,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 		pthread_mutex_unlock(&schedule_from_queue_mutex);
 		cleanup_and_exit(-19);
 	}
-	DEBUG(printf("THE-SCHED: In fastest_to_slowest_first_available policy for MB%u\n", task_metadata_block->block_id));
+	DEBUG(printf("THE-SCHED: In fastest_to_slowest_first_available policy for MB%u : job %u %s \n", task_metadata_block->block_id, task_metadata_block->job_type, task_job_str[task_metadata_block->job_type]));
 #ifdef INT_TIME
 	struct timeval current_time;
 	gettimeofday(&current_time, NULL);
@@ -901,12 +903,12 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 					uint64_t new_proj_finish_time;
 					int i = 0;
 					DEBUG(printf("SCHED_FF:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
-					while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
+					while ((i < num_accelerators_of_type[check_accel])) { // && (accel_id < 0)) {
 						DEBUG(printf("SCHED_FF:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
 						int bi = accelerator_in_use_by[check_accel][i];
 						if (bi == -1) { // Not in use -- available
 							new_proj_finish_time = task_metadata_block->task_profile[check_accel];
-							DEBUG(printf("SCHED_FFF:     So projected finish_time = %lu\n", new_proj_finish_time));
+							DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu\n", check_accel, i, new_proj_finish_time));
 						} else {
 							// Compute the remaining execution time (estimate) for job currently on accelerator
 							uint64_t elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.running_start.tv_sec;
@@ -915,7 +917,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 							uint64_t remaining_time = master_metadata_pool[bi].task_profile[check_accel] - total_elapsed_usec;
 							// and add that to the projected task run time to get the estimated finish time.
 							new_proj_finish_time = task_metadata_block->task_profile[check_accel] + remaining_time;
-							DEBUG(printf("SCHED_FFF:     So projected finish_time = %lu + %lu = %lu\n", task_metadata_block->task_profile[check_accel], remaining_time, new_proj_finish_time));
+							DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu = %lu + %lu\n", check_accel, i, new_proj_finish_time, task_metadata_block->task_profile[check_accel], remaining_time));
 						}
 						if (new_proj_finish_time < proj_finish_time) {
 							proposed_accel = check_accel;
@@ -941,21 +943,16 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 	scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
 #endif
 	scheduler_decisions++;
-	/* // Okay, here we should have a good task to schedule... */
-	/* // Creating a "busy spin loop" where we constantly try to allocate */
-	/* //  This metablock to an accelerator, until one gets free... */
-	/* do { */
-	/* 	int i = 0; */
-	/* 	while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) { */
-	/* 		if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available */
-	/* 			accel_type = proposed_accel; */
-	/* 			accel_id = i; */
-	/* 		} */
-	/* 		i++; */
-	/* 	} */
-	/* } while (accel_type == no_accelerator_t); */
+	// Okay, here we should have selected a target accelerator
+	// Creating a "busy spin loop" where we constantly try to allocate
+	//  This metablock to an accelerator, until one gets free...
+	unsigned wait_iter = 0;
+	while (accelerator_in_use_by[accel_type][accel_id] != -1) { // Not in use -- available
+		wait_iter++;
+	}
 	task_metadata_block->accelerator_type = accel_type;
 	task_metadata_block->accelerator_id = accel_id;
+	DEBUG(printf("FFTFP : task %u accel_ty %u accel %u : wait_iter %u\n", task_metadata_block->job_type, accel_type, accel_id, wait_iter));
 
 	return selected_task_entry;
 }
@@ -1288,7 +1285,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 					ti++;
 					t_te = t_te->next;
 				});
-      
+
 			// Get pointer to the first task on the ready queue
 			ready_mb_task_queue_entry_t* ready_task_entry = ready_mb_task_queue_head;
 			ready_mb_task_queue_entry_t* selected_task_entry = NULL;
