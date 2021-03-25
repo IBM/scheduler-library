@@ -924,7 +924,7 @@ status_t initialize_scheduler()
 
   // Dynamically load the scheduling policy (plug-in) to use
   char policy_filename[300];
-  snprintf(policy_filename, 270, "./obj_p/lib%s.so", policy);
+  snprintf(policy_filename, 270, "./obj_p/libpolicy-v%s.so", policy);
   if ( (policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
     printf("Could not open plug-in scheduling policy: %s\n", dlerror());
     cleanup_and_exit(-1);
