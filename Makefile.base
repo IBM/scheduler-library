@@ -124,6 +124,7 @@ endif
 LDFLAGS ?=
 LDFLAGS += -lm
 LDFLAGS += -lpthread
+LDFLAGS += -ldl -rdynamic
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
  LDFLAGS += -lesp
@@ -135,12 +136,16 @@ ifndef CONFIG_KERAS_CV_BYPASS
 endif
 
 SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_P = $(foreach f, $(wildcard src/policies/*.c), $(shell basename $(f)))
 SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
 OBJ_T = $(SRC_T:%.c=obj_t/%.o)
 OBJ_S = $(SRC_T:%.c=obj_s/%.o)
+OBJ_P = $(SRC_P:%.c=obj_p/%.so)
+LIB_P = $(SRC_P:lib%.c=-l%)
+LDLIBS += -L./obj_p/
 
-VPATH = ./src
+VPATH = ./src ./src/policies
 
 #ifdef CONFIG_FFT_EN
 # TARGET=test-scheduler$(EXE_EXTENSION)-fft$(CONFIG_FFT_ACCEL_VER)
@@ -155,7 +160,7 @@ $(info $$TARGET is [${TARGET}])
 $(info $$STARGET is [${STARGET}])
 
 
-all: esp-libs $(TARGET) $(STARGET)
+all: esp-libs $(TARGET) $(STARGET) obj_p $(OBJ_P)
 
 ESP_BUILD_DRIVERS     = esp-build/drivers
 
@@ -199,11 +204,11 @@ obj_t/%.o: %.c
 obj_s/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
 
+obj_p/%.so: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@
 
 
 $(OBJ_T): $(HDR_T)
-
-
 
 $(TARGET): obj_t $(OBJ_T)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
@@ -214,7 +219,8 @@ $(STARGET): obj_s $(OBJ_S)
 
 
 clean:
-	$(RM) $(OBJ_T) $(OBJ_S) $(TARGET) $(STARGET)
+	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P) $(TARGET) $(STARGET)
+	$(RM) -r obj_t obj_s obj_p
 
 clobber: clean
 	$(RM) $(TARGET)
@@ -227,6 +233,9 @@ obj_t:
 	mkdir $@
 
 obj_s:
+	mkdir $@
+
+obj_p:
 	mkdir $@
 
 

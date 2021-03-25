@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-
 #include <fcntl.h>
 #include <pthread.h>
 #include <errno.h>
@@ -28,6 +27,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <dlfcn.h>
 
 #include "utils.h"
 //#define VERBOSE
@@ -46,8 +46,16 @@ unsigned int scheduler_holdoff_usec = 1;
 
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
+//ready_mb_task_queue_entry_t *
+//select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry);
 
-accel_select_policy_t global_scheduler_selection_policy = 1;
+// Handle for the dynamically loaded policy
+void *policy_handle;
+// Function pointer for the policy's select_task_and_target_accelerator() function
+ready_mb_task_queue_entry_t *
+(*select_task_and_target_accelerator_new)(ready_mb_task_queue_entry_t* ready_task_entry);
+char policy[256];
+//accel_select_policy_t global_scheduler_selection_policy = 1;
 
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
@@ -82,7 +90,7 @@ pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the acc
 
 pthread_t metadata_threads[total_metadata_pool_blocks]; // One thread per metadata block (to exec it in)
 
-pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
+//pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
 pthread_t scheduling_thread;
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
@@ -685,7 +693,7 @@ status_t initialize_scheduler()
   pthread_mutex_init(&free_metadata_mutex, NULL);
   pthread_mutex_init(&accel_alloc_mutex, NULL);
   pthread_mutex_init(&task_queue_mutex, NULL);
-  pthread_mutex_init(&schedule_from_queue_mutex, NULL);
+  //pthread_mutex_init(&schedule_from_queue_mutex, NULL);
 
   struct timeval init_time;
   gettimeofday(&init_time, NULL);
@@ -913,6 +921,21 @@ status_t initialize_scheduler()
    }
    pthread_detach(scheduling_thread);
   **/
+
+  // Dynamically load the scheduling policy (plug-in) to use
+  char policy_filename[300];
+  snprintf(policy_filename, 270, "./obj_p/lib%s.so", policy);
+  if ( (policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
+    printf("Could not open plug-in scheduling policy: %s\n", dlerror());
+    cleanup_and_exit(-1);
+  }
+
+  select_task_and_target_accelerator_new = dlsym(policy_handle, "select_task_and_target_accelerator_new");
+  if (dlerror() != NULL) {
+    dlclose(policy_handle);
+    printf("Function select_task_and_target_accelerator_new() not found in scheduling policy %s\n", policy_filename);
+    cleanup_and_exit(-1);
+  }
 
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
@@ -1246,7 +1269,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 
 
 
-
+/*
 #ifdef HW_FFT
 #define FFT_HW_THRESHOLD 25    // 75% chance of using HWR
 #else
@@ -1284,7 +1307,7 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
-    pthread_mutex_unlock(&schedule_from_queue_mutex);
+    //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
   
@@ -1368,8 +1391,9 @@ pick_accel_and_wait_for_available(ready_mb_task_queue_entry_t* ready_task_entry)
 
   return selected_task_entry;
 }
+*/
 
-
+/*
 // This is a basic accelerator selection policy:
 //   This one selects a hardware (if implemented) and then if none available, 
 //   tries for a CPU, and then repeats this scan until one becomes available.
@@ -1385,7 +1409,7 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
-    pthread_mutex_unlock(&schedule_from_queue_mutex);
+    //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
   DEBUG(printf("THE-SCHED: In fastest_to_slowest_first_available policy for MB%u\n", task_metadata_block->block_id));
@@ -1513,7 +1537,8 @@ fastest_to_slowest_first_available(ready_mb_task_queue_entry_t* ready_task_entry
 
   return selected_task_entry;
 }
-
+*/
+/*
 ready_mb_task_queue_entry_t *
 fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 {
@@ -1526,7 +1551,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
-    pthread_mutex_unlock(&schedule_from_queue_mutex);
+    //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
   DEBUG(printf("SCHED_FFF: In fastest_finish_time_first policy for MB%u task %s\n", task_metadata_block->block_id, task_job_str[task_metadata_block->job_type]));
@@ -1552,7 +1577,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
     DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[fft_hwr_accel_t]));
 //#ifdef HW_FFT
     DEBUG(printf("SCHED_FFF:     Have HW_FFT : NUM_FFT_ACCEL = %u num_accel_of_type[FFT] = %u\n", NUM_FFT_ACCEL, num_accelerators_of_type[fft_hwr_accel_t]));
-    if (num_accelerators_of_type[fft_hwr_accel_t]/*NUM_FFT_ACCEL*/ > 0) {
+    if (num_accelerators_of_type[fft_hwr_accel_t] > 0) {
 	  proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
 	  DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
     }
@@ -1563,7 +1588,7 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
     DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[vit_hwr_accel_t])); //NUM_VIT_ACCEL));
 #ifdef HW_VIT
     DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u num_accel_of_type[VIT] = %u\n", NUM_VIT_ACCEL, num_accelerators_of_type[vit_hwr_accel_t]));
-    if (num_accelerators_of_type[vit_hwr_accel_t]/*NUM_VIT_ACCEL*/ > 0) {
+    if (num_accelerators_of_type[vit_hwr_accel_t] > 0) {
     proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
     DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
     }
@@ -1645,7 +1670,8 @@ fastest_finish_time_first(ready_mb_task_queue_entry_t* ready_task_entry)
 
   return selected_task_entry;
 }
-
+*/
+/*
 ready_mb_task_queue_entry_t * 
 fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 {
@@ -1657,7 +1683,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
       task_metadata_block = &(master_metadata_pool[selected_task_entry->block_id]);
       if (task_metadata_block == NULL) {
 	printf("SCHED-FFFQ: ERROR : Ready Task Queue entry is NULL even though num_tasks_in_ready_queue = %d depicts otherwise?\n", num_tasks_in_ready_queue);
-	pthread_mutex_unlock(&schedule_from_queue_mutex);
+	//pthread_mutex_unlock(&schedule_from_queue_mutex);
 	cleanup_and_exit(-19);
       }
       DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_job_str[task_metadata_block->job_type]));
@@ -1683,7 +1709,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
 	  proposed_accel[0] = cpu_accel_t;
         #ifdef HW_FFT
-	  if (num_accelerators_of_type[fft_hwr_accel_t] /*NUM_FFT_ACCEL*/ > 0) {
+	  if (num_accelerators_of_type[fft_hwr_accel_t] > 0) {
 	    proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
 	  }
         #endif
@@ -1692,7 +1718,7 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
 	  proposed_accel[0] = cpu_accel_t;
 	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
         #ifdef HW_VIT
-	  if (num_accelerators_of_type[vit_hwr_accel_t] /*NUM_VIT_ACCEL*/ > 0) {
+	  if (num_accelerators_of_type[vit_hwr_accel_t] > 0) {
 	    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
 	  DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
 	  }
@@ -1790,7 +1816,8 @@ fastest_finish_time_first_queued(ready_mb_task_queue_entry_t* ready_task_entry)
   // No task found that can be scheduled on its best accelerator
   return NULL;
 }
-
+*/
+/*
 // This routine selects an available accelerator for the given job, 
 //  The accelerator is selected according to a policy
 //  The policies are implemented in separate functions.
@@ -1817,7 +1844,7 @@ select_task_and_target_accelerator(accel_select_policy_t policy, ready_mb_task_q
   }
   return selected_task_entry;
 }
-
+*/
 
 
 // This routine schedules (the first) ready task from the ready task queue
@@ -1826,7 +1853,7 @@ select_task_and_target_accelerator(accel_select_policy_t policy, ready_mb_task_q
 void* schedule_executions_from_queue(void* void_parm_ptr) {
   DEBUG(printf("SCHED: starting execution of schedule_executions_from_queue thread...\n"));
   // This will now be an eternally-running scheduler process, I think.
-  pthread_mutex_lock(&schedule_from_queue_mutex);
+  //pthread_mutex_lock(&schedule_from_queue_mutex);
   while(1) {
     // If there is nothing on the queue -- return;
     if (num_tasks_in_ready_queue > 0) {
@@ -1847,7 +1874,8 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       // Select the target accelerator to execute the task
       DEBUG(printf("SCHED: calling select_task_and_target_accelerator\n"));
       //Pass the head of the ready queue to parse entries in the queue
-      selected_task_entry = select_task_and_target_accelerator(global_scheduler_selection_policy, ready_task_entry);
+      //selected_task_entry = select_task_and_target_accelerator(global_scheduler_selection_policy, ready_task_entry);
+      selected_task_entry = select_task_and_target_accelerator_new(ready_task_entry);
       if (selected_task_entry == NULL) {
         //No schedulable task
         continue;
@@ -1860,7 +1888,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 
       if (accel_type == no_accelerator_t) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
-        pthread_mutex_unlock(&schedule_from_queue_mutex);
+        //pthread_mutex_unlock(&schedule_from_queue_mutex);
         cleanup_and_exit(-19);
       }
       if (accel_type < no_accelerator_t) {
@@ -1953,7 +1981,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       usleep(scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     } 
   } // while (1) 
-  pthread_mutex_unlock(&schedule_from_queue_mutex);
+  //pthread_mutex_unlock(&schedule_from_queue_mutex);
   return NULL;
 }
 
@@ -2367,6 +2395,10 @@ void shutdown_scheduler()
       }
     }
   }
+
+  // Dynamically unload the scheduling policy (plug-in)
+  dlclose(policy_handle);
+
   cleanup_state();
 }
 

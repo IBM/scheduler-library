@@ -222,7 +222,8 @@ typedef struct ready_mb_task_queue_entry_struct {
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
 // This is the accelerator selection policy used by the scheduler
-extern accel_select_policy_t global_scheduler_selection_policy;
+extern char policy[256];
+//extern accel_select_policy_t global_scheduler_selection_policy;
 
 // These are some "fake" times (models the execution of CV timing)
 extern unsigned cv_cpu_run_time_in_usec;
@@ -248,6 +249,8 @@ extern volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_T
 extern uint64_t scheduler_decision_time_usec;
 extern uint32_t scheduler_decisions;
 extern uint32_t scheduler_decision_checks;
+
+extern unsigned num_tasks_in_ready_queue;
 
 extern status_t initialize_scheduler();
 
