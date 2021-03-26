@@ -24,6 +24,9 @@
 #include <math.h>
 
 #include "scheduler.h" // for cleanup_and_exit
+#include "fft_sched.h"
+#include "vit_sched.h"
+#include "cv_sched.h"
 
 static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 {
@@ -520,12 +523,14 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 {
   /* 2) Set up to request object detection on an image frame */
   int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->job_type]); // CV_TASK]);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
-  mb_ptr->data_view.cv_data.object_label = in_tr_val;
-  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label, in_tr_val));
+  cv_data_p->object_label = in_tr_val;
+  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, cv_data_p->object_label, in_tr_val));
  #ifdef INT_TIME
-  gettimeofday(&(mb_ptr->cv_timings.call_start), NULL);
+  gettimeofday(&(cv_timings_p->call_start), NULL);
  #endif
   //  schedule_task(data);
   request_execution(mb_ptr);
@@ -535,8 +540,9 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 {
   DEBUG(printf("In finish_execution_of_cv_kernel\n"));
-  label_t the_label = mb_ptr->data_view.cv_data.object_label;
-  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, mb_ptr->data_view.cv_data.object_label));
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
+  label_t the_label = cv_data_p->object_label;
+  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
   // We've finished the execution and lifetime for this task; free its metadata
   free_task_metadata_block(mb_ptr);
 

@@ -24,6 +24,10 @@
 #include "verbose.h"
 
 #include "scheduler.h"
+#include "fft_sched.h"
+#include "vit_sched.h"
+#include "cv_sched.h"
+
 #include "kernels_api.h"
 #include "sim_environs.h"
 #include "getopt.h"
@@ -72,29 +76,29 @@ unsigned task_size_variability;
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
-  printf("    -h          : print this helpful usage info\n");
-  printf("    -o          : print the Visualizer output traace information during the run\n");
-  printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
-  printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
-  printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to use\n");
-  //printf("    -H <file>   : defines the input H264 dictionary file <file> to use\n");
-  //printf("    -b          : Bypass (do not use) the H264 functions in this run.\n");
-  printf("    -s <N>      : Sets the max number of time steps to simulate\n");
+  printf("    -h         : print this helpful usage info\n");
+  printf("    -o         : print the Visualizer output traace information during the run\n");
+  printf("    -R <file>  : defines the input Radar dictionary file <file> to use\n");
+  printf("    -V <file>  : defines the input Viterbi dictionary file <file> to use\n");
+  printf("    -C <file>  : defines the input CV/CNN dictionary file <file> to use\n");
+  //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
+  //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
+  printf("    -s <N>     : Sets the max number of time steps to simulate\n");
  #ifdef USE_SIM_ENVIRON
-  printf("    -r <N>      : Sets the rand random number seed to N\n");
-  printf("    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
-  printf("    -W <wfile>  : defines the world environment parameters description file <wfile> to use\n");
+  printf("    -r <N>     : Sets the rand random number seed to N\n");
+  printf("    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
+  printf("    -W <wfile> : defines the world environment parameters description file <wfile> to use\n");
  #else
-  printf("    -t <trace>  : defines the input trace file <trace> to use\n");
+  printf("    -t <trace> : defines the input trace file <trace> to use\n");
  #endif
-  printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
-  printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
-  printf("                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
+  printf("    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
+  printf("    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
+  printf("               :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
   
-  printf("    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
-  printf("    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)\n");
+  printf("    -N <N>     : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
+  printf("    -D <N>     : Delay (in usec) of CPU CV Tasks (faked execution)\n");
  #ifdef FAKE_HW_CV
-  printf("    -d <N>      : Delay (in usec) of HWR CV Tasks (faked execution)\n");
+  printf("    -d <N>     : Delay (in usec) of HWR CV Tasks (faked execution)\n");
  #endif
   printf("    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>      : defines Viterbi message size:\n");
@@ -107,15 +111,15 @@ void print_usage(char * pname) {
   printf("                :      0 = No variability (e.g. all messages same size, etc.)\n");
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
-  printf("    -P <policy> : defines the task scheduling policy <policy> to use\n");
+  printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
 //  printf("    -P <N>      : defines the Scheduler Accelerator Selection Policy:\n");
 //  printf("                :      0 = Select_Accelerator_Type_And_Wait\n");
 //  printf("                :      1 = Fastest_to_Slowest_First_Available\n");
 //  printf("                :      2 = Fastest_Finish_Time_First\n");
 //  printf("                :      3 = Fastest_Finish_Time_First_Queued\n");
-  printf("    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.\n");
-  printf("                :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
+  printf("    -L <tuple> : Sets the limits on number of each accelerator type available in this run.\n");
+  printf("               :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
 
 }
 
@@ -273,10 +277,10 @@ int main(int argc, char *argv[])
         printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
 	exit(-1);
       }
-      input_cpu_accel_limit = in_cpu;
-      input_fft_accel_limit = in_fft;
-      input_vit_accel_limit = in_vit;
-      input_cv_accel_limit  = in_cv;
+      input_accel_limit[cpu_accel_t] = in_cpu;
+      input_accel_limit[fft_hwr_accel_t] = in_fft;
+      input_accel_limit[vit_hwr_accel_t] = in_vit;
+      input_accel_limit[cv_hwr_accel_t]  = in_cv;
     }
     break;
 
@@ -305,8 +309,9 @@ int main(int argc, char *argv[])
 //	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
 //	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-	  policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
-	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+	 policy,
+	 input_accel_limit[cpu_accel_t], input_accel_limit[fft_hwr_accel_t], input_accel_limit[vit_hwr_accel_t], input_accel_limit[cv_hwr_accel_t], 
+	 scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
 
   #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
