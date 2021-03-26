@@ -22,22 +22,15 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-//#include "verbose.h"
-
 #include "base_types.h"
+
+#define total_metadata_pool_blocks  32
+
+#define MAX_TASK_TYPES     4  // MUST BE >= NUM_JOB_TYPES
+#define MAX_TASK_TARGETS   2
 
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
-
-#define usecHwrFFT0   6000
-#define usecHwrFFT1 143000
-
-#define usecHwrVIT0   5950
-#define usecHwrVIT1  67000
-#define usecHwrVIT2 135000
-#define usecHwrVIT3 191000
-
-#define usecHwrCV   150000
 
 #define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
 
@@ -49,7 +42,9 @@ typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
 	       CV_TASK,
-	       NUM_JOB_TYPES } scheduler_jobs_t;
+	       NUM_JOB_TYPES } scheduler_jobs_enum_t;
+typedef unsigned scheduler_jobs_t;
+
 
 typedef enum { NO_TASK   = 0,
 	       BASE_TASK = 1,
@@ -65,19 +60,21 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
+
 typedef enum { cpu_accel_t = 0,
 	       fft_hwr_accel_t,
 	       vit_hwr_accel_t,
 	       cv_hwr_accel_t,
 	       no_accelerator_t,
-	       NUM_ACCEL_TYPES} accelerator_type_t;
+	       NUM_ACCEL_TYPES} accelerator_type_enum_t;
+typedef unsigned accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-  FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-  FASTEST_FINISH_TIME_FIRST_POLICY,
-  FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-  NUM_SELECTION_POLICIES } accel_select_policy_t;
-
+	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_POLICY,
+	       FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
+	       NUM_SELECTION_POLICIES } accel_select_policy_enum_t;
+typedef unsigned  accel_select_policy_t;
 
 extern const char* task_job_str[NUM_JOB_TYPES];
 extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
@@ -85,32 +82,6 @@ extern const char* task_status_str[NUM_TASK_STATUS];
 extern const char* accel_type_str[NUM_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
 
-// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "FFT" Task view of "data"
-  label_t object_label; // The deteremined label of the object in the image
-}  cv_data_struct_t;
-
-
-// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "FFT" Task view of "data"
-  int32_t log_nsamples;       // The Log2 of the number of samples in this FFT
-  float   theData[2* (1<<14)]; // MAx supported samples (2^14) * 2 float per complex input/output
-}  fft_data_struct_t;
-
-// This is a struutre that defines the "Viterbi" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "Viterbi" view of "data"
-  int32_t n_data_bits;
-  int32_t n_cbps;
-  int32_t n_traceback;
-  int32_t psdu_size;
-  int32_t inMem_size;    // The first inMem_size bytes of theData are the inMem (input memories)
-  int32_t inData_size;   // The next inData_size bytes of theData are the inData (input data)
-  int32_t outData_size;  // The next outData_size bytes of theData are the outData (output data)
-  uint8_t theData[64*1024]; // This is larger than needed (~24780 + 18585) but less than FFT requires (so okay)
-}  viterbi_data_struct_t;
 
 // This is a timing analysis structure for the scheduler functions, etc.
 typedef struct {
@@ -126,45 +97,12 @@ typedef struct {
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
 
-// The following structures are for timing analysis (per job type)
-typedef struct {
-  struct timeval call_start;
-  struct timeval fft_start;
-  struct timeval fft_br_start;
-  struct timeval bitrev_start;
-  struct timeval fft_cvtin_start;
-  struct timeval fft_comp_start;
-  struct timeval fft_cvtout_start;
-  struct timeval cdfmcw_start;
-  // 0 = timings for cpu_accel_T and 1 = fft_hwr_accel_t
-  unsigned comp_by[2];
-  uint64_t call_sec[2], call_usec[2];
-  uint64_t fft_sec[2], fft_usec[2];
-  uint64_t fft_br_sec[2], fft_br_usec[2];
-  uint64_t bitrev_sec[2], bitrev_usec[2];
-  uint64_t fft_cvtin_sec[2], fft_cvtin_usec[2];
-  uint64_t fft_comp_sec[2], fft_comp_usec[2];
-  uint64_t fft_cvtout_sec[2], fft_cvtout_usec[2];
-  uint64_t cdfmcw_sec[2], cdfmcw_usec[2];
-} fft_timing_data_t;
-
-typedef struct {
-  struct timeval dodec_start;
-  struct timeval depunc_start;
-  // 0 = timings for cpu_accel_T and 1 = vit_hwr_accel_t
-  unsigned comp_by[2];
-  uint64_t dodec_sec[2],  dodec_usec[2];
-  uint64_t depunc_sec[2], depunc_usec[2];
-} vit_timing_data_t;
-
-typedef struct {
-  struct timeval call_start;
-  struct timeval parse_start;
-  // 0 = timings for cpu_accel_T and 1 = cv_hwr_accel_t
-  unsigned comp_by[2];
-  uint64_t call_sec[2],  call_usec[2];
-  uint64_t parse_sec[2], parse_usec[2];
-} cv_timing_data_t;
+typedef struct { // This allows each task to track up to 32 total task timings...
+  struct timeval time_val[16];
+  unsigned comp_by[MAX_TASK_TARGETS]; 
+  uint64_t time_sec[16*MAX_TASK_TARGETS];
+  uint64_t time_usec[16*MAX_TASK_TARGETS];
+} task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any job
 //  to be invoked through the scheduler.  This includes a description of the
@@ -176,8 +114,8 @@ typedef struct {
 
 typedef struct task_metadata_entry_struct {
   // This portion is management, control, and scheduler stuff...
-  int32_t  block_id;              // master-pool-index; a unique ID per metadata task
-  task_status_t  status;          // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
+  int32_t         block_id;       // master-pool-index; a unique ID per metadata task
+  task_status_t   status;         // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
   pthread_t       thread_id;      // set when we invoke pthread_create (at least for CPU)
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata conditional variables
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
@@ -188,26 +126,19 @@ typedef struct task_metadata_entry_struct {
   task_criticality_t crit_level;  // [0 .. ?] ?
 
   uint64_t task_profile[NUM_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
-  
+
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
   unsigned gets_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
   unsigned frees_by_type[NUM_JOB_TYPES]; // Count of times this metadata block allocated per job type.
-  
+
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  fft_timing_data_t   fft_timings;  
-  vit_timing_data_t   vit_timings; 
-  cv_timing_data_t    cv_timings;  
+  task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  union { // This union holds job-specific "views" of the data (input/ouput memory for job accelerators)
-    uint8_t  raw_data[128*1024];     // 128 KB is the current MAX data size for all jobs
-    cv_data_struct_t      cv_data;   // CV/CNN view of data -- see strucutre typedef above
-    fft_data_struct_t     fft_data;  // FFT view of data -- see strucutre typedef above
-    viterbi_data_struct_t vit_data;  // Viterbi view of data -- see strucutre typedef above
-  } data_view;
+  uint8_t  data_space[128*1024];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
@@ -221,6 +152,19 @@ typedef struct ready_mb_task_queue_entry_struct {
 // This is a typedef for the call-back function, called by the scheduler at finish time for a task
 typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
+// This is a typedef for an execution function called by the scheduler (e.g. to execute a task)
+typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
+// This is a table of the execution functions for the various Task Types in the scheduler
+//  We set this up with one "set" of entries per JOB_TYPE
+//   where each set has one execute function per possible TASK TARGET (on which it can execute)
+//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+extern sched_execute_task_function_t scheduler_execute_task_function[NUM_JOB_TYPES][NUM_ACCEL_TYPES];
+
+// This is the master pool of Metadata Blocks
+extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
+// This is the count of freed (completed tasks) Metadata Blocks by Job Type
+extern unsigned freed_metadata_blocks[NUM_JOB_TYPES];
+
 // This is the accelerator selection policy used by the scheduler
 extern char policy[256];
 //extern accel_select_policy_t global_scheduler_selection_policy;
@@ -229,15 +173,10 @@ extern char policy[256];
 extern unsigned cv_cpu_run_time_in_usec;
 extern unsigned cv_fake_hwr_run_time_in_usec;
 
-// This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
-extern unsigned crit_fft_samples_set;
 
 extern unsigned int scheduler_holdoff_usec;
 
-extern unsigned input_cpu_accel_limit;
-extern unsigned input_cv_accel_limit;
-extern unsigned input_fft_accel_limit;
-extern unsigned input_vit_accel_limit;
+extern unsigned input_accel_limit[NUM_ACCEL_TYPES];
 
 #define total_metadata_pool_blocks 32
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
@@ -264,8 +203,6 @@ extern void wait_all_tasks_finish();
 void mark_task_done(task_metadata_block_t* task_metadata_block);
 
 extern void print_base_metadata_block_contents(task_metadata_block_t* mb);
-extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
-extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 extern void dump_all_metadata_blocks_states();
 
 extern void shutdown_scheduler();
