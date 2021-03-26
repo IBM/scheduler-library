@@ -20,27 +20,27 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+unsigned HW_THRESHOLD[NUM_JOB_TYPES][NUM_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
 #ifdef HW_FFT
-#define FFT_HW_THRESHOLD 25    // 75% chance of using HWR
+							    {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
 #else
-#define FFT_HW_THRESHOLD 101   // 0% chance of using HWR
+							    {101, 101, 101, 101},   // NO_HWR_FFT : 0% chance of using any HWR
 #endif
-
-#ifdef HW_VIT
-#define VITERBI_HW_THRESHOLD 25   // 75% chance to use Viterbi Hardware
+#ifdef HW_FFT
+							    {101, 101,  25, 101},   // VIT : 75% chance on HWR on VIT_HWR
 #else
-#define VITERBI_HW_THRESHOLD 101  // 0% chance to use Viterbi Hardware
+							    {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
 #endif
-
 #if (defined(HW_CV) || defined(FAKE_HW_CV))
-#define CV_HW_THRESHOLD 25    // 75% chance of using HWR
+							    {101, 101, 101,  25} }; // CV  : 75% chance on HWR on CV_HWR
 #else
-#define CV_HW_THRESHOLD 101   // 0% chance of using HWR
+							    {101, 101, 101, 101} }; // NO_HWR_CV : 0% chance of using any HWR
 #endif
 
-// This routine selects an available accelerator for the given job, 
-//  The accelerator is selected according to a policy
-//  The policies are implemented in separate functions.
+// This is a basic accelerator selection policy:
+//   This one selects an accelerator type (HWR or CPU) randomly
+//   If an accelerators of that type is not available, it waits until it is.
+
 ready_mb_task_queue_entry_t *
 select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
 {
@@ -65,57 +65,24 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
  #endif
-  int proposed_accel = no_accelerator_t;
+  int proposed_accel = cpu_accel_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  switch(task_metadata_block->job_type) {
-  case FFT_TASK: {
-    // Scheduler should now run this either on CPU or FFT:
+  if (task_metadata_block->job_type > NO_TASK_JOB) {
+    // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= FFT_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = fft_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
+    for (int i = 1; i < NUM_ACCEL_TYPES-1; i++) {
+      if (num >= HW_THRESHOLD[task_metadata_block->job_type][i]) {
+        // Execute on hardware
+        proposed_accel = i; // hwr_accel_t;
+      }
+      scheduler_decision_checks++;
     }
-    scheduler_decision_checks++;
-  } break;
-  case VITERBI_TASK: {
-    // Scheduler should now run this either on CPU or VITERBI:
-    int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= VITERBI_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = vit_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
-    }
-    scheduler_decision_checks++;
-  } break;
-  case CV_TASK: {
-    // Scheduler should now run this either on CPU or CV:
-    DEBUG(printf("THE-SCHED: MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_job_str[task_metadata_block->job_type], CV_HW_THRESHOLD));
-#ifdef HW_ONLY_CV
-      // Execute on hardware
-    proposed_accel = cv_hwr_accel_t;
-#else
-    int num = (rand() % (100)); // Return a value from [0,99]
-    if (num >= CV_HW_THRESHOLD) {
-      // Execute on hardware
-      proposed_accel = cv_hwr_accel_t;
-    } else {
-      // Execute in CPU (softwware)
-      proposed_accel = cpu_accel_t;
-    }
-#endif
-    scheduler_decision_checks++;
-    DEBUG(printf("THE-SCHED:  and the proposed_accel is %u\n", proposed_accel));
-  } break;
-  default:
+  } else {
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
     cleanup_and_exit(-15);
   }
+
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
