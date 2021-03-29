@@ -44,6 +44,7 @@ typedef enum { NO_TASK_JOB = 0,
 	       CV_TASK,
 	       NUM_JOB_TYPES } scheduler_jobs_enum_t;
 typedef unsigned scheduler_jobs_t;
+typedef unsigned task_id_t;
 
 
 typedef enum { NO_TASK   = 0,
@@ -210,5 +211,36 @@ extern void shutdown_scheduler();
 extern void init_accelerators_in_use_interval(struct timeval start_prog);
 
 extern void cleanup_and_exit(int rval);
+
+
+typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
+/* typedef void (*do_task_type_initialization_t)(void*); */
+/* typedef void (*do_task_type_closeout_t)(void*); */
+typedef void (*output_task_type_run_stats_t)(void*);
+
+typedef struct task_type_defn_info_struct {
+  print_metadata_block_contents_t print_metadata_block_contents;
+  /* do_task_type_initialization_t   do_task_type_initialization; */
+  /* do_task_type_closeout_t         do_task_type_closeout; */
+  output_task_type_run_stats_t    output_task_type_run_stats;
+  char                            name[32];
+  char                            description[256];
+} task_type_defn_info_t;
+
+extern task_id_t register_task_type(task_type_defn_info_t*);
+
+typedef void (*do_accel_initialization_t)(void*);
+typedef void (*do_accel_closeout_t)(void*);
+typedef void (*output_accel_run_stats_t)(void*);
+
+typedef struct accel_pool_defn_info_struct {
+  do_accel_initialization_t       do_accel_initialization;
+  do_accel_closeout_t             do_accel_closeout;
+  output_accel_run_stats_t        output_accel_run_stats;
+  char                            name[32];
+  char                            description[256];
+} accelerator_pool_defn_info_t;
+
+extern accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t*);
 
 #endif

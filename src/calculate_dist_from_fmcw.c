@@ -8,6 +8,7 @@
 
 #include "calc_fmcw_dist.h"
 #include "scheduler.h"
+#include "fft_sched.h"
 
 // CONSTANTS
 #define RADAR_c          300000000.0  // Speed of Light in Meters/Sec
@@ -28,17 +29,20 @@
 void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, uint32_t fft_log_nsamples, float* data)
 {
   int tidx = 0; // (fft_metadata_block->accelerator_type != cpu_accel_t);
-  fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->job_type]); // FFT_TASK]);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  //fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
+  fft_data_p->log_nsamples = fft_log_nsamples;
   fft_metadata_block->data_size = 2 * (1<<fft_log_nsamples) * sizeof(float);
   // Copy over our task data to the MetaData Block
   //fft_metadata_block->data = (uint8_t*)data;
-  float* mdataptr = (float*)fft_metadata_block->data_view.fft_data.theData;
+  float* mdataptr = (float*)fft_data_p->theData;
   for (int i = 0; i < 2*(1<<fft_log_nsamples); i++) {
     mdataptr[i] = data[i];
   }
 
  #ifdef INT_TIME
-  gettimeofday(&(fft_metadata_block->fft_timings.call_start), NULL);
+  gettimeofday(&(fft_timings_p->call_start), NULL);
  #endif
   //  schedule_fft(data);
   request_execution(fft_metadata_block);
@@ -55,15 +59,17 @@ float
 finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
 {
   int tidx = (fft_metadata_block->accelerator_type != cpu_accel_t);
-  uint32_t fft_log_nsamples = fft_metadata_block->data_view.fft_data.log_nsamples;
-  float*   data = (float*)fft_metadata_block->data_view.fft_data.theData;
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->job_type]); // FFT_TASK]);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  uint32_t fft_log_nsamples = fft_data_p->log_nsamples;
+  float*   data = (float*)fft_data_p->theData;
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_metadata_block->fft_timings.call_sec[tidx]  += stop_time.tv_sec  - fft_metadata_block->fft_timings.call_start.tv_sec;
-  fft_metadata_block->fft_timings.call_usec[tidx] += stop_time.tv_usec - fft_metadata_block->fft_timings.call_start.tv_usec;
+  fft_timings_p->call_sec[tidx]  += stop_time.tv_sec  - fft_timings_p->call_start.tv_sec;
+  fft_timings_p->call_usec[tidx] += stop_time.tv_usec - fft_timings_p->call_start.tv_usec;
 
-  gettimeofday(&(fft_metadata_block->fft_timings.cdfmcw_start), NULL);
+  gettimeofday(&(fft_timings_p->cdfmcw_start), NULL);
  #endif // INT_TIME
 
   unsigned RADAR_N       = 0;   // The number of samples (2^LOGN)
@@ -105,8 +111,8 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
  #ifdef INT_TIME
   struct timeval cdfmcw_stop;
   gettimeofday(&cdfmcw_stop, NULL);
-  fft_metadata_block->fft_timings.cdfmcw_sec[tidx]  += cdfmcw_stop.tv_sec  - fft_metadata_block->fft_timings.cdfmcw_start.tv_sec;
-  fft_metadata_block->fft_timings.cdfmcw_usec[tidx] += cdfmcw_stop.tv_usec - fft_metadata_block->fft_timings.cdfmcw_start.tv_usec;
+  fft_timings_p->cdfmcw_sec[tidx]  += cdfmcw_stop.tv_sec  - fft_timings_p->cdfmcw_start.tv_sec;
+  fft_timings_p->cdfmcw_usec[tidx] += cdfmcw_stop.tv_usec - fft_timings_p->cdfmcw_start.tv_usec;
  #endif // INT_TIME
   //printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd > RADAR_psd_threshold) {

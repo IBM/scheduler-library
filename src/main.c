@@ -144,7 +144,62 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 }
 
 
-	 
+
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
+
+typedef enum { cpu_t = 0,
+	       fft_hwr_t,
+	       vit_hwr_t,
+	       cv_hwr_t,
+	       my_num_accel_types} my_accel_types_t;
+
+accelerator_type_t my_accel_types[my_num_accel_types];
+
+typedef enum { no_task_t,
+	       fft_task_t,
+	       vit_task_t,
+	       cv_task_t,
+	       my_num_task_types} my_task_types_t;
+
+task_id_t my_task_types[my_num_task_types];
+
+void set_up_scheduler_accelerators_and_tasks() {
+  accelerator_pool_defn_info_t my_accel_defns[my_num_accel_types];
+  sprintf(my_accel_defns[cpu_t].name, "CPU");
+  sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
+  my_accel_defns[cpu_t].do_accel_initialization = NULL;
+  my_accel_defns[cpu_t].do_accel_closeout       = NULL;
+  my_accel_defns[cpu_t].output_accel_run_stats  = &output_fft_task_type_run_stats;
+  my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
+  
+  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW");
+  sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
+  my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_task_type_initialization;
+  my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_task_type_closeout;
+  my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_task_type_run_stats;
+  my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
+
+  sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW");
+  sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
+  my_accel_defns[vit_hwr_t].do_accel_initialization = &do_vit_task_type_initialization;
+  my_accel_defns[vit_hwr_t].do_accel_closeout       = &do_vit_task_type_closeout;
+  my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_task_type_run_stats;
+  my_accel_types[vit_hwr_t] = register_accelerator_pool(&my_accel_defns[vit_hwr_t]);
+
+  sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW");
+  sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
+  my_accel_defns[cv_hwr_t].do_accel_initialization = &do_cv_task_type_initialization;
+  my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_task_type_closeout;
+  my_accel_defns[cv_hwr_t].output_accel_run_stats  = &output_cv_task_type_run_stats;
+  my_accel_types[cv_hwr_t] = register_accelerator_pool(&my_accel_defns[cv_hwr_t]);
+
+  // Now set up the Task Types...
+  
+}
+
+  
 int main(int argc, char *argv[])
 {
   vehicle_state_t vehicle_state;
@@ -418,6 +473,9 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  // Set up the Accelerators for this application
+  set_up_scheduler_accelerators_and_tasks();
+  
   printf("Doing initialization tasks...\n");
   initialize_scheduler();
 

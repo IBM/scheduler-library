@@ -40,6 +40,9 @@
 
 #include "scheduler.h"
 #include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
 
 
 unsigned int scheduler_holdoff_usec = 1;
@@ -1788,3 +1791,32 @@ void dump_all_metadata_blocks_states()
   } // for (mbi loop over Metablocks)
 }
 
+
+
+task_id_t register_task_type(task_type_defn_info_t* tinfo)
+{
+  printf("In register_task_type with inputs:\n");
+  printf("  name  = %s\n", tinfo->name);
+  printf("  description  = %s\n", tinfo->description);
+  printf("  print_metadata_block_contents = %p\n", tinfo->print_metadata_block_contents);
+  /* printf("  do_task_type_initialization   = %p\n", tinfo->do_task_type_initialization); */
+  /* printf("  do_task_type_closeout_t       = %p\n", tinfo->do_task_type_closeout); */
+  printf("  output_task_type_run_stats_t  = %p\n", tinfo->output_task_type_run_stats);
+  
+  if (tinfo->print_metadata_block_contents == NULL) {
+    printf("Must set print_metadata_block_contents function -- can use base routine\n");
+    cleanup_and_exit(-30);
+  }
+}
+
+
+accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t* info)
+{
+  printf("In register_accelerator_pool with inputs:\n");
+  printf("  name  = %s\n", info->name);
+  printf("  description  = %s\n", info->description);
+  printf("  do_accel_initialization   = %p\n", info->do_accel_initialization);
+  printf("  do_accel_closeout_t       = %p\n", info->do_accel_closeout);
+  printf("  output_accel_run_stats_t  = %p\n", info->output_accel_run_stats);
+  
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IBM
+ * Copyright 2019 IBM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,18 +15,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_ACCELERATORS_H
-#define H_ACCELERATORS_H
+#ifndef H_VIT_ACCEL_INCLUDE_H
+#define H_VIT_ACCEL_INCLUDE_H
 
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
-/* static unsigned DMA_WORD_PER_BEAT(unsigned _st) */
-/* { */
-/*   return (sizeof(void *) / _st); */
-/* } */
+void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 
-extern void do_task_type_initialization();
-extern void do_task_type_closeout();
-extern void output_task_type_run_stats();
+void init_vit_parameters(int vn);
+
+void do_vit_task_type_initialization();
+void do_vit_task_type_closeout();
+void output_vit_task_type_run_stats();
+
+void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
+void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 
 #endif
