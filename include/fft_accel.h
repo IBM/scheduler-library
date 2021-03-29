@@ -21,15 +21,12 @@
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb);
 
- #ifdef HW_FFT
-  void init_fft_parameters(unsigned n, uint32_t log_nsamples);
-  unsigned int fft_rev(unsigned int v);
-  void fft_bit_reverse(float *w, unsigned int n, unsigned int bits);
-  static void fft_in_hw(int *fd, struct fftHW_access *desc);
- #endif
+void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
-void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
 void do_fft_task_type_initialization();
 void do_fft_task_type_closeout();
 void output_fft_task_type_run_stats();
+
+void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
+
 #endif
