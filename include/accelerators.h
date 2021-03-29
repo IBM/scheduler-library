@@ -18,6 +18,13 @@
 #ifndef H_ACCELERATORS_H
 #define H_ACCELERATORS_H
 
+#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
+
+/* static unsigned DMA_WORD_PER_BEAT(unsigned _st) */
+/* { */
+/*   return (sizeof(void *) / _st); */
+/* } */
+
 extern void do_task_type_initialization();
 extern void do_task_type_closeout();
 extern void output_task_type_run_stats();
