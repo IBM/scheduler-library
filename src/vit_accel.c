@@ -219,7 +219,7 @@ execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
   int vn = task_metadata_block->accelerator_id;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // VITERBI_TASK]);
   //task_metadata_block->vit_timings.comp_by[tidx]++;
   vit_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHVA: In execute_hwr_viterbi_accelerator on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));

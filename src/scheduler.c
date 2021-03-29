@@ -210,11 +210,11 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
   } else {
     printf(" ** status = %d <= NOT a legal value!\n",  mb->status);
   }
-  unsigned job_type = mb->job_type;
+  unsigned job_type = mb->task_type;
   if (job_type < MAX_TASK_TYPES) {
     printf("    job_type = %s\n", task_name_str[job_type]);
   } else {
-    printf(" ** job_type = %d <= NOT a legal value!\n", mb->job_type);
+    printf(" ** job_type = %d <= NOT a legal value!\n", mb->task_type);
   }
   unsigned crit_level = mb->crit_level;
   if (crit_level < NUM_TASK_CRIT_LEVELS) {
@@ -248,7 +248,7 @@ void print_critical_task_list_ids() {
 //  Currently, we have to return, or else the scheduler task cannot make progress and free
 //  additional metablocks.... so we require the caller to do the "while" loop...
 
-task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile)
+task_metadata_block_t* get_task_metadata_block(task_id_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&free_metadata_mutex);
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", free_metadata_blocks));
@@ -272,8 +272,8 @@ task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_
   free_metadata_pool[free_metadata_blocks - 1] = -1;
   free_metadata_blocks -= 1;
   // For neatness (not "security") we'll clear the meta-data in the block (not the data data,though)
-  master_metadata_pool[bi].job_type = task_type;
-  master_metadata_pool[bi].gets_by_type[task_type]++;
+  master_metadata_pool[bi].task_type = in_task_type;
+  master_metadata_pool[bi].gets_by_type[in_task_type]++;
   master_metadata_pool[bi].status = TASK_ALLOCATED;
   master_metadata_pool[bi].crit_level = crit_level;
   for (int i = 0; i < MAX_ACCEL_TYPES; ++i) {
@@ -309,7 +309,7 @@ task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_
 	   printf("%d ", free_metadata_pool[i]);
 	 }
 	 printf("\n"));
-  allocated_metadata_blocks[task_type]++;
+  allocated_metadata_blocks[in_task_type]++;
   //printf("MB%u got allocated : %u %u\n", bi, task_type, crit_level);
   pthread_mutex_unlock(&free_metadata_mutex);
   
@@ -334,7 +334,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
 	 printf("\n"));
 
   if (free_metadata_blocks < total_metadata_pool_blocks) {
-    master_metadata_pool[bi].frees_by_type[mb->job_type]++;
+    master_metadata_pool[bi].frees_by_type[mb->task_type]++;
     free_metadata_pool[free_metadata_blocks] = bi;
     free_metadata_blocks += 1;
     if (master_metadata_pool[bi].crit_level > 1) { // is this a critical tasks?
@@ -368,8 +368,8 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     }
     master_metadata_pool[bi].atFinish = NULL; // Ensure this is now set to NULL (safety safety)
     // For neatness (not "security") we'll clear the meta-data in the block (not the data data, though)
-    freed_metadata_blocks[master_metadata_pool[bi].job_type]++;
-    master_metadata_pool[bi].job_type = NO_TASK_JOB; // unset
+    freed_metadata_blocks[master_metadata_pool[bi].task_type]++;
+    master_metadata_pool[bi].task_type = NO_TASK_JOB; // unset
     master_metadata_pool[bi].status = TASK_FREE;   // free
     gettimeofday(&master_metadata_pool[bi].sched_timings.idle_start, NULL);
     master_metadata_pool[bi].sched_timings.done_sec += master_metadata_pool[bi].sched_timings.idle_start.tv_sec - master_metadata_pool[bi].sched_timings.done_start.tv_sec;
@@ -430,11 +430,11 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   if (task_metadata_block->accelerator_type != no_accelerator_t) {
-    if ((task_metadata_block->job_type > 0) && (task_metadata_block->job_type < MAX_TASK_TYPES)) {
-      DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->job_type, task_metadata_block->accelerator_type));
-      scheduler_execute_task_function[task_metadata_block->job_type][task_metadata_block->accelerator_type](task_metadata_block);
+    if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < MAX_TASK_TYPES)) {
+      DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
+      scheduler_execute_task_function[task_metadata_block->task_type][task_metadata_block->accelerator_type](task_metadata_block);
     } else {
-      printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->job_type);
+      printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->task_type);
       cleanup_and_exit(-13);
     }
   } else {
@@ -756,7 +756,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
   int proposed_accel = no_accelerator_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  switch(task_metadata_block->job_type) {
+  switch(task_metadata_block->task_type) {
   case FFT_TASK: {
   // Scheduler should now run this either on CPU or FFT:
   int num = (rand() % (100)); // Return a value from [0,99]
@@ -783,7 +783,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
   } break;
   case CV_TASK: {
   // Scheduler should now run this either on CPU or CV:
-  DEBUG(printf("THE-SCHED: MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_name_str[task_metadata_block->job_type], CV_HW_THRESHOLD));
+  DEBUG(printf("THE-SCHED: MB%u %s is a CV_TASK with HW_THRESHOLD %u\n", task_metadata_block->block_id, task_name_str[task_metadata_block->task_type], CV_HW_THRESHOLD));
   #ifdef HW_ONLY_CV
   // Execute on hardware
   proposed_accel = cv_hwr_accel_t;
@@ -801,7 +801,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("THE-SCHED:  and the proposed_accel is %u\n", proposed_accel));
   } break;
   default:
-  printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
+  printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
   cleanup_and_exit(-15);
   }
   // Okay, here we should have a good task to schedule...
@@ -857,7 +857,7 @@ gettimeofday(&current_time, NULL);
 int proposed_accel = no_accelerator_t;
 int accel_type     = no_accelerator_t;
 int accel_id       = -1;
-switch(task_metadata_block->job_type) {
+switch(task_metadata_block->task_type) {
 case FFT_TASK: {
 // Scheduler should now run this either on CPU or FFT
 do {
@@ -946,7 +946,7 @@ scheduler_decision_checks += i;
 } while (accel_type == no_accelerator_t);
 } break;
 default:
-printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
+printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->task_type);
 cleanup_and_exit(-15);
 }
 
@@ -991,7 +991,7 @@ return selected_task_entry;
    //pthread_mutex_unlock(&schedule_from_queue_mutex);
    cleanup_and_exit(-19);
    }
-   DEBUG(printf("SCHED_FFF: In fastest_finish_time_first policy for MB%u task %s\n", task_metadata_block->block_id, task_name_str[task_metadata_block->job_type]));
+   DEBUG(printf("SCHED_FFF: In fastest_finish_time_first policy for MB%u task %s\n", task_metadata_block->block_id, task_name_str[task_metadata_block->task_type]));
    int num_proposed_accel_types = 0;
    int proposed_accel[5] = {no_accelerator_t, no_accelerator_t, no_accelerator_t, no_accelerator_t, no_accelerator_t};
    int accel_type     = no_accelerator_t;
@@ -1008,7 +1008,7 @@ return selected_task_entry;
    gettimeofday(&current_time, NULL);
    DEBUG(printf("SCHED_FFF:  Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
 
-   switch(task_metadata_block->job_type) {
+   switch(task_metadata_block->task_type) {
    case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
    proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
    DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[fft_hwr_accel_t]));
@@ -1043,7 +1043,7 @@ return selected_task_entry;
    #endif
    } break;
    default:
-   printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
+   printf("ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->task_type);
    cleanup_and_exit(-15);
    }
 
@@ -1123,7 +1123,7 @@ return selected_task_entry;
    //pthread_mutex_unlock(&schedule_from_queue_mutex);
    cleanup_and_exit(-19);
    }
-   DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_name_str[task_metadata_block->job_type]));
+   DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_name_str[task_metadata_block->task_type]));
    if (task_metadata_block->accelerator_type == no_accelerator_t || task_metadata_block->accelerator_id == -1) {
    DEBUG(printf("FFFQ: In fastest_finish_time_first_queued policy for MB%u\n", task_metadata_block->block_id));
    int num_proposed_accel_types = 1;
@@ -1142,7 +1142,7 @@ return selected_task_entry;
    gettimeofday(&current_time, NULL);
    DEBUG(printf("SCHED-FFFQ:  Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
 
-   switch(task_metadata_block->job_type) {
+   switch(task_metadata_block->task_type) {
    case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
    proposed_accel[0] = cpu_accel_t;
    #ifdef HW_FFT
@@ -1173,7 +1173,7 @@ return selected_task_entry;
    #endif
    } break;
    default:
-   printf("SCHED-FFFQ: ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->job_type);
+   printf("SCHED-FFFQ: ERROR : fastest_finish_time_first called for unknown task type: %u\n", task_metadata_block->task_type);
    cleanup_and_exit(-15);
    }
 
@@ -1398,7 +1398,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	master_metadata_pool[bi].sched_timings.queued_sec += master_metadata_pool[bi].sched_timings.running_start.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
 	master_metadata_pool[bi].sched_timings.queued_usec += master_metadata_pool[bi].sched_timings.running_start.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
 
-	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, task_name_str[task_metadata_block->job_type], task_criticality_str[task_metadata_block->crit_level], accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, task_name_str[task_metadata_block->task_type], task_criticality_str[task_metadata_block->crit_level], accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
 
 	// Lock the mutex associated to the conditional variable
 	pthread_mutex_lock(&(task_metadata_block->metadata_mutex));
@@ -1727,7 +1727,7 @@ void dump_all_metadata_blocks_states()
     printf("MB%u : Status %u %s\n", mbi, master_metadata_pool[mbi].status, task_status_str[master_metadata_pool[mbi].status]);
     printf("  MB%u : Acc_ty %u   Acc_id %d   Job %u   Crit_Lvl %u\n", mbi, 
 	   master_metadata_pool[mbi].accelerator_type, master_metadata_pool[mbi].accelerator_id, 
-	   master_metadata_pool[mbi].job_type, //task_name_str[master_metadata_pool[mbi].job_type],
+	   master_metadata_pool[mbi].task_type, //task_name_str[master_metadata_pool[mbi].task_type],
 	   master_metadata_pool[mbi].crit_level);
     printf("  MB%u GETS:  ", mbi);
     for (int i = 0; i < MAX_TASK_TYPES; i++) {

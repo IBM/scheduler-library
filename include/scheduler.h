@@ -39,8 +39,7 @@ typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
 	       CV_TASK,
-	       NUM_JOB_TYPES } scheduler_jobs_enum_t;
-typedef unsigned scheduler_jobs_t;
+	       NUM_JOB_TYPES } task_types_enum_t;
 typedef unsigned task_id_t;
 
 
@@ -130,7 +129,7 @@ typedef struct task_metadata_entry_struct {
 
   accelerator_type_t  accelerator_type; // indicates which accelerator this task is executing on
   int32_t  accelerator_id;        // indicates which accelerator this task is executing on
-  scheduler_jobs_t job_type;      // see above enumeration
+  task_id_t task_type;      // see above enumeration
   task_criticality_t crit_level;  // [0 .. ?] ?
 
   uint64_t task_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
@@ -201,7 +200,7 @@ extern unsigned num_tasks_in_ready_queue;
 
 extern status_t initialize_scheduler();
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_jobs_t task_type, task_criticality_t crit_level, uint64_t * task_profile);
+extern task_metadata_block_t* get_task_metadata_block(task_id_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);

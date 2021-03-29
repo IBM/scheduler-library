@@ -41,7 +41,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
       cleanup_and_exit(-19);
     }
-    if (task_metadata_block->job_type == NO_TASK_JOB) {
+    if (task_metadata_block->task_type == NO_TASK_JOB) {
       printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type is NO_TASK_JOB?\n", i);
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
       cleanup_and_exit(-20);
@@ -63,7 +63,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
       // Find an acceptable accelerator for this task (job_type)
       for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
         DEBUG(printf("SCHED-FFFQ: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
-        if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
+        if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
           DEBUG(printf("SCHED-FFFQ: job %u check_accel = %u Tprof 0x%016llx proj_finish_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
           uint64_t new_proj_finish_time;
           int i = 0;
@@ -98,7 +98,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
       // At this point, we must have a "best" accelerator selected for this task
       scheduler_decisions++;
       if ((accel_type == no_accelerator_t) || (accel_id == -1)) {
-        printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], accel_type, accel_id);
+        printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], accel_type, accel_id);
         //pthread_mutex_unlock(&schedule_from_queue_mutex);
         cleanup_and_exit(-21);
       }

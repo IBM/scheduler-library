@@ -68,18 +68,18 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   int proposed_accel = cpu_accel_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  if (task_metadata_block->job_type > NO_TASK_JOB) {
+  if (task_metadata_block->task_type > NO_TASK_JOB) {
     // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
     for (int i = 1; i < NUM_ACCEL_TYPES-1; i++) {
-      if (num >= HW_THRESHOLD[task_metadata_block->job_type][i]) {
+      if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
       }
       scheduler_decision_checks++;
     }
   } else {
-    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
     cleanup_and_exit(-15);
   }
 

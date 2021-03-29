@@ -50,12 +50,12 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
   uint64_t prop_time = ACINFPROF;
-  if (task_metadata_block->job_type != NO_TASK_JOB) {
+  if (task_metadata_block->task_type != NO_TASK_JOB) {
     do { // We will spin (in this policy) until we find an available accelerator...
       // Find an acceptable accelerator for this task (job_type)
       for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
         DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
-        if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
+        if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
           DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016llx prop_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
           if (task_metadata_block->task_profile[check_accel] < prop_time) {
             int i = 0;
@@ -77,7 +77,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
       } // for (int check_accel = ...
     } while(accel_type == no_accelerator_t);
   } else {
-    printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->task_type);
     cleanup_and_exit(-15);
   }
 
