@@ -43,6 +43,9 @@
 #include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
 #include "cv_accel.h"
 
+unsigned cv_cpu_run_time_in_usec      = 10000;
+unsigned cv_fake_hwr_run_time_in_usec =  1000;
+
 
 void print_cv_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);

@@ -128,14 +128,14 @@ void print_usage(char * pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
 void radar_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
@@ -200,25 +200,25 @@ void set_up_scheduler_accelerators_and_tasks() {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
   task_type_defn_info_t my_task_defns[my_num_task_types];
-  sprintf(my_task_defns[no_task_t].name, "NO-TASK");
+  sprintf(my_task_defns[no_task_t].name, "NO-Task");
   sprintf(my_task_defns[no_task_t].description, "A place-holder that indicates NO task to execute");
   my_task_defns[no_task_t].print_metadata_block_contents  = &print_base_metadata_block_contents;
   my_task_defns[no_task_t].output_task_type_run_stats  = NULL;
   my_task_types[no_task_t] = register_task_type(&my_task_defns[no_task_t]);
 
-  sprintf(my_task_defns[fft_task_t].name, "FFT-TASK");
+  sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
   sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
   my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
   my_task_defns[fft_task_t].output_task_type_run_stats  = NULL;
   my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
 
-  sprintf(my_task_defns[vit_task_t].name, "VIT-TASK");
+  sprintf(my_task_defns[vit_task_t].name, "VIT-Task");
   sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
   my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   my_task_defns[vit_task_t].output_task_type_run_stats  = NULL;
   my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
 
-  sprintf(my_task_defns[cv_task_t].name, "CV-TASK");
+  sprintf(my_task_defns[cv_task_t].name, "CV-Task");
   sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");
   my_task_defns[cv_task_t].print_metadata_block_contents  = &print_cv_metadata_block_contents;
   my_task_defns[cv_task_t].output_task_type_run_stats  = NULL;
