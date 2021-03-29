@@ -254,4 +254,6 @@ typedef struct accel_pool_defn_info_struct {
 
 extern accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t*);
 
+extern void register_accel_can_exec_task(accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr);
+
 #endif
