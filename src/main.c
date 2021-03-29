@@ -166,7 +166,9 @@ typedef enum { no_task_t,
 task_id_t my_task_types[my_num_task_types];
 
 void set_up_scheduler_accelerators_and_tasks() {
+  printf("\nSetting up/Registering the ACCELERATORS...\n");
   accelerator_pool_defn_info_t my_accel_defns[my_num_accel_types];
+
   sprintf(my_accel_defns[cpu_t].name, "CPU");
   sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
   my_accel_defns[cpu_t].do_accel_initialization = NULL;
@@ -196,7 +198,33 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_accel_types[cv_hwr_t] = register_accelerator_pool(&my_accel_defns[cv_hwr_t]);
 
   // Now set up the Task Types...
-  
+  printf("\nSetting up/Registering the TASK TYPES...\n");
+  task_type_defn_info_t my_task_defns[my_num_task_types];
+  sprintf(my_task_defns[no_task_t].name, "NO-TASK");
+  sprintf(my_task_defns[no_task_t].description, "A place-holder that indicates NO task to execute");
+  my_task_defns[no_task_t].print_metadata_block_contents  = &print_base_metadata_block_contents;
+  my_task_defns[no_task_t].output_task_type_run_stats  = NULL;
+  my_task_types[no_task_t] = register_task_type(&my_task_defns[no_task_t]);
+
+  sprintf(my_task_defns[fft_task_t].name, "FFT-TASK");
+  sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
+  my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
+  my_task_defns[fft_task_t].output_task_type_run_stats  = NULL;
+  my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
+
+  sprintf(my_task_defns[vit_task_t].name, "VIT-TASK");
+  sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
+  my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
+  my_task_defns[vit_task_t].output_task_type_run_stats  = NULL;
+  my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
+
+  sprintf(my_task_defns[cv_task_t].name, "CV-TASK");
+  sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");
+  my_task_defns[cv_task_t].print_metadata_block_contents  = &print_cv_metadata_block_contents;
+  my_task_defns[cv_task_t].output_task_type_run_stats  = NULL;
+  my_task_types[cv_task_t] = register_task_type(&my_task_defns[cv_task_t]);
+
+  printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
 
   
