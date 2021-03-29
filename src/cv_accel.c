@@ -48,6 +48,84 @@ void print_cv_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);
 }
 
+
+void
+do_cv_task_type_initialization()
+{
+ #ifdef HW_CV
+ #endif
+}
+
+
+void
+do_cv_task_type_closeout()
+{
+  // Clean up any hardware accelerator stuff
+ #ifdef HW_CV
+ #endif
+}
+
+
+void
+output_cv_task_type_run_stats()
+{
+  char* ti_label[2] = {"CPU", "HWR"};
+  printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);
+  // The CV/CNN Task Timing Info
+  unsigned total_cv_comp_by[3] = {0, 0, 0};
+  uint64_t total_cv_call_usec[3] = {0, 0, 0}; // re-use the FFT one by same name...
+  uint64_t total_parse_usec[3] = {0, 0, 0};
+  for (int ti = 0; ti < 2; ti++) {
+    for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
+      cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(master_metadata_pool[bi].task_timings[CV_TASK]);
+      unsigned this_comp_by = (unsigned)(cv_timings_p->comp_by[ti]);
+      uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ti]);
+      uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ti]);
+      printf("Block %3u : %u %s : CV %8u call-time %15lu parse %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_cv_call_usec, this_parse_usec);
+      // Per acceleration (CPU, HWR)
+      total_cv_comp_by[ti] += this_comp_by;
+      total_cv_call_usec[ti]  += this_cv_call_usec;
+      total_parse_usec[ti] += this_parse_usec;
+      // Overall Total
+      total_cv_comp_by[2] += this_comp_by;
+      total_cv_call_usec[2]  += this_cv_call_usec;
+      total_parse_usec[2] += this_parse_usec;
+    } // for (bi = 1 .. numMetatdataBlocks)
+  } // for (ti = 0, 1)
+  printf("\nAggregate CV Tasks Total Timing Data:\n");
+  double avg0, avg1, avg2;
+  avg0 = (double)total_cv_call_usec[0] / (double) freed_metadata_blocks[CV_TASK];
+  avg1 = (double)total_cv_call_usec[1] / (double) freed_metadata_blocks[CV_TASK];
+  avg2 = (double)total_cv_call_usec[2] / (double) freed_metadata_blocks[CV_TASK];
+  printf("     CNN-call  run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cv_comp_by[0], total_cv_call_usec[0], avg0, 1, ti_label[1], total_cv_comp_by[1], total_cv_call_usec[1], avg1, total_cv_comp_by[2], total_cv_call_usec[2], avg2);
+  avg0 = (double)total_parse_usec[0] / (double) freed_metadata_blocks[CV_TASK];
+  avg1 = (double)total_parse_usec[1] / (double) freed_metadata_blocks[CV_TASK];
+  avg2 = (double)total_parse_usec[2] / (double) freed_metadata_blocks[CV_TASK];
+  printf("     get_label run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cv_comp_by[0], total_parse_usec[0], avg0, 1, ti_label[1], total_cv_comp_by[1], total_parse_usec[1], avg1, total_cv_comp_by[2], total_parse_usec[2], avg2);
+}
+
+
+static inline label_t parse_output_dimg() {
+  FILE *file_p = fopen("./output.dimg", "r");
+  const size_t n_classes = 5;
+  float probs[n_classes];
+  for (size_t i = 0; i< n_classes; i++) {
+    if (fscanf(file_p, "%f", &probs[i]) != 1) {
+      printf("Didn't parse the probs[%ld] from output.dimg\n", i);
+    }
+  }
+  float max_val = 0.0f;
+  size_t max_idx = -1;
+  for (size_t i = 0; i < n_classes; i++) {
+    if (probs[i] > max_val) {
+      max_val = probs[i], max_idx = i;
+    }
+  }
+  fclose(file_p);
+  return (label_t)max_idx;
+}
+
+
 void
 execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
@@ -111,58 +189,30 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 }
 
 
-
-void
-do_cv_task_type_initialization()
+void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
- #ifdef HW_CV
+  DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // CV_TASK]);
+  cv_timings_p->comp_by[tidx]++;
+
+ #ifdef INT_TIME
+  gettimeofday(&(cv_timings_p->call_start), NULL);
  #endif
-}
 
+  usleep(cv_cpu_run_time_in_usec);
 
-void
-do_cv_task_type_closeout()
-{
-  // Clean up any hardware accelerator stuff
- #ifdef HW_CV
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  cv_timings_p->call_sec[tidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
  #endif
+
+  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
 }
 
 
-void
-output_cv_task_type_run_stats()
-{
-  char* ti_label[2] = {"CPU", "HWR"};
-  printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);
-  // The CV/CNN Task Timing Info
-  unsigned total_cv_comp_by[3] = {0, 0, 0};
-  uint64_t total_cv_call_usec[3] = {0, 0, 0}; // re-use the FFT one by same name...
-  uint64_t total_parse_usec[3] = {0, 0, 0};
-  for (int ti = 0; ti < 2; ti++) {
-    for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(master_metadata_pool[bi].task_timings[CV_TASK]);
-      unsigned this_comp_by = (unsigned)(cv_timings_p->comp_by[ti]);
-      uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ti]);
-      uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ti]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ti]);
-      printf("Block %3u : %u %s : CV %8u call-time %15lu parse %15lu usec\n", bi, ti, ti_label[ti], this_comp_by, this_cv_call_usec, this_parse_usec);
-      // Per acceleration (CPU, HWR)
-      total_cv_comp_by[ti] += this_comp_by;
-      total_cv_call_usec[ti]  += this_cv_call_usec;
-      total_parse_usec[ti] += this_parse_usec;
-      // Overall Total
-      total_cv_comp_by[2] += this_comp_by;
-      total_cv_call_usec[2]  += this_cv_call_usec;
-      total_parse_usec[2] += this_parse_usec;
-    } // for (bi = 1 .. numMetatdataBlocks)
-  } // for (ti = 0, 1)
-  printf("\nAggregate CV Tasks Total Timing Data:\n");
-  double avg0, avg1, avg2;
-  avg0 = (double)total_cv_call_usec[0] / (double) freed_metadata_blocks[CV_TASK];
-  avg1 = (double)total_cv_call_usec[1] / (double) freed_metadata_blocks[CV_TASK];
-  avg2 = (double)total_cv_call_usec[2] / (double) freed_metadata_blocks[CV_TASK];
-  printf("     CNN-call  run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cv_comp_by[0], total_cv_call_usec[0], avg0, 1, ti_label[1], total_cv_comp_by[1], total_cv_call_usec[1], avg1, total_cv_comp_by[2], total_cv_call_usec[2], avg2);
-  avg0 = (double)total_parse_usec[0] / (double) freed_metadata_blocks[CV_TASK];
-  avg1 = (double)total_parse_usec[1] / (double) freed_metadata_blocks[CV_TASK];
-  avg2 = (double)total_parse_usec[2] / (double) freed_metadata_blocks[CV_TASK];
-  printf("     get_label run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_cv_comp_by[0], total_parse_usec[0], avg0, 1, ti_label[1], total_cv_comp_by[1], total_parse_usec[1], avg1, total_cv_comp_by[2], total_parse_usec[2], avg2);
-}
+
+

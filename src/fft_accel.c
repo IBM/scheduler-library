@@ -42,6 +42,9 @@
 #include "fft_sched.h"
 #include "accelerators.h" // include AFTER scheduler.h -- needs types from scheduler.h
 
+#include "fft-1d.h"
+#include "calc_fmcw_dist.h"
+
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);
@@ -165,85 +168,6 @@ static void fft_in_hw(int *fd, struct fftHW_access *desc)
   }
 }
 #endif
-
-void
-execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
-{
-  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
-  int fn = task_metadata_block->accelerator_id;
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // FFT_TASK]);
-  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
-  uint32_t log_nsamples = fft_data_p->log_nsamples;
-  //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
-  fft_timings_p->comp_by[tidx]++;
-  DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
- #ifdef INT_TIME
-  //gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
-  gettimeofday(&(fft_timings_p->fft_start), NULL);
- #endif // INT_TIME
-#ifdef HW_FFT
-  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
-  init_fft_parameters(fn, log_nsamples);
-
-  DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
- #ifdef INT_TIME
-  gettimeofday(&(fft_timings_p->fft_cvtin_start), NULL);
- #endif // INT_TIME
-  // convert input from float to fixed point
-  float * data = (float*)(fft_data_p->theData);
-  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
-    fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
-  }
- #ifdef INT_TIME
-  struct timeval cvtin_stop;
-  gettimeofday(&cvtin_stop, NULL);
-  fft_timings_p->fft_cvtin_sec[tidx]   += cvtin_stop.tv_sec  - fft_timings_p->fft_cvtin_start.tv_sec;
-  fft_timings_p->fft_cvtin_usec[tidx]  += cvtin_stop.tv_usec - fft_timings_p->fft_cvtin_start.tv_usec;
- #endif // INT_TIME
-
-  // Call the FFT Accelerator
-  //    NOTE: Currently this is blocking-wait for call to complete
- #ifdef INT_TIME
-  gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
- #endif // INT_TIME
-  DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
-  fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
- #ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  fft_timings_p->fft_comp_sec[tidx]   += stop_time.tv_sec  - fft_timings_p->fft_comp_start.tv_sec;
-  fft_timings_p->fft_comp_usec[tidx]  += stop_time.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
- #endif
-  // convert output from fixed point to float
-  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
- #ifdef INT_TIME
-  gettimeofday(&(fft_timings_p->fft_cvtout_start), NULL);
- #endif // INT_TIME
-  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
-    data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
-    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
-  }
- #ifdef INT_TIME
-  struct timeval cvtout_stop;
-  gettimeofday(&cvtout_stop, NULL);
-  fft_timings_p->fft_cvtout_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_cvtout_start.tv_sec;
-  fft_timings_p->fft_cvtout_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_cvtout_start.tv_usec;
-  /* #ifdef INT_TIME */
-  /*  struct timeval stop_time; */
-  /*  gettimeofday(&stop_time, NULL); */
-  fft_timings_p->fft_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_start.tv_sec;
-  fft_timings_p->fft_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
- #endif // INT_TIME
-
-  DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
-
-#else
-  printf("ERROR : This executable DOES NOT support Hardware-FFT execution!\n");
-  cleanup_and_exit(-2);
-#endif
-}
-
 
 
 
@@ -402,5 +326,113 @@ output_fft_task_type_run_stats()
   avg1 = (double)total_cdfmcw_usec[1] / (double) freed_metadata_blocks[FFT_TASK];
   avg2 = (double)(total_cdfmcw_usec[0] + total_cdfmcw_usec[1]) / (double) freed_metadata_blocks[FFT_TASK];
   printf("     calc-dist run time   %u %s %8u %15lu usec %16.3lf avg : %u %s %8u %15lu usec %16.3lf avg : TOT %8u %15lu usec %16.3lf avg\n", 0, ti_label[0], total_fft_comp_by[0], total_cdfmcw_usec[0], avg0, 1, ti_label[1], total_fft_comp_by[1], total_cdfmcw_usec[1], avg1, total_fft_comp_by[2], total_cdfmcw_usec[2], avg2);
+}
+
+
+
+void
+execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
+{
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  int fn = task_metadata_block->accelerator_id;
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // FFT_TASK]);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
+  uint32_t log_nsamples = fft_data_p->log_nsamples;
+  //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
+  fft_timings_p->comp_by[tidx]++;
+  DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
+ #ifdef INT_TIME
+  //gettimeofday(&(task_metadata_block->fft_timings.fft_start), NULL);
+  gettimeofday(&(fft_timings_p->fft_start), NULL);
+ #endif // INT_TIME
+#ifdef HW_FFT
+  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  init_fft_parameters(fn, log_nsamples);
+
+  DEBUG(printf("EHFA:   MB%u converting from float to fixed-point\n", task_metadata_block->block_id));
+ #ifdef INT_TIME
+  gettimeofday(&(fft_timings_p->fft_cvtin_start), NULL);
+ #endif // INT_TIME
+  // convert input from float to fixed point
+  float * data = (float*)(fft_data_p->theData);
+  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
+    fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
+  }
+ #ifdef INT_TIME
+  struct timeval cvtin_stop;
+  gettimeofday(&cvtin_stop, NULL);
+  fft_timings_p->fft_cvtin_sec[tidx]   += cvtin_stop.tv_sec  - fft_timings_p->fft_cvtin_start.tv_sec;
+  fft_timings_p->fft_cvtin_usec[tidx]  += cvtin_stop.tv_usec - fft_timings_p->fft_cvtin_start.tv_usec;
+ #endif // INT_TIME
+
+  // Call the FFT Accelerator
+  //    NOTE: Currently this is blocking-wait for call to complete
+ #ifdef INT_TIME
+  gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
+ #endif // INT_TIME
+  DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
+  fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  fft_timings_p->fft_comp_sec[tidx]   += stop_time.tv_sec  - fft_timings_p->fft_comp_start.tv_sec;
+  fft_timings_p->fft_comp_usec[tidx]  += stop_time.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
+ #endif
+  // convert output from fixed point to float
+  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
+ #ifdef INT_TIME
+  gettimeofday(&(fft_timings_p->fft_cvtout_start), NULL);
+ #endif // INT_TIME
+  for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
+    data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
+    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
+  }
+ #ifdef INT_TIME
+  struct timeval cvtout_stop;
+  gettimeofday(&cvtout_stop, NULL);
+  fft_timings_p->fft_cvtout_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_cvtout_start.tv_sec;
+  fft_timings_p->fft_cvtout_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_cvtout_start.tv_usec;
+  /* #ifdef INT_TIME */
+  /*  struct timeval stop_time; */
+  /*  gettimeofday(&stop_time, NULL); */
+  fft_timings_p->fft_sec[tidx]   += cvtout_stop.tv_sec  - fft_timings_p->fft_start.tv_sec;
+  fft_timings_p->fft_usec[tidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
+ #endif // INT_TIME
+
+  DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
+
+#else
+  printf("ERROR : This executable DOES NOT support Hardware-FFT execution!\n");
+  cleanup_and_exit(-2);
+#endif
+}
+
+void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
+{
+  DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
+  int tidx = (task_metadata_block->accelerator_type != cpu_accel_t);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->job_type]); // FFT_TASK]);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
+  int32_t fft_log_nsamples = fft_data_p->log_nsamples;
+  float * data = (float*)(fft_data_p->theData);
+  fft_timings_p->comp_by[tidx]++;
+
+ #ifdef INT_TIME
+  gettimeofday(&(fft_timings_p->fft_start), NULL);
+ #endif // INT_TIME
+  fft(task_metadata_block, data, 1<<fft_log_nsamples, fft_log_nsamples, -1);
+  /* for (int j = 0; j < 2 * (1<<fft_log_nsamples); j++) { */
+  /*   printf("%u,%f\n", j, data[j]); */
+  /* } */
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  fft_timings_p->fft_sec[tidx]  += stop_time.tv_sec  - fft_timings_p->fft_start.tv_sec;
+  fft_timings_p->fft_usec[tidx] += stop_time.tv_usec - fft_timings_p->fft_start.tv_usec;
+ #endif
+
+  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  mark_task_done(task_metadata_block);
 }
 

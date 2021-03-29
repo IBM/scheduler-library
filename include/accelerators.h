@@ -29,20 +29,4 @@ extern void do_task_type_initialization();
 extern void do_task_type_closeout();
 extern void output_task_type_run_stats();
 
-
-extern void init_fft_parameters(unsigned n, uint32_t log_nsamples);
-extern void print_fft_metadata_block_contents(task_metadata_block_t* mb);
-extern void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
-extern void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
-
-extern void init_vit_parameters(int vn);
-extern void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
-extern void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);
-extern void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
-extern void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
-
-extern void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
-extern void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
-
-
 #endif
