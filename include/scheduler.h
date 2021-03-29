@@ -81,12 +81,17 @@ typedef unsigned  accel_select_policy_t;
 #define MAX_TASK_NAME_LEN   32
 #define MAX_TASK_DESC_LEN   256
 
+#define MAX_ACCEL_NAME_LEN   32
+#define MAX_ACCEL_DESC_LEN   256
+
 extern char  task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
 extern char  task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
 
+extern char  accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+extern char  accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+
 extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
 extern const char* task_status_str[NUM_TASK_STATUS];
-extern const char* accel_type_str[MAX_ACCEL_TYPES];
 extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
 
 

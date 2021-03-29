@@ -118,11 +118,8 @@ const char* task_status_str[NUM_TASK_STATUS] = {"TASK-FREE",
 						"TASK-RUNNING",
 						"TASK-DONE"};
 
-const char* accel_type_str[MAX_ACCEL_TYPES] = { "CPU-ACCELERATOR",
-						"FFT-HWR-ACCEL",
-						"VITERBI-HWR-ACCEL",
-						"VISION-HWR-ACCEL",
-						"NO-ACCELERATOR"};
+char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
 
 const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_Accelerator_Type_and_Wait_Available",
 								       "Fastest_to_Slowest_First_Available",
@@ -428,7 +425,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 void
 execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
-  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   if (task_metadata_block->accelerator_type != no_accelerator_t) {
     if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < MAX_TASK_TYPES)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
@@ -690,7 +687,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 	}
 	printf("\n"));
   if (accelerator_in_use_by[accel_type][accel_id] != mdb_id) {
-    printf("ERROR - in release_accelerator_for_task for ACCEL %s Num %d but BLOCK_ID Mismatch: %d vs %d\n", accel_type_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id], mdb_id);
+    printf("ERROR - in release_accelerator_for_task for ACCEL %s Num %d but BLOCK_ID Mismatch: %d vs %d\n", accel_name_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id], mdb_id);
     printf("  this occurred on finish of block:\n");
     print_base_metadata_block_contents(task_metadata_block);
     printf("Accelerators Info:\n");
@@ -1011,23 +1008,23 @@ return selected_task_entry;
    switch(task_metadata_block->task_type) {
    case FFT_TASK: {   // Scheduler should run this either on CPU or FFT
    proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
-   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[fft_hwr_accel_t]));
+   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u FFT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[fft_hwr_accel_t]));
    //#ifdef HW_FFT
    DEBUG(printf("SCHED_FFF:     Have HW_FFT : NUM_FFT_ACCEL = %u num_accel_of_type[FFT] = %u\n", NUM_FFT_ACCEL, num_accelerators_of_type[fft_hwr_accel_t]));
    if (num_accelerators_of_type[fft_hwr_accel_t] > 0) {
    proposed_accel[num_proposed_accel_types++] = fft_hwr_accel_t;
-   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
+   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]]));
    }
    //#endif
    } break;
    case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
    proposed_accel[num_proposed_accel_types++] = cpu_accel_t;
-   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[vit_hwr_accel_t])); //NUM_VIT_ACCEL));
+   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s  with %u VIT\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]], num_accelerators_of_type[vit_hwr_accel_t])); //NUM_VIT_ACCEL));
    #ifdef HW_VIT
    DEBUG(printf("SCHED_FFF:     Have HW_VIT : NUM_VIT_ACCEL = %u num_accel_of_type[VIT] = %u\n", NUM_VIT_ACCEL, num_accelerators_of_type[vit_hwr_accel_t]));
    if (num_accelerators_of_type[vit_hwr_accel_t] > 0) {
    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
-   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
+   DEBUG(printf("SCHED_FFF:    Set prop_acc[%u] = %u = %s\n", (num_proposed_accel_types-1), proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]]));
    }
    #endif
    } break;
@@ -1049,13 +1046,13 @@ return selected_task_entry;
 
    DEBUG(printf("SCHED_FFF:  There are %u  proposed accel types:\n", num_proposed_accel_types);
    for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-   printf("SCHED_FFF:       prop_acc[%u] = %u = %s\n", pi, proposed_accel[pi], accel_type_str[proposed_accel[pi]]);
+   printf("SCHED_FFF:       prop_acc[%u] = %u = %s\n", pi, proposed_accel[pi], accel_name_str[proposed_accel[pi]]);
    });
 
    // Now that we know the set of proposed accelerators,
    //  scan through to find which one will produce the earliest estimated finish time
    for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-   DEBUG(printf("SCHED_FFF:   Working on Proposed Accel Type %u  %s (there are %u)\n", pi, accel_type_str[proposed_accel[pi]], num_accelerators_of_type[proposed_accel[pi]]));
+   DEBUG(printf("SCHED_FFF:   Working on Proposed Accel Type %u  %s (there are %u)\n", pi, accel_name_str[proposed_accel[pi]], num_accelerators_of_type[proposed_accel[pi]]));
    for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
    int bi = accelerator_in_use_by[proposed_accel[pi]][i];
    DEBUG(printf("SCHED_FFF:      Have Accel Type %u Number %u In-Use-By %d\n", pi, i, bi));
@@ -1153,11 +1150,11 @@ return selected_task_entry;
    } break;
    case VITERBI_TASK: {  // Scheduler should run this either on CPU or VIT
    proposed_accel[0] = cpu_accel_t;
-   DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
+   DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]]));
    #ifdef HW_VIT
    if (num_accelerators_of_type[vit_hwr_accel_t] > 0) {
    proposed_accel[num_proposed_accel_types++] = vit_hwr_accel_t;
-   DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_type_str[proposed_accel[num_proposed_accel_types-1]]));
+   DEBUG(printf("SCHED-FFFQ:  Set proposed_accel[%u] = %u = %s\n", num_proposed_accel_types, proposed_accel[num_proposed_accel_types-1], accel_name_str[proposed_accel[num_proposed_accel_types-1]]));
    }
    #endif
    } break;
@@ -1182,7 +1179,7 @@ return selected_task_entry;
    // Now that we know the set of proposed accelerators,
    //  scan through to find which one will produce the earliest estimated finish time
    for (int pi = 0; pi < num_proposed_accel_types; pi++) {
-   DEBUG(printf("SCHED-FFFQ:   Working on Proposed Accel Type %u = %s\n", pi, accel_type_str[proposed_accel[pi]]));
+   DEBUG(printf("SCHED-FFFQ:   Working on Proposed Accel Type %u = %s\n", pi, accel_name_str[proposed_accel[pi]]));
    DEBUG(printf("SCHED-FFFQ: num_acc_of_ty = %u\n", num_accelerators_of_type[proposed_accel[pi]]));
    for (int i = 0; i < num_accelerators_of_type[proposed_accel[pi]]; ++i) {
    int bi = accelerator_in_use_by[proposed_accel[pi]][i];
@@ -1331,7 +1328,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       if (accel_type < no_accelerator_t) {
 	// Mark the requested accelerator as "In-USE" by this metadata block
 	if (accelerator_in_use_by[accel_type][accel_id] != -1) {
-	  printf("ERROR : schedule_executions_from_queue is trying to allocate ACCEL %s %u which is already allocated to Block %u\n", accel_type_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id]);
+	  printf("ERROR : schedule_executions_from_queue is trying to allocate ACCEL %s %u which is already allocated to Block %u\n", accel_name_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id]);
 	  cleanup_and_exit(-14);
 	}
 	account_accelerators_in_use_interval();
@@ -1398,7 +1395,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	master_metadata_pool[bi].sched_timings.queued_sec += master_metadata_pool[bi].sched_timings.running_start.tv_sec - master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
 	master_metadata_pool[bi].sched_timings.queued_usec += master_metadata_pool[bi].sched_timings.running_start.tv_usec - master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
 
-	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, task_name_str[task_metadata_block->task_type], task_criticality_str[task_metadata_block->crit_level], accel_type_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, task_name_str[task_metadata_block->task_type], task_criticality_str[task_metadata_block->crit_level], accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
 
 	// Lock the mutex associated to the conditional variable
 	pthread_mutex_lock(&(task_metadata_block->metadata_mutex));
@@ -1612,7 +1609,7 @@ void output_run_statistics()
     printf("  Metablocks_QUEUED total run time:  %15lu usec : %16.2lf (average)\n", total_queued_usec, avg);
     for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
       avg = (double)total_running_usec[ti]/(double)total_blocks_used;
-      printf("  Metablocks_RUNNING total %u %s run time: %15lu usec : %16.2lf (average)\n", ti, accel_type_str[ti], total_running_usec[ti], avg);
+      printf("  Metablocks_RUNNING total %u %s run time: %15lu usec : %16.2lf (average)\n", ti, accel_name_str[ti], total_running_usec[ti], avg);
     }
     avg = (double)total_done_usec/(double)total_blocks_used;
     printf("  Metablocks_DONE total run time:    %15lu usec : %16.2lf (average)\n", total_done_usec, avg);
@@ -1651,10 +1648,10 @@ void output_run_statistics()
     for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
 	if (ai < num_accelerators_of_type[ti]) { 
-	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, accel_name_str[ti], ai, totals[ti][ai]);
 	} else {
 	  if (totals[ti][ai] != 0) {
-	    printf("ERROR : We have use of non-existent Accelerator %u %s : index %u = %u\n", ti, accel_type_str[ti], ai, totals[ti][ai]);
+	    printf("ERROR : We have use of non-existent Accelerator %u %s : index %u = %u\n", ti, accel_name_str[ti], ai, totals[ti][ai]);
 	  }
 	}
 	top_totals[ti]+= totals[ti][ai];
@@ -1662,14 +1659,14 @@ void output_run_statistics()
     }
     printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
     for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
-      printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_type_str[ti], top_totals[ti]);
+      printf(" Acc_Type %u %s Allocated %6u times\n", ti, accel_name_str[ti], top_totals[ti]);
     }
     printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
       for (int ai = 0; ai < num_accelerators_of_type[ti]; ai++) {
 	for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
 	  if (accelerator_allocated_to_MB[ti][ai][bi] != 0) {
-	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB%u\n", ti, accel_type_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
+	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB%u\n", ti, accel_name_str[ti], ai, accelerator_allocated_to_MB[ti][ai][bi], bi);
 	  }
 	}
       }
@@ -1790,7 +1787,8 @@ void dump_all_metadata_blocks_states()
 
 
 
-task_id_t register_task_type(task_type_defn_info_t* tinfo)
+task_id_t
+register_task_type(task_type_defn_info_t* tinfo)
 {
   printf("In register_task_type with inputs:\n");
   printf("  name  = %s\n", tinfo->name);
@@ -1815,11 +1813,12 @@ task_id_t register_task_type(task_type_defn_info_t* tinfo)
   snprintf(task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
   snprintf(task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", tinfo->description);
   
-  
+  return tid;
 }
 
 
-accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t* info)
+accelerator_type_t
+register_accelerator_pool(accelerator_pool_defn_info_t* info)
 {
   printf("In register_accelerator_pool with inputs:\n");
   printf("  name  = %s\n", info->name);
@@ -1837,4 +1836,5 @@ accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t* info)
     cleanup_and_exit(-32);
   }
 
+  return acid;
 }

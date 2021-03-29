@@ -128,14 +128,14 @@ void print_usage(char * pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
 void radar_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
@@ -169,28 +169,28 @@ void set_up_scheduler_accelerators_and_tasks() {
   printf("\nSetting up/Registering the ACCELERATORS...\n");
   accelerator_pool_defn_info_t my_accel_defns[my_num_accel_types];
 
-  sprintf(my_accel_defns[cpu_t].name, "CPU");
+  sprintf(my_accel_defns[cpu_t].name, "CPU_Acc");
   sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
   my_accel_defns[cpu_t].do_accel_initialization = NULL;
   my_accel_defns[cpu_t].do_accel_closeout       = NULL;
   my_accel_defns[cpu_t].output_accel_run_stats  = &output_fft_task_type_run_stats;
   my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
   
-  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW");
+  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
   sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
   my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_task_type_initialization;
   my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_task_type_closeout;
   my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_task_type_run_stats;
   my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
 
-  sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW");
+  sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW-Acc");
   sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
   my_accel_defns[vit_hwr_t].do_accel_initialization = &do_vit_task_type_initialization;
   my_accel_defns[vit_hwr_t].do_accel_closeout       = &do_vit_task_type_closeout;
   my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_task_type_run_stats;
   my_accel_types[vit_hwr_t] = register_accelerator_pool(&my_accel_defns[vit_hwr_t]);
 
-  sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW");
+  sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW-Acc");
   sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
   my_accel_defns[cv_hwr_t].do_accel_initialization = &do_cv_task_type_initialization;
   my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_task_type_closeout;
