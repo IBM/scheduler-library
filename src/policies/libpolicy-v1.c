@@ -27,7 +27,7 @@
 // This is "blocking" in that it spins until this task is allocated to an accelerator.
 
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled

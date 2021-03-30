@@ -49,16 +49,13 @@ unsigned int scheduler_holdoff_usec = 1;
 
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
-//ready_mb_task_queue_entry_t *
-//select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry);
 
 // Handle for the dynamically loaded policy
 void *policy_handle;
-// Function pointer for the policy's select_task_and_target_accelerator() function
+// Function pointer for the policy's assign_task_to_pe() function
 ready_mb_task_queue_entry_t *
-(*select_task_and_target_accelerator_new)(ready_mb_task_queue_entry_t* ready_task_entry);
+(*assign_task_to_pe)(ready_mb_task_queue_entry_t* ready_task_entry);
 char policy[256];
-//accel_select_policy_t global_scheduler_selection_policy = 1;
 
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
@@ -665,10 +662,10 @@ status_t initialize_scheduler()
     cleanup_and_exit(-1);
   }
 
-  select_task_and_target_accelerator_new = dlsym(policy_handle, "select_task_and_target_accelerator_new");
+  assign_task_to_pe = dlsym(policy_handle, "assign_task_to_pe");
   if (dlerror() != NULL) {
     dlclose(policy_handle);
-    printf("Function select_task_and_target_accelerator_new() not found in scheduling policy %s\n", policy_filename);
+    printf("Function assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
     cleanup_and_exit(-1);
   }
 
@@ -1312,10 +1309,10 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       task_metadata_block_t* task_metadata_block = NULL;
 
       // Select the target accelerator to execute the task
-      DEBUG(printf("SCHED: calling select_task_and_target_accelerator\n"));
+      DEBUG(printf("SCHED: calling assign_task_to_pe\n"));
       //Pass the head of the ready queue to parse entries in the queue
       //selected_task_entry = select_task_and_target_accelerator(global_scheduler_selection_policy, ready_task_entry);
-      selected_task_entry = select_task_and_target_accelerator_new(ready_task_entry);
+      selected_task_entry = assign_task_to_pe(ready_task_entry);
       if (selected_task_entry == NULL) {
         //No schedulable task
         continue;

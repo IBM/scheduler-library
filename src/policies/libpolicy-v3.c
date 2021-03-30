@@ -28,7 +28,7 @@
 //  ready tasks from the task queue.
 
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //Choose task out of order to be scheduled based on least finish time and available accelerator
   ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
