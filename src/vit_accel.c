@@ -130,7 +130,7 @@ static void do_decoding_hw(int *fd, struct vitdodec_access *desc)
 
 
 void
-do_vit_task_type_initialization()
+do_vit_accel_type_initialization()
 {
  #ifdef HW_VIT
   // This initializes the Viterbi Accelerator Pool
@@ -165,7 +165,7 @@ do_vit_task_type_initialization()
 
 
 void
-do_vit_task_type_closeout()
+do_vit_accel_type_closeout()
 {
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
@@ -178,7 +178,7 @@ do_vit_task_type_closeout()
 
 
 void
-output_vit_task_type_run_stats()
+output_vit_accel_type_run_stats()
 {
   char* ti_label[2] = {"CPU", "HWR"};
   printf("\n  Per-MetaData-Block VITERBI Timing Data: %u finished VITERBI tasks\n", freed_metadata_blocks[VITERBI_TASK]);

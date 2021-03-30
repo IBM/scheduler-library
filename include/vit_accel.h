@@ -23,9 +23,9 @@ void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 
 void init_vit_parameters(int vn);
 
-void do_vit_task_type_initialization();
-void do_vit_task_type_closeout();
-void output_vit_task_type_run_stats();
+void do_vit_accel_type_initialization();
+void do_vit_accel_type_closeout();
+void output_vit_accel_type_run_stats();
 
 void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);

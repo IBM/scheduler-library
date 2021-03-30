@@ -15,17 +15,47 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_CV_ACCEL_INCLUDE_H
-#define H_CV_ACCEL_INCLUDE_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#include <fcntl.h>
+#include <pthread.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+#include "utils.h"
+//#define VERBOSE
+#include "verbose.h"
+
+#include "scheduler.h"
+
+void print_cpu_metadata_block_contents(task_metadata_block_t* mb) {
+  print_base_metadata_block_contents(mb);
+}
+
+void
+do_cpu_accel_type_initialization()
+{
+  ; // Nothing to initialize
+}
 
 
-void print_cv_metadata_block_contents(task_metadata_block_t* mb);
+void
+do_cpu_accel_type_closeout()
+{
+  ; // Nothing to closeout
+}
 
-void do_cv_accel_type_initialization();
-void do_cv_accel_type_closeout();
-void output_cv_accel_type_run_stats();
 
-void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
+void
+output_cpu_accel_type_run_stats()
+{
+  ; // In development
+}
 
-#endif

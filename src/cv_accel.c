@@ -54,7 +54,7 @@ void print_cv_metadata_block_contents(task_metadata_block_t* mb) {
 
 
 void
-do_cv_task_type_initialization()
+do_cv_accel_type_initialization()
 {
  #ifdef HW_CV
  #endif
@@ -62,7 +62,7 @@ do_cv_task_type_initialization()
 
 
 void
-do_cv_task_type_closeout()
+do_cv_accel_type_closeout()
 {
   // Clean up any hardware accelerator stuff
  #ifdef HW_CV
@@ -71,7 +71,7 @@ do_cv_task_type_closeout()
 
 
 void
-output_cv_task_type_run_stats()
+output_cv_accel_type_run_stats()
 {
   char* ti_label[2] = {"CPU", "HWR"};
   printf("\n  Per-MetaData-Block CV Timing Data: %u finished CV tasks\n", freed_metadata_blocks[CV_TASK]);

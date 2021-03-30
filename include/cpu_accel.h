@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 IBM
+ * Copyright 2021 IBM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,17 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_CV_ACCEL_INCLUDE_H
-#define H_CV_ACCEL_INCLUDE_H
+#ifndef H_CPU_ACCEL_INCLUDE_H
+#define H_CPU_ACCEL_INCLUDE_H
 
 
-void print_cv_metadata_block_contents(task_metadata_block_t* mb);
+void init_cpu_parameters(unsigned n, uint32_t log_nsamples);
 
-void do_cv_accel_type_initialization();
-void do_cv_accel_type_closeout();
-void output_cv_accel_type_run_stats();
-
-void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
+void do_cpu_accel_type_initialization();
+void do_cpu_accel_type_closeout();
+void output_cpu_accel_type_run_stats();
 
 #endif

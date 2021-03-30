@@ -175,7 +175,7 @@ static void fft_in_hw(int *fd, struct fftHW_access *desc)
 
 
 void
-do_fft_task_type_initialization()
+do_fft_accel_type_initialization()
 {
  #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
@@ -230,7 +230,7 @@ do_fft_task_type_initialization()
 
 
 void
-do_fft_task_type_closeout()
+do_fft_accel_type_closeout()
 {
   // Clean up any hardware accelerator stuff
  #ifdef HW_FFT
@@ -243,7 +243,7 @@ do_fft_task_type_closeout()
 
 
 void
-output_fft_task_type_run_stats()
+output_fft_accel_type_run_stats()
 {
   printf("\n  Per-MetaData-Block FFT Timing Data:\n");
   char* ti_label[2] = {"CPU", "HWR"};

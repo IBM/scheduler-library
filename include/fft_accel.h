@@ -23,9 +23,9 @@ void print_fft_metadata_block_contents(task_metadata_block_t* mb);
 
 void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
-void do_fft_task_type_initialization();
-void do_fft_task_type_closeout();
-void output_fft_task_type_run_stats();
+void do_fft_accel_type_initialization();
+void do_fft_accel_type_closeout();
+void output_fft_accel_type_run_stats();
 
 void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
