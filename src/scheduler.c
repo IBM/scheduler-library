@@ -39,9 +39,6 @@
 #endif
 
 #include "scheduler.h"
-#include "fft_accel.h"
-#include "vit_accel.h"
-#include "cv_accel.h"
 
 task_id_t next_avail_task_id = 0;
 accelerator_type_t next_avail_accel_id = 0;
