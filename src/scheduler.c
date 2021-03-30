@@ -247,9 +247,6 @@ void print_critical_task_list_ids() {
 void
 do_accelerator_type_initialization()
 {
-  /* do_fft_task_type_initialization(); */
-  /* do_vit_task_type_initialization(); */
-  /* do_cv_task_type_initialization(); */
   for (int ai = 0; ai < next_avail_accel_id; ai++) {
     if (do_accel_init_function[ai] != NULL) {
       do_accel_init_function[ai](NULL);
@@ -264,9 +261,6 @@ void
 do_accelerator_type_closeout()
 {
   // Clean up any hardware accelerator stuff
-  /* do_fft_task_type_closeout(); */
-  /* do_vit_task_type_closeout(); */
-  /* do_cv_task_type_closeout(); */
   for (int ai = 0; ai < next_avail_accel_id; ai++) {
     if (do_accel_closeout_function[ai] != NULL) {
       do_accel_closeout_function[ai](NULL);
@@ -281,9 +275,6 @@ void
 output_task_and_accel_run_stats()
 {
   printf("\nPer-MetaData-Block Job Timing Data:\n");
-  /* output_fft_task_type_run_stats(); */
-  /* output_vit_task_type_run_stats(); */
-  /* output_cv_task_type_run_stats(); */
   for (int ti = 0; ti < next_avail_task_id; ti++) {
     if (output_task_run_stats_function[ti] != NULL) {
       output_task_run_stats_function[ti](NULL);
@@ -693,7 +684,7 @@ status_t initialize_scheduler()
     output_accel_run_stats_function[j] = NULL;
   }
 
-  /* Now set up those that "make sense"
+  /* Now set up those that "make sense" -- NO -- Now done in main!
   scheduler_execute_task_function[FFT_TASK][cpu_accel_t]     = &execute_cpu_fft_accelerator;
   scheduler_execute_task_function[FFT_TASK][fft_hwr_accel_t] = &execute_hwr_fft_accelerator;
 
@@ -750,7 +741,7 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
 
   //printf("MB%u RELEASE  accelerator %u %u for %d cl %u\n", mdb_id, accel_type, accel_id, accelerator_in_use_by[accel_type][accel_id], task_metadata_block->crit_level);
   DEBUG(printf(" RELEASE accelerator %u  %u  = %d  : ", accel_type, accel_id, accelerator_in_use_by[accel_type][accel_id]);
-	for (int ai = 0; ai < num_accelerators_of_type[fft_hwr_accel_t]; ai++) {
+	for (int ai = 0; ai < num_accelerators_of_type[accel_type]; ai++) {
 	  printf("%u %d : ", ai, accelerator_in_use_by[accel_type][ai]);
 	}
 	printf("\n"));
@@ -830,7 +821,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	// Okay -- we can allocate to the accelerator -- remove from the queue
 	//printf("MB%u ALLOCATE accelerator %u %u to  %d cl %u\n", bi, accel_type, accel_id, bi, task_metadata_block->crit_level);
 	DEBUG(printf("SCHED: MB%u ALLOC accelerator %u  %u to %d  : ", bi, accel_type, accel_id, bi);
-	      for (int ai = 0; ai < num_accelerators_of_type[fft_hwr_accel_t]; ai++) {
+	      for (int ai = 0; ai < num_accelerators_of_type[accel_type]; ai++) {
 		printf("%u %d : ", ai, accelerator_in_use_by[accel_type][ai]);
 	      }
 	      printf("\n"));
@@ -1111,7 +1102,7 @@ void output_run_statistics()
     
   printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
-    printf("ACU_HIST:  CPU  FFT SFFT  VIT SVIT  CNN SCNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
+    printf("ACU_HIST:  CPU  FFT  VIT  CNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
     for (int i0 = 0; i0 <= num_accelerators_of_type[0]; i0++) {
       for (int i1 = 0; i1 <= num_accelerators_of_type[1]; i1++) {
 	for (int i2 = 0; i2 <= num_accelerators_of_type[2]; i2++) {
@@ -1228,52 +1219,6 @@ void dump_all_metadata_blocks_states()
       printf("( %s, %u ) ", task_name_str[i], master_metadata_pool[mbi].frees_by_type[i]);
     }
     printf("\n");
-    // Scheduler timings 
-    /*
-      master_metadata_pool[mbi].sched_timings.idle_sec = 0;
-      master_metadata_pool[mbi].sched_timings.idle_usec = 0;
-      master_metadata_pool[mbi].sched_timings.get_sec = 0;
-      master_metadata_pool[mbi].sched_timings.get_usec = 0;
-      master_metadata_pool[mbi].sched_timings.queued_sec = 0;
-      master_metadata_pool[mbi].sched_timings.queued_usec = 0;
-      for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
-      master_metadata_pool[mbi].sched_timings.running_sec[ti] = 0;
-      master_metadata_pool[mbi].sched_timings.running_usec[ti] = 0;
-      }
-      master_metadata_pool[mbi].sched_timings.done_sec = 0;
-      master_metadata_pool[mbi].sched_timings.done_usec = 0;
-      for (int ti = 0; ti < 2; ti++) {
-      // FFT task timings
-      master_metadata_pool[mbi].fft_timings.comp_by[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.call_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.call_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_br_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_br_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_cvtin_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_cvtin_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_comp_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_comp_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_cvtout_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.fft_cvtout_usec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.cdfmcw_sec[ti] = 0;
-      master_metadata_pool[mbi].fft_timings.cdfmcw_usec[ti] = 0;
-      // Viterbi task timings
-      master_metadata_pool[mbi].vit_timings.comp_by[ti] = 0;
-      master_metadata_pool[mbi].vit_timings.dodec_sec[ti] = 0;
-      master_metadata_pool[mbi].vit_timings.dodec_usec[ti] = 0;
-      master_metadata_pool[mbi].vit_timings.depunc_sec[ti] = 0;
-      master_metadata_pool[mbi].vit_timings.depunc_usec[ti] = 0;
-      // CV/CNN task timings
-      master_metadata_pool[mbi].cv_timings.comp_by[ti] = 0;
-      master_metadata_pool[mbi].cv_timings.call_sec[ti] = 0;
-      master_metadata_pool[mbi].cv_timings.call_usec[ti] = 0;
-      master_metadata_pool[mbi].cv_timings.parse_sec[ti] = 0;
-      master_metadata_pool[mbi].cv_timings.parse_usec[ti] = 0;
-      }*/
-
-
   } // for (mbi loop over Metablocks)
 }
 
