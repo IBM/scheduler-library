@@ -185,9 +185,13 @@ extern int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 
 extern volatile int accelerator_in_use_by[NUM_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 
-extern uint64_t scheduler_decision_time_usec;
-extern uint32_t scheduler_decisions;
-extern uint32_t scheduler_decision_checks;
+// This is a typedef for the different statistics that we keep track of within the scheduler library.
+// The scheduling policies receive a reference to this structure as part of their init() functions.
+typedef struct {
+  uint64_t scheduler_decision_time_usec;
+  uint64_t scheduler_decisions;
+  uint64_t scheduler_decision_checks;
+} stats_t;
 
 extern unsigned num_tasks_in_ready_queue;
 

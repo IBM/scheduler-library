@@ -52,6 +52,8 @@ void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
 // Handle for the dynamically loaded policy
 void *policy_handle;
+// Function pointer for the policy's initialize_policy() function
+status_t (*initialize_policy)(stats_t* stats);
 // Function pointer for the policy's assign_task_to_pe() function
 ready_mb_task_queue_entry_t *
 (*assign_task_to_pe)(ready_mb_task_queue_entry_t* ready_task_entry);
@@ -144,9 +146,8 @@ int num_accelerators_of_type[NUM_ACCEL_TYPES-1];
 struct timeval last_accel_use_update_time;
 uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
 
-uint64_t scheduler_decision_time_usec = 0;
-uint32_t scheduler_decisions = 0;
-uint32_t scheduler_decision_checks = 0;
+// Scheduler Library statistics
+static stats_t stats;
 
 // This is defined per accelerator type            CPU            FFT            VIT            CV        None
 unsigned input_accel_limit[NUM_ACCEL_TYPES] = {NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, 0};
@@ -473,6 +474,38 @@ metadata_thread_wait_for_task(void* void_parm_ptr)
 status_t initialize_scheduler()
 {
   DEBUG(printf("In initialize...\n"));
+
+  // Initialize statistics
+  stats.scheduler_decision_time_usec = 0;
+  stats.scheduler_decisions          = 0;
+  stats.scheduler_decision_checks    = 0;
+
+
+  // Dynamically load the scheduling policy (plug-in) to use, and initialize it
+  char policy_filename[300];
+  snprintf(policy_filename, 270, "./obj_p/lib%s.so", policy);
+  if ( (policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
+    printf("Could not open plug-in scheduling policy: %s\n", dlerror());
+    cleanup_and_exit(-1);
+  }
+
+  initialize_policy = dlsym(policy_handle, "initialize_policy");
+  if (dlerror() != NULL) {
+    dlclose(policy_handle);
+    printf("Function initialize_policy() not found in scheduling policy %s\n", policy_filename);
+    cleanup_and_exit(-1);
+  }
+
+  assign_task_to_pe = dlsym(policy_handle, "assign_task_to_pe");
+  if (dlerror() != NULL) {
+    dlclose(policy_handle);
+    printf("Function assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
+    cleanup_and_exit(-1);
+  }
+
+  initialize_policy(&stats);
+
+
   int parms_error = 0;
   if (MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL) {
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CPU_ACCEL);
@@ -653,21 +686,6 @@ status_t initialize_scheduler()
    }
    pthread_detach(scheduling_thread);
   **/
-
-  // Dynamically load the scheduling policy (plug-in) to use
-  char policy_filename[300];
-  snprintf(policy_filename, 270, "./obj_p/lib%s.so", policy);
-  if ( (policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
-    printf("Could not open plug-in scheduling policy: %s\n", dlerror());
-    cleanup_and_exit(-1);
-  }
-
-  assign_task_to_pe = dlsym(policy_handle, "assign_task_to_pe");
-  if (dlerror() != NULL) {
-    dlclose(policy_handle);
-    printf("Function assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
-    cleanup_and_exit(-1);
-  }
 
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
@@ -1529,7 +1547,7 @@ void output_run_statistics()
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
-  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %u decisions spanning %u checks\n", scheduler_decision_time_usec, scheduler_decisions, scheduler_decision_checks);
+  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", stats.scheduler_decision_time_usec, stats.scheduler_decisions, stats.scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < NUM_JOB_TYPES; ti++) {
