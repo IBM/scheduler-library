@@ -310,11 +310,11 @@ void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&(vit_timings_p->dodec_start), NULL);
 #endif
 
-  DEBUG(for (int i = 0; i < 20; i++) {
+  SDEBUG(for (int i = 0; i < 20; i++) {
       printf("CPU_VIT_PRE_RUN_INPUT %3u : ID  %3u : IM  %3u  %3u\n", i, in_Data[i], in_Mem[i+inData_offset], i+inData_offset); // cpuOutMem[i]);
     });
   do_cpu_viterbi_function(in_data_bits, in_cbps, in_ntraceback, in_Mem, out_Data); // cpuInMem, cpuOutMem);
-  DEBUG(for (int i = 0; i < 20; i++) {
+  SDEBUG(for (int i = 0; i < 20; i++) {
       printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i])); // cpuOutMem[i]);
     });
 
@@ -703,7 +703,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 	if (out_count >= in_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
 	    l_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
-	    DEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i, l_decoded[(out_count - in_ntraceback) * 8 + i]));
+	    SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i, l_decoded[(out_count - in_ntraceback) * 8 + i]));
 	    n_decoded++;
 	  }
 	}

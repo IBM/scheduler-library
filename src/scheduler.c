@@ -244,18 +244,20 @@ void print_critical_task_list_ids() {
 }
 
 
-void
+/*void
 do_accelerator_type_initialization()
 {
+  printf("In do_accelerator_type_initialization...\n");
   for (int ai = 0; ai < next_avail_accel_id; ai++) {
     if (do_accel_init_function[ai] != NULL) {
+      printf("  Calling so_accel_init_function for Accel %u = %s : Fptr %p\n", ai, accel_name_str[ai], do_accel_init_function[ai]);
       do_accel_init_function[ai](NULL);
     } else {
       printf("Note: do_accel_init_function for accel %u = %s is NULL\n", ai, accel_name_str[ai]);
     }
   }
 }
-
+*/
 
 void
 do_accelerator_type_closeout()
@@ -658,7 +660,10 @@ status_t initialize_scheduler()
     }
   }
 
-  do_accelerator_type_initialization();
+  /** Moving this to just as the accelerator is registered...
+     printf(" Calling do_accelerator_type_initialization...\n");
+     do_accelerator_type_initialization();
+  **/
 
   // And some stats stuff:
   for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
@@ -1277,6 +1282,13 @@ register_accelerator_pool(accelerator_pool_defn_info_t* info)
   do_accel_init_function[acid] = info->do_accel_initialization;
   do_accel_closeout_function[acid] = info->do_accel_closeout;
   output_accel_run_stats_function[acid] =  info->output_accel_run_stats;
+  // Now initialize this accelerator
+  if (do_accel_init_function[acid] != NULL) {
+    printf(" Calling the accelerator initialization function...\n");
+    do_accel_init_function[acid](NULL);
+  } else {
+    printf("Note: accelerator initialization function is NULL\n");
+  }
   return acid;
 }
 

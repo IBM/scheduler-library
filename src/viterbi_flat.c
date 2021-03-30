@@ -258,10 +258,10 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
     d_decoded[ti] = out_Data[ti];
     //DEBUG(if (ti < 31) { printf("FIN_VIT_OUT %3u : %3u @ %p \n", ti, out_Data[ti], &(out_Data[ti]));});
-    DEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
+    SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
   }
   DEBUG(printf("\n\n"));
-  DEBUG(for (int i = 0; i < 32; i++) {
+  SDEBUG(for (int i = 0; i < 32; i++) {
       printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
     });
 
