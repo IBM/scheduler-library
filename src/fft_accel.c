@@ -39,7 +39,7 @@
 #endif
 
 #include "scheduler.h"
-#include "fft_sched.h"
+#include "fft_accel.h"
 
 #include "fft-1d.h"
 #include "calc_fmcw_dist.h"

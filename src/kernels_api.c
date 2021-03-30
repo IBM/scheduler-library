@@ -24,14 +24,9 @@
 #include <math.h>
 
 #include "scheduler.h" // for cleanup_and_exit
-#include "fft_sched.h"
-#include "vit_sched.h"
-#include "cv_sched.h"
-
-static unsigned DMA_WORD_PER_BEAT(unsigned _st)
-{
-        return (sizeof(void *) / _st);
-}
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
 
 #include "kernels_api.h"
 

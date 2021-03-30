@@ -39,7 +39,6 @@
 #endif
 
 #include "scheduler.h"
-#include "vit_sched.h"
 #include "vit_accel.h"
 
 #define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)

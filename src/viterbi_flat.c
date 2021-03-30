@@ -31,7 +31,6 @@
 #include "base.h"
 
 #include "scheduler.h"
-#include "vit_sched.h"
 #include "vit_accel.h"
 
 #include "viterbi_flat.h"

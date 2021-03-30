@@ -24,9 +24,9 @@
 #include "verbose.h"
 
 #include "scheduler.h"
-#include "fft_sched.h"
-#include "vit_sched.h"
-#include "cv_sched.h"
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
 
 #include "kernels_api.h"
 #include "sim_environs.h"
