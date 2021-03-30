@@ -1274,7 +1274,7 @@ register_accelerator_pool(accelerator_pool_defn_info_t* info)
   }
   snprintf(accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
   snprintf(accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
-
+  output_accel_run_stats_function[acid] =  info->output_accel_run_stats;
   return acid;
 }
 
