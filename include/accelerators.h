@@ -25,8 +25,8 @@
 /*   return (sizeof(void *) / _st); */
 /* } */
 
-extern void do_task_type_initialization();
-extern void do_task_type_closeout();
+extern void do_accelerator_type_initialization();
+extern void do_accelerator_type_closeout();
 extern void output_task_type_run_stats();
 
 #endif

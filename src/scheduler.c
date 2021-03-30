@@ -138,7 +138,7 @@ output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
 do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
 do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
 output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
-
+\
 volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
 int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
@@ -241,6 +241,60 @@ void print_critical_task_list_ids() {
       cli = cli->next;
     }
     printf("\n");
+  }
+}
+
+
+void
+do_accelerator_type_initialization()
+{
+  /* do_fft_task_type_initialization(); */
+  /* do_vit_task_type_initialization(); */
+  /* do_cv_task_type_initialization(); */
+  for (int ai = 0; ai < next_avail_accel_id; ai++) {
+    if (do_accel_init_function[ai] != NULL) {
+      do_accel_init_function[ai](NULL);
+    } else {
+      printf("Note: do_accel_init_function for accel %u = %s is NULL\n", ai, accel_name_str[ai]);
+    }
+  }
+}
+
+
+void
+do_accelerator_type_closeout()
+{
+  // Clean up any hardware accelerator stuff
+  /* do_fft_task_type_closeout(); */
+  /* do_vit_task_type_closeout(); */
+  /* do_cv_task_type_closeout(); */
+  for (int ai = 0; ai < next_avail_accel_id; ai++) {
+    if (do_accel_closeout_function[ai] != NULL) {
+      do_accel_closeout_function[ai](NULL);
+    } else {
+      printf("Note: do_accel_closeout_function for accel %u = %s is NULL\n", ai, accel_name_str[ai]);
+    }
+  }
+}
+
+
+void
+output_task_and_accel_run_stats()
+{
+  printf("\nPer-MetaData-Block Job Timing Data:\n");
+  /* output_fft_task_type_run_stats(); */
+  /* output_vit_task_type_run_stats(); */
+  /* output_cv_task_type_run_stats(); */
+  for (int ti = 0; ti < next_avail_task_id; ti++) {
+    if (output_task_run_stats_function[ti] != NULL) {
+      output_task_run_stats_function[ti](NULL);
+    }
+  }
+
+  for (int ai = 0; ai < next_avail_accel_id; ai++) {
+    if (output_accel_run_stats_function[ai] != NULL) {
+      output_accel_run_stats_function[ai](NULL);
+    }
   }
 }
 
@@ -614,7 +668,7 @@ status_t initialize_scheduler()
     }
   }
 
-  do_task_type_initialization();
+  do_accelerator_type_initialization();
 
   // And some stats stuff:
   for (int ti = 0; ti < MAX_ACCEL_TYPES-1; ti++) {
@@ -953,7 +1007,7 @@ void cleanup_state() {
   }
 
   // Clean up any hardware accelerator stuff
-  do_task_type_closeout();
+  do_accelerator_type_closeout();
 }
 
 
@@ -1054,7 +1108,7 @@ void output_run_statistics()
     printf("  Metablocks_DONE total run time:    %15lu usec : %16.2lf (average)\n", total_done_usec, avg);
   }
 
-  output_task_type_run_stats();
+  output_task_and_accel_run_stats();
     
   printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
