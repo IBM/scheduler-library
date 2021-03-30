@@ -33,13 +33,28 @@
 //#define VERBOSE
 #include "verbose.h"
 
+#include "scheduler.h"
+#include "cv_accel.h"
+
 #ifdef COMPILE_TO_ESP
 #include "contig.h"
 #include "mini-era.h"
 #endif
 
-#include "scheduler.h"
-#include "cv_accel.h"
+#ifndef BYPASS_KERAS_CV_CODE
+#include <Python.h>
+#include <pythonrun.h>
+#endif
+#ifndef BYPASS_KERAS_CV_CODE
+PyObject *pName, *pModule, *pFunc, *pFunc_load;
+PyObject *pArgs, *pValue, *pretValue;
+#define PY_SSIZE_T_CLEAN
+
+char *python_module = "mio";
+char *python_func = "predict";
+char *python_func_load = "loadmodel";
+#endif
+
 
 #define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
@@ -55,7 +70,33 @@ void print_cv_metadata_block_contents(task_metadata_block_t* mb) {
 void
 do_cv_accel_type_initialization()
 {
- #ifdef HW_CV
+ #ifndef BYPASS_KERAS_CV_CODE
+  Py_Initialize();
+  pName = PyUnicode_DecodeFSDefault(python_module);
+  pModule = PyImport_Import(pName);
+  Py_DECREF(pName);
+
+  if (pModule == NULL) {
+     PyErr_Print();
+     printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
+     return 1;
+  } else {
+    pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
+
+    if (pFunc_load && PyCallable_Check(pFunc_load)) {
+       PyObject_CallObject(pFunc_load, NULL);
+    }
+    else {
+        if (PyErr_Occurred())
+        PyErr_Print();
+        printf("Cannot find python function - loadmodel");
+    }
+    Py_XDECREF(pFunc_load);
+  }
+  DEBUG(printf("CV Kernel Init done\n"));
+ #endif
+
+#ifdef HW_CV
  #endif
 }
 
@@ -63,6 +104,10 @@ do_cv_accel_type_initialization()
 void
 do_cv_accel_type_closeout()
 {
+ #ifndef BYPASS_KERAS_CV_CODE
+  Py_DECREF(pModule);
+  Py_Finalize();
+ #endif
   // Clean up any hardware accelerator stuff
  #ifdef HW_CV
  #endif
@@ -189,6 +234,87 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 #endif
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
+}
+
+
+label_t run_object_classification_syscall(unsigned tr_val)
+{
+  DEBUG(printf("Entered run_object_classification_syscall...\n"));
+  label_t object;
+#ifdef BYPASS_KERAS_CV_CODE
+  object = (label_t)tr_val;
+#else
+  char shell_cmd[100];
+  snprintf(shell_cmd, sizeof(shell_cmd), "sh utils/cnn_shell.sh %u", tr_val);
+  DEBUG(printf("  Invoking CV CNN using `%s`\n", shell_cmd));
+  FILE *testing = popen(shell_cmd, "r");
+  if (testing == NULL)
+  {
+    printf("FAIL to open CV kernel !\n");
+    return 1;
+  }
+  char pbuffer[100];
+  while (fgets(pbuffer, 100, testing) != NULL)
+  {
+    //printf(pbuffer);
+  }
+  DEBUG(printf("Label Prediction done \n"));
+  DEBUG(printf("pbuffer : %s\n", pbuffer));
+  int val = atoi(pbuffer);   //the last thing printed by the Keras code is the predicted label
+  object = (label_t)val;
+  pclose(testing);
+  DEBUG(printf("run_object_classification_syscall returning %u = %u\n", val, object));
+#endif
+  return object;
+}
+
+label_t run_object_classification(unsigned tr_val)
+{
+  DEBUG(printf("Entered run_object_classification... tr_val = %u\n", tr_val));
+  label_t object = (label_t)tr_val;
+#ifndef BYPASS_KERAS_CV_CODE
+  if (pModule != NULL) {
+    DEBUG(printf("  Starting call to pModule...\n"));
+    pFunc = PyObject_GetAttrString(pModule, python_func);
+
+    if (pFunc && PyCallable_Check(pFunc)) {
+      pArgs = PyTuple_New(1);
+      pValue = PyLong_FromLong(tr_val);
+      if (!pValue) {
+	Py_DECREF(pArgs);
+	Py_DECREF(pFunc);
+	Py_DECREF(pModule);
+	fprintf(stderr, "Trying to run CNN kernel: Cannot convert C argument into python\n");
+	return 1;
+      }
+      PyTuple_SetItem(pArgs, 0, pValue);
+      pretValue = PyObject_CallObject(pFunc, pArgs);
+      Py_DECREF(pArgs);
+      if (pretValue != NULL) {
+	DEBUG(printf("Predicted label from Python program: %ld\n", PyLong_AsLong(pretValue)));
+	int val = PyLong_AsLong(pretValue);
+	object = (label_t)val;
+	DEBUG(printf("run_object_classification returning %u = %u\n", val, object));
+	Py_DECREF(pretValue);
+      }
+      else {
+	Py_DECREF(pFunc);
+	Py_DECREF(pModule);
+	PyErr_Print();
+	printf("Trying to run CNN kernel : Python function call failed\n");
+	return 1;
+      }
+    }
+    else {
+      if (PyErr_Occurred())
+	PyErr_Print();
+      printf("Cannot find python function");
+    }
+    Py_XDECREF(pFunc);
+    //Py_DECREF(pModule);
+  }
+#endif
+  return object;
 }
 
 
