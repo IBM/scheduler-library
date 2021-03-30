@@ -174,7 +174,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(my_accel_defns[cpu_t].name, "CPU_Acc");
   sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
   my_accel_defns[cpu_t].do_accel_initialization = &do_cpu_accel_type_initialization;
-  my_accel_defns[cpu_t].do_accel_closeout       = &do_fft_accel_type_closeout;
+  my_accel_defns[cpu_t].do_accel_closeout       = &do_cpu_accel_type_closeout;
   my_accel_defns[cpu_t].output_accel_run_stats  = &output_cpu_accel_type_run_stats;
   my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
   

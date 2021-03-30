@@ -137,7 +137,7 @@ output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
 do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
 do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
 output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
-\
+
 volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
 int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
@@ -1274,6 +1274,8 @@ register_accelerator_pool(accelerator_pool_defn_info_t* info)
   }
   snprintf(accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
   snprintf(accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
+  do_accel_init_function[acid] = info->do_accel_initialization;
+  do_accel_closeout_function[acid] = info->do_accel_closeout;
   output_accel_run_stats_function[acid] =  info->output_accel_run_stats;
   return acid;
 }
