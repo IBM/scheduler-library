@@ -40,8 +40,9 @@
 
 #include "scheduler.h"
 #include "cv_sched.h"
-#include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
 #include "cv_accel.h"
+
+#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;

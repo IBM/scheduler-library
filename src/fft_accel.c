@@ -40,11 +40,12 @@
 
 #include "scheduler.h"
 #include "fft_sched.h"
-#include "accelerators.h" // include AFTER scheduler.h -- needs types from scheduler.h
 
 #include "fft-1d.h"
 #include "calc_fmcw_dist.h"
 
+
+#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);

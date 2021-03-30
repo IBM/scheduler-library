@@ -41,7 +41,9 @@
 #include "scheduler.h"
 #include "vit_sched.h"
 #include "vit_accel.h"
-#include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
+
+#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
+
 
 // Forward Declarations:
 void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);

@@ -39,7 +39,6 @@
 #endif
 
 #include "scheduler.h"
-#include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
 #include "fft_accel.h"
 #include "vit_accel.h"
 #include "cv_accel.h"
