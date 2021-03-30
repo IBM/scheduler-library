@@ -132,7 +132,12 @@ const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES] = { "Select_A
 //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
 sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
 
-//#define  MAX_ACCEL_OF_EACH_TYPE     8
+print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
+output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
+
+do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
+do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
+output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
 volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
@@ -625,8 +630,17 @@ status_t initialize_scheduler()
     for (int j = 0; j < MAX_ACCEL_TYPES; j++) {
       scheduler_execute_task_function[i][j] = NULL; // Set all to default to NULL
     }
+    print_metablock_contents_function[i] = NULL;
+    output_task_run_stats_function[i] = NULL;
   }
-  // Now set up those that "make sense"
+
+  for (int j = 0; j < MAX_ACCEL_TYPES; j++) {
+    do_accel_init_function[j] = NULL;
+    do_accel_closeout_function[j] = NULL;
+    output_accel_run_stats_function[j] = NULL;
+  }
+
+  /* Now set up those that "make sense"
   scheduler_execute_task_function[FFT_TASK][cpu_accel_t]     = &execute_cpu_fft_accelerator;
   scheduler_execute_task_function[FFT_TASK][fft_hwr_accel_t] = &execute_hwr_fft_accelerator;
 
@@ -635,7 +649,8 @@ status_t initialize_scheduler()
 
   scheduler_execute_task_function[CV_TASK][cpu_accel_t]    = &execute_cpu_cv_accelerator;
   scheduler_execute_task_function[CV_TASK][cv_hwr_accel_t] = &execute_hwr_cv_accelerator;
-
+  */
+  
   // Now start the "schedule_executions_from_queue() pthread -- using the DETACHED pt_attr
   int pt_ret = pthread_create(&scheduling_thread, &pt_attr, schedule_executions_from_queue, NULL);
   if (pt_ret != 0) {
@@ -730,7 +745,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       task_metadata_block_t* task_metadata_block = NULL;
 
       // Select the target accelerator to execute the task
-      DEBUG(printf("SCHED: calling select_task_and_target_accelerator\n"));
+      DEBUG(printf("SCHED: calling select_task_and_target_accelerator_new for Policy %s\n", policy));
       //Pass the head of the ready queue to parse entries in the queue
       //selected_task_entry = select_task_and_target_accelerator(global_scheduler_selection_policy, ready_task_entry);
       selected_task_entry = select_task_and_target_accelerator_new(ready_task_entry);
@@ -742,7 +757,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       }
       unsigned int accel_type = task_metadata_block->accelerator_type;
       unsigned int accel_id = task_metadata_block->accelerator_id;
-      DEBUG(printf("SCHED: Selected accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
+      DEBUG(printf("SCHED: MB%u Selected accel type: %d id: accel_id: %d\n", task_metadata_block->block_id, task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
 
       if (accel_type == no_accelerator_t) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
@@ -803,8 +818,8 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	selected_task_entry->prev = NULL; // As head of the list, the prev should be NULL
 	free_ready_mb_task_queue_entries = selected_task_entry;  
 	num_free_task_queue_entries++;
-	DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u entries now\n", num_free_task_queue_entries);
-	      print_free_ready_tasks_list());
+	DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u entries now\n", num_free_task_queue_entries));
+	SDEBUG(print_free_ready_tasks_list());
 	/* // And clean up the ready task storage... */
 	/* ready_task_entry->block_id = -1; */
 	/* ready_task_entry->next = NULL; */
@@ -856,14 +871,14 @@ request_execution(task_metadata_block_t* task_metadata_block)
   // Put this into the ready-task-queue
   //   Get a ready_task_queue_entry
   pthread_mutex_lock(&task_queue_mutex);
-  DEBUG(printf("APP: there are currently %u free task queue entries in the list\n", num_free_task_queue_entries);
-	print_free_ready_tasks_list());
+  DEBUG(printf("APP: there are currently %u free task queue entries in the list\n", num_free_task_queue_entries));
+  SDEBUG(print_free_ready_tasks_list());
   ready_mb_task_queue_entry_t* my_queue_entry = free_ready_mb_task_queue_entries;
   free_ready_mb_task_queue_entries = free_ready_mb_task_queue_entries->next;
   free_ready_mb_task_queue_entries->prev = NULL; // disconnect the prev pointer
   num_free_task_queue_entries--;
-  DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", num_free_task_queue_entries);
-	print_free_ready_tasks_list());
+  DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", num_free_task_queue_entries));
+  SDEBUG(print_free_ready_tasks_list());
   //   Now fill it in
   my_queue_entry->block_id = task_metadata_block->block_id;
   DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", num_free_task_queue_entries));

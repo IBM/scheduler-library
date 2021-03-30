@@ -29,11 +29,14 @@
 #include <stdio.h>
 
 #include "base.h"
-#include "viterbi_flat.h"
-#include "viterbi_standalone.h"
 
 #include "scheduler.h"
 #include "vit_sched.h"
+#include "vit_accel.h"
+
+#include "viterbi_flat.h"
+#include "viterbi_standalone.h"
+
 
 /* #undef DEBUG */
 /*  #define DEBUG(x) x */
@@ -224,7 +227,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
     
   for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) { // This is over-kill for messages that are not max size
     in_Data[ti] = depunctured[ti];
-    DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
+    //DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
   }
 
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area

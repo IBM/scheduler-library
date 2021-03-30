@@ -515,11 +515,11 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // Set up the Accelerators for this application
-  set_up_scheduler_accelerators_and_tasks();
-  
   printf("Doing initialization tasks...\n");
   initialize_scheduler();
+
+  // Set up the Accelerators for this application
+  set_up_scheduler_accelerators_and_tasks();
 
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
@@ -582,7 +582,7 @@ int main(int argc, char *argv[])
   vehicle_state.active  = true;
   vehicle_state.lane    = center;
   vehicle_state.speed   = 50;
-  DEBUG(printf("Vehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+  DEBUG(printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
 
   #ifdef USE_SIM_ENVIRON
   // In simulation mode, we could start the main car is a different state (lane, speed)
@@ -970,7 +970,7 @@ int main(int argc, char *argv[])
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, time_step, message, distance));
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
     vehicle_state_t new_vehicle_state;
    #ifdef TIME
     gettimeofday(&start_exec_pandc, NULL);

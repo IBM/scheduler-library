@@ -39,7 +39,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
-  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : job %u %s \n", task_metadata_block->block_id, task_metadata_block->job_type, task_job_str[task_metadata_block->job_type]));
+  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : job %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type]));
 
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
@@ -50,18 +50,18 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   int accel_id       = -1;
   uint64_t proj_finish_time = ACINFPROF;
   if (task_metadata_block->task_type != NO_TASK_JOB) {
-    // Find an acceptable accelerator for this task (job_type)
+    // Find an acceptable accelerator for this task (task_type)
     for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-      DEBUG(printf("SCHED_FF: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
+      DEBUG(printf("SCHED_FF: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
       if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
-        DEBUG(printf("SCHED_FF: job %u check_accel = %u Tprof 0x%016llx proj_finish_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
+        DEBUG(printf("SCHED_FF: job %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
         //if (task_metadata_block->task_profile[check_accel] < proj_finish_time)
         {
           uint64_t new_proj_finish_time;
           int i = 0;
           DEBUG(printf("SCHED_FF:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
           while ((i < num_accelerators_of_type[check_accel])) { // && (accel_id < 0)) {
-            DEBUG(printf("SCHED_FF:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+            DEBUG(printf("SCHED_FF:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
             int bi = accelerator_in_use_by[check_accel][i];
             if (bi == -1) { // Not in use -- available
               new_proj_finish_time = task_metadata_block->task_profile[check_accel];
@@ -87,7 +87,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
             scheduler_decision_checks += i;
           }
         } //
-      } // if (accelerator can execute this job_type)
+      } // if (accelerator can execute this task_type)
     } // for (int check_accel = ...
   } else {
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->task_type);
@@ -109,7 +109,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   }
   task_metadata_block->accelerator_type = accel_type;
   task_metadata_block->accelerator_id = accel_id;
-  DEBUG(printf("SCHED_FF : task %u accel_ty %u accel %u : wait_iter %u\n", task_metadata_block->job_type, accel_type, accel_id, wait_iter));
+  DEBUG(printf("SCHED_FF : task %u accel_ty %u accel %u : wait_iter %u\n", task_metadata_block->task_type, accel_type, accel_id, wait_iter));
 
   return selected_task_entry;
 }

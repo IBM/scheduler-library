@@ -52,16 +52,16 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
   uint64_t prop_time = ACINFPROF;
   if (task_metadata_block->task_type != NO_TASK_JOB) {
     do { // We will spin (in this policy) until we find an available accelerator...
-      // Find an acceptable accelerator for this task (job_type)
+      // Find an acceptable accelerator for this task (task_type)
       for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-        DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
+        DEBUG(printf("F2S_FA: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
         if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
-          DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016llx prop_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
+          DEBUG(printf("F2S_FA: job %u check_accel = %u Tprof 0x%016lx prop_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
           if (task_metadata_block->task_profile[check_accel] < prop_time) {
             int i = 0;
             DEBUG(printf("F2S_FA:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
             while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
-              DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+              DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
               if (accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
                 proposed_accel = check_accel;
                 accel_type = proposed_accel;
@@ -73,7 +73,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
               scheduler_decision_checks += i;
             }
           } // if (accelerator is currently available)
-        } // if (accelerator can execute this job_type)
+        } // if (accelerator can execute this task_type)
       } // for (int check_accel = ...
     } while(accel_type == no_accelerator_t);
   } else {
