@@ -41,6 +41,45 @@
 #include "scheduler.h"
 #include "vit_accel.h"
 
+#ifdef HW_VIT
+// These are Viterbi Harware Accelerator Variables, etc.
+char    vitAccelName[NUM_VIT_ACCEL][64];
+int vitHW_fd[NUM_VIT_ACCEL];
+contig_handle_t vitHW_mem[NUM_VIT_ACCEL];
+vitHW_token_t *vitHW_lmem[NUM_VIT_ACCEL];   // Pointer to local view of contig memory
+vitHW_token_t *vitHW_li_mem[NUM_VIT_ACCEL]; // Pointer to input memory block
+vitHW_token_t *vitHW_lo_mem[NUM_VIT_ACCEL]; // Pointer to output memory block
+size_t vitHW_in_len[NUM_VIT_ACCEL];
+size_t vitHW_out_len[NUM_VIT_ACCEL];
+size_t vitHW_in_size[NUM_VIT_ACCEL];
+size_t vitHW_out_size[NUM_VIT_ACCEL];
+size_t vitHW_out_offset[NUM_VIT_ACCEL];
+size_t vitHW_size[NUM_VIT_ACCEL];
+
+struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
+
+
+void init_vit_parameters(int vn)
+{
+  size_t vitHW_in_words_adj;
+  size_t vitHW_out_words_adj;
+  //printf("Doing init_vit_parameters\n");
+  if (DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)) == 0) {
+    vitHW_in_words_adj  = 24852;
+    vitHW_out_words_adj = 18585;
+  } else {
+    vitHW_in_words_adj  = round_up(24852, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
+    vitHW_out_words_adj = round_up(18585, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
+  }
+  vitHW_in_len[vn] = vitHW_in_words_adj;
+  vitHW_out_len[vn] =  vitHW_out_words_adj;
+  vitHW_in_size[vn] = vitHW_in_len[vn] * sizeof(vitHW_token_t);
+  vitHW_out_size[vn] = vitHW_out_len[vn] * sizeof(vitHW_token_t);
+  vitHW_out_offset[vn] = vitHW_in_len[vn];
+  vitHW_size[vn] = (vitHW_out_offset[vn] * sizeof(vitHW_token_t)) + vitHW_out_size[vn];
+}
+#endif // HW_VIT
+
 
 void
 do_vit_accel_type_initialization()

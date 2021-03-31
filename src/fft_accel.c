@@ -44,6 +44,66 @@
 #include "fft-1d.h"
 #include "calc_fmcw_dist.h"
 
+#ifdef HW_FFT
+// These are FFT Hardware Accelerator Variables, etc.
+char fftAccelName[NUM_FFT_ACCEL][64];// = {"/dev/fft.0", "/dev/fft.1", "/dev/fft.2", "/dev/fft.3", "/dev/fft.4", "/dev/fft.5"};
+
+int fftHW_fd[NUM_FFT_ACCEL];
+contig_handle_t fftHW_mem[NUM_FFT_ACCEL];
+
+fftHW_token_t* fftHW_lmem[NUM_FFT_ACCEL];  // Pointer to local version (mapping) of fftHW_mem
+fftHW_token_t* fftHW_li_mem[NUM_FFT_ACCEL]; // Pointer to input memory block
+fftHW_token_t* fftHW_lo_mem[NUM_FFT_ACCEL]; // Pointer to output memory block
+size_t fftHW_in_len[NUM_FFT_ACCEL];
+size_t fftHW_out_len[NUM_FFT_ACCEL];
+size_t fftHW_in_size[NUM_FFT_ACCEL];
+size_t fftHW_out_size[NUM_FFT_ACCEL];
+size_t fftHW_out_offset[NUM_FFT_ACCEL];
+size_t fftHW_size[NUM_FFT_ACCEL];
+struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
+
+
+/* User-defined code */
+void init_fft_parameters(unsigned n, uint32_t log_nsamples)
+{
+  size_t fftHW_in_words_adj;
+  size_t fftHW_out_words_adj;
+  int len = 1 << log_nsamples;
+  DEBUG(printf("  In init_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
+ #if (USE_FFT_ACCEL_VERSION == 1) // fft_stratus
+  #ifdef HW_FFT_BITREV
+  fftHW_desc[n].do_bitrev  = FFTHW_DO_BITREV;
+  #else
+  fftHW_desc[n].do_bitrev  = FFTHW_NO_BITREV;
+  #endif
+  fftHW_desc[n].log_len    = log_nsamples;
+
+ #elif (USE_FFT_ACCEL_VERSION == 2) // fft2_stratus
+  fftHW_desc[n].scale_factor = 0;
+  fftHW_desc[n].logn_samples = log_nsamples;
+  fftHW_desc[n].num_ffts     = 1;
+  fftHW_desc[n].do_inverse   = 0;
+  fftHW_desc[n].do_shift     = 0;
+ #endif
+
+  if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
+    fftHW_in_words_adj  = 2 * len;
+    fftHW_out_words_adj = 2 * len;
+  } else {
+    fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+  }
+  fftHW_in_len[n] = fftHW_in_words_adj;
+  fftHW_out_len[n] =  fftHW_out_words_adj;
+  fftHW_in_size[n] = fftHW_in_len[n] * sizeof(fftHW_token_t);
+  fftHW_out_size[n] = fftHW_out_len[n] * sizeof(fftHW_token_t);
+  fftHW_out_offset[n] = 0;
+  fftHW_size[n] = (fftHW_out_offset[n] * sizeof(fftHW_token_t)) + fftHW_out_size[n];
+  DEBUG(printf("  returning from init_fft_parameters for HW_FFT[%u]\n", n));
+}
+#endif // HW_FFT
+
+
 void
 do_fft_accel_type_initialization()
 {
