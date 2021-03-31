@@ -48,6 +48,32 @@ char vit_dict[256];
 bool_t bypass_h264_functions = false; // This is a global-disable of executing H264 execution functions...
 
 
+#include "cpu_accel.h"
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
+
+typedef enum { cpu_t = 0,
+	       fft_hwr_t,
+	       vit_hwr_t,
+	       cv_hwr_t,
+	       no_accel_t,
+	       my_num_accel_types} my_accel_types_t;
+
+accelerator_type_t my_accel_types[my_num_accel_types];
+
+typedef enum { no_task_t,
+	       fft_task_t,
+	       vit_task_t,
+	       cv_task_t,
+	       my_num_task_types} my_task_types_t;
+
+task_id_t my_task_types[my_num_task_types];
+
+// This is defined per accelerator type              CPU            FFT            VIT            CV
+unsigned input_accel_limit[my_num_task_types] = {NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL};
+
+
 
 // These are now defined in terms of measurements (recorded in macro definitions, in scheduler.h)
 
@@ -149,27 +175,6 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 
 
 
-#include "cpu_accel.h"
-#include "fft_accel.h"
-#include "vit_accel.h"
-#include "cv_accel.h"
-
-typedef enum { cpu_t = 0,
-	       fft_hwr_t,
-	       vit_hwr_t,
-	       cv_hwr_t,
-	       no_accel_t,
-	       my_num_accel_types} my_accel_types_t;
-
-accelerator_type_t my_accel_types[my_num_accel_types];
-
-typedef enum { no_task_t,
-	       fft_task_t,
-	       vit_task_t,
-	       cv_task_t,
-	       my_num_task_types} my_task_types_t;
-
-task_id_t my_task_types[my_num_task_types];
 
 void set_up_scheduler_accelerators_and_tasks() {
   printf("\nSetting up/Registering the ACCELERATORS...\n");
@@ -177,6 +182,7 @@ void set_up_scheduler_accelerators_and_tasks() {
 
   sprintf(my_accel_defns[cpu_t].name, "CPU_Acc");
   sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
+  my_accel_defns[cpu_t].number_available        = input_accel_limit[cpu_t];
   my_accel_defns[cpu_t].do_accel_initialization = &do_cpu_accel_type_initialization;
   my_accel_defns[cpu_t].do_accel_closeout       = &do_cpu_accel_type_closeout;
   my_accel_defns[cpu_t].output_accel_run_stats  = &output_cpu_accel_type_run_stats;
@@ -184,6 +190,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   
   sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
   sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
+  my_accel_defns[fft_hwr_t].number_available        = input_accel_limit[fft_hwr_t];
   my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_accel_type_initialization;
   my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_accel_type_closeout;
   my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_accel_type_run_stats;
@@ -191,6 +198,7 @@ void set_up_scheduler_accelerators_and_tasks() {
 
   sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW-Acc");
   sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
+  my_accel_defns[vit_hwr_t].number_available        = input_accel_limit[vit_hwr_t];
   my_accel_defns[vit_hwr_t].do_accel_initialization = &do_vit_accel_type_initialization;
   my_accel_defns[vit_hwr_t].do_accel_closeout       = &do_vit_accel_type_closeout;
   my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_accel_type_run_stats;
@@ -198,6 +206,7 @@ void set_up_scheduler_accelerators_and_tasks() {
 
   sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW-Acc");
   sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
+  my_accel_defns[cv_hwr_t].number_available        = input_accel_limit[cv_hwr_t];
   my_accel_defns[cv_hwr_t].do_accel_initialization = &do_cv_accel_type_initialization;
   my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_accel_type_closeout;
   my_accel_defns[cv_hwr_t].output_accel_run_stats  = &output_cv_accel_type_run_stats;

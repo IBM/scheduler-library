@@ -136,16 +136,13 @@ output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
 volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][total_metadata_pool_blocks];
-int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
+int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
 struct timeval last_accel_use_update_time;
 uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
 
 // Scheduler Library statistics
 static stats_t stats;
-
-// This is defined per accelerator type            CPU            FFT            VIT            CV        None
-unsigned input_accel_limit[MAX_ACCEL_TYPES] = {NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL, 0};
 
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
@@ -565,20 +562,6 @@ status_t initialize_scheduler()
     printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
     parms_error = 1;
   }
-  for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
-    if (MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[i]) {
-      printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < input_accel_limit[%u] : %u < %u\n", i, MAX_ACCEL_OF_EACH_TYPE, input_accel_limit[i]);
-      parms_error = 1;
-    }
-    if (NUM_CPU_ACCEL < input_accel_limit[i]) {
-      printf("INIT-SCHED: ERROR : NUM_CPU_ACCEL < input_accel_limit[%u] : %u < %u\n", i, NUM_CPU_ACCEL, input_accel_limit[i]);
-      parms_error = 1;
-    }
-  }
-  if (parms_error > 0) {
-    printf("... Exiting run...\n");
-    exit(-16);
-  }
   pthread_mutex_init(&free_metadata_mutex, NULL);
   pthread_mutex_init(&accel_alloc_mutex, NULL);
   pthread_mutex_init(&task_queue_mutex, NULL);
@@ -665,12 +648,10 @@ status_t initialize_scheduler()
     freed_metadata_blocks[ti] = 0;
   }
 
-  // These are brought in at compile time via config parameters
-  num_accelerators_of_type[cpu_accel_t]        = input_accel_limit[cpu_accel_t];
-  num_accelerators_of_type[fft_hwr_accel_t]    = input_accel_limit[fft_hwr_accel_t];
-  num_accelerators_of_type[vit_hwr_accel_t]    = input_accel_limit[vit_hwr_accel_t];
-  num_accelerators_of_type[cv_hwr_accel_t]     = input_accel_limit[cv_hwr_accel_t];
-
+  for (int i = 0; i < MAX_ACCEL_TYPES; i++) {
+    num_accelerators_of_type[i] = 0;
+  }
+  
   for (int i = 0; i < MAX_ACCEL_TYPES-1; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
       accelerator_in_use_by[i][j] = -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
@@ -1281,7 +1262,8 @@ register_accelerator_pool(accelerator_pool_defn_info_t* info)
   }
   snprintf(accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
   snprintf(accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
-  do_accel_init_function[acid] = info->do_accel_initialization;
+  num_accelerators_of_type[acid]   = info->number_available;
+  do_accel_init_function[acid]     = info->do_accel_initialization;
   do_accel_closeout_function[acid] = info->do_accel_closeout;
   output_accel_run_stats_function[acid] =  info->output_accel_run_stats;
   // Now initialize this accelerator
@@ -1290,6 +1272,10 @@ register_accelerator_pool(accelerator_pool_defn_info_t* info)
     do_accel_init_function[acid](NULL);
   } else {
     printf("Note: accelerator initialization function is NULL\n");
+  }
+  if (MAX_ACCEL_OF_EACH_TYPE < num_accelerators_of_type[acid]) {
+    printf("ERROR: MAX_ACCEL_OF_EACH_TYPE < num_accelerators_of_type[%u] : %u < %u\n", acid, MAX_ACCEL_OF_EACH_TYPE, num_accelerators_of_type[acid]);
+    cleanup_and_exit(-33);
   }
   return acid;
 }

@@ -184,12 +184,10 @@ extern unsigned cv_fake_hwr_run_time_in_usec;
 
 extern unsigned int scheduler_holdoff_usec;
 
-extern unsigned input_accel_limit[MAX_ACCEL_TYPES];
-
 #define total_metadata_pool_blocks 32
 extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
 
-extern int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
+extern int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
 extern volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 
@@ -248,6 +246,7 @@ typedef struct accel_pool_defn_info_struct {
   do_accel_initialization_t       do_accel_initialization;
   do_accel_closeout_t             do_accel_closeout;
   output_accel_run_stats_t        output_accel_run_stats;
+  unsigned                        number_available;
   char                            name[32];
   char                            description[256];
 } accelerator_pool_defn_info_t;
