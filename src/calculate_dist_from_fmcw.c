@@ -8,7 +8,7 @@
 
 #include "calc_fmcw_dist.h"
 #include "scheduler.h"
-#include "fft_accel.h"
+#include "fft_task.h"
 
 // CONSTANTS
 #define RADAR_c          300000000.0  // Speed of Light in Meters/Sec

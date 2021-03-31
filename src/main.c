@@ -28,6 +28,10 @@
 #include "vit_accel.h"
 #include "cv_accel.h"
 
+#include "fft_task.h"
+#include "vit_task.h"
+#include "cv_task.h"
+
 #include "kernels_api.h"
 #include "sim_environs.h"
 #include "getopt.h"
@@ -228,8 +232,8 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   my_task_defns[vit_task_t].output_task_type_run_stats  = &output_vit_task_type_run_stats;
   my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
-  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[vit_task_t], &execute_cpu_viterbi_accelerator);
-  register_accel_can_exec_task(my_accel_types[vit_hwr_t], my_task_types[vit_task_t], &execute_hwr_viterbi_accelerator);
+  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[vit_task_t], &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(my_accel_types[vit_hwr_t], my_task_types[vit_task_t], &exec_vit_task_on_vit_hwr_accel);
 
   sprintf(my_task_defns[cv_task_t].name, "CV-Task");
   sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");

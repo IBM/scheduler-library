@@ -20,9 +20,9 @@
 #include <math.h>
 
 #include "scheduler.h" // for cleanup_and_exit
-#include "fft_accel.h"
-#include "vit_accel.h"
-#include "cv_accel.h"
+#include "fft_task.h"
+#include "vit_task.h"
+#include "cv_task.h"
 
 #include "kernels_api.h"
 
