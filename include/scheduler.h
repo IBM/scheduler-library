@@ -35,13 +35,8 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 
-typedef enum { NO_TASK_JOB = 0,
-	       FFT_TASK,
-	       VITERBI_TASK,
-	       CV_TASK,
-	       NUM_TASK_TYPES } task_types_enum_t;
-
-typedef unsigned task_id_t;
+typedef enum { NO_TASK_JOB = -1} task_id_enum_t;
+typedef int task_id_t;
 
 
 typedef enum { NO_TASK   = 0,
