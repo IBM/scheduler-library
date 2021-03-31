@@ -71,6 +71,8 @@ void do_vit_accel_type_initialization();
 void do_vit_accel_type_closeout();
 void output_vit_accel_type_run_stats();
 
+void output_vit_task_type_run_stats();
+
 void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 

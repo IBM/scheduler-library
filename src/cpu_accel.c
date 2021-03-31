@@ -54,7 +54,7 @@ do_cpu_accel_type_closeout()
 
 
 void
-output_cpu_accel_type_run_stats()
+output_cpu_accel_type_run_stats(unsigned my_accel_id, unsigned total_task_types)
 {
   ; // In development
 }

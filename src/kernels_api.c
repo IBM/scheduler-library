@@ -398,7 +398,7 @@ label_t iterate_cv_kernel(vehicle_state_t vs)
 void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
 {
   /* 2) Set up to request object detection on an image frame */
-  int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
+  int tidx = mb_ptr->accelerator_type;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]); // CV_TASK]);
   cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
   // Currently we don't send in any data this way (though we should include the input image here)
@@ -822,7 +822,7 @@ void closeout_rad_kernel()
     }
   }
 
-  printf("\nHistogram of Radar Distance ABS-PCT-ERROR:\n");
+  printf("\nHistogram of Radar Distance Abs-Pct-Err:\n");
   unsigned totals[] = {0, 0, 0, 0, 0};
 
   for (int si = 0; si < num_radar_samples_sets; si++) {
@@ -835,7 +835,7 @@ void closeout_rad_kernel()
     }
   }
 
-  printf("\n  TOTALS Histogram of Radar Distance ABS-PCT-ERROR:\n");
+  printf("\n  TOTALS Histogram of Radar Distance Abs-Pct-Err:\n");
   for (int i = 0; i < 5; i++) {
     printf("  %7s | %9u \n", hist_pct_err_label[i], totals[i]);
   }

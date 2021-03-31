@@ -218,7 +218,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
   sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
   my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
-  my_task_defns[fft_task_t].output_task_type_run_stats  = NULL;
+  my_task_defns[fft_task_t].output_task_type_run_stats  = &output_fft_task_type_run_stats;
   my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
   register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[fft_task_t], &execute_cpu_fft_accelerator);
   register_accel_can_exec_task(my_accel_types[fft_hwr_t], my_task_types[fft_task_t], &execute_hwr_fft_accelerator);
@@ -226,7 +226,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(my_task_defns[vit_task_t].name, "VIT-Task");
   sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
   my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
-  my_task_defns[vit_task_t].output_task_type_run_stats  = NULL;
+  my_task_defns[vit_task_t].output_task_type_run_stats  = &output_vit_task_type_run_stats;
   my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
   register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[vit_task_t], &execute_cpu_viterbi_accelerator);
   register_accel_can_exec_task(my_accel_types[vit_hwr_t], my_task_types[vit_task_t], &execute_hwr_viterbi_accelerator);
@@ -234,7 +234,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(my_task_defns[cv_task_t].name, "CV-Task");
   sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");
   my_task_defns[cv_task_t].print_metadata_block_contents  = &print_cv_metadata_block_contents;
-  my_task_defns[cv_task_t].output_task_type_run_stats  = NULL;
+  my_task_defns[cv_task_t].output_task_type_run_stats  = &output_cv_task_type_run_stats;
   my_task_types[cv_task_t] = register_task_type(&my_task_defns[cv_task_t]);
   register_accel_can_exec_task(my_accel_types[cpu_t],    my_task_types[cv_task_t], &execute_cpu_cv_accelerator);
   register_accel_can_exec_task(my_accel_types[cv_hwr_t], my_task_types[cv_task_t], &execute_hwr_cv_accelerator);

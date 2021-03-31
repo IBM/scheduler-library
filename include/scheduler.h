@@ -39,7 +39,8 @@ typedef enum { NO_TASK_JOB = 0,
 	       FFT_TASK,
 	       VITERBI_TASK,
 	       CV_TASK,
-	       NUM_JOB_TYPES } task_types_enum_t;
+	       NUM_TASK_TYPES } task_types_enum_t;
+
 typedef unsigned task_id_t;
 
 
@@ -73,8 +74,8 @@ typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
 	       NUM_SELECTION_POLICIES } accel_select_policy_enum_t;
 typedef unsigned  accel_select_policy_t;
 
-#define MAX_TASK_TYPES     NUM_JOB_TYPES
-#define MAX_ACCEL_TYPES    NUM_ACCEL_TYPES
+#define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
+#define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
 #define MAX_TASK_TARGETS   MAX_ACCEL_TYPES
 
 
@@ -227,7 +228,7 @@ extern void cleanup_and_exit(int rval);
 typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
 /* typedef void (*do_task_type_initialization_t)(void*); */
 /* typedef void (*do_task_type_closeout_t)(void*); */
-typedef void (*output_task_type_run_stats_t)(void*);
+typedef void (*output_task_type_run_stats_t)(unsigned my_task_id, unsigned total_accel_types);
 
 typedef struct task_type_defn_info_struct {
   print_metadata_block_contents_t print_metadata_block_contents;
@@ -242,7 +243,7 @@ extern task_id_t register_task_type(task_type_defn_info_t*);
 
 typedef void (*do_accel_initialization_t)(void*);
 typedef void (*do_accel_closeout_t)(void*);
-typedef void (*output_accel_run_stats_t)(void*);
+typedef void (*output_accel_run_stats_t)(unsigned my_accel_id, unsigned total_task_types);
 
 typedef struct accel_pool_defn_info_struct {
   do_accel_initialization_t       do_accel_initialization;

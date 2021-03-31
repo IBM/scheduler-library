@@ -60,6 +60,8 @@ void do_cv_accel_type_initialization();
 void do_cv_accel_type_closeout();
 void output_cv_accel_type_run_stats();
 
+void output_cv_task_type_run_stats();
+
 void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
 

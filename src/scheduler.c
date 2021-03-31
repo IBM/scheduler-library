@@ -276,13 +276,13 @@ output_task_and_accel_run_stats()
   printf("\nPer-MetaData-Block Job Timing Data:\n");
   for (int ti = 0; ti < next_avail_task_id; ti++) {
     if (output_task_run_stats_function[ti] != NULL) {
-      output_task_run_stats_function[ti](NULL);
+      output_task_run_stats_function[ti](ti, next_avail_accel_id);
     }
   }
 
   for (int ai = 0; ai < next_avail_accel_id; ai++) {
     if (output_accel_run_stats_function[ai] != NULL) {
-      output_accel_run_stats_function[ai](NULL);
+      output_accel_run_stats_function[ai](ai, next_avail_task_id);
     }
   }
 }
@@ -686,31 +686,12 @@ status_t initialize_scheduler()
     output_accel_run_stats_function[j] = NULL;
   }
 
-  /* Now set up those that "make sense" -- NO -- Now done in main!
-  scheduler_execute_task_function[FFT_TASK][cpu_accel_t]     = &execute_cpu_fft_accelerator;
-  scheduler_execute_task_function[FFT_TASK][fft_hwr_accel_t] = &execute_hwr_fft_accelerator;
-
-  scheduler_execute_task_function[VITERBI_TASK][cpu_accel_t]     = &execute_cpu_viterbi_accelerator;
-  scheduler_execute_task_function[VITERBI_TASK][vit_hwr_accel_t] = &execute_hwr_viterbi_accelerator;
-
-  scheduler_execute_task_function[CV_TASK][cpu_accel_t]    = &execute_cpu_cv_accelerator;
-  scheduler_execute_task_function[CV_TASK][cv_hwr_accel_t] = &execute_hwr_cv_accelerator;
-  */
-  
   // Now start the "schedule_executions_from_queue() pthread -- using the DETACHED pt_attr
   int pt_ret = pthread_create(&scheduling_thread, &pt_attr, schedule_executions_from_queue, NULL);
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     cleanup_and_exit(-1);
   }
-
-  /**
-   // Let's make sure these are detached?
-   for (int i = 0; i < total_metadata_pool_blocks; i++) {
-   pthread_detach(metadata_threads[i]);
-   }
-   pthread_detach(scheduling_thread);
-  **/
 
   // Dynamically load the scheduling policy (plug-in) to use
   char policy_filename[300];
@@ -1251,6 +1232,7 @@ register_task_type(task_type_defn_info_t* tinfo)
   }
   snprintf(task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
   snprintf(task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", tinfo->description);
+  output_task_run_stats_function[tid] =  tinfo->output_task_type_run_stats;
   
   return tid;
 }
