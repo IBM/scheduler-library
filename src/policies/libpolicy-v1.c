@@ -19,6 +19,20 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+
+// Scheduler Library statistics
+stats_t* stats;
+
+status_t initialize_policy(stats_t* s)
+{
+  if (s == NULL)
+    return error;
+  stats = s;
+
+  return success;
+}
+
+
 // This is a basic accelerator selection policy:
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of job, AND the proposed accelerator is FASTER than any
@@ -27,7 +41,7 @@
 // This is "blocking" in that it spins until this task is allocated to an accelerator.
 
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled
@@ -70,7 +84,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
                 DEBUG(printf("F2S_FA:   SELECT: prop_acc %u acc_ty %u acc_id %u prop_time %lu\n", proposed_accel, accel_type, accel_id, prop_time));
               }
               i++;
-              scheduler_decision_checks += i;
+              stats->scheduler_decision_checks += i;
             }
           } // if (accelerator is currently available)
         } // if (accelerator can execute this task_type)
@@ -84,9 +98,9 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
  #ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  stats->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
  #endif
-  scheduler_decisions++;
+  stats->scheduler_decisions++;
   // Okay, here we should have a good task to schedule... and knwo the accelerator is available.
   task_metadata_block->accelerator_type = accel_type;
   task_metadata_block->accelerator_id = accel_id;

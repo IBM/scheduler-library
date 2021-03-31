@@ -19,13 +19,27 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+
+// Scheduler Library statistics
+stats_t* stats;
+
+status_t initialize_policy(stats_t* s)
+{
+  if (s == NULL)
+    return error;
+  stats = s;
+
+  return success;
+}
+
+
 // This is an accelerator selection policy that prefers the accelerator target that results in earliest projected finish time.
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of job, AND the proposed accelerator's finish time is earlier than any
 //    prior (selected) accelerator, then it prefers that accelerator.
 
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled
@@ -84,7 +98,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
               DEBUG(printf("SCHED_FF:   SELECT: prop_acc %u acc_ty %u acc_id %u proj_finish_time %lu\n", proposed_accel, accel_type, accel_id, proj_finish_time));
             }
             i++;
-            scheduler_decision_checks += i;
+            stats->scheduler_decision_checks += i;
           }
         } //
       } // if (accelerator can execute this task_type)
@@ -97,8 +111,8 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
  #ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
-  scheduler_decisions++;
+  stats->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  stats->scheduler_decisions++;
  #endif
   // Okay, here we should have selected a target accelerator
   // Creating a "busy spin loop" where we constantly try to allocate

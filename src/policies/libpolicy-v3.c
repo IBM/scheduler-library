@@ -19,6 +19,20 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+
+// Scheduler Library statistics
+stats_t* stats;
+
+status_t initialize_policy(stats_t* s)
+{
+  if (s == NULL)
+    return error;
+  stats = s;
+
+  return success;
+}
+
+
 // This is an accelerator selection policy that prefers the accelerator target that results in earliest projected finish time.
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of job, AND the proposed accelerator's finish time is earlier than any
@@ -28,7 +42,7 @@
 //  ready tasks from the task queue.
 
 ready_mb_task_queue_entry_t *
-select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //Choose task out of order to be scheduled based on least finish time and available accelerator
   ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
@@ -91,12 +105,12 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
               DEBUG(printf("SCHED-FFFQ:   SELECT: acc_ty %u acc_id %u proj_finish_time %lu\n", accel_type, accel_id, proj_finish_time));
             }
             i++;
-            scheduler_decision_checks += i;
+            stats->scheduler_decision_checks += i;
           } // while (i < num_accelerators_of_type
         } // if (accelerator can execute this task_type)
       } // for (int check_accel = ...
       // At this point, we must have a "best" accelerator selected for this task
-      scheduler_decisions++;
+      stats->scheduler_decisions++;
       if ((accel_type == no_accelerator_t) || (accel_id == -1)) {
         printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], accel_type, accel_id);
         //pthread_mutex_unlock(&schedule_from_queue_mutex);
@@ -110,7 +124,7 @@ select_task_and_target_accelerator_new(ready_mb_task_queue_entry_t* ready_task_e
     //if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {
     if (accelerator_in_use_by[accel_type][accel_id] == -1) {
       // Task is schedulable on the best accelerator
-      DEBUG(printf("SCHED-FFFQ: MB%u Best accel type: %d id: accel_id: %d\n", task_metadata_block->block_id, task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
+      DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
       task_metadata_block->accelerator_type = accel_type;
       task_metadata_block->accelerator_id   = accel_id;
       return selected_task_entry;
