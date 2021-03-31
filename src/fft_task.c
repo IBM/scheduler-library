@@ -207,7 +207,7 @@ output_fft_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, task_name_str[my_task_id], ai, accel_name_str[ai]);
     }
     for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(master_metadata_pool[bi].task_timings[FFT_TASK]);
+      fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(master_metadata_pool[bi].task_timings[my_task_id]);
       unsigned this_comp_by = (unsigned)(fft_timings_p->comp_by[ai]);
       uint64_t this_fft_call_usec = (uint64_t)(fft_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(fft_timings_p->call_usec[ai]);
       uint64_t this_fft_usec = (uint64_t)(fft_timings_p->fft_sec[ai]) * 1000000 + (uint64_t)(fft_timings_p->fft_usec[ai]);
@@ -349,10 +349,9 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int tidx = task_metadata_block->accelerator_type;
   int fn = task_metadata_block->accelerator_id;
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // FFT_TASK]);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
   uint32_t log_nsamples = fft_data_p->log_nsamples;
-  //task_metadata_block->task_timings[FFT_TASK].comp_by[tidx]++;
   fft_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
  #ifdef INT_TIME
@@ -426,7 +425,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
   int tidx = task_metadata_block->accelerator_type;
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // FFT_TASK]);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
   int32_t fft_log_nsamples = fft_data_p->log_nsamples;
   float * data = (float*)(fft_data_p->theData);

@@ -85,7 +85,7 @@ output_cv_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, task_name_str[my_task_id], ai, accel_name_str[ai]);
     }
     for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(master_metadata_pool[bi].task_timings[CV_TASK]);
+      cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(master_metadata_pool[bi].task_timings[my_task_id]);
       unsigned this_comp_by = (unsigned)(cv_timings_p->comp_by[ai]);
       uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ai]);
       uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ai]);
@@ -156,7 +156,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
   int tidx = task_metadata_block->accelerator_type;
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // CV_TASK]);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   cv_timings_p->comp_by[tidx]++;
   TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
 #ifdef HW_CV
@@ -299,7 +299,7 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
   int tidx = task_metadata_block->accelerator_type;
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // CV_TASK]);
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   cv_timings_p->comp_by[tidx]++;
 
  #ifdef INT_TIME

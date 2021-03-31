@@ -145,7 +145,7 @@ output_vit_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, task_name_str[my_task_id], ai, accel_name_str[ai]);
     }
     for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(master_metadata_pool[bi].task_timings[VITERBI_TASK]);
+      vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(master_metadata_pool[bi].task_timings[my_task_id]);
       unsigned this_comp_by = (unsigned)(vit_timings_p->comp_by[ai]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
       uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ai]);
@@ -194,7 +194,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
 {
   int tidx = task_metadata_block->accelerator_type;
   int vn = task_metadata_block->accelerator_id;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]); // VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   //task_metadata_block->vit_timings.comp_by[tidx]++;
   vit_timings_p->comp_by[tidx]++;
   DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
@@ -277,7 +277,7 @@ void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
   uint8_t* out_Data = &(vdata->theData[outData_offset]);
   int tidx = task_metadata_block->accelerator_type;
 
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   vit_timings_p->comp_by[tidx]++;
 
 #ifdef INT_TIME
