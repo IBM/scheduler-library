@@ -752,11 +752,11 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
    #endif
-    // Request a MetadataBlock (for an CV_TASK at Critical Level)
+    // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
       do {
-        cv_mb_ptr = get_task_metadata_block(CV_TASK, CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(my_task_types[cv_task_t], CRITICAL_TASK, cv_profile);
 	usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -775,15 +775,15 @@ int main(int argc, char *argv[])
       start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
     }
     if (!no_crit_cnn_task) {
-      DEBUG(printf("CV_TASK_BLOCK: ID = %u\n", cv_mb_ptr->block_id));
+      DEBUG(printf("CV/CNN task Block-ID = %u\n", cv_mb_ptr->block_id));
     }
    #ifdef TIME
     gettimeofday(&start_exec_rad, NULL);
    #endif
-    // Request a MetadataBlock (for an FFT_TASK at Critical Level)
+    // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
       do {
-        fft_mb_ptr = get_task_metadata_block(FFT_TASK, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(my_task_types[fft_task_t], CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -801,15 +801,15 @@ int main(int argc, char *argv[])
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
     start_execution_of_rad_kernel(fft_mb_ptr, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
-    DEBUG(printf("FFT_TASK_BLOCK: ID = %u\n", fft_mb_ptr->block_id));
+    DEBUG(printf("FFT task Block-ID = %u\n", fft_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
    #endif
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
-    // Request a MetadataBlock (for an VITERBI_TASK at Critical Level)
+    // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
     do {
-      vit_mb_ptr = get_task_metadata_block(VITERBI_TASK, 3, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(my_task_types[vit_task_t], CRITICAL_TASK, vit_profile[vit_msgs_size]);
       usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -839,7 +839,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(CV_TASK, BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(my_task_types[cv_task_t], BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -873,7 +873,7 @@ int main(int argc, char *argv[])
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(FFT_TASK, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(my_task_types[fft_task_t], BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -917,7 +917,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(VITERBI_TASK, BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(my_task_types[vit_task_t], BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME
