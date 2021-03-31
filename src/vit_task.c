@@ -40,8 +40,7 @@
 
 #include "scheduler.h"
 #include "vit_task.h"
-
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
+#include "vit_accel.h" // required for the execute_on_hwr functions
 
 
 // Forward Declarations:

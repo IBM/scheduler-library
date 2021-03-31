@@ -56,8 +56,6 @@ char *python_func_load = "loadmodel";
 #endif
 
 
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
-
 unsigned cv_cpu_run_time_in_usec      = 10000;
 unsigned cv_fake_hwr_run_time_in_usec =  1000;
 
@@ -79,7 +77,7 @@ output_cv_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
     total_cv_comp_by[ai] = 0;
     total_cv_call_usec[ai] = 0;
     total_parse_usec[ai] = 0;
-  }    
+  }
   for (int ai = 0; ai < total_accel_types; ai++) {
     if ((ai == total_accel_types-1) || (scheduler_execute_task_function[my_task_id][ai] != NULL)) {
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, task_name_str[my_task_id], ai, accel_name_str[ai]);

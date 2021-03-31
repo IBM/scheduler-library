@@ -40,12 +40,11 @@
 
 #include "scheduler.h"
 #include "fft_task.h"
+#include "fft_accel.h" // required for the execute_on_hwr functions
 
 #include "fft-1d.h"
 #include "calc_fmcw_dist.h"
 
-
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);

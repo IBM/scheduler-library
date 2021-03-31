@@ -33,10 +33,6 @@
 //#define VERBOSE
 #include "verbose.h"
 
-#ifdef COMPILE_TO_ESP
-#include "contig.h"
-#include "mini-era.h"
-#endif
 
 #include "scheduler.h"
 #include "fft_accel.h"
