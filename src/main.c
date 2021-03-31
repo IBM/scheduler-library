@@ -24,9 +24,9 @@
 #include "verbose.h"
 
 #include "scheduler.h"
-#include "fft_sched.h"
-#include "vit_sched.h"
-#include "cv_sched.h"
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
 
 #include "kernels_api.h"
 #include "sim_environs.h"
@@ -128,14 +128,14 @@ void print_usage(char * pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
 void radar_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_job_str[mb->job_type], task_criticality_str[mb->crit_level], accel_type_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
@@ -144,7 +144,105 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 }
 
 
-	 
+
+#include "cpu_accel.h"
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
+
+typedef enum { cpu_t = 0,
+	       fft_hwr_t,
+	       vit_hwr_t,
+	       cv_hwr_t,
+	       no_accel_t,
+	       my_num_accel_types} my_accel_types_t;
+
+accelerator_type_t my_accel_types[my_num_accel_types];
+
+typedef enum { no_task_t,
+	       fft_task_t,
+	       vit_task_t,
+	       cv_task_t,
+	       my_num_task_types} my_task_types_t;
+
+task_id_t my_task_types[my_num_task_types];
+
+void set_up_scheduler_accelerators_and_tasks() {
+  printf("\nSetting up/Registering the ACCELERATORS...\n");
+  accelerator_pool_defn_info_t my_accel_defns[my_num_accel_types];
+
+  sprintf(my_accel_defns[cpu_t].name, "CPU_Acc");
+  sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
+  my_accel_defns[cpu_t].do_accel_initialization = &do_cpu_accel_type_initialization;
+  my_accel_defns[cpu_t].do_accel_closeout       = &do_cpu_accel_type_closeout;
+  my_accel_defns[cpu_t].output_accel_run_stats  = &output_cpu_accel_type_run_stats;
+  my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
+  
+  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
+  sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
+  my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_accel_type_initialization;
+  my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_accel_type_closeout;
+  my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_accel_type_run_stats;
+  my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
+
+  sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW-Acc");
+  sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
+  my_accel_defns[vit_hwr_t].do_accel_initialization = &do_vit_accel_type_initialization;
+  my_accel_defns[vit_hwr_t].do_accel_closeout       = &do_vit_accel_type_closeout;
+  my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_accel_type_run_stats;
+  my_accel_types[vit_hwr_t] = register_accelerator_pool(&my_accel_defns[vit_hwr_t]);
+
+  sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW-Acc");
+  sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
+  my_accel_defns[cv_hwr_t].do_accel_initialization = &do_cv_accel_type_initialization;
+  my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_accel_type_closeout;
+  my_accel_defns[cv_hwr_t].output_accel_run_stats  = &output_cv_accel_type_run_stats;
+  my_accel_types[cv_hwr_t] = register_accelerator_pool(&my_accel_defns[cv_hwr_t]);
+
+  sprintf(my_accel_defns[no_accel_t].name, "NO-Acc");
+  sprintf(my_accel_defns[no_accel_t].description, "Dummy entry for NO Accelerator (cannot run tasks, etc.)");
+  my_accel_defns[no_accel_t].do_accel_initialization = NULL;
+  my_accel_defns[no_accel_t].do_accel_closeout       = NULL;
+  my_accel_defns[no_accel_t].output_accel_run_stats  = NULL;
+  my_accel_types[no_accel_t] = register_accelerator_pool(&my_accel_defns[no_accel_t]);
+
+  // Now set up the Task Types...
+  printf("\nSetting up/Registering the TASK TYPES...\n");
+  task_type_defn_info_t my_task_defns[my_num_task_types];
+  sprintf(my_task_defns[no_task_t].name, "NO-Task");
+  sprintf(my_task_defns[no_task_t].description, "A place-holder that indicates NO task to execute");
+  my_task_defns[no_task_t].print_metadata_block_contents  = &print_base_metadata_block_contents;
+  my_task_defns[no_task_t].output_task_type_run_stats  = NULL;
+  my_task_types[no_task_t] = register_task_type(&my_task_defns[no_task_t]);
+
+  sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
+  sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
+  my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
+  my_task_defns[fft_task_t].output_task_type_run_stats  = &output_fft_task_type_run_stats;
+  my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
+  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[fft_task_t], &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(my_accel_types[fft_hwr_t], my_task_types[fft_task_t], &execute_hwr_fft_accelerator);
+    
+  sprintf(my_task_defns[vit_task_t].name, "VIT-Task");
+  sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
+  my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
+  my_task_defns[vit_task_t].output_task_type_run_stats  = &output_vit_task_type_run_stats;
+  my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
+  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[vit_task_t], &execute_cpu_viterbi_accelerator);
+  register_accel_can_exec_task(my_accel_types[vit_hwr_t], my_task_types[vit_task_t], &execute_hwr_viterbi_accelerator);
+
+  sprintf(my_task_defns[cv_task_t].name, "CV-Task");
+  sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");
+  my_task_defns[cv_task_t].print_metadata_block_contents  = &print_cv_metadata_block_contents;
+  my_task_defns[cv_task_t].output_task_type_run_stats  = &output_cv_task_type_run_stats;
+  my_task_types[cv_task_t] = register_task_type(&my_task_defns[cv_task_t]);
+  register_accel_can_exec_task(my_accel_types[cpu_t],    my_task_types[cv_task_t], &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(my_accel_types[cv_hwr_t], my_task_types[cv_task_t], &execute_hwr_cv_accelerator);
+
+  printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
+}
+
+  
 int main(int argc, char *argv[])
 {
   vehicle_state_t vehicle_state;
@@ -421,6 +519,9 @@ int main(int argc, char *argv[])
   printf("Doing initialization tasks...\n");
   initialize_scheduler();
 
+  // Set up the Accelerators for this application
+  set_up_scheduler_accelerators_and_tasks();
+
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
   if (!init_trace_reader(trace_file))
@@ -482,7 +583,7 @@ int main(int argc, char *argv[])
   vehicle_state.active  = true;
   vehicle_state.lane    = center;
   vehicle_state.speed   = 50;
-  DEBUG(printf("Vehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+  DEBUG(printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
 
   #ifdef USE_SIM_ENVIRON
   // In simulation mode, we could start the main car is a different state (lane, speed)
@@ -870,7 +971,7 @@ int main(int argc, char *argv[])
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, time_step, message, distance));
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
     vehicle_state_t new_vehicle_state;
    #ifdef TIME
     gettimeofday(&start_exec_pandc, NULL);

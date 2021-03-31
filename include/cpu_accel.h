@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IBM
+ * Copyright 2021 IBM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,18 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_ACCELERATORS_H
-#define H_ACCELERATORS_H
+#ifndef H_CPU_ACCEL_INCLUDE_H
+#define H_CPU_ACCEL_INCLUDE_H
 
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
-/* static unsigned DMA_WORD_PER_BEAT(unsigned _st) */
-/* { */
-/*   return (sizeof(void *) / _st); */
-/* } */
+void init_cpu_parameters(unsigned n, uint32_t log_nsamples);
 
-extern void do_task_type_initialization();
-extern void do_task_type_closeout();
-extern void output_task_type_run_stats();
+void do_cpu_accel_type_initialization();
+void do_cpu_accel_type_closeout();
+void output_cpu_accel_type_run_stats();
 
 #endif

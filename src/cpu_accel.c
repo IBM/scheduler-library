@@ -33,51 +33,29 @@
 //#define VERBOSE
 #include "verbose.h"
 
-#ifdef COMPILE_TO_ESP
-#include "contig.h"
-#include "mini-era.h"
-#endif
-
 #include "scheduler.h"
 
-#include "fft_accel.h"
-#include "vit_accel.h"
-#include "cv_accel.h"
-#include "accelerators.h" // include AFTER scheduler.h -- needs types form scheduler.h
-
-/*static unsigned DMA_WORD_PER_BEAT(unsigned _st)
-  {
-  return (sizeof(void *) / _st);
-  }*/
-
+void print_cpu_metadata_block_contents(task_metadata_block_t* mb) {
+  print_base_metadata_block_contents(mb);
+}
 
 void
-do_task_type_initialization()
+do_cpu_accel_type_initialization()
 {
-  do_fft_task_type_initialization();
-
-  do_vit_task_type_initialization();
-
-  do_cv_task_type_initialization();
+  ; // Nothing to initialize
 }
 
 
 void
-do_task_type_closeout()
+do_cpu_accel_type_closeout()
 {
-  // Clean up any hardware accelerator stuff
-  do_fft_task_type_closeout();
-  do_vit_task_type_closeout();
-  do_cv_task_type_closeout();
+  ; // Nothing to closeout
 }
 
 
 void
-output_task_type_run_stats()
+output_cpu_accel_type_run_stats(unsigned my_accel_id, unsigned total_task_types)
 {
-  printf("\nPer-MetaData-Block Job Timing Data:\n");
-  output_fft_task_type_run_stats();
-  output_vit_task_type_run_stats();
-  output_cv_task_type_run_stats();
+  ; // In development
 }
 

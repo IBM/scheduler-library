@@ -21,21 +21,21 @@
 #include "verbose.h"
 #include "base_types.h"
 
-unsigned HW_THRESHOLD[NUM_JOB_TYPES][NUM_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
+unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
 #ifdef HW_FFT
-							    {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
+							     {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
 #else
-							    {101, 101, 101, 101},   // NO_HWR_FFT : 0% chance of using any HWR
+							     {101, 101, 101, 101},   // NO_HWR_FFT : 0% chance of using any HWR
 #endif
 #ifdef HW_FFT
-							    {101, 101,  25, 101},   // VIT : 75% chance on HWR on VIT_HWR
+							     {101, 101,  25, 101},   // VIT : 75% chance on HWR on VIT_HWR
 #else
-							    {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
+							     {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
 #endif
 #if (defined(HW_CV) || defined(FAKE_HW_CV))
-							    {101, 101, 101,  25} }; // CV  : 75% chance on HWR on CV_HWR
+							     {101, 101, 101,  25} }; // CV  : 75% chance on HWR on CV_HWR
 #else
-							    {101, 101, 101, 101} }; // NO_HWR_CV : 0% chance of using any HWR
+							     {101, 101, 101, 101} }; // NO_HWR_CV : 0% chance of using any HWR
 #endif
 
 
@@ -58,6 +58,7 @@ status_t initialize_policy(stats_t* s)
 // This is a basic accelerator selection policy:
 //   This one selects an accelerator type (HWR or CPU) randomly
 //   If an accelerators of that type is not available, it waits until it is.
+
 ready_mb_task_queue_entry_t *
 assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
 {
@@ -85,18 +86,18 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   int proposed_accel = cpu_accel_t;
   int accel_type     = no_accelerator_t;
   int accel_id       = -1;
-  if (task_metadata_block->job_type > NO_TASK_JOB) {
+  if (task_metadata_block->task_type > NO_TASK_JOB) {
     // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
     for (int i = 1; i < NUM_ACCEL_TYPES-1; i++) {
-      if (num >= HW_THRESHOLD[task_metadata_block->job_type][i]) {
+      if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
       }
       stats->scheduler_decision_checks++;
     }
   } else {
-    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->job_type);
+    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
     cleanup_and_exit(-15);
   }
 

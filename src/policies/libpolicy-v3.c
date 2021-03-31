@@ -55,13 +55,13 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
       cleanup_and_exit(-19);
     }
-    if (task_metadata_block->job_type == NO_TASK_JOB) {
+    if (task_metadata_block->task_type == NO_TASK_JOB) {
       printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type is NO_TASK_JOB?\n", i);
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
       cleanup_and_exit(-20);
     }
 
-    DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_job_str[task_metadata_block->job_type]));
+    DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_name_str[task_metadata_block->task_type]));
                #ifdef INT_TIME
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -74,16 +74,16 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
       DEBUG(printf("FFFQ: In fastest_finish_time_first_queued policy for MB%u\n", task_metadata_block->block_id));
       uint64_t proj_finish_time = ACINFPROF;
 
-      // Find an acceptable accelerator for this task (job_type)
+      // Find an acceptable accelerator for this task (task_type)
       for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-        DEBUG(printf("SCHED-FFFQ: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], check_accel, accel_type_str[check_accel], scheduler_execute_task_function[task_metadata_block->job_type][check_accel]));
-        if (scheduler_execute_task_function[task_metadata_block->job_type][check_accel] != NULL) {
-          DEBUG(printf("SCHED-FFFQ: job %u check_accel = %u Tprof 0x%016llx proj_finish_time 0x%016llx : %u\n", task_metadata_block->job_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
+        DEBUG(printf("SCHED-FFFQ: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
+        if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
+          DEBUG(printf("SCHED-FFFQ: job %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
           uint64_t new_proj_finish_time;
           int i = 0;
           DEBUG(printf("SCHED-FFFQ:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
           while ((i < num_accelerators_of_type[check_accel])) { // && (accel_id < 0)) {
-            DEBUG(printf("SCHED-FFFQ:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_type_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+            DEBUG(printf("SCHED-FFFQ:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
             int bi = accelerator_in_use_by[check_accel][i];
             if (bi == -1) { // Not in use -- available
               new_proj_finish_time = task_metadata_block->task_profile[check_accel];
@@ -107,12 +107,12 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
             i++;
             stats->scheduler_decision_checks += i;
           } // while (i < num_accelerators_of_type
-        } // if (accelerator can execute this job_type)
+        } // if (accelerator can execute this task_type)
       } // for (int check_accel = ...
       // At this point, we must have a "best" accelerator selected for this task
       stats->scheduler_decisions++;
       if ((accel_type == no_accelerator_t) || (accel_id == -1)) {
-        printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->job_type, task_job_str[task_metadata_block->job_type], accel_type, accel_id);
+        printf("SCHED-FFFQ: ERROR : Ready Task Queue entry %u Job Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], accel_type, accel_id);
         //pthread_mutex_unlock(&schedule_from_queue_mutex);
         cleanup_and_exit(-21);
       }

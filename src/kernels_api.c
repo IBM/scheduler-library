@@ -15,23 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BYPASS_KERAS_CV_CODE
-#include <Python.h>
-#include <pythonrun.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
 #include "scheduler.h" // for cleanup_and_exit
-#include "fft_sched.h"
-#include "vit_sched.h"
-#include "cv_sched.h"
-
-static unsigned DMA_WORD_PER_BEAT(unsigned _st)
-{
-        return (sizeof(void *) / _st);
-}
+#include "fft_accel.h"
+#include "vit_accel.h"
+#include "cv_accel.h"
 
 #include "kernels_api.h"
 
@@ -74,16 +65,6 @@ float IMPACT_DISTANCE = 50.0; // Minimum distance at which an obstacle "impacts"
 #include "viterbi_flat.h"
 
 
-
-#ifndef BYPASS_KERAS_CV_CODE
-PyObject *pName, *pModule, *pFunc, *pFunc_load;
-PyObject *pArgs, *pValue, *pretValue;
-#define PY_SSIZE_T_CLEAN
-
-char *python_module = "mio";
-char *python_func = "predict";
-char *python_func_load = "loadmodel";
-#endif
 
 
 /* These are some top-level defines needed for CV kernel */
@@ -388,116 +369,11 @@ status_t init_cv_kernel(char* py_file, char* dict_fn)
   DEBUG(printf("In the init_cv_kernel routine\n"));
   /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
   // Initialization to run Keras CNN code
-#ifndef BYPASS_KERAS_CV_CODE
-  Py_Initialize();
-  pName = PyUnicode_DecodeFSDefault(python_module);
-  pModule = PyImport_Import(pName);
-  Py_DECREF(pName);
-
-  if (pModule == NULL) {
-     PyErr_Print();
-     printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
-     return 1;
-  } else {
-    pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
-
-    if (pFunc_load && PyCallable_Check(pFunc_load)) {
-       PyObject_CallObject(pFunc_load, NULL);
-    }
-    else {
-        if (PyErr_Occurred())
-        PyErr_Print();
-        printf("Cannot find python function - loadmodel");
-    }
-    Py_XDECREF(pFunc_load);
-  }
-  DEBUG(printf("CV Kernel Init done\n"));
-#endif
   return success;
 }
 
 
 
-
-label_t run_object_classification_syscall(unsigned tr_val)
-{
-  DEBUG(printf("Entered run_object_classification_syscall...\n"));
-  label_t object;
-#ifdef BYPASS_KERAS_CV_CODE
-  object = (label_t)tr_val;
-#else
-  char shell_cmd[100];
-  snprintf(shell_cmd, sizeof(shell_cmd), "sh utils/cnn_shell.sh %u", tr_val);
-  DEBUG(printf("  Invoking CV CNN using `%s`\n", shell_cmd));
-  FILE *testing = popen(shell_cmd, "r");
-  if (testing == NULL)
-  {
-    printf("FAIL to open CV kernel !\n");
-    return 1;
-  }
-  char pbuffer[100];
-  while (fgets(pbuffer, 100, testing) != NULL)
-  {
-    //printf(pbuffer);
-  }
-  DEBUG(printf("Label Prediction done \n"));
-  DEBUG(printf("pbuffer : %s\n", pbuffer));
-  int val = atoi(pbuffer);   //the last thing printed by the Keras code is the predicted label
-  object = (label_t)val;
-  pclose(testing);
-  DEBUG(printf("run_object_classification_syscall returning %u = %u\n", val, object));
-#endif
-  return object;
-}
-
-label_t run_object_classification(unsigned tr_val)
-{
-  DEBUG(printf("Entered run_object_classification... tr_val = %u\n", tr_val));
-  label_t object = (label_t)tr_val;
-#ifndef BYPASS_KERAS_CV_CODE
-  if (pModule != NULL) {
-    DEBUG(printf("  Starting call to pModule...\n"));
-    pFunc = PyObject_GetAttrString(pModule, python_func);
-
-    if (pFunc && PyCallable_Check(pFunc)) {
-      pArgs = PyTuple_New(1);
-      pValue = PyLong_FromLong(tr_val);
-      if (!pValue) {
-	Py_DECREF(pArgs);
-	Py_DECREF(pFunc);
-	Py_DECREF(pModule);
-	fprintf(stderr, "Trying to run CNN kernel: Cannot convert C argument into python\n");
-	return 1;
-      }
-      PyTuple_SetItem(pArgs, 0, pValue);
-      pretValue = PyObject_CallObject(pFunc, pArgs);
-      Py_DECREF(pArgs);
-      if (pretValue != NULL) {
-	DEBUG(printf("Predicted label from Python program: %ld\n", PyLong_AsLong(pretValue)));
-	int val = PyLong_AsLong(pretValue);
-	object = (label_t)val;
-	DEBUG(printf("run_object_classification returning %u = %u\n", val, object));
-	Py_DECREF(pretValue);
-      }
-      else {
-	Py_DECREF(pFunc);
-	Py_DECREF(pModule);
-	PyErr_Print();
-	printf("Trying to run CNN kernel : Python function call failed\n");
-	return 1;
-      }
-    }
-    else {
-      if (PyErr_Occurred())
-	PyErr_Print();
-      printf("Cannot find python function");
-    }
-    Py_XDECREF(pFunc);
-    //Py_DECREF(pModule);
-  }
-#endif
-  return object;
-}
 
 
 label_t iterate_cv_kernel(vehicle_state_t vs)
@@ -522,8 +398,8 @@ label_t iterate_cv_kernel(vehicle_state_t vs)
 void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
 {
   /* 2) Set up to request object detection on an image frame */
-  int tidx = 0; // (mb_ptr->accelerator_type != cpu_accel_t);
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->job_type]); // CV_TASK]);
+  int tidx = mb_ptr->accelerator_type;
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]); // CV_TASK]);
   cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
@@ -934,11 +810,6 @@ void closeout_cv_kernel()
       }
     }
   }
-
-#ifndef BYPASS_KERAS_CV_CODE
-    Py_DECREF(pModule);
-    Py_Finalize();
-#endif
 }
 
 void closeout_rad_kernel()
@@ -951,7 +822,7 @@ void closeout_rad_kernel()
     }
   }
 
-  printf("\nHistogram of Radar Distance ABS-PCT-ERROR:\n");
+  printf("\nHistogram of Radar Distance Abs-Pct-Err:\n");
   unsigned totals[] = {0, 0, 0, 0, 0};
 
   for (int si = 0; si < num_radar_samples_sets; si++) {
@@ -964,7 +835,7 @@ void closeout_rad_kernel()
     }
   }
 
-  printf("\n  TOTALS Histogram of Radar Distance ABS-PCT-ERROR:\n");
+  printf("\n  TOTALS Histogram of Radar Distance Abs-Pct-Err:\n");
   for (int i = 0; i < 5; i++) {
     printf("  %7s | %9u \n", hist_pct_err_label[i], totals[i]);
   }

@@ -29,11 +29,13 @@
 #include <stdio.h>
 
 #include "base.h"
+
+#include "scheduler.h"
+#include "vit_accel.h"
+
 #include "viterbi_flat.h"
 #include "viterbi_standalone.h"
 
-#include "scheduler.h"
-#include "vit_sched.h"
 
 /* #undef DEBUG */
 /*  #define DEBUG(x) x */
@@ -159,8 +161,8 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
 {
   d_ofdm = ofdm;
   d_frame = frame;
-  int tidx = (vit_metadata_block->accelerator_type != cpu_accel_t);
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->job_type]); // VITERBI_TASK]);
+  int tidx = vit_metadata_block->accelerator_type;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]); // VITERBI_TASK]);
   reset();
 
 #ifdef INT_TIME
@@ -224,7 +226,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
     
   for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) { // This is over-kill for messages that are not max size
     in_Data[ti] = depunctured[ti];
-    DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
+    //DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
   }
 
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area
@@ -256,10 +258,10 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
     d_decoded[ti] = out_Data[ti];
     //DEBUG(if (ti < 31) { printf("FIN_VIT_OUT %3u : %3u @ %p \n", ti, out_Data[ti], &(out_Data[ti]));});
-    DEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
+    SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
   }
   DEBUG(printf("\n\n"));
-  DEBUG(for (int i = 0; i < 32; i++) {
+  SDEBUG(for (int i = 0; i < 32; i++) {
       printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
     });
 
