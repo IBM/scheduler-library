@@ -53,47 +53,50 @@ bool_t bypass_h264_functions = false; // This is a global-disable of executing H
 #include "vit_accel.h"
 #include "cv_accel.h"
 
-typedef enum { cpu_t = 0,
-	       fft_hwr_t,
-	       vit_hwr_t,
-	       cv_hwr_t,
-	       my_num_accel_types} my_accel_types_t;
+// Storage to hold the accelerator IDs (returned when we register accelerators) of the accelerator types we will need/use
+accelerator_type_t cpu_accel_id;
+accelerator_type_t fft_hwr_accel_id;
+accelerator_type_t vit_hwr_accel_id;
+accelerator_type_t cv_hwr_accel_id;
 
-accelerator_type_t my_accel_types[my_num_accel_types];
+#define my_num_accel_types  4
 
-typedef enum { no_task_t,
-	       fft_task_t,
-	       vit_task_t,
-	       cv_task_t,
-	       my_num_task_types} my_task_types_t;
+// Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
+task_id_t no_task_id;
+task_id_t fft_task_id;
+task_id_t vit_task_id;
+task_id_t cv_task_id;
 
-task_id_t my_task_types[my_num_task_types];
+#define my_num_task_types  4
 
-// This is defined per accelerator type              CPU            FFT            VIT            CV
-unsigned input_accel_limit[my_num_task_types] = {NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL};
+unsigned accel_limit_cpu = NUM_CPU_ACCEL;
+unsigned accel_limit_fft = NUM_FFT_ACCEL;
+unsigned accel_limit_vit = NUM_VIT_ACCEL;
+unsigned accel_limit_cv  = NUM_CV_ACCEL;
 
 
 
 // These are now defined in terms of measurements (recorded in macro definitions, in scheduler.h)
+// The order here MUST correspond to the order of the accelerator registrations...
+// Currently this is CPU, VIT, FFT, CV
 
 // FFT has 2 profiles depending on input size (1k or 16k samples)
-//   CPU     FFT     VIT        CV         NONE
-uint64_t fft_profile[2][NUM_ACCEL_TYPES] = {
-//   CPU        FFT        VIT        CV        NONE
-  { 23000, usecHwrFFT0, ACINFPROF, ACINFPROF, ACINFPROF},  //  1k-sample FFT
-  {600000, usecHwrFFT1, ACINFPROF, ACINFPROF, ACINFPROF}}; // 16k-sample FFT
+uint64_t fft_profile[2][my_num_accel_types] = {
+//   CPU        VIT        FFT        CV
+  { 23000, ACINFPROF, usecHwrFFT0, ACINFPROF},  //  1k-sample FFT
+  {600000, ACINFPROF, usecHwrFFT1, ACINFPROF}}; // 16k-sample FFT
 
 // Viterbi has 4 profiles, depending on input size
-uint64_t vit_profile[4][NUM_ACCEL_TYPES] = {
-//    CPU        FFT        VIT          CV        NONE
-  { 120000,  ACINFPROF, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1700000,  ACINFPROF, usecHwrVIT1, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {3400000,  ACINFPROF, usecHwrVIT2, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4800000,  ACINFPROF, usecHwrVIT3, ACINFPROF, ACINFPROF}}; // max-message Vit
+uint64_t vit_profile[4][my_num_accel_types] = {
+//    CPU        VIT        FFT          CV
+  { 120000, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
+  {1700000, usecHwrVIT1, ACINFPROF, ACINFPROF},  // medium-message Vit
+  {3400000, usecHwrVIT2, ACINFPROF, ACINFPROF},  // long-message Vit
+  {4800000, usecHwrVIT3, ACINFPROF, ACINFPROF}}; // max-message Vit
 
-uint64_t cv_profile[NUM_ACCEL_TYPES]  = {
-//    CPU       FFT        VIT         CV       NONE
-  ACINFPROF, ACINFPROF, ACINFPROF, usecHwrCV, ACINFPROF};
+uint64_t cv_profile[my_num_accel_types]  = {
+//    CPU       VIT        FFT         CV
+   ACINFPROF, ACINFPROF, ACINFPROF, usecHwrCV};
 
 
 bool_t all_obstacle_lanes_mode = false;
@@ -177,77 +180,78 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 
 void set_up_scheduler_accelerators_and_tasks() {
   printf("\nSetting up/Registering the ACCELERATORS...\n");
-  accelerator_pool_defn_info_t my_accel_defns[my_num_accel_types];
+  accelerator_pool_defn_info_t accel_def;
 
-  sprintf(my_accel_defns[cpu_t].name, "CPU_Acc");
-  sprintf(my_accel_defns[cpu_t].description, "Run task on a RISC-V CPU thread");
-  my_accel_defns[cpu_t].number_available        = input_accel_limit[cpu_t];
-  my_accel_defns[cpu_t].do_accel_initialization = &do_cpu_accel_type_initialization;
-  my_accel_defns[cpu_t].do_accel_closeout       = &do_cpu_accel_type_closeout;
-  my_accel_defns[cpu_t].output_accel_run_stats  = &output_cpu_accel_type_run_stats;
-  my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
-  
-  sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW-Acc");
-  sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
-  my_accel_defns[vit_hwr_t].number_available        = input_accel_limit[vit_hwr_t];
-  my_accel_defns[vit_hwr_t].do_accel_initialization = &do_vit_accel_type_initialization;
-  my_accel_defns[vit_hwr_t].do_accel_closeout       = &do_vit_accel_type_closeout;
-  my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_accel_type_run_stats;
-  my_accel_types[vit_hwr_t] = register_accelerator_pool(&my_accel_defns[vit_hwr_t]);
+  sprintf(accel_def.name, "CPU_Acc");
+  sprintf(accel_def.description, "Run task on a RISC-V CPU thread");
+  accel_def.number_available        = accel_limit_cpu;
+  accel_def.do_accel_initialization = &do_cpu_accel_type_initialization;
+  accel_def.do_accel_closeout       = &do_cpu_accel_type_closeout;
+  accel_def.output_accel_run_stats  = &output_cpu_accel_type_run_stats;
+  cpu_accel_id = register_accelerator_pool(&accel_def);
 
-  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
-  sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
-  my_accel_defns[fft_hwr_t].number_available        = input_accel_limit[fft_hwr_t];
-  my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_accel_type_initialization;
-  my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_accel_type_closeout;
-  my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_accel_type_run_stats;
-  my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
+  sprintf(accel_def.name, "VIT-HW-Acc");
+  sprintf(accel_def.description, "Run task on the Viterbi-Decode Hardware Accelerator");
+  accel_def.number_available        = accel_limit_vit;
+  accel_def.do_accel_initialization = &do_vit_accel_type_initialization;
+  accel_def.do_accel_closeout       = &do_vit_accel_type_closeout;
+  accel_def.output_accel_run_stats  = &output_vit_accel_type_run_stats;
+  vit_hwr_accel_id = register_accelerator_pool(&accel_def);
 
-  sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW-Acc");
-  sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
-  my_accel_defns[cv_hwr_t].number_available        = input_accel_limit[cv_hwr_t];
-  my_accel_defns[cv_hwr_t].do_accel_initialization = &do_cv_accel_type_initialization;
-  my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_accel_type_closeout;
-  my_accel_defns[cv_hwr_t].output_accel_run_stats  = &output_cv_accel_type_run_stats;
-  my_accel_types[cv_hwr_t] = register_accelerator_pool(&my_accel_defns[cv_hwr_t]);
+  sprintf(accel_def.name, "FFT-HW-Acc");
+  sprintf(accel_def.description, "Run task on the 1-D FFT Hardware Accelerator");
+  accel_def.number_available        = accel_limit_fft;
+  accel_def.do_accel_initialization = &do_fft_accel_type_initialization;
+  accel_def.do_accel_closeout       = &do_fft_accel_type_closeout;
+  accel_def.output_accel_run_stats  = &output_fft_accel_type_run_stats;
+  fft_hwr_accel_id = register_accelerator_pool(&accel_def);
+
+  sprintf(accel_def.name, "CV-HW-Acc");
+  sprintf(accel_def.description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
+  accel_def.number_available        = accel_limit_cv;
+  accel_def.do_accel_initialization = &do_cv_accel_type_initialization;
+  accel_def.do_accel_closeout       = &do_cv_accel_type_closeout;
+  accel_def.output_accel_run_stats  = &output_cv_accel_type_run_stats;
+  cv_hwr_accel_id = register_accelerator_pool(&accel_def);
 
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
-  task_type_defn_info_t my_task_defns[my_num_task_types];
-  sprintf(my_task_defns[no_task_t].name, "NO-Task");
-  sprintf(my_task_defns[no_task_t].description, "A place-holder that indicates NO task to execute");
-  my_task_defns[no_task_t].print_metadata_block_contents  = &print_base_metadata_block_contents;
-  my_task_defns[no_task_t].output_task_type_run_stats  = NULL;
-  my_task_types[no_task_t] = register_task_type(&my_task_defns[no_task_t]);
+  task_type_defn_info_t task_defn;
 
-  sprintf(my_task_defns[vit_task_t].name, "VIT-Task");
-  sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
-  my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
-  my_task_defns[vit_task_t].output_task_type_run_stats  = &output_vit_task_type_run_stats;
-  my_task_types[vit_task_t] = register_task_type(&my_task_defns[vit_task_t]);
-  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[vit_task_t], &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(my_accel_types[vit_hwr_t], my_task_types[vit_task_t], &exec_vit_task_on_vit_hwr_accel);
+  sprintf(task_defn.name, "NO-Task");
+  sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
+  task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = NULL;
+  no_task_id = register_task_type(&task_defn);
 
-  sprintf(my_task_defns[cv_task_t].name, "CV-Task");
-  sprintf(my_task_defns[cv_task_t].description, "A CV/CNN task to execute");
-  my_task_defns[cv_task_t].print_metadata_block_contents  = &print_cv_metadata_block_contents;
-  my_task_defns[cv_task_t].output_task_type_run_stats  = &output_cv_task_type_run_stats;
-  my_task_types[cv_task_t] = register_task_type(&my_task_defns[cv_task_t]);
-  register_accel_can_exec_task(my_accel_types[cpu_t],    my_task_types[cv_task_t], &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(my_accel_types[cv_hwr_t], my_task_types[cv_task_t], &execute_hwr_cv_accelerator);
+  sprintf(task_defn.name, "VIT-Task");
+  sprintf(task_defn.description, "A Viterbi Decoding task to execute");
+  task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
+  vit_task_id = register_task_type(&task_defn);
+  register_accel_can_exec_task(cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
 
-  sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
-  sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
-  my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
-  my_task_defns[fft_task_t].output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
-  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[fft_task_t], &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(my_accel_types[fft_hwr_t], my_task_types[fft_task_t], &execute_hwr_fft_accelerator);
-    
+  sprintf(task_defn.name, "CV-Task");
+  sprintf(task_defn.description, "A CV/CNN task to execute");
+  task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
+  cv_task_id = register_task_type(&task_defn);
+  register_accel_can_exec_task(cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
+
+  sprintf(task_defn.name, "FFT-Task");
+  sprintf(task_defn.description, "A 1-D FFT task to execute");
+  task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
+  fft_task_id = register_task_type(&task_defn);
+  register_accel_can_exec_task(cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
 
-  
+
 int main(int argc, char *argv[])
 {
   vehicle_state_t vehicle_state;
@@ -380,10 +384,10 @@ int main(int argc, char *argv[])
         printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
 	exit(-1);
       }
-      input_accel_limit[cpu_accel_t] = in_cpu;
-      input_accel_limit[fft_hwr_accel_t] = in_fft;
-      input_accel_limit[vit_hwr_accel_t] = in_vit;
-      input_accel_limit[cv_hwr_accel_t]  = in_cv;
+      accel_limit_cpu = in_cpu;
+      accel_limit_fft = in_fft;
+      accel_limit_vit = in_vit;
+      accel_limit_cv  = in_cv;
     }
     break;
 
@@ -413,7 +417,7 @@ int main(int argc, char *argv[])
 //	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
 	 policy,
-	 input_accel_limit[cpu_accel_t], input_accel_limit[fft_hwr_accel_t], input_accel_limit[vit_hwr_accel_t], input_accel_limit[cv_hwr_accel_t], 
+	 accel_limit_cpu, accel_limit_fft, accel_limit_vit, accel_limit_cv, 
 	 scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
 
   #ifdef HW_FFT
@@ -757,7 +761,7 @@ int main(int argc, char *argv[])
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
       do {
-        cv_mb_ptr = get_task_metadata_block(my_task_types[cv_task_t], CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(cv_task_id, CRITICAL_TASK, cv_profile);
 	usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -784,7 +788,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
       do {
-        fft_mb_ptr = get_task_metadata_block(my_task_types[fft_task_t], CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(fft_task_id, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -810,7 +814,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
     do {
-      vit_mb_ptr = get_task_metadata_block(my_task_types[vit_task_t], CRITICAL_TASK, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(vit_task_id, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -840,7 +844,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(my_task_types[cv_task_t], BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(cv_task_id, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -874,7 +878,7 @@ int main(int argc, char *argv[])
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(my_task_types[fft_task_t], BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(fft_task_id, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -918,7 +922,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(my_task_types[vit_task_t], BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(vit_task_id, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME

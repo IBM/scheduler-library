@@ -35,7 +35,7 @@ status_t initialize_policy(stats_t* s)
 
 // This is an accelerator selection policy that prefers the accelerator target that results in earliest projected finish time.
 //   This one scans through all the potential accelerators, and if the accelerator can
-//    execute this type of job, AND the proposed accelerator's finish time is earlier than any
+//    execute this type of task, AND the proposed accelerator's finish time is earlier than any
 //    prior (selected) accelerator, then it prefers that accelerator.
 
 ready_mb_task_queue_entry_t *
@@ -53,22 +53,22 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(-19);
   }
-  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : job %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type]));
+  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : task %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type]));
 
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
   DEBUG(printf("SCHED_FF:  Got the current_time as %lu\n", current_time.tv_sec*1000000 + current_time.tv_usec));
 
-  int proposed_accel = no_accelerator_t;
-  int accel_type     = no_accelerator_t;
+  int proposed_accel = NO_Accelerator;
+  int accel_type     = NO_Accelerator;
   int accel_id       = -1;
   uint64_t proj_finish_time = ACINFPROF;
-  if (task_metadata_block->task_type != NO_TASK_JOB) {
+  if (task_metadata_block->task_type != NO_Task) {
     // Find an acceptable accelerator for this task (task_type)
-    for (int check_accel = NUM_ACCEL_TYPES-2; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-      DEBUG(printf("SCHED_FF: job %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
+    for (int check_accel = next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
+      DEBUG(printf("SCHED_FF: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
       if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
-        DEBUG(printf("SCHED_FF: job %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
+        DEBUG(printf("SCHED_FF: task %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
         //if (task_metadata_block->task_profile[check_accel] < proj_finish_time)
         {
           uint64_t new_proj_finish_time;
@@ -81,7 +81,7 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
               new_proj_finish_time = task_metadata_block->task_profile[check_accel];
               DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu\n", check_accel, i, new_proj_finish_time));
             } else {
-              // Compute the remaining execution time (estimate) for job currently on accelerator
+              // Compute the remaining execution time (estimate) for task currently on accelerator
               uint64_t elapsed_sec = current_time.tv_sec - master_metadata_pool[bi].sched_timings.running_start.tv_sec;
               uint64_t elapsed_usec = current_time.tv_usec - master_metadata_pool[bi].sched_timings.running_start.tv_usec;
               uint64_t total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;

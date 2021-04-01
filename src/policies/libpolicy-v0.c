@@ -21,7 +21,7 @@
 #include "verbose.h"
 #include "base_types.h"
 
-unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
+unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_Task : 0% chance of using any HWR
 #ifdef HW_FFT
 							     {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
 #else
@@ -83,13 +83,13 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
  #endif
-  int proposed_accel = cpu_accel_t;
-  int accel_type     = no_accelerator_t;
+  int proposed_accel = 0; // cpu_accel_t;
+  int accel_type     = NO_Accelerator;
   int accel_id       = -1;
-  if (task_metadata_block->task_type > NO_TASK_JOB) {
+  if (task_metadata_block->task_type > NO_Task) {
     // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
-    for (int i = 1; i < NUM_ACCEL_TYPES-1; i++) {
+    for (int i = 1; i < next_avail_task_id; i++) {
       if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
@@ -119,7 +119,7 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
       }
       i++;
     }
-  } while (accel_type == no_accelerator_t);
+  } while (accel_type == NO_Accelerator);
   task_metadata_block->accelerator_type = accel_type;
   task_metadata_block->accelerator_id = accel_id;
 

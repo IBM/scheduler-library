@@ -35,9 +35,14 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 
-typedef enum { NO_TASK_JOB = -1} task_id_enum_t;
+enum { NO_Task = -1} task_id_enum_t;
 typedef int task_id_t;
 
+enum {NO_Accelerator = -1};
+typedef int accelerator_type_t;
+
+extern task_id_t next_avail_task_id;
+extern accelerator_type_t next_avail_accel_id;
 
 typedef enum { NO_TASK   = 0,
 	       BASE_TASK = 1,
@@ -53,14 +58,6 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
-
-typedef enum { cpu_accel_t = 0,
-	       fft_hwr_accel_t,
-	       vit_hwr_accel_t,
-	       cv_hwr_accel_t,
-	       no_accelerator_t,
-	       NUM_ACCEL_TYPES} accelerator_type_enum_t;
-typedef unsigned accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
 	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,

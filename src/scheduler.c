@@ -321,14 +321,14 @@ task_metadata_block_t* get_task_metadata_block(task_id_t in_task_type, task_crit
     master_metadata_pool[bi].task_profile[i] = task_profile[i];
   }
   master_metadata_pool[bi].data_size = 0;
-  master_metadata_pool[bi].accelerator_type = no_accelerator_t;
-  master_metadata_pool[bi].accelerator_id   = -1;
+  master_metadata_pool[bi].accelerator_type = NO_Accelerator;
+  master_metadata_pool[bi].accelerator_id   = NO_Task;
   master_metadata_pool[bi].atFinish = NULL;  // NO finish call-back function
-  
+
   gettimeofday(&master_metadata_pool[bi].sched_timings.get_start, NULL);
   master_metadata_pool[bi].sched_timings.idle_sec += master_metadata_pool[bi].sched_timings.get_start.tv_sec - master_metadata_pool[bi].sched_timings.idle_start.tv_sec;
   master_metadata_pool[bi].sched_timings.idle_usec += master_metadata_pool[bi].sched_timings.get_start.tv_usec - master_metadata_pool[bi].sched_timings.idle_start.tv_usec;
-  
+
   if (crit_level > 1) { // is this a "critical task"
     /* int ci = total_critical_tasks; // Set index for crit_task block_id in pool */
     /* critical_live_tasks_list[ci].clt_block_id = bi;  // Set the critical task block_id indication */
@@ -410,7 +410,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     master_metadata_pool[bi].atFinish = NULL; // Ensure this is now set to NULL (safety safety)
     // For neatness (not "security") we'll clear the meta-data in the block (not the data data, though)
     freed_metadata_blocks[master_metadata_pool[bi].task_type]++;
-    master_metadata_pool[bi].task_type = NO_TASK_JOB; // unset
+    master_metadata_pool[bi].task_type = NO_Task; // unset
     master_metadata_pool[bi].status = TASK_FREE;   // free
     gettimeofday(&master_metadata_pool[bi].sched_timings.idle_start, NULL);
     master_metadata_pool[bi].sched_timings.done_sec += master_metadata_pool[bi].sched_timings.idle_start.tv_sec - master_metadata_pool[bi].sched_timings.done_start.tv_sec;
@@ -470,7 +470,7 @@ void
 execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
-  if (task_metadata_block->accelerator_type != no_accelerator_t) {
+  if (task_metadata_block->accelerator_type != NO_Accelerator) {
     if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < MAX_TASK_TYPES)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
       scheduler_execute_task_function[task_metadata_block->task_type][task_metadata_block->accelerator_type](task_metadata_block);
@@ -479,7 +479,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
       cleanup_and_exit(-13);
     }
   } else {
-    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR_T with block:\n");
+    printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
     cleanup_and_exit(-11);
   }
@@ -791,12 +791,12 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       unsigned int accel_id = task_metadata_block->accelerator_id;
       DEBUG(printf("SCHED: MB%u Selected accel type: %d id: accel_id: %d\n", task_metadata_block->block_id, task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
 
-      if (accel_type == no_accelerator_t) {
+      if (accel_type == NO_Accelerator) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
         //pthread_mutex_unlock(&schedule_from_queue_mutex);
+	print_base_metadata_block_contents(task_metadata_block);
         cleanup_and_exit(-19);
-      }
-      if (accel_type < no_accelerator_t) {
+      } else {
 	// Mark the requested accelerator as "In-USE" by this metadata block
 	if (accelerator_in_use_by[accel_type][accel_id] != -1) {
 	  printf("ERROR : schedule_executions_from_queue is trying to allocate ACCEL %s %u which is already allocated to Block %u\n", accel_name_str[accel_type], accel_id, accelerator_in_use_by[accel_type][accel_id]);
@@ -876,16 +876,13 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 
 	// And now we unlock because we are done here...
 	pthread_mutex_unlock(&(task_metadata_block->metadata_mutex));
-      } else {
-	printf("Cannot allocate execution resources for metadata block:\n");
-	print_base_metadata_block_contents(task_metadata_block);
       }
     } else { // if (num_tasks_in_queue > 0)
       // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
       usleep(scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
-    } 
-  } // while (1) 
+    }
+  } // while (1)
   //pthread_mutex_unlock(&schedule_from_queue_mutex);
   return NULL;
 }
@@ -1003,7 +1000,7 @@ void output_run_statistics()
   for (int ti = 0; ti < MAX_TASK_TYPES; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", task_name_str[ti], allocated_metadata_blocks[ti], freed_metadata_blocks[ti]);
   }
-  printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", allocated_metadata_blocks[NO_TASK_JOB], freed_metadata_blocks[NO_TASK_JOB]);
+  printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", allocated_metadata_blocks[NO_Task], freed_metadata_blocks[NO_Task]);
 
   printf("\nPer-MetaData-Block Scheduler Allocation/Frees by Job-Type Data:\n");
   printf("%6s ", "Block");
