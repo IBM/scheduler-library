@@ -255,6 +255,7 @@ void
 do_accelerator_type_closeout()
 {
   // Clean up any hardware accelerator stuff
+  DEBUG(printf("Doing accelerator type closeout for %u accelerators\n", next_avail_accel_id));
   for (int ai = 0; ai < next_avail_accel_id; ai++) {
     if (do_accel_closeout_function[ai] != NULL) {
       do_accel_closeout_function[ai](NULL);

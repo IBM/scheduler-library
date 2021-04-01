@@ -57,7 +57,6 @@ typedef enum { cpu_t = 0,
 	       fft_hwr_t,
 	       vit_hwr_t,
 	       cv_hwr_t,
-	       no_accel_t,
 	       my_num_accel_types} my_accel_types_t;
 
 accelerator_type_t my_accel_types[my_num_accel_types];
@@ -188,14 +187,6 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_accel_defns[cpu_t].output_accel_run_stats  = &output_cpu_accel_type_run_stats;
   my_accel_types[cpu_t] = register_accelerator_pool(&my_accel_defns[cpu_t]);
   
-  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
-  sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
-  my_accel_defns[fft_hwr_t].number_available        = input_accel_limit[fft_hwr_t];
-  my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_accel_type_initialization;
-  my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_accel_type_closeout;
-  my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_accel_type_run_stats;
-  my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
-
   sprintf(my_accel_defns[vit_hwr_t].name, "VIT-HW-Acc");
   sprintf(my_accel_defns[vit_hwr_t].description, "Run task on the Viterbi-Decode Hardware Accelerator");
   my_accel_defns[vit_hwr_t].number_available        = input_accel_limit[vit_hwr_t];
@@ -204,6 +195,14 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_accel_defns[vit_hwr_t].output_accel_run_stats  = &output_vit_accel_type_run_stats;
   my_accel_types[vit_hwr_t] = register_accelerator_pool(&my_accel_defns[vit_hwr_t]);
 
+  sprintf(my_accel_defns[fft_hwr_t].name, "FFT-HW-Acc");
+  sprintf(my_accel_defns[fft_hwr_t].description, "Run task on the 1-D FFT Hardware Accelerator");
+  my_accel_defns[fft_hwr_t].number_available        = input_accel_limit[fft_hwr_t];
+  my_accel_defns[fft_hwr_t].do_accel_initialization = &do_fft_accel_type_initialization;
+  my_accel_defns[fft_hwr_t].do_accel_closeout       = &do_fft_accel_type_closeout;
+  my_accel_defns[fft_hwr_t].output_accel_run_stats  = &output_fft_accel_type_run_stats;
+  my_accel_types[fft_hwr_t] = register_accelerator_pool(&my_accel_defns[fft_hwr_t]);
+
   sprintf(my_accel_defns[cv_hwr_t].name, "CV-HW-Acc");
   sprintf(my_accel_defns[cv_hwr_t].description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
   my_accel_defns[cv_hwr_t].number_available        = input_accel_limit[cv_hwr_t];
@@ -211,13 +210,6 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_accel_defns[cv_hwr_t].do_accel_closeout       = &do_cv_accel_type_closeout;
   my_accel_defns[cv_hwr_t].output_accel_run_stats  = &output_cv_accel_type_run_stats;
   my_accel_types[cv_hwr_t] = register_accelerator_pool(&my_accel_defns[cv_hwr_t]);
-
-  sprintf(my_accel_defns[no_accel_t].name, "NO-Acc");
-  sprintf(my_accel_defns[no_accel_t].description, "Dummy entry for NO Accelerator (cannot run tasks, etc.)");
-  my_accel_defns[no_accel_t].do_accel_initialization = NULL;
-  my_accel_defns[no_accel_t].do_accel_closeout       = NULL;
-  my_accel_defns[no_accel_t].output_accel_run_stats  = NULL;
-  my_accel_types[no_accel_t] = register_accelerator_pool(&my_accel_defns[no_accel_t]);
 
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
@@ -228,14 +220,6 @@ void set_up_scheduler_accelerators_and_tasks() {
   my_task_defns[no_task_t].output_task_type_run_stats  = NULL;
   my_task_types[no_task_t] = register_task_type(&my_task_defns[no_task_t]);
 
-  sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
-  sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
-  my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
-  my_task_defns[fft_task_t].output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
-  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[fft_task_t], &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(my_accel_types[fft_hwr_t], my_task_types[fft_task_t], &execute_hwr_fft_accelerator);
-    
   sprintf(my_task_defns[vit_task_t].name, "VIT-Task");
   sprintf(my_task_defns[vit_task_t].description, "A Viterbi Decoding task to execute");
   my_task_defns[vit_task_t].print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
@@ -252,6 +236,14 @@ void set_up_scheduler_accelerators_and_tasks() {
   register_accel_can_exec_task(my_accel_types[cpu_t],    my_task_types[cv_task_t], &execute_cpu_cv_accelerator);
   register_accel_can_exec_task(my_accel_types[cv_hwr_t], my_task_types[cv_task_t], &execute_hwr_cv_accelerator);
 
+  sprintf(my_task_defns[fft_task_t].name, "FFT-Task");
+  sprintf(my_task_defns[fft_task_t].description, "A 1-D FFT task to execute");
+  my_task_defns[fft_task_t].print_metadata_block_contents  = &print_fft_metadata_block_contents;
+  my_task_defns[fft_task_t].output_task_type_run_stats  = &output_fft_task_type_run_stats;
+  my_task_types[fft_task_t] = register_task_type(&my_task_defns[fft_task_t]);
+  register_accel_can_exec_task(my_accel_types[cpu_t],     my_task_types[fft_task_t], &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(my_accel_types[fft_hwr_t], my_task_types[fft_task_t], &execute_hwr_fft_accelerator);
+    
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
 
