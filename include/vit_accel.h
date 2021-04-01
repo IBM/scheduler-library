@@ -24,56 +24,28 @@
 
 #include "base_types.h"
 
-//#include "scheduler.h"
+#ifdef COMPILE_TO_ESP
+#include "contig.h"
+#include "mini-era.h"
 
-// Some Profiling Data:
-#define usecHwrVIT0   5950
-#define usecHwrVIT1  67000
-#define usecHwrVIT2 135000
-#define usecHwrVIT3 191000
+#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
-// This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "Viterbi" view of "data"
-  int32_t n_data_bits;
-  int32_t n_cbps;
-  int32_t n_traceback;
-  int32_t psdu_size;
-  int32_t inMem_size;    // The first inMem_size bytes of theData are the inMem (input memories)
-  int32_t inData_size;   // The next inData_size bytes of theData are the inData (input data)
-  int32_t outData_size;  // The next outData_size bytes of theData are the outData (output data)
-  uint8_t theData[64*1024]; // This is larger than needed (~24780 + 18585) but less than FFT requires (so okay)
-}  viterbi_data_struct_t;
-
-typedef struct {
-  struct timeval dodec_start;
-  struct timeval depunc_start;
-  struct timeval time_val[16-2];
-
-  unsigned comp_by[MAX_TASK_TARGETS];
-
-  // 0 = timings for cpu_accel_T and 1 = vit_hwr_accel_t
-  uint64_t dodec_sec[MAX_TASK_TARGETS];
-  uint64_t depunc_sec[MAX_TASK_TARGETS];
-  uint64_t time_sec[(16-2)*MAX_TASK_TARGETS];
-
-  uint64_t dodec_usec[MAX_TASK_TARGETS];
-  uint64_t depunc_usec[MAX_TASK_TARGETS];
-  uint64_t time_usec[(16-2)*MAX_TASK_TARGETS];
-} vit_timing_data_t;
-
-
-void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
-
-void init_vit_parameters(int vn);
+extern int vitHW_fd[NUM_VIT_ACCEL];
+extern contig_handle_t vitHW_mem[NUM_VIT_ACCEL];
+extern vitHW_token_t *vitHW_lmem[NUM_VIT_ACCEL];   // Pointer to local view of contig memory
+extern vitHW_token_t *vitHW_li_mem[NUM_VIT_ACCEL]; // Pointer to input memory block
+extern vitHW_token_t *vitHW_lo_mem[NUM_VIT_ACCEL]; // Pointer to output memory block
+extern size_t vitHW_in_len[NUM_VIT_ACCEL];
+extern size_t vitHW_out_len[NUM_VIT_ACCEL];
+extern size_t vitHW_in_size[NUM_VIT_ACCEL];
+extern size_t vitHW_out_size[NUM_VIT_ACCEL];
+extern size_t vitHW_out_offset[NUM_VIT_ACCEL];
+extern size_t vitHW_size[NUM_VIT_ACCEL];
+extern struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
+#endif
 
 void do_vit_accel_type_initialization();
 void do_vit_accel_type_closeout();
 void output_vit_accel_type_run_stats();
-
-void output_vit_task_type_run_stats();
-
-void execute_hwr_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_cpu_viterbi_accelerator(task_metadata_block_t* task_metadata_block);
 
 #endif

@@ -21,7 +21,7 @@
 #include "verbose.h"
 #include "base_types.h"
 
-unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_JOB : 0% chance of using any HWR
+unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_Task : 0% chance of using any HWR
 #ifdef HW_FFT
 							     {101,  25, 101, 101},   // FFT : 75% chance on HWR on FFT_HWR
 #else
@@ -60,14 +60,14 @@ status_t initialize_policy(stats_t* s)
 //   If an accelerators of that type is not available, it waits until it is.
 
 ready_mb_task_queue_entry_t *
-assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled
   ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
   task_metadata_block_t * task_metadata_block = NULL;
   if (selected_task_entry != NULL) {
-    task_metadata_block = &(master_metadata_pool[selected_task_entry->block_id]);
+    task_metadata_block = &(sptr->master_metadata_pool[selected_task_entry->block_id]);
   }
   if (selected_task_entry == NULL) {
     printf("Ready queue empty\n");
@@ -75,7 +75,7 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
-    cleanup_and_exit(-19);
+    cleanup_and_exit(sptr, -19);
   }
 
   DEBUG(printf("THE-SCHED: In pick_accel_and_wait_for_available policy for MB%u\n", task_metadata_block->block_id));
@@ -83,13 +83,13 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
  #endif
-  int proposed_accel = cpu_accel_t;
-  int accel_type     = no_accelerator_t;
+  int proposed_accel = 0; // cpu_accel_t;
+  int accel_type     = NO_Accelerator;
   int accel_id       = -1;
-  if (task_metadata_block->task_type > NO_TASK_JOB) {
+  if (task_metadata_block->task_type > NO_Task) {
     // Scheduler should now run this either on CPU or HWR
     int num = (rand() % (100)); // Return a value from [0,99]
-    for (int i = 1; i < NUM_ACCEL_TYPES-1; i++) {
+    for (int i = 1; i < sptr->next_avail_task_id; i++) {
       if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
@@ -98,7 +98,7 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
     }
   } else {
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
-    cleanup_and_exit(-15);
+    cleanup_and_exit(sptr, -15);
   }
 
   // Okay, here we should have a good task to schedule...
@@ -112,14 +112,14 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   stats->scheduler_decisions++;
   do {
     int i = 0;
-    while ((i < num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
-      if (accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
+    while ((i < sptr->num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {
+      if (sptr->accelerator_in_use_by[proposed_accel][i] == -1) { // Not in use -- available
         accel_type = proposed_accel;
         accel_id = i;
       }
       i++;
     }
-  } while (accel_type == no_accelerator_t);
+  } while (accel_type == NO_Accelerator);
   task_metadata_block->accelerator_type = accel_type;
   task_metadata_block->accelerator_id = accel_id;
 

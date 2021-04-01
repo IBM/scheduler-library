@@ -31,7 +31,7 @@
 #include "base.h"
 
 #include "scheduler.h"
-#include "vit_accel.h"
+#include "vit_task.h"
 
 #include "viterbi_flat.h"
 #include "viterbi_standalone.h"
@@ -162,7 +162,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
   d_ofdm = ofdm;
   d_frame = frame;
   int tidx = vit_metadata_block->accelerator_type;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]); // VITERBI_TASK]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
   reset();
 
 #ifdef INT_TIME

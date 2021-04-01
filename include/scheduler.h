@@ -24,8 +24,6 @@
 
 #include "base_types.h"
 
-#define total_metadata_pool_blocks  32
-
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
@@ -35,14 +33,11 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 
-typedef enum { NO_TASK_JOB = 0,
-	       FFT_TASK,
-	       VITERBI_TASK,
-	       CV_TASK,
-	       NUM_TASK_TYPES } task_types_enum_t;
+enum { NO_Task = -1} task_id_enum_t;
+typedef int task_id_t;
 
-typedef unsigned task_id_t;
-
+enum {NO_Accelerator = -1};
+typedef int accelerator_type_t;
 
 typedef enum { NO_TASK   = 0,
 	       BASE_TASK = 1,
@@ -58,14 +53,6 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
-
-typedef enum { cpu_accel_t = 0,
-	       fft_hwr_accel_t,
-	       vit_hwr_accel_t,
-	       cv_hwr_accel_t,
-	       no_accelerator_t,
-	       NUM_ACCEL_TYPES} accelerator_type_enum_t;
-typedef unsigned accelerator_type_t;
 
 typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
 	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
@@ -85,16 +72,7 @@ typedef unsigned  accel_select_policy_t;
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
 
-extern char  task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
-extern char  task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
-
-extern char  accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
-extern char  accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
-
-extern const char* task_criticality_str[NUM_TASK_CRIT_LEVELS];
-extern const char* task_status_str[NUM_TASK_STATUS];
-extern const char* scheduler_selection_policy_str[NUM_SELECTION_POLICIES];
-
+#define GLOBAL_METADATA_POOL_BLOCKS 32
 
 // This is a timing analysis structure for the scheduler functions, etc.
 typedef struct {
@@ -125,7 +103,12 @@ typedef struct { // This allows each task to track up to 32 total task timings..
 //  memory (of abstract uint8_t or bytes) and a size.  The interpretation of this
 //  block of data is task-dependent, and can have an over-laid structure, etc.
 
+struct scheduler_datastate_block_struct;
+
 typedef struct task_metadata_entry_struct {
+  // This points to the scheduler datastate structure (defiuned below) to which this metadata block belongs.
+  struct scheduler_datastate_block_struct* scheduler_datastate_pointer;
+
   // This portion is management, control, and scheduler stuff...
   int32_t         block_id;       // master-pool-index; a unique ID per metadata task
   task_status_t   status;         // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
@@ -167,36 +150,36 @@ typedef void (*task_finish_callback_t)(task_metadata_block_t*);
 
 // This is a typedef for an execution function called by the scheduler (e.g. to execute a task)
 typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
-// This is a table of the execution functions for the various Task Types in the scheduler
-//  We set this up with one "set" of entries per JOB_TYPE
-//   where each set has one execute function per possible TASK TARGET (on which it can execute)
-//   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-extern sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
 
-// This is the master pool of Metadata Blocks
-extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
-// This is the count of freed (completed tasks) Metadata Blocks by Job Type
-extern unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+// These are function pointer prototype declaration types, used for the regsiter_task_type routine.
+typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
+typedef void (*output_task_type_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_task_id, unsigned total_accel_types);
 
-// This is the accelerator selection policy used by the scheduler
-extern char policy[256];
-//extern accel_select_policy_t global_scheduler_selection_policy;
+// This typedef defines a structure used to describe a task (for the register_task_type routine)
+typedef struct task_type_defn_info_struct {
+  print_metadata_block_contents_t print_metadata_block_contents;
+  output_task_type_run_stats_t    output_task_type_run_stats;
+  char                            name[MAX_TASK_NAME_LEN];
+  char                            description[MAX_TASK_DESC_LEN];
+} task_type_defn_info_t;
 
-// These are some "fake" times (models the execution of CV timing)
-extern unsigned cv_cpu_run_time_in_usec;
-extern unsigned cv_fake_hwr_run_time_in_usec;
+// These are function pointer prototype declaration types, used for the regsiter_accelerator_type routine.
+typedef void (*do_accel_initialization_t)(void*);
+typedef void (*do_accel_closeout_t)(void*);
+typedef void (*output_accel_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types);
+
+// This typedef defines a structure used to describe a accelerator (for the register_accelerator_type routine)
+typedef struct accel_pool_defn_info_struct {
+  do_accel_initialization_t       do_accel_initialization;
+  do_accel_closeout_t             do_accel_closeout;
+  output_accel_run_stats_t        output_accel_run_stats;
+  unsigned                        number_available;
+  char                            name[32];
+  char                            description[256];
+} accelerator_pool_defn_info_t;
 
 
-extern unsigned int scheduler_holdoff_usec;
-
-extern unsigned input_accel_limit[MAX_ACCEL_TYPES];
-
-#define total_metadata_pool_blocks 32
-extern task_metadata_block_t master_metadata_pool[total_metadata_pool_blocks];
-
-extern int num_accelerators_of_type[MAX_ACCEL_TYPES-1];
-
-extern volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
 // This is a typedef for the different statistics that we keep track of within the scheduler library.
 // The scheduling policies receive a reference to this structure as part of their init() functions.
@@ -204,61 +187,114 @@ typedef struct {
   uint64_t scheduler_decision_time_usec;
   uint64_t scheduler_decisions;
   uint64_t scheduler_decision_checks;
-} stats_t;
+} stats_t; 
 
-extern unsigned num_tasks_in_ready_queue;
+typedef struct scheduler_datastate_block_struct {
+  task_id_t next_avail_task_id;
+  accelerator_type_t next_avail_accel_id;
 
-extern status_t initialize_scheduler();
+  unsigned int scheduler_holdoff_usec;
 
-extern task_metadata_block_t* get_task_metadata_block(task_id_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
+  // Handle for the dynamically loaded policy
+  void *policy_handle;
+  // Function pointer for the policy's initialize_policy() function
+  status_t (*initialize_policy)(stats_t* stats);
+  // Function pointer for the policy's assign_task_to_pe() function
+  ready_mb_task_queue_entry_t *
+  (*assign_task_to_pe)(struct scheduler_datastate_block_struct* sptr, ready_mb_task_queue_entry_t* ready_task_entry);
+  char policy[256];
+
+  // The pool of metadata blocks for use by the tasks, etc.
+  unsigned total_metadata_pool_blocks;
+  task_metadata_block_t master_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
+
+  pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
+  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  int free_metadata_blocks;
+  unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
+  unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+
+  pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
+  ready_mb_task_queue_entry_t ready_mb_task_queue_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  ready_mb_task_queue_entry_t* free_ready_mb_task_queue_entries;
+  ready_mb_task_queue_entry_t* ready_mb_task_queue_head;
+  ready_mb_task_queue_entry_t* ready_mb_task_queue_tail;
+  unsigned num_free_task_queue_entries;
+  unsigned num_tasks_in_ready_queue;
+
+  pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
+
+  pthread_t metadata_threads[GLOBAL_METADATA_POOL_BLOCKS]; // One thread per metadata block (to exec it in)
+
+  //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
+  pthread_t scheduling_thread;
+
+  blockid_linked_list_t critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
+  blockid_linked_list_t* critical_live_task_head;
+  int free_critlist_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  int free_critlist_entries;
+  int total_critical_tasks;
+
+  char task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
+  char task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
+
+  char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+  char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+
+  char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
+  char task_status_str[NUM_TASK_STATUS][32];
+  char scheduler_selection_policy_str[NUM_SELECTION_POLICIES][64];
+  
+  // This is a table of the execution functions for the various Task Types in the scheduler
+  //  We set this up with one "set" of entries per JOB_TYPE
+  //   where each set has one execute function per possible TASK TARGET (on which it can execute)
+  //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+  sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
+
+  print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
+  output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
+
+  do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
+  do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
+  output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
+
+  volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+  unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][GLOBAL_METADATA_POOL_BLOCKS];
+  int num_accelerators_of_type[MAX_ACCEL_TYPES];
+
+  struct timeval last_accel_use_update_time;
+  uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
+
+  // Scheduler Library statistics
+  stats_t decision_stats;
+} scheduler_datastate_block_t;
+  
+extern scheduler_datastate_block_t sched_state;
+
+extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
+
+extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_id_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
-extern int get_task_status(int task_id);
-extern void wait_all_critical();
-extern void wait_all_tasks_finish();
+extern int get_task_status(scheduler_datastate_block_t* sptr, int task_id);
+extern void wait_all_critical(scheduler_datastate_block_t* sptr);
+extern void wait_all_tasks_finish(scheduler_datastate_block_t* sptr);
 void mark_task_done(task_metadata_block_t* task_metadata_block);
 
 extern void print_base_metadata_block_contents(task_metadata_block_t* mb);
-extern void dump_all_metadata_blocks_states();
+extern void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr);
 
-extern void shutdown_scheduler();
+extern void shutdown_scheduler(scheduler_datastate_block_t* sptr);
 
-extern void init_accelerators_in_use_interval(struct timeval start_prog);
+extern void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr, struct timeval start_prog);
 
-extern void cleanup_and_exit(int rval);
+extern void cleanup_and_exit(scheduler_datastate_block_t* sptr, int rval);
 
+extern task_id_t register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t*);
 
-typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
-/* typedef void (*do_task_type_initialization_t)(void*); */
-/* typedef void (*do_task_type_closeout_t)(void*); */
-typedef void (*output_task_type_run_stats_t)(unsigned my_task_id, unsigned total_accel_types);
+extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
 
-typedef struct task_type_defn_info_struct {
-  print_metadata_block_contents_t print_metadata_block_contents;
-  /* do_task_type_initialization_t   do_task_type_initialization; */
-  /* do_task_type_closeout_t         do_task_type_closeout; */
-  output_task_type_run_stats_t    output_task_type_run_stats;
-  char                            name[MAX_TASK_NAME_LEN];
-  char                            description[MAX_TASK_DESC_LEN];
-} task_type_defn_info_t;
-
-extern task_id_t register_task_type(task_type_defn_info_t*);
-
-typedef void (*do_accel_initialization_t)(void*);
-typedef void (*do_accel_closeout_t)(void*);
-typedef void (*output_accel_run_stats_t)(unsigned my_accel_id, unsigned total_task_types);
-
-typedef struct accel_pool_defn_info_struct {
-  do_accel_initialization_t       do_accel_initialization;
-  do_accel_closeout_t             do_accel_closeout;
-  output_accel_run_stats_t        output_accel_run_stats;
-  char                            name[32];
-  char                            description[256];
-} accelerator_pool_defn_info_t;
-
-extern accelerator_type_t register_accelerator_pool(accelerator_pool_defn_info_t*);
-
-extern void register_accel_can_exec_task(accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr);
+extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr);
 
 #endif
