@@ -429,8 +429,18 @@ scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointe
   return &sched_state_def_parms;
 }
 
-scheduler_datastate_block_t* get_new_scheduler_datastate_pointer()
+scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
 {
+  sched_state.limits.max_task_types    = inp->max_task_types;
+  sched_state.limits.max_accel_types   = inp->max_accel_types;
+  sched_state.limits.max_task_targets  = inp->max_task_targets;
+  sched_state.limits.max_task_name_len = inp->max_task_name_len;
+  sched_state.limits.max_task_dec_len  = inp->max_task_dec_len;
+  sched_state.limits.max_accel_name_len = inp->max_accel_name_len;
+  sched_state.limits.max_accel_dec_len  = inp->max_accel_dec_len;
+  sched_state.limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
+  sched_state.limits.max_task_timing_sets      = inp->max_task_timing_sets;
+
   return &sched_state;
 }
 

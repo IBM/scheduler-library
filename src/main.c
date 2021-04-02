@@ -262,7 +262,8 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
 int main(int argc, char *argv[])
 {
   // Get a scheduler_datastate_block
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer();
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   
   vehicle_state_t vehicle_state;
   label_t label;
