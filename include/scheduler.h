@@ -193,6 +193,9 @@ typedef struct accel_pool_defn_info_struct {
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
 typedef struct scheduler_datastate_block_struct {
+  // These are limits (e.g. max-task-types) for this instantiation of the scheduler datasatate space
+  scheduler_get_datastate_in_parms_t limits;
+
   task_id_t next_avail_task_id;
   accelerator_type_t next_avail_accel_id;
 
