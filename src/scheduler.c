@@ -41,7 +41,7 @@
 #include "scheduler.h"
 
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
-  .max_task_types = MAX_TASK_TYPES,
+  .max_task_types   = MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
   .max_task_targets = MAX_ACCEL_TYPES,
 
@@ -49,7 +49,7 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_dec_len  = MAX_TASK_DESC_LEN,
 
   .max_accel_name_len = MAX_ACCEL_NAME_LEN,
-  .max_accel_dec_len = MAX_ACCEL_DESC_LEN,
+  .max_accel_dec_len  = MAX_ACCEL_DESC_LEN,
 
   .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
 
@@ -126,7 +126,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
     printf(" ** status = %d <= NOT a legal value!\n",  mb->status);
   }
   unsigned task_type = mb->task_type;
-  if (task_type < MAX_TASK_TYPES) {
+  if (task_type < sptr->limits.max_task_types) {
     printf("    task_type = %s\n", sptr->task_name_str[task_type]);
   } else {
     printf(" ** task_type = %d <= NOT a legal value!\n", mb->task_type);
@@ -383,7 +383,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   if (task_metadata_block->accelerator_type != NO_Accelerator) {
-    if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < MAX_TASK_TYPES)) {
+    if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < sptr->limits.max_task_types)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
       sptr->scheduler_execute_task_function[task_metadata_block->task_type][task_metadata_block->accelerator_type](task_metadata_block);
     } else {
@@ -431,13 +431,13 @@ scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointe
 
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
 {
-  sched_state.limits.max_task_types    = inp->max_task_types;
-  sched_state.limits.max_accel_types   = inp->max_accel_types;
-  sched_state.limits.max_task_targets  = inp->max_task_targets;
-  sched_state.limits.max_task_name_len = inp->max_task_name_len;
-  sched_state.limits.max_task_dec_len  = inp->max_task_dec_len;
-  sched_state.limits.max_accel_name_len = inp->max_accel_name_len;
-  sched_state.limits.max_accel_dec_len  = inp->max_accel_dec_len;
+  sched_state.limits.max_task_types            = inp->max_task_types;
+  sched_state.limits.max_accel_types           = inp->max_accel_types;
+  sched_state.limits.max_task_targets          = inp->max_task_targets;
+  sched_state.limits.max_task_name_len         = inp->max_task_name_len;
+  sched_state.limits.max_task_dec_len          = inp->max_task_dec_len;
+  sched_state.limits.max_accel_name_len        = inp->max_accel_name_len;
+  sched_state.limits.max_accel_dec_len         = inp->max_accel_dec_len;
   sched_state.limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
   sched_state.limits.max_task_timing_sets      = inp->max_task_timing_sets;
 
@@ -452,16 +452,16 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS;
   
-  sptr->next_avail_task_id = 0;
+  sptr->next_avail_task_id  = 0;
   sptr->next_avail_accel_id = 0;
 
-  sptr->scheduler_holdoff_usec = 1;
-  sptr->free_metadata_blocks = sptr->total_metadata_pool_blocks;
+  sptr->scheduler_holdoff_usec      = 1;
+  sptr->free_metadata_blocks        = sptr->total_metadata_pool_blocks;
   sptr->num_free_task_queue_entries = 0;
-  sptr->num_tasks_in_ready_queue = 0;
-  sptr->critical_live_task_head = NULL;
-  sptr->free_critlist_entries = sptr->total_metadata_pool_blocks;
-  sptr->total_critical_tasks = 0;
+  sptr->num_tasks_in_ready_queue    = 0;
+  sptr->critical_live_task_head     = NULL;
+  sptr->free_critlist_entries       = sptr->total_metadata_pool_blocks;
+  sptr->total_critical_tasks        = 0;
 
   snprintf(sptr->task_criticality_str[0], 32, "%s", "NO-TASK");
   snprintf(sptr->task_criticality_str[1], 32, "%s", "NBASETASK");
@@ -963,26 +963,26 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
   printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->scheduler_decision_time_usec, sptr->scheduler_decisions, sptr->scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
-  for (int ti = 0; ti < MAX_TASK_TYPES; ti++) {
+  for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", sptr->task_name_str[ti], sptr->allocated_metadata_blocks[ti], sptr->freed_metadata_blocks[ti]);
   }
   printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", sptr->allocated_metadata_blocks[NO_Task], sptr->freed_metadata_blocks[NO_Task]);
 
   printf("\nPer-MetaData-Block Scheduler Allocation/Frees by Job-Type Data:\n");
   printf("%6s ", "Block");
-  for (int ji = 1; ji < MAX_TASK_TYPES; ji++) {
+  for (int ji = 1; ji < sptr->limits.max_task_types; ji++) {
     printf("%12s_G %12s_F ", sptr->task_name_str[ji], sptr->task_name_str[ji]);
   }
   printf("\n");
-  unsigned type_gets[MAX_TASK_TYPES];
-  unsigned type_frees[MAX_TASK_TYPES];
-  for (int ji = 0; ji < MAX_TASK_TYPES; ji++) {
+  unsigned type_gets[sptr->limits.max_task_types];
+  unsigned type_frees[sptr->limits.max_task_types];
+  for (int ji = 0; ji < sptr->limits.max_task_types; ji++) {
     type_gets[ji] = 0;
     type_frees[ji] = 0;
   }
   for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
     printf("%6u ", bi);
-    for (int ji = 1; ji < MAX_TASK_TYPES; ji++) {
+    for (int ji = 1; ji < sptr->limits.max_task_types; ji++) {
       type_gets[ji]  += sptr->master_metadata_pool[bi].gets_by_type[ji];
       type_frees[ji] += sptr->master_metadata_pool[bi].frees_by_type[ji];
       printf("%14u %14u ", sptr->master_metadata_pool[bi].gets_by_type[ji], sptr->master_metadata_pool[bi].frees_by_type[ji]);
@@ -990,7 +990,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
     printf("\n");
   }
   printf("%6s ", "Total");
-  for (int ji = 1; ji < MAX_TASK_TYPES; ji++) {
+  for (int ji = 1; ji < sptr->limits.max_task_types; ji++) {
     printf("%14u %14u ", type_gets[ji], type_frees[ji]);
   }
   printf("\n");
@@ -1139,15 +1139,15 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
     }
     printf("\n");
   }
-  //unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
+  //unsigned allocated_metadata_blocks[sptr->limits.max_task_types];
   printf("Total Allocated MBs:  ");
-  for (int i = 0; i < MAX_TASK_TYPES; i++) {
+  for (int i = 0; i < sptr->limits.max_task_types; i++) {
     printf("( %s, %u ) ", sptr->task_name_str[i], sptr->allocated_metadata_blocks[i]);
   }
   printf("\n");
-  //unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+  //unsigned freed_metadata_blocks[sptr->limits.max_task_types];
   printf("Total Freed MBs:  ");
-  for (int i = 0; i < MAX_TASK_TYPES; i++) {
+  for (int i = 0; i < sptr->limits.max_task_types; i++) {
     printf("( %s, %u ) ", sptr->task_name_str[i], sptr->freed_metadata_blocks[i]);
   }
   printf("\n");
@@ -1159,12 +1159,12 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 	   sptr->master_metadata_pool[mbi].task_type, //task_name_str[sptr->master_metadata_pool[mbi].task_type],
 	   sptr->master_metadata_pool[mbi].crit_level);
     printf("  MB%u GETS:  ", mbi);
-    for (int i = 0; i < MAX_TASK_TYPES; i++) {
+    for (int i = 0; i < sptr->limits.max_task_types; i++) {
       printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].gets_by_type[i]);
     }
     printf("\n");
     printf("  MB%u FREES:  ", mbi);
-    for (int i = 0; i < MAX_TASK_TYPES; i++) {
+    for (int i = 0; i < sptr->limits.max_task_types; i++) {
       printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].frees_by_type[i]);
     }
     printf("\n");
@@ -1190,10 +1190,10 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information for this task
   task_id_t tid = sptr->next_avail_task_id;
-  if (tid < MAX_TASK_TYPES) {
+  if (tid < sptr->limits.max_task_types) {
     sptr->next_avail_task_id++;
   } else {
-    printf("Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", MAX_TASK_TYPES, tid);
+    printf("Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
     cleanup_and_exit(sptr, -31);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
