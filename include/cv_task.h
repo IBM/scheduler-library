@@ -37,16 +37,17 @@ typedef struct { // The "CV" Task view of "data"
 typedef struct {
   struct timeval call_start;
   struct timeval parse_start;
+  struct timeval time_val[MAX_TASK_TIMING_SETS-2];
 
-  unsigned comp_by[MAX_TASK_TARGETS];
+  unsigned comp_by[MAX_ACCEL_TYPES];
 
-  uint64_t call_sec[MAX_TASK_TARGETS];
-  uint64_t parse_sec[MAX_TASK_TARGETS];
-  uint64_t time_sec[(16-2)*MAX_TASK_TARGETS];
+  uint64_t call_sec[MAX_ACCEL_TYPES];
+  uint64_t parse_sec[MAX_ACCEL_TYPES];
+  uint64_t time_sec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 
-  uint64_t parse_usec[MAX_TASK_TARGETS];
-  uint64_t call_usec[MAX_TASK_TARGETS];
-  uint64_t time_usec[(16-2)*MAX_TASK_TARGETS];
+  uint64_t parse_usec[MAX_ACCEL_TYPES];
+  uint64_t call_usec[MAX_ACCEL_TYPES];
+  uint64_t time_usec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 } cv_timing_data_t;
 
 // These are some "fake" times (models the execution of CV timing)

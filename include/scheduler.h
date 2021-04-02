@@ -58,7 +58,6 @@ typedef unsigned  accel_select_policy_t;
 
 #define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
 #define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
-#define MAX_TASK_TARGETS   MAX_ACCEL_TYPES
 #define MAX_TASK_NAME_LEN   32
 #define MAX_TASK_DESC_LEN   256
 #define MAX_ACCEL_NAME_LEN   32
@@ -69,13 +68,12 @@ typedef unsigned  accel_select_policy_t;
 typedef struct {
   unsigned max_task_types;
   unsigned max_accel_types;
-  unsigned max_task_targets;
 
   unsigned max_task_name_len;
-  unsigned max_task_dec_len;
+  unsigned max_task_desc_len;
 
   unsigned max_accel_name_len;
-  unsigned max_accel_dec_len;
+  unsigned max_accel_desc_len;
 
   unsigned max_metadata_pool_blocks;
 
@@ -101,9 +99,9 @@ typedef struct {
 
 typedef struct { // This allows each task to track up to 16 total internal task timings...
   struct timeval time_val[MAX_TASK_TIMING_SETS];
-  unsigned comp_by[MAX_TASK_TARGETS]; 
-  uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_TASK_TARGETS];
-  uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_TASK_TARGETS];
+  unsigned comp_by[MAX_ACCEL_TYPES]; 
+  uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
+  uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
 } task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any job

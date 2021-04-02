@@ -43,13 +43,12 @@
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_types   = MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
-  .max_task_targets = MAX_ACCEL_TYPES,
 
   .max_task_name_len = MAX_TASK_NAME_LEN,
-  .max_task_dec_len  = MAX_TASK_DESC_LEN,
+  .max_task_desc_len  = MAX_TASK_DESC_LEN,
 
   .max_accel_name_len = MAX_ACCEL_NAME_LEN,
-  .max_accel_dec_len  = MAX_ACCEL_DESC_LEN,
+  .max_accel_desc_len  = MAX_ACCEL_DESC_LEN,
 
   .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
 
@@ -433,11 +432,10 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 {
   sched_state.limits.max_task_types            = inp->max_task_types;
   sched_state.limits.max_accel_types           = inp->max_accel_types;
-  sched_state.limits.max_task_targets          = inp->max_task_targets;
   sched_state.limits.max_task_name_len         = inp->max_task_name_len;
-  sched_state.limits.max_task_dec_len          = inp->max_task_dec_len;
+  sched_state.limits.max_task_desc_len         = inp->max_task_desc_len;
   sched_state.limits.max_accel_name_len        = inp->max_accel_name_len;
-  sched_state.limits.max_accel_dec_len         = inp->max_accel_dec_len;
+  sched_state.limits.max_accel_desc_len        = inp->max_accel_desc_len;
   sched_state.limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
   sched_state.limits.max_task_timing_sets      = inp->max_task_timing_sets;
 
@@ -450,7 +448,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   DEBUG(printf("In initialize...\n"));
   printf("In initialize: sizeof sched_state = %lu\n", sizeof(scheduler_datastate_block_t));
   // Currently we set this to a fixed a-priori number...
-  sptr->total_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS;
+  sptr->total_metadata_pool_blocks = sptr->limits.max_metadata_pool_blocks;
   
   sptr->next_avail_task_id  = 0;
   sptr->next_avail_accel_id = 0;
@@ -558,7 +556,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     sptr->master_metadata_pool[i].sched_timings.done_usec = 0;
     // Reset all the per-task type and targets timing data, too.
     for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
-      for (int tii = 0; tii < MAX_TASK_TARGETS; tii++) {
+      for (int tii = 0; tii < sptr->limits.max_accel_types; tii++) {
 	sptr->master_metadata_pool[i].task_timings[ti].comp_by[tii] = 0;
 	sptr->master_metadata_pool[i].task_timings[ti].time_sec[tii] = 0;
 	sptr->master_metadata_pool[i].task_timings[ti].time_usec[tii] = 0;
@@ -1196,8 +1194,8 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
     printf("Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
     cleanup_and_exit(sptr, -31);
   }
-  snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
-  snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", tinfo->description);
+  snprintf(sptr->task_name_str[tid], sptr->limits.max_task_name_len, "%s", tinfo->name);
+  snprintf(sptr->task_desc_str[tid], sptr->limits.max_task_desc_len, "%s", tinfo->description);
   sptr->output_task_run_stats_function[tid] =  tinfo->output_task_type_run_stats;
   
   return tid;
@@ -1222,8 +1220,8 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
     printf("Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding %u\n", sptr->limits.max_accel_types, acid);
     cleanup_and_exit(sptr, -32);
   }
-  snprintf(sptr->accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
-  snprintf(sptr->accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
+  snprintf(sptr->accel_name_str[acid], sptr->limits.max_accel_name_len, "%s", info->name);
+  snprintf(sptr->accel_desc_str[acid], sptr->limits.max_accel_desc_len, "%s", info->description);
   sptr->num_accelerators_of_type[acid]   = info->number_available;
   sptr->do_accel_init_function[acid]     = info->do_accel_initialization;
   sptr->do_accel_closeout_function[acid] = info->do_accel_closeout;
