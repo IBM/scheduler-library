@@ -407,6 +407,12 @@ metadata_thread_wait_for_task(void* void_parm_ptr)
 
 
 
+scheduler_datastate_block_t* get_new_scheduler_datastate()
+{
+  return &sched_state;
+}
+
+
 status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 {
   DEBUG(printf("In initialize...\n"));

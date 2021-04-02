@@ -185,7 +185,7 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 
 
 
-void set_up_scheduler_accelerators_and_tasks() {
+void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   printf("\nSetting up/Registering the ACCELERATORS...\n");
   accelerator_pool_defn_info_t accel_def;
 
@@ -195,7 +195,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_cpu_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_cpu_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_cpu_accel_type_run_stats;
-  cpu_accel_id = register_accelerator_pool(&sched_state, &accel_def);
+  cpu_accel_id = register_accelerator_pool(sptr, &accel_def);
 
   sprintf(accel_def.name, "VIT-HW-Acc");
   sprintf(accel_def.description, "Run task on the Viterbi-Decode Hardware Accelerator");
@@ -203,7 +203,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_vit_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_vit_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_vit_accel_type_run_stats;
-  vit_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
+  vit_hwr_accel_id = register_accelerator_pool(sptr, &accel_def);
 
   sprintf(accel_def.name, "FFT-HW-Acc");
   sprintf(accel_def.description, "Run task on the 1-D FFT Hardware Accelerator");
@@ -211,7 +211,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_fft_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_fft_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_fft_accel_type_run_stats;
-  fft_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
+  fft_hwr_accel_id = register_accelerator_pool(sptr, &accel_def);
 
   sprintf(accel_def.name, "CV-HW-Acc");
   sprintf(accel_def.description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
@@ -219,7 +219,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_cv_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_cv_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_cv_accel_type_run_stats;
-  cv_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
+  cv_hwr_accel_id = register_accelerator_pool(sptr, &accel_def);
 
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
@@ -229,31 +229,31 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
   task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
   task_defn.output_task_type_run_stats  = NULL;
-  no_task_id = register_task_type(&sched_state, &task_defn);
+  no_task_id = register_task_type(sptr, &task_defn);
 
   sprintf(task_defn.name, "VIT-Task");
   sprintf(task_defn.description, "A Viterbi Decoding task to execute");
   task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
-  vit_task_id = register_task_type(&sched_state, &task_defn);
-  register_accel_can_exec_task(&sched_state, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(&sched_state, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
+  vit_task_id = register_task_type(sptr, &task_defn);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
 
   sprintf(task_defn.name, "CV-Task");
   sprintf(task_defn.description, "A CV/CNN task to execute");
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
-  cv_task_id = register_task_type(&sched_state, &task_defn);
-  register_accel_can_exec_task(&sched_state, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(&sched_state, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
+  cv_task_id = register_task_type(sptr, &task_defn);
+  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
 
   sprintf(task_defn.name, "FFT-Task");
   sprintf(task_defn.description, "A 1-D FFT task to execute");
   task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  fft_task_id = register_task_type(&sched_state, &task_defn);
-  register_accel_can_exec_task(&sched_state, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(&sched_state, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+  fft_task_id = register_task_type(sptr, &task_defn);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
 
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
@@ -262,7 +262,7 @@ void set_up_scheduler_accelerators_and_tasks() {
 int main(int argc, char *argv[])
 {
   // Get a scheduler_datastate_block
-  scheduler_datastate_block_t* sptr = &sched_state;
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate();
   
   vehicle_state_t vehicle_state;
   label_t label;
@@ -539,7 +539,7 @@ int main(int argc, char *argv[])
   initialize_scheduler(sptr);
 
   // Set up the Accelerators for this application
-  set_up_scheduler_accelerators_and_tasks();
+  set_up_scheduler_accelerators_and_tasks(sptr);
 
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
@@ -676,7 +676,7 @@ int main(int argc, char *argv[])
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
  #else //TRACE DRIVEN MODE
-  read_next_trace_record(&sched_state, vehicle_state);
+  read_next_trace_record(sptr, vehicle_state);
   while ((time_step < max_time_steps) && (!eof_trace_reader()))
  #endif
   {

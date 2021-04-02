@@ -262,7 +262,9 @@ typedef struct scheduler_datastate_block_struct {
 
 } scheduler_datastate_block_t;
 
-extern scheduler_datastate_block_t sched_state;
+//extern scheduler_datastate_block_t sched_state;
+
+extern scheduler_datastate_block_t* get_new_scheduler_datastate();
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 
