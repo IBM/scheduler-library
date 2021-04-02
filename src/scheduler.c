@@ -441,10 +441,10 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   snprintf(sptr->scheduler_selection_policy_str[2], 64, "%s", "Fastest_Finish_Time_First");
   snprintf(sptr->scheduler_selection_policy_str[3], 64, "%s", "Fastest_Finish_Time_First_Queued");
   
-  // Initialize statistics
-  sptr->decision_stats.scheduler_decision_time_usec = 0;
-  sptr->decision_stats.scheduler_decisions          = 0;
-  sptr->decision_stats.scheduler_decision_checks    = 0;
+  // Initialize scheduler-decision statistics
+  sptr->scheduler_decision_time_usec = 0;
+  sptr->scheduler_decisions          = 0;
+  sptr->scheduler_decision_checks    = 0;
 
 
   // Dynamically load the scheduling policy (plug-in) to use, and initialize it
@@ -455,7 +455,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     cleanup_and_exit(sptr, -1);
   }
 
-  sptr->initialize_policy = dlsym(sptr->policy_handle, "initialize_policy");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_policy() not found in scheduling policy %s\n", policy_filename);
@@ -468,9 +467,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
     cleanup_and_exit(sptr, -1);
   }
-
-  sptr->initialize_policy(&(sptr->decision_stats));
-
 
   int parms_error = 0;
   if (MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL) {
@@ -926,7 +922,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
-  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->decision_stats.scheduler_decision_time_usec, sptr->decision_stats.scheduler_decisions, sptr->decision_stats.scheduler_decision_checks);
+  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->scheduler_decision_time_usec, sptr->scheduler_decisions, sptr->scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < MAX_TASK_TYPES; ti++) {

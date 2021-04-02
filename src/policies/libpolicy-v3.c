@@ -19,19 +19,6 @@
 #include "scheduler.h"
 #include "verbose.h"
 
-// Scheduler Library statistics
-stats_t* stats;
-
-status_t initialize_policy(stats_t* s)
-{
-  if (s == NULL)
-    return error;
-  stats = s;
-
-  return success;
-}
-
-
 // This is an accelerator selection policy that prefers the accelerator target that results in earliest projected finish time.
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of job, AND the proposed accelerator's finish time is earlier than any
@@ -104,12 +91,12 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
               DEBUG(printf("SCHED-FFFQ:   SELECT: acc_ty %u acc_id %u proj_finish_time %lu\n", accel_type, accel_id, proj_finish_time));
             }
             i++;
-            stats->scheduler_decision_checks += i;
+            sptr->scheduler_decision_checks += i;
           } // while (i < num_accelerators_of_type
         } // if (accelerator can execute this task_type)
       } // for (int check_accel = ...
       // At this point, we must have a "best" accelerator selected for this task
-      stats->scheduler_decisions++;
+      sptr->scheduler_decisions++;
       if ((accel_type == NO_Accelerator) || (accel_id == -1)) {
         printf("SCHED-FFFQ: ERROR: Ready Task Queue entry %u Task Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], accel_type, accel_id);
         //pthread_mutex_unlock(&schedule_from_queue_mutex);

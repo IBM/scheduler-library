@@ -39,22 +39,6 @@ unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101
 #endif
 
 
-// Scheduler Library statistics
-stats_t* stats = NULL;
-
-status_t initialize_policy(stats_t* s)
-{
-  if (s == NULL) {
-      printf("Error: stats == NULL received in policy initialization routine\n");
-    return error;
-  }
-  stats = s;
-  printf("Policy initialized\n");
-
-  return success;
-}
-
-
 // This is a basic accelerator selection policy:
 //   This one selects an accelerator type (HWR or CPU) randomly
 //   If an accelerators of that type is not available, it waits until it is.
@@ -94,7 +78,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
       }
-      stats->scheduler_decision_checks++;
+      sptr->scheduler_decision_checks++;
     }
   } else {
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
@@ -107,9 +91,9 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
  #ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  stats->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  sptr->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
  #endif
-  stats->scheduler_decisions++;
+  sptr->scheduler_decisions++;
   do {
     int i = 0;
     while ((i < sptr->num_accelerators_of_type[proposed_accel]) && (accel_id < 0)) {

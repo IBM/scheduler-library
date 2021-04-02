@@ -181,14 +181,6 @@ typedef struct accel_pool_defn_info_struct {
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
-// This is a typedef for the different statistics that we keep track of within the scheduler library.
-// The scheduling policies receive a reference to this structure as part of their init() functions.
-typedef struct {
-  uint64_t scheduler_decision_time_usec;
-  uint64_t scheduler_decisions;
-  uint64_t scheduler_decision_checks;
-} stats_t; 
-
 typedef struct scheduler_datastate_block_struct {
   task_id_t next_avail_task_id;
   accelerator_type_t next_avail_accel_id;
@@ -197,8 +189,6 @@ typedef struct scheduler_datastate_block_struct {
 
   // Handle for the dynamically loaded policy
   void *policy_handle;
-  // Function pointer for the policy's initialize_policy() function
-  status_t (*initialize_policy)(stats_t* stats);
   // Function pointer for the policy's assign_task_to_pe() function
   ready_mb_task_queue_entry_t *
   (*assign_task_to_pe)(struct scheduler_datastate_block_struct* sptr, ready_mb_task_queue_entry_t* ready_task_entry);
@@ -244,7 +234,7 @@ typedef struct scheduler_datastate_block_struct {
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
   char scheduler_selection_policy_str[NUM_SELECTION_POLICIES][64];
-  
+
   // This is a table of the execution functions for the various Task Types in the scheduler
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
@@ -266,9 +256,12 @@ typedef struct scheduler_datastate_block_struct {
   uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
 
   // Scheduler Library statistics
-  stats_t decision_stats;
+  uint64_t scheduler_decision_time_usec;
+  uint64_t scheduler_decisions;
+  uint64_t scheduler_decision_checks;
+
 } scheduler_datastate_block_t;
-  
+
 extern scheduler_datastate_block_t sched_state;
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);

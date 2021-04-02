@@ -20,19 +20,6 @@
 #include "verbose.h"
 
 
-// Scheduler Library statistics
-stats_t* stats;
-
-status_t initialize_policy(stats_t* s)
-{
-  if (s == NULL)
-    return error;
-  stats = s;
-
-  return success;
-}
-
-
 // This is a basic accelerator selection policy:
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of task, AND the proposed accelerator is FASTER than any
@@ -84,7 +71,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
                 DEBUG(printf("F2S_FA:   SELECT: prop_acc %u acc_ty %u acc_id %u prop_time %lu\n", proposed_accel, accel_type, accel_id, prop_time));
               }
               i++;
-              stats->scheduler_decision_checks += i;
+              sptr->scheduler_decision_checks += i;
             }
           } // if (accelerator is currently available)
         } // if (accelerator can execute this task_type)
@@ -98,9 +85,9 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
  #ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  stats->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  sptr->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
  #endif
-  stats->scheduler_decisions++;
+  sptr->scheduler_decisions++;
   // Okay, here we should have a good task to schedule... and knwo the accelerator is available.
   task_metadata_block->accelerator_type = accel_type;
   task_metadata_block->accelerator_id = accel_id;
