@@ -91,9 +91,9 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
 {
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_id, sptr->task_name_str[my_task_id], sptr->freed_metadata_blocks[my_task_id], total_accel_types);
   // The Viterbi Task Timing Info
-  unsigned total_vit_comp_by[total_accel_types];
-  uint64_t total_depunc_usec[total_accel_types];
-  uint64_t total_dodec_usec[total_accel_types];
+  unsigned total_vit_comp_by[total_accel_types+1];
+  uint64_t total_depunc_usec[total_accel_types+1];
+  uint64_t total_dodec_usec[total_accel_types+1];
   for (int ai = 0; ai <= total_accel_types; ai++) {
     total_vit_comp_by[ai] = 0;
     total_depunc_usec[ai] = 0;
