@@ -27,7 +27,7 @@
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-
+// These are "global" Scheduler-defined fields, etc.
 enum { NO_Task = -1} task_id_enum_t;
 typedef int task_id_t;
 
@@ -54,8 +54,9 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
 
-#define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
-#define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
+// These are fields defined by the application when it gets/sets up a new cheduler datastate block
+#define MAX_TASK_TYPES     4
+#define MAX_ACCEL_TYPES    5
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
 #define MAX_DATA_SPACE_BYTES   128*1024
