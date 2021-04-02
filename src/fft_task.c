@@ -101,11 +101,11 @@ void fft_bit_reverse(float *w, unsigned int n, unsigned int bits)
   }
 }
 
-static void fft_in_hw(int *fd, struct fftHW_access *desc)
+static void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
 {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("ERROR : fft_in_hw : IOCTL:");
-    cleanup_and_exit(EXIT_FAILURE);
+    cleanup_and_exit(sptr, EXIT_FAILURE);
   }
 }
 #endif
@@ -325,7 +325,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
  #endif // INT_TIME
   DEBUG(printf("EHFA:   MB%u calling the HW_FFT[%u]\n", task_metadata_block->block_id, fn));
-  fft_in_hw(&(fftHW_fd[fn]), &(fftHW_desc[fn]));
+  fft_in_hw(sptr, &(fftHW_fd[fn]), &(fftHW_desc[fn]));
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);

@@ -164,8 +164,8 @@ typedef struct task_type_defn_info_struct {
 } task_type_defn_info_t;
 
 // These are function pointer prototype declaration types, used for the regsiter_accelerator_type routine.
-typedef void (*do_accel_initialization_t)(void*);
-typedef void (*do_accel_closeout_t)(void*);
+typedef void (*do_accel_initialization_t)(struct scheduler_datastate_block_struct* sptr);
+typedef void (*do_accel_closeout_t)(struct scheduler_datastate_block_struct* sptr);
 typedef void (*output_accel_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 // This typedef defines a structure used to describe a accelerator (for the register_accelerator_type routine)

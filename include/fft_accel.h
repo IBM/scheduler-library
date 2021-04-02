@@ -45,8 +45,8 @@ extern size_t fftHW_size[NUM_FFT_ACCEL];
 extern struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 #endif
 
-void do_fft_accel_type_initialization();
-void do_fft_accel_type_closeout();
-void output_fft_accel_type_run_stats();
+void do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr);
+void do_fft_accel_type_closeout(scheduler_datastate_block_t* sptr);
+void output_fft_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

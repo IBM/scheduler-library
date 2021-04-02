@@ -101,7 +101,7 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 
 
 void
-do_fft_accel_type_initialization()
+do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr)
 {
  #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
@@ -116,14 +116,14 @@ do_fft_accel_type_initialization()
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
       fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
-      cleanup_and_exit(EXIT_FAILURE);
+      cleanup_and_exit(sptr, EXIT_FAILURE);
     }
 
     printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
     fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
     if (fftHW_lmem[fi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
-      cleanup_and_exit(EXIT_FAILURE);
+      cleanup_and_exit(sptr, EXIT_FAILURE);
     }
 
     fftHW_li_mem[fi] = &(fftHW_lmem[fi][0]);
@@ -156,7 +156,7 @@ do_fft_accel_type_initialization()
 
 
 void
-do_fft_accel_type_closeout()
+do_fft_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
 {
   // Clean up any hardware accelerator stuff
  #ifdef HW_FFT
@@ -169,7 +169,7 @@ do_fft_accel_type_closeout()
 
 
 void
-output_fft_accel_type_run_stats(unsigned my_accel_id, unsigned total_task_types)
+output_fft_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
 {
   ; // Nothing to do here (yet)
 }
