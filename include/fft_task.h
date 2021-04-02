@@ -49,29 +49,29 @@ typedef struct {
   struct timeval fft_comp_start;
   struct timeval fft_cvtout_start;
   struct timeval cdfmcw_start;
-  struct timeval time_val[16-8];
+  struct timeval time_val[MAX_TASK_TIMING_SETS-8];
 
-  unsigned comp_by[MAX_TASK_TARGETS];
+  unsigned comp_by[MAX_ACCEL_TYPES];
 
-  uint64_t call_sec[MAX_TASK_TARGETS];
-  uint64_t fft_sec[MAX_TASK_TARGETS];
-  uint64_t fft_br_sec[MAX_TASK_TARGETS];
-  uint64_t bitrev_sec[MAX_TASK_TARGETS];
-  uint64_t fft_cvtin_sec[MAX_TASK_TARGETS];
-  uint64_t fft_comp_sec[MAX_TASK_TARGETS];
-  uint64_t fft_cvtout_sec[MAX_TASK_TARGETS];
-  uint64_t cdfmcw_sec[MAX_TASK_TARGETS];
-  uint64_t time_sec[(16-8)*MAX_TASK_TARGETS];
+  uint64_t call_sec[MAX_ACCEL_TYPES];
+  uint64_t fft_sec[MAX_ACCEL_TYPES];
+  uint64_t fft_br_sec[MAX_ACCEL_TYPES];
+  uint64_t bitrev_sec[MAX_ACCEL_TYPES];
+  uint64_t fft_cvtin_sec[MAX_ACCEL_TYPES];
+  uint64_t fft_comp_sec[MAX_ACCEL_TYPES];
+  uint64_t fft_cvtout_sec[MAX_ACCEL_TYPES];
+  uint64_t cdfmcw_sec[MAX_ACCEL_TYPES];
+  uint64_t time_sec[(MAX_TASK_TIMING_SETS-8)*MAX_ACCEL_TYPES];
   
-  uint64_t call_usec[MAX_TASK_TARGETS];
-  uint64_t fft_usec[MAX_TASK_TARGETS];
-  uint64_t fft_br_usec[MAX_TASK_TARGETS];
-  uint64_t bitrev_usec[MAX_TASK_TARGETS];
-  uint64_t fft_cvtin_usec[MAX_TASK_TARGETS];
-  uint64_t fft_comp_usec[MAX_TASK_TARGETS];
-  uint64_t fft_cvtout_usec[MAX_TASK_TARGETS];
-  uint64_t cdfmcw_usec[MAX_TASK_TARGETS];
-  uint64_t time_usec[(16-8)*MAX_TASK_TARGETS];
+  uint64_t call_usec[MAX_ACCEL_TYPES];
+  uint64_t fft_usec[MAX_ACCEL_TYPES];
+  uint64_t fft_br_usec[MAX_ACCEL_TYPES];
+  uint64_t bitrev_usec[MAX_ACCEL_TYPES];
+  uint64_t fft_cvtin_usec[MAX_ACCEL_TYPES];
+  uint64_t fft_comp_usec[MAX_ACCEL_TYPES];
+  uint64_t fft_cvtout_usec[MAX_ACCEL_TYPES];
+  uint64_t cdfmcw_usec[MAX_ACCEL_TYPES];
+  uint64_t time_usec[(MAX_TASK_TIMING_SETS-8)*MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb);

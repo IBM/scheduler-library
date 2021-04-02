@@ -185,7 +185,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
       total_fft_cvtout_usec[total_accel_types] += this_fft_cvtout_usec;
       total_cdfmcw_usec[total_accel_types]     += this_cdfmcw_usec;
     } // for (bi over Metadata blocks)
-  } // for (ti = 0 .. num_task_types)    
+  } // for (ai = 0 .. total_accel_types)
 
   printf("\nAggregate TID %u %s  Tasks Total Timing Data: %u finished FFT tasks\n", my_task_id, sptr->task_name_str[my_task_id],sptr->freed_metadata_blocks[my_task_id]);
   printf("     fft-call run time    ");
