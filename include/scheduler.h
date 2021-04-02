@@ -48,29 +48,26 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
+#define MAX_TASK_NAME_LEN   32
+#define MAX_TASK_DESC_LEN   256
+
+#define MAX_ACCEL_NAME_LEN   32
+#define MAX_ACCEL_DESC_LEN   256
 
 #define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
 #define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
-#define MAX_TASK_NAME_LEN   32
-#define MAX_TASK_DESC_LEN   256
-#define MAX_ACCEL_NAME_LEN   32
-#define MAX_ACCEL_DESC_LEN   256
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
+#define MAX_DATA_SPACE_BYTES   128*1024
 
 typedef struct {
   unsigned max_task_types;
   unsigned max_accel_types;
 
-  unsigned max_task_name_len;
-  unsigned max_task_desc_len;
-
-  unsigned max_accel_name_len;
-  unsigned max_accel_desc_len;
-
   unsigned max_metadata_pool_blocks;
 
   unsigned max_task_timing_sets;
+  unsigned max_data_space_bytes;
 } scheduler_get_datastate_in_parms_t;
 
 
@@ -85,7 +82,8 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec[MAX_ACCEL_TYPES], running_usec[MAX_ACCEL_TYPES];
+  uint64_t running_sec[MAX_ACCEL_TYPES];
+  uint64_t running_usec[MAX_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
@@ -136,7 +134,7 @@ typedef struct task_metadata_entry_struct {
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[128*1024];     // 128 KB is the current MAX data size for all jobs
+  uint8_t  data_space[MAX_DATA_SPACE_BYTES];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
@@ -176,8 +174,8 @@ typedef struct accel_pool_defn_info_struct {
   do_accel_closeout_t             do_accel_closeout;
   output_accel_run_stats_t        output_accel_run_stats;
   unsigned                        number_available;
-  char                            name[32];
-  char                            description[256];
+  char                            name[MAX_ACCEL_NAME_LEN];
+  char                            description[MAX_ACCEL_DESC_LEN];
 } accelerator_pool_defn_info_t;
 
 
