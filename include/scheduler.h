@@ -49,13 +49,6 @@ typedef enum { TASK_FREE = 0,
 	       NUM_TASK_STATUS} task_status_t;
 
 
-typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-	       FASTEST_FINISH_TIME_FIRST_POLICY,
-	       FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-	       NUM_SELECTION_POLICIES } accel_select_policy_enum_t;
-typedef unsigned  accel_select_policy_t;
-
 #define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
 #define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
 #define MAX_TASK_NAME_LEN   32
@@ -211,8 +204,8 @@ typedef struct scheduler_datastate_block_struct {
   task_metadata_block_t master_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
-  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
   int free_metadata_blocks;
+  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
   unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
   unsigned freed_metadata_blocks[MAX_TASK_TYPES];
 
@@ -231,8 +224,8 @@ typedef struct scheduler_datastate_block_struct {
   //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
   pthread_t scheduling_thread;
 
-  blockid_linked_list_t critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
   blockid_linked_list_t* critical_live_task_head;
+  blockid_linked_list_t  critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
   int free_critlist_pool[GLOBAL_METADATA_POOL_BLOCKS];
   int free_critlist_entries;
   int total_critical_tasks;
@@ -245,7 +238,6 @@ typedef struct scheduler_datastate_block_struct {
 
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
-  char scheduler_selection_policy_str[NUM_SELECTION_POLICIES][64];
 
   // This is a table of the execution functions for the various Task Types in the scheduler
   //  We set this up with one "set" of entries per JOB_TYPE

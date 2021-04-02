@@ -45,10 +45,10 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_accel_types  = MAX_ACCEL_TYPES,
 
   .max_task_name_len = MAX_TASK_NAME_LEN,
-  .max_task_desc_len  = MAX_TASK_DESC_LEN,
+  .max_task_desc_len = MAX_TASK_DESC_LEN,
 
   .max_accel_name_len = MAX_ACCEL_NAME_LEN,
-  .max_accel_desc_len  = MAX_ACCEL_DESC_LEN,
+  .max_accel_desc_len = MAX_ACCEL_DESC_LEN,
 
   .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
 
@@ -472,11 +472,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   snprintf(sptr->task_status_str[3], 32, "%s", "TASK-RUNING");
   snprintf(sptr->task_status_str[4], 32, "%s", "TASK-DONE");
 
-  snprintf(sptr->scheduler_selection_policy_str[0], 64, "%s", "Select_Accelerator_Type_and_Wait_Available");
-  snprintf(sptr->scheduler_selection_policy_str[1], 64, "%s", "Fastest_to_Slowest_First_Available");
-  snprintf(sptr->scheduler_selection_policy_str[2], 64, "%s", "Fastest_Finish_Time_First");
-  snprintf(sptr->scheduler_selection_policy_str[3], 64, "%s", "Fastest_Finish_Time_First_Queued");
-  
   // Initialize scheduler-decision statistics
   sptr->scheduler_decision_time_usec = 0;
   sptr->scheduler_decisions          = 0;
@@ -742,7 +737,6 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
       // Select the target accelerator to execute the task
       DEBUG(printf("SCHED: calling assign_task_to_pe\n"));
       //Pass the head of the ready queue to parse entries in the queue
-      //selected_task_entry = select_task_and_target_accelerator(global_scheduler_selection_policy, ready_task_entry);
       selected_task_entry = sptr->assign_task_to_pe(sptr, ready_task_entry);
       if (selected_task_entry == NULL) {
         //No schedulable task
