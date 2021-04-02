@@ -44,8 +44,8 @@ extern size_t vitHW_size[NUM_VIT_ACCEL];
 extern struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 #endif
 
-void do_vit_accel_type_initialization();
-void do_vit_accel_type_closeout();
-void output_vit_accel_type_run_stats();
+void do_vit_accel_type_initialization(scheduler_datastate_block_t* sptr);
+void do_vit_accel_type_closeout(scheduler_datastate_block_t* sptr);
+void output_vit_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

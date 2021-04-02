@@ -107,31 +107,30 @@ extern unsigned int radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
 
 
 /* Input Trace Functions */
-status_t init_trace_reader(char * tr_fn);
-bool_t eof_trace_reader(void);
-bool_t read_next_trace_record(vehicle_state_t vs);
-void closeout_trace_reader(void);
+#ifndef USE_SIM_ENVIRON
+ #include "read_trace.h"
+#endif
 
 /* Kernels initialization */
-status_t init_cv_kernel(char* py_file, char* dict_fn);
-status_t init_rad_kernel(char* dict_fn);
-status_t init_vit_kernel(char* dict_fn);
+status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn);
+status_t init_rad_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
+status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
 
 
 label_t run_object_classification(unsigned tr_val);
-label_t iterate_cv_kernel(vehicle_state_t vs);
+label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
 void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val);
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr);
 void    post_execute_cv_kernel(label_t tr_val, label_t d_object);
 
-radar_dict_entry_t* iterate_rad_kernel(vehicle_state_t vs);
+radar_dict_entry_t* iterate_rad_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
 radar_dict_entry_t* select_random_radar_input();
 radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p);
 void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t fft_log_nsamples, float * inputs);
 distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr);
 void       post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist);
 
-vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs);
+vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num);
 vit_dict_entry_t* select_random_vit_input();
 void start_execution_of_vit_kernel(task_metadata_block_t* mb_ptr, vit_dict_entry_t* trace_msg);

@@ -20,7 +20,7 @@ extern FILE *input_trace;
 
 
 status_t init_trace_reader(char* trace_filename);
-bool_t read_next_trace_record(vehicle_state_t vs);
+bool_t read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
 bool_t eof_trace_reader();
 void closeout_trace_reader();
 

@@ -36,6 +36,13 @@
 #include "sim_environs.h"
 #include "getopt.h"
 
+/* Input Trace Functions */
+#ifndef USE_SIM_ENVIRON
+ #include "read_trace.h"
+#else
+ #include "sim_environs.h"
+#endif
+
 #define TIME
 
 #define get_mb_holdoff 10  // usec
@@ -188,7 +195,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_cpu_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_cpu_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_cpu_accel_type_run_stats;
-  cpu_accel_id = register_accelerator_pool(&accel_def);
+  cpu_accel_id = register_accelerator_pool(&sched_state, &accel_def);
 
   sprintf(accel_def.name, "VIT-HW-Acc");
   sprintf(accel_def.description, "Run task on the Viterbi-Decode Hardware Accelerator");
@@ -196,7 +203,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_vit_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_vit_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_vit_accel_type_run_stats;
-  vit_hwr_accel_id = register_accelerator_pool(&accel_def);
+  vit_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
 
   sprintf(accel_def.name, "FFT-HW-Acc");
   sprintf(accel_def.description, "Run task on the 1-D FFT Hardware Accelerator");
@@ -204,7 +211,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_fft_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_fft_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_fft_accel_type_run_stats;
-  fft_hwr_accel_id = register_accelerator_pool(&accel_def);
+  fft_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
 
   sprintf(accel_def.name, "CV-HW-Acc");
   sprintf(accel_def.description, "Run task on the CV/CNN NVDLA Hardware Accelerator");
@@ -212,7 +219,7 @@ void set_up_scheduler_accelerators_and_tasks() {
   accel_def.do_accel_initialization = &do_cv_accel_type_initialization;
   accel_def.do_accel_closeout       = &do_cv_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_cv_accel_type_run_stats;
-  cv_hwr_accel_id = register_accelerator_pool(&accel_def);
+  cv_hwr_accel_id = register_accelerator_pool(&sched_state, &accel_def);
 
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
@@ -222,31 +229,31 @@ void set_up_scheduler_accelerators_and_tasks() {
   sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
   task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
   task_defn.output_task_type_run_stats  = NULL;
-  no_task_id = register_task_type(&task_defn);
+  no_task_id = register_task_type(&sched_state, &task_defn);
 
   sprintf(task_defn.name, "VIT-Task");
   sprintf(task_defn.description, "A Viterbi Decoding task to execute");
   task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
-  vit_task_id = register_task_type(&task_defn);
-  register_accel_can_exec_task(cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
+  vit_task_id = register_task_type(&sched_state, &task_defn);
+  register_accel_can_exec_task(&sched_state, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(&sched_state, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
 
   sprintf(task_defn.name, "CV-Task");
   sprintf(task_defn.description, "A CV/CNN task to execute");
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
-  cv_task_id = register_task_type(&task_defn);
-  register_accel_can_exec_task(cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
+  cv_task_id = register_task_type(&sched_state, &task_defn);
+  register_accel_can_exec_task(&sched_state, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(&sched_state, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
 
   sprintf(task_defn.name, "FFT-Task");
   sprintf(task_defn.description, "A 1-D FFT task to execute");
   task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  fft_task_id = register_task_type(&task_defn);
-  register_accel_can_exec_task(cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+  fft_task_id = register_task_type(&sched_state, &task_defn);
+  register_accel_can_exec_task(&sched_state, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(&sched_state, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
 
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
@@ -254,6 +261,9 @@ void set_up_scheduler_accelerators_and_tasks() {
 
 int main(int argc, char *argv[])
 {
+  // Get a scheduler_datastate_block
+  scheduler_datastate_block_t* sptr = &sched_state;
+  
   vehicle_state_t vehicle_state;
   label_t label;
   distance_t distance;
@@ -310,7 +320,7 @@ int main(int argc, char *argv[])
       bypass_h264_functions = true;
       break;
     case 'u':
-      scheduler_holdoff_usec = atoi(optarg);
+      sptr->scheduler_holdoff_usec = atoi(optarg);
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -357,7 +367,7 @@ int main(int argc, char *argv[])
       additional_cv_tasks_per_time_step = atoi(optarg);
       break;
     case 'P':
-      snprintf(policy, 255, "%s", optarg);
+      snprintf(sptr->policy, 255, "%s", optarg);
       //global_scheduler_selection_policy = atoi(optarg);
       break;
 
@@ -416,9 +426,9 @@ int main(int argc, char *argv[])
 //	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
 //	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-	 policy,
+	 sptr->policy,
 	 accel_limit_cpu, accel_limit_fft, accel_limit_vit, accel_limit_cv, 
-	 scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+	sptr-> scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
 
   #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
@@ -519,14 +529,14 @@ int main(int argc, char *argv[])
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
-  if (policy[0] == '\0') {
+  if (sptr->policy[0] == '\0') {
     printf("Error: a policy was not specified. Use -P to define the task scheduling policy to use.\n");
     print_usage(argv[0]);
     return 1;
   }
 
   printf("Doing initialization tasks...\n");
-  initialize_scheduler();
+  initialize_scheduler(sptr);
 
   // Set up the Accelerators for this application
   set_up_scheduler_accelerators_and_tasks();
@@ -554,19 +564,19 @@ int main(int argc, char *argv[])
       }**/
 
   printf("Initializing the CV kernel...\n");
-  if (!init_cv_kernel(cv_py_file, cv_dict))
+  if (!init_cv_kernel(sptr, cv_py_file, cv_dict))
   {
     printf("Error: the computer vision kernel couldn't be initialized properly.\n");
     return 1;
   }
   printf("Initializing the Radar kernel...\n");
-  if (!init_rad_kernel(rad_dict))
+  if (!init_rad_kernel(sptr, rad_dict))
   {
     printf("Error: the radar kernel couldn't be initialized properly.\n");
     return 1;
   }
   printf("Initializing the Viterbi kernel...\n");
-  if (!init_vit_kernel(vit_dict))
+  if (!init_vit_kernel(sptr, vit_dict))
   {
     printf("Error: the Viterbi decoding kernel couldn't be initialized properly.\n");
     return 1;
@@ -575,13 +585,13 @@ int main(int argc, char *argv[])
   if (crit_fft_samples_set >= num_radar_samples_sets) {
     printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
     print_usage(argv[0]);
-    cleanup_and_exit(-1);
+    cleanup_and_exit(sptr, -1);
   }
     
 //  if (global_scheduler_selection_policy > NUM_SELECTION_POLICIES) {
 //    printf("ERROR : Selected Scheduler Policy (%u) is larger than number of policies (%u)\n", global_scheduler_selection_policy, NUM_SELECTION_POLICIES);
 //    print_usage(argv[0]);
-//    cleanup_and_exit(-1);
+//    cleanup_and_exit(sptr, -1);
 //  }
 //  printf("Scheduler is using Policy %u : %s\n", global_scheduler_selection_policy, scheduler_selection_policy_str[global_scheduler_selection_policy]);
   
@@ -597,7 +607,7 @@ int main(int argc, char *argv[])
   #ifdef USE_SIM_ENVIRON
   // In simulation mode, we could start the main car is a different state (lane, speed)
   if (init_sim_environs(world_desc_file_name, &vehicle_state) == error) {
-    cleanup_and_exit(-1);
+    cleanup_and_exit(sptr, -1);
   }
   #endif
 
@@ -659,15 +669,14 @@ int main(int argc, char *argv[])
   /* The input trace contains the per-epoch (time-step) input data */
  #ifdef TIME
   gettimeofday(&start_prog, NULL);
-  init_accelerators_in_use_interval(start_prog);
+  init_accelerators_in_use_interval(sptr, start_prog);
  #endif
   
  #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
  #else //TRACE DRIVEN MODE
-
-  read_next_trace_record(vehicle_state);
+  read_next_trace_record(&sched_state, vehicle_state);
   while ((time_step < max_time_steps) && (!eof_trace_reader()))
  #endif
   {
@@ -683,7 +692,7 @@ int main(int argc, char *argv[])
    #endif
     h264_dict_entry_t* hdep = 0x0;
     if (!bypass_h264_functions) {
-      hdep = iterate_h264_kernel(vehicle_state);
+      hdep = iterate_h264_kernel(sptr, vehicle_state);
     }
    #ifdef TIME
     gettimeofday(&stop_iter_h264, NULL);
@@ -698,7 +707,7 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_iter_cv, NULL);
    #endif
-    label_t cv_tr_label = iterate_cv_kernel(vehicle_state);
+    label_t cv_tr_label = iterate_cv_kernel(sptr, vehicle_state);
    #ifdef TIME
     gettimeofday(&stop_iter_cv, NULL);
     iter_cv_sec  += stop_iter_cv.tv_sec  - start_iter_cv.tv_sec;
@@ -711,7 +720,7 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_iter_rad, NULL);
    #endif
-    radar_dict_entry_t* rdentry_p = iterate_rad_kernel(vehicle_state);
+    radar_dict_entry_t* rdentry_p = iterate_rad_kernel(sptr, vehicle_state);
    #ifdef TIME
     gettimeofday(&stop_iter_rad, NULL);
     iter_rad_sec  += stop_iter_rad.tv_sec  - start_iter_rad.tv_sec;
@@ -730,7 +739,7 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_iter_vit, NULL);
    #endif
-    vit_dict_entry_t* vdentry_p = iterate_vit_kernel(vehicle_state);
+    vit_dict_entry_t* vdentry_p = iterate_vit_kernel(sptr, vehicle_state);
    #ifdef TIME
     gettimeofday(&stop_iter_vit, NULL);
     iter_vit_sec  += stop_iter_vit.tv_sec  - start_iter_vit.tv_sec;
@@ -761,7 +770,7 @@ int main(int argc, char *argv[])
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
       do {
-        cv_mb_ptr = get_task_metadata_block(cv_task_id, CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(sptr, cv_task_id, CRITICAL_TASK, cv_profile);
 	usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -773,7 +782,7 @@ int main(int argc, char *argv[])
       if (cv_mb_ptr == NULL) {
         // We ran out of metadata blocks -- PANIC!
         printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states();
+	dump_all_metadata_blocks_states(sptr);
         exit (-4);
       }
       cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
@@ -788,7 +797,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
       do {
-        fft_mb_ptr = get_task_metadata_block(fft_task_id, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(sptr, fft_task_id, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -801,7 +810,7 @@ int main(int argc, char *argv[])
     if (fft_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
-      dump_all_metadata_blocks_states();
+      dump_all_metadata_blocks_states(sptr);
       exit (-4);
     }
     fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
@@ -814,7 +823,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
     do {
-      vit_mb_ptr = get_task_metadata_block(vit_task_id, CRITICAL_TASK, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(sptr, vit_task_id, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -826,7 +835,7 @@ int main(int argc, char *argv[])
     if (vit_mb_ptr == NULL) {
       // We ran out of metadata blocks -- PANIC!
       printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states();
+      dump_all_metadata_blocks_states(sptr);
       exit (-4);
     }
     vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
@@ -844,7 +853,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(cv_task_id, BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(sptr, cv_task_id, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -855,7 +864,7 @@ int main(int argc, char *argv[])
        #endif
         if (cv_mb_ptr_2 == NULL) {
   	  printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
-  	  dump_all_metadata_blocks_states();
+  	  dump_all_metadata_blocks_states(sptr);
 	  exit (-5);
         }
         cv_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -878,7 +887,7 @@ int main(int argc, char *argv[])
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(fft_task_id, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(sptr, fft_task_id, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -889,7 +898,7 @@ int main(int argc, char *argv[])
        #endif
         if (fft_mb_ptr_2 == NULL) {
   	  printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
-	  dump_all_metadata_blocks_states();
+	  dump_all_metadata_blocks_states(sptr);
 	  exit (-5);
         }
         fft_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -922,7 +931,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(vit_task_id, BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(sptr, vit_task_id, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -933,7 +942,7 @@ int main(int argc, char *argv[])
        #endif
         if (vit_mb_ptr_2 == NULL) {
   	  printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
-	  dump_all_metadata_blocks_states();
+	  dump_all_metadata_blocks_states(sptr);
 	  exit (-5);
         }
         vit_mb_ptr_2->atFinish = base_release_metadata_block;
@@ -945,7 +954,7 @@ int main(int argc, char *argv[])
    #endif
 
     DEBUG(printf("MAIN: Calling wait_all_critical\n"));
-    wait_all_critical();
+    wait_all_critical(sptr);
 
    #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
@@ -1003,7 +1012,7 @@ int main(int argc, char *argv[])
     //wait_all_tasks_finish();
     
     #ifndef USE_SIM_ENVIRON
-    read_next_trace_record(vehicle_state);
+    read_next_trace_record(sptr, vehicle_state);
     #endif
   }
 
@@ -1024,6 +1033,10 @@ int main(int argc, char *argv[])
   closeout_cv_kernel();
   closeout_rad_kernel();
   closeout_vit_kernel();
+
+ #ifndef USE_SIM_ENVIRON
+  closeout_trace_reader();
+ #endif
 
   #ifdef TIME
   {
@@ -1058,7 +1071,7 @@ int main(int argc, char *argv[])
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
  #endif // TIME
-  shutdown_scheduler();
+  shutdown_scheduler(sptr);
   printf("\nDone.\n");
   return 0;
 }

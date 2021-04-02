@@ -77,7 +77,7 @@ void init_vit_parameters(int vn)
 
 
 void
-do_vit_accel_type_initialization()
+do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
 {
  #ifdef HW_VIT
   // This initializes the Viterbi Accelerator Pool
@@ -89,13 +89,13 @@ do_vit_accel_type_initialization()
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
       fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
-      cleanup_and_exit(EXIT_FAILURE);
+      cleanup_and_exit(sptr, EXIT_FAILURE);
     }
 
     vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
     if (vitHW_lmem[vi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
-      cleanup_and_exit(EXIT_FAILURE);
+      cleanup_and_exit(sptr, EXIT_FAILURE);
     }
     vitHW_li_mem[vi] = &(vitHW_lmem[vi][0]);
     vitHW_lo_mem[vi] = &(vitHW_lmem[vi][vitHW_out_offset[vi]]);
@@ -112,7 +112,7 @@ do_vit_accel_type_initialization()
 
 
 void
-do_vit_accel_type_closeout()
+do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
 {
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
@@ -125,7 +125,7 @@ do_vit_accel_type_closeout()
 
 
 void
-output_vit_accel_type_run_stats(unsigned my_accel_id, unsigned total_task_types)
+output_vit_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
 {
 }
 

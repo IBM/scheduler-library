@@ -77,42 +77,42 @@ void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
 
 
 #ifdef HW_VIT
-static void do_decoding_hw(int *fd, struct vitdodec_access *desc)
+static void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc)
 {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("ERROR : do_decoding_in_hw : IOCTL:");
-    cleanup_and_exit(EXIT_FAILURE);
+    cleanup_and_exit(sptr, EXIT_FAILURE);
   }
 }
 #endif
 
 void
-output_vit_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
+output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_id, unsigned total_accel_types)
 {
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_id, task_name_str[my_task_id], freed_metadata_blocks[my_task_id], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_id, sptr->task_name_str[my_task_id], sptr->freed_metadata_blocks[my_task_id], total_accel_types);
   // The Viterbi Task Timing Info
-  unsigned total_vit_comp_by[total_accel_types];
-  uint64_t total_depunc_usec[total_accel_types];
-  uint64_t total_dodec_usec[total_accel_types];
+  unsigned total_vit_comp_by[total_accel_types+1];
+  uint64_t total_depunc_usec[total_accel_types+1];
+  uint64_t total_dodec_usec[total_accel_types+1];
   for (int ai = 0; ai <= total_accel_types; ai++) {
     total_vit_comp_by[ai] = 0;
     total_depunc_usec[ai] = 0;
     total_dodec_usec[ai] = 0;
   }  
   for (int ai = 0; ai < total_accel_types; ai++) {
-    if ((ai == total_accel_types-1) || (scheduler_execute_task_function[my_task_id][ai] != NULL)) {
-      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, task_name_str[my_task_id], ai, accel_name_str[ai]);
+    if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[my_task_id][ai] != NULL)) {
+      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, sptr->task_name_str[my_task_id], ai, sptr->accel_name_str[ai]);
     }
-    for (int bi = 0; bi < total_metadata_pool_blocks; bi++) {
-      vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(master_metadata_pool[bi].task_timings[my_task_id]);
+    for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
+      vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(sptr->master_metadata_pool[bi].task_timings[my_task_id]);
       unsigned this_comp_by = (unsigned)(vit_timings_p->comp_by[ai]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
       uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ai]);
-      if ((ai == total_accel_types-1) || (scheduler_execute_task_function[my_task_id][ai] != NULL)) {
-	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
+      if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[my_task_id][ai] != NULL)) {
+	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
       } else {
 	if ((this_comp_by + this_depunc_usec + this_dodec_usec) != 0) {
-	  printf("  ERROR: Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
+	  printf("  ERROR: Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
 	}
       }
       // Per acceleration (CPU, HWR)
@@ -125,24 +125,24 @@ output_vit_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
       total_dodec_usec[total_accel_types]  += this_dodec_usec;
     } // for (bi = 1 .. numMetatdataBlocks)
   } // for (ai = 0 .. total_accel_types)
-  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_id, task_name_str[my_task_id]);
+  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_id, sptr->task_name_str[my_task_id]);
   printf("     depuncture  run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_depunc_usec[ai] / (double) freed_metadata_blocks[my_task_id];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, accel_name_str[ai], total_vit_comp_by[ai], total_depunc_usec[ai], avg);
+    double avg = (double)total_depunc_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_id];
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_depunc_usec[ai], avg);
   }
   {
-    double avg = (double)total_depunc_usec[total_accel_types] / (double) freed_metadata_blocks[my_task_id];
+    double avg = (double)total_depunc_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_id];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_depunc_usec[total_accel_types], avg);
   }
   
   printf("     do-decoding run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_dodec_usec[ai] / (double) freed_metadata_blocks[my_task_id];
-    printf("%u %20s %8u  %15lu usec %16.3lf avg\n                            ", ai, accel_name_str[ai], total_vit_comp_by[ai], total_dodec_usec[ai], avg);
+    double avg = (double)total_dodec_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_id];
+    printf("%u %20s %8u  %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_dodec_usec[ai], avg);
   }
   {
-    double avg = (double)total_dodec_usec[total_accel_types] / (double) freed_metadata_blocks[my_task_id];
+    double avg = (double)total_dodec_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_id];
     printf("%u %20s %8u  %15lu usec %16.3lf avg\n                            ", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_dodec_usec[total_accel_types], avg);
   }
 }
@@ -151,6 +151,7 @@ output_vit_task_type_run_stats(unsigned my_task_id, unsigned total_accel_types)
 void
 exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
 {
+  scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   int tidx = task_metadata_block->accelerator_type;
   int vn = task_metadata_block->accelerator_id;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
@@ -194,7 +195,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
   gettimeofday(&(vit_timings_p->dodec_start), NULL);
  #endif
   DEBUG(printf("EHVA:   calling do_decoding_hw for HW_VIT[%u]\n", vn));
-  do_decoding_hw(&(vitHW_fd[vn]), &(vitHW_desc[vn]));
+  do_decoding_hw(sptr, &(vitHW_fd[vn]), &(vitHW_desc[vn]));
  #ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
@@ -216,7 +217,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
 
 #else // HW_VIT
   printf("ERROR : This executable DOES NOT support Viterbi Hardware execution!\n");
-  cleanup_and_exit(-3);
+  cleanup_and_exit(sptr, -3);
 #endif // HW_VIT
 }
 
@@ -224,6 +225,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
 void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
+  scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;

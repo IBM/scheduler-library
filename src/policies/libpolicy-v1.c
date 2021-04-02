@@ -41,19 +41,19 @@ status_t initialize_policy(stats_t* s)
 // This is "blocking" in that it spins until this task is allocated to an accelerator.
 
 ready_mb_task_queue_entry_t *
-assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
+assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled
   ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
   task_metadata_block_t * task_metadata_block = NULL;
   if (selected_task_entry != NULL) {
-    task_metadata_block = &(master_metadata_pool[selected_task_entry->block_id]);
+    task_metadata_block = &(sptr->master_metadata_pool[selected_task_entry->block_id]);
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
-    cleanup_and_exit(-19);
+    cleanup_and_exit(sptr, -19);
   }
   DEBUG(printf("THE-SCHED: In fastest_to_slowest_first_available policy for MB%u\n", task_metadata_block->block_id));
  #ifdef INT_TIME
@@ -67,16 +67,16 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
   if (task_metadata_block->task_type != NO_Task) {
     do { // We will spin (in this policy) until we find an available accelerator...
       // Find an acceptable accelerator for this task (task_type)
-      for (int check_accel = next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
+      for (int check_accel = sptr->next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
         DEBUG(printf("F2S_FA: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
-        if (scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
+        if (sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
           DEBUG(printf("F2S_FA: task %u check_accel = %u Tprof 0x%016lx prop_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], prop_time, (task_metadata_block->task_profile[check_accel] < prop_time)));
           if (task_metadata_block->task_profile[check_accel] < prop_time) {
             int i = 0;
             DEBUG(printf("F2S_FA:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
-            while ((i < num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
+            while ((i < sptr->num_accelerators_of_type[check_accel]) && (accel_id < 0)) {
               DEBUG(printf("F2S_FA:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
-              if (accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
+              if (sptr->accelerator_in_use_by[check_accel][i] == -1) { // Not in use -- available
                 proposed_accel = check_accel;
                 accel_type = proposed_accel;
                 accel_id = i;
@@ -92,7 +92,7 @@ assign_task_to_pe(ready_mb_task_queue_entry_t* ready_task_entry)
     } while(accel_type == NO_Accelerator);
   } else {
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->task_type);
-    cleanup_and_exit(-15);
+    cleanup_and_exit(sptr, -15);
   }
 
  #ifdef INT_TIME
