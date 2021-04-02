@@ -27,11 +27,6 @@
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-#define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
-
-#define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
-#define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
-
 
 enum { NO_Task = -1} task_id_enum_t;
 typedef int task_id_t;
@@ -64,15 +59,31 @@ typedef unsigned  accel_select_policy_t;
 #define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
 #define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
 #define MAX_TASK_TARGETS   MAX_ACCEL_TYPES
-
-
 #define MAX_TASK_NAME_LEN   32
 #define MAX_TASK_DESC_LEN   256
-
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
-
 #define GLOBAL_METADATA_POOL_BLOCKS 32
+#define MAX_TASK_TIMING_SETS   16
+
+typedef struct {
+  unsigned max_task_types;
+  unsigned max_accel_types;
+  unsigned max_task_targets;
+
+  unsigned max_task_name_len;
+  unsigned max_task_dec_len;
+
+  unsigned max_accel_name_len;
+  unsigned max_accel_dec_len;
+
+  unsigned max_metadata_pool_blocks;
+
+  unsigned max_task_timing_sets;
+} scheduler_get_datastate_in_parms_t;
+
+
+
 
 // This is a timing analysis structure for the scheduler functions, etc.
 typedef struct {
@@ -88,11 +99,11 @@ typedef struct {
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
 
-typedef struct { // This allows each task to track up to 32 total task timings...
-  struct timeval time_val[16];
+typedef struct { // This allows each task to track up to 16 total internal task timings...
+  struct timeval time_val[MAX_TASK_TIMING_SETS];
   unsigned comp_by[MAX_TASK_TARGETS]; 
-  uint64_t time_sec[16*MAX_TASK_TARGETS];
-  uint64_t time_usec[16*MAX_TASK_TARGETS];
+  uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_TASK_TARGETS];
+  uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_TASK_TARGETS];
 } task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any job
@@ -181,14 +192,6 @@ typedef struct accel_pool_defn_info_struct {
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
-// This is a typedef for the different statistics that we keep track of within the scheduler library.
-// The scheduling policies receive a reference to this structure as part of their init() functions.
-typedef struct {
-  uint64_t scheduler_decision_time_usec;
-  uint64_t scheduler_decisions;
-  uint64_t scheduler_decision_checks;
-} stats_t; 
-
 typedef struct scheduler_datastate_block_struct {
   task_id_t next_avail_task_id;
   accelerator_type_t next_avail_accel_id;
@@ -197,8 +200,6 @@ typedef struct scheduler_datastate_block_struct {
 
   // Handle for the dynamically loaded policy
   void *policy_handle;
-  // Function pointer for the policy's initialize_policy() function
-  status_t (*initialize_policy)(stats_t* stats);
   // Function pointer for the policy's assign_task_to_pe() function
   ready_mb_task_queue_entry_t *
   (*assign_task_to_pe)(struct scheduler_datastate_block_struct* sptr, ready_mb_task_queue_entry_t* ready_task_entry);
@@ -244,7 +245,7 @@ typedef struct scheduler_datastate_block_struct {
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
   char scheduler_selection_policy_str[NUM_SELECTION_POLICIES][64];
-  
+
   // This is a table of the execution functions for the various Task Types in the scheduler
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
@@ -262,14 +263,20 @@ typedef struct scheduler_datastate_block_struct {
   unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][GLOBAL_METADATA_POOL_BLOCKS];
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
-  struct timeval last_accel_use_update_time;
-  uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
+  /*struct timeval last_accel_use_update_time;
+    uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];*/
 
   // Scheduler Library statistics
-  stats_t decision_stats;
+  uint64_t scheduler_decision_time_usec;
+  uint64_t scheduler_decisions;
+  uint64_t scheduler_decision_checks;
+
 } scheduler_datastate_block_t;
-  
-extern scheduler_datastate_block_t sched_state;
+
+//extern scheduler_datastate_block_t sched_state;
+
+scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointer();
+scheduler_datastate_block_t* get_new_scheduler_datastate_pointer();
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 

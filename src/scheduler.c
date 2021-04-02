@@ -40,6 +40,22 @@
 
 #include "scheduler.h"
 
+scheduler_get_datastate_in_parms_t sched_state_def_parms = {
+  .max_task_types = MAX_TASK_TYPES,
+  .max_accel_types  = MAX_ACCEL_TYPES,
+  .max_task_targets = MAX_ACCEL_TYPES,
+
+  .max_task_name_len = MAX_TASK_NAME_LEN,
+  .max_task_dec_len  = MAX_TASK_DESC_LEN,
+
+  .max_accel_name_len = MAX_ACCEL_NAME_LEN,
+  .max_accel_dec_len = MAX_ACCEL_DESC_LEN,
+
+  .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
+
+  .max_task_timing_sets = MAX_TASK_TIMING_SETS
+};
+
 
 // This now will hold all the state for an instance of the scheduler.
 //  This can be shared with the policies, etc. using a single pointer parameter
@@ -74,9 +90,9 @@ void print_free_ready_tasks_list(scheduler_datastate_block_t* sptr) {
 }
 
 
-void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr, struct timeval start_time) {
+/*void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr, struct timeval start_time) {
   sptr->last_accel_use_update_time = start_time;
-}
+  }*/
 
 
 void account_accelerators_in_use_interval(scheduler_datastate_block_t* sptr)
@@ -94,9 +110,9 @@ void account_accelerators_in_use_interval(scheduler_datastate_block_t* sptr)
   //Now we have the array of curr-in-use
   struct timeval now;
   gettimeofday(&now, NULL);
-  // This is a 4-Dim by ACCEL type : [CPU][FFT][VIT][CV]
-  sptr->in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]] += 1000000*(now.tv_sec - sptr->last_accel_use_update_time.tv_sec) + (now.tv_usec - sptr->last_accel_use_update_time.tv_usec);
-  sptr->last_accel_use_update_time = now;
+  /* // This is a 4-Dim by ACCEL type : [CPU][FFT][VIT][CV] */
+  /* sptr->in_use_accel_times_array[acc_in_use[0]][acc_in_use[1]][acc_in_use[2]][acc_in_use[3]] += 1000000*(now.tv_sec - sptr->last_accel_use_update_time.tv_sec) + (now.tv_usec - sptr->last_accel_use_update_time.tv_usec);
+  sptr->last_accel_use_update_time = now;*/
 }
 
 void print_base_metadata_block_contents(task_metadata_block_t* mb)
@@ -406,11 +422,23 @@ metadata_thread_wait_for_task(void* void_parm_ptr)
 }
 
 
+/* Input parameters: */
+
+scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointer()
+{
+  return &sched_state_def_parms;
+}
+
+scheduler_datastate_block_t* get_new_scheduler_datastate_pointer()
+{
+  return &sched_state;
+}
+
 
 status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 {
   DEBUG(printf("In initialize...\n"));
-
+  printf("In initialize: sizeof sched_state = %lu\n", sizeof(scheduler_datastate_block_t));
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS;
   
@@ -441,10 +469,10 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   snprintf(sptr->scheduler_selection_policy_str[2], 64, "%s", "Fastest_Finish_Time_First");
   snprintf(sptr->scheduler_selection_policy_str[3], 64, "%s", "Fastest_Finish_Time_First_Queued");
   
-  // Initialize statistics
-  sptr->decision_stats.scheduler_decision_time_usec = 0;
-  sptr->decision_stats.scheduler_decisions          = 0;
-  sptr->decision_stats.scheduler_decision_checks    = 0;
+  // Initialize scheduler-decision statistics
+  sptr->scheduler_decision_time_usec = 0;
+  sptr->scheduler_decisions          = 0;
+  sptr->scheduler_decision_checks    = 0;
 
 
   // Dynamically load the scheduling policy (plug-in) to use, and initialize it
@@ -455,7 +483,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     cleanup_and_exit(sptr, -1);
   }
 
-  sptr->initialize_policy = dlsym(sptr->policy_handle, "initialize_policy");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_policy() not found in scheduling policy %s\n", policy_filename);
@@ -468,9 +495,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
     cleanup_and_exit(sptr, -1);
   }
-
-  sptr->initialize_policy(&(sptr->decision_stats));
-
 
   int parms_error = 0;
   if (MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL) {
@@ -499,7 +523,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 
   struct timeval init_time;
   gettimeofday(&init_time, NULL);
-  sptr->last_accel_use_update_time = init_time; // Start accounting at init time... ?
+  /*sptr->last_accel_use_update_time = init_time; // Start accounting at init time... ? */
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
     sptr->master_metadata_pool[i].scheduler_datastate_pointer = &sched_state;
     sptr->master_metadata_pool[i].block_id = i; // Set the master pool's block_ids
@@ -589,7 +613,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     }
   }
 
-  for (int i = 0; i < NUM_CPU_ACCEL+1; i++) {
+  /*  for (int i = 0; i < NUM_CPU_ACCEL+1; i++) {
     for (int j = 0; j < NUM_FFT_ACCEL+1; j++) {
       for (int k = 0; k < NUM_VIT_ACCEL+1; k++) {
 	for (int l = 0; l < NUM_CV_ACCEL+1; l++) {
@@ -597,7 +621,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 	}
       }
     }
-  }
+    }*/
 
   /** Moving this to just as the accelerator is registered...
      printf(" Calling do_accelerator_type_initialization...\n");
@@ -926,7 +950,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
-  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->decision_stats.scheduler_decision_time_usec, sptr->decision_stats.scheduler_decisions, sptr->decision_stats.scheduler_decision_checks);
+  printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->scheduler_decision_time_usec, sptr->scheduler_decisions, sptr->scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
   for (int ti = 0; ti < MAX_TASK_TYPES; ti++) {
@@ -1017,7 +1041,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 
   output_task_and_accel_run_stats(sptr);
     
-  printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
+  /*printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
     printf("ACU_HIST:  CPU  FFT  VIT  CNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
     for (int i0 = 0; i0 <= sptr->num_accelerators_of_type[0]; i0++) {
@@ -1029,7 +1053,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 	}
       }
     }
-  }
+    }*/
 
   printf("\nAccelerator Usage Statistics:\n");
   {
