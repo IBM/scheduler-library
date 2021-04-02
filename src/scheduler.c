@@ -125,11 +125,11 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
   } else {
     printf(" ** status = %d <= NOT a legal value!\n",  mb->status);
   }
-  unsigned job_type = mb->task_type;
-  if (job_type < MAX_TASK_TYPES) {
-    printf("    job_type = %s\n", sptr->task_name_str[job_type]);
+  unsigned task_type = mb->task_type;
+  if (task_type < MAX_TASK_TYPES) {
+    printf("    task_type = %s\n", sptr->task_name_str[task_type]);
   } else {
-    printf(" ** job_type = %d <= NOT a legal value!\n", mb->task_type);
+    printf(" ** task_type = %d <= NOT a legal value!\n", mb->task_type);
   }
   unsigned crit_level = mb->crit_level;
   if (crit_level < NUM_TASK_CRIT_LEVELS) {
@@ -276,7 +276,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
   pthread_mutex_lock(&(sptr->free_metadata_mutex));
 
   int bi = mb->block_id;
-  //printf("MB%u getting freed : %u %u\n", bi, mb->job_type, mb->crit_level);
+  //printf("MB%u getting freed : %u %u\n", bi, mb->task_type, mb->crit_level);
   TDEBUG(printf("in free_task_metadata_block for block %u with %u free_metadata_blocks\n", bi, free_metadata_blocks);//);
 	 printf(" BEFORE_FREE : MB%u : free_metadata_pool : ", bi);
 	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
