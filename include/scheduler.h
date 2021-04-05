@@ -27,12 +27,7 @@
 // Some Profiling Data:
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
-#define MAX_LIVE_METADATA_BLOCKS  32  // Must be <= total_metadata_pool_blocks 
-
-#define MAX_RADAR_LOGN            14        // Max we allow is 16k samples
-#define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
-
-
+// These are "global" Scheduler-defined fields, etc.
 enum { NO_Task = -1} task_id_enum_t;
 typedef int task_id_t;
 
@@ -53,26 +48,31 @@ typedef enum { TASK_FREE = 0,
 	       TASK_DONE,
 	       NUM_TASK_STATUS} task_status_t;
 
-
-typedef enum { SELECT_ACCEL_AND_WAIT_POLICY = 0,
-	       FAST_TO_SLOW_FIRST_AVAIL_POLICY,
-	       FASTEST_FINISH_TIME_FIRST_POLICY,
-	       FASTEST_FINISH_TIME_FIRST_QUEUED_POLICY,
-	       NUM_SELECTION_POLICIES } accel_select_policy_enum_t;
-typedef unsigned  accel_select_policy_t;
-
-#define MAX_TASK_TYPES     4 // NUM_TASK_TYPES
-#define MAX_ACCEL_TYPES    5 // NUM_ACCEL_TYPES
-#define MAX_TASK_TARGETS   MAX_ACCEL_TYPES
-
-
 #define MAX_TASK_NAME_LEN   32
 #define MAX_TASK_DESC_LEN   256
 
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
 
+// These are fields defined by the application when it gets/sets up a new cheduler datastate block
+#define MAX_TASK_TYPES     4
+#define MAX_ACCEL_TYPES    5
 #define GLOBAL_METADATA_POOL_BLOCKS 32
+#define MAX_TASK_TIMING_SETS   16
+#define MAX_DATA_SPACE_BYTES   128*1024
+
+typedef struct {
+  unsigned max_task_types;
+  unsigned max_accel_types;
+
+  unsigned max_metadata_pool_blocks;
+
+  unsigned max_task_timing_sets;
+  unsigned max_data_space_bytes;
+} scheduler_get_datastate_in_parms_t;
+
+
+
 
 // This is a timing analysis structure for the scheduler functions, etc.
 typedef struct {
@@ -83,16 +83,17 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec[MAX_ACCEL_TYPES], running_usec[MAX_ACCEL_TYPES];
+  uint64_t running_sec[MAX_ACCEL_TYPES];
+  uint64_t running_usec[MAX_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
 
-typedef struct { // This allows each task to track up to 32 total task timings...
-  struct timeval time_val[16];
-  unsigned comp_by[MAX_TASK_TARGETS]; 
-  uint64_t time_sec[16*MAX_TASK_TARGETS];
-  uint64_t time_usec[16*MAX_TASK_TARGETS];
+typedef struct { // This allows each task to track up to 16 total internal task timings...
+  struct timeval time_val[MAX_TASK_TIMING_SETS];
+  unsigned comp_by[MAX_ACCEL_TYPES]; 
+  uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
+  uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
 } task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any job
@@ -134,7 +135,7 @@ typedef struct task_metadata_entry_struct {
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[128*1024];     // 128 KB is the current MAX data size for all jobs
+  uint8_t  data_space[MAX_DATA_SPACE_BYTES];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
@@ -174,14 +175,17 @@ typedef struct accel_pool_defn_info_struct {
   do_accel_closeout_t             do_accel_closeout;
   output_accel_run_stats_t        output_accel_run_stats;
   unsigned                        number_available;
-  char                            name[32];
-  char                            description[256];
+  char                            name[MAX_ACCEL_NAME_LEN];
+  char                            description[MAX_ACCEL_DESC_LEN];
 } accelerator_pool_defn_info_t;
 
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
 
 typedef struct scheduler_datastate_block_struct {
+  // These are limits (e.g. max-task-types) for this instantiation of the scheduler datasatate space
+  scheduler_get_datastate_in_parms_t limits;
+
   task_id_t next_avail_task_id;
   accelerator_type_t next_avail_accel_id;
 
@@ -199,8 +203,8 @@ typedef struct scheduler_datastate_block_struct {
   task_metadata_block_t master_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
-  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
   int free_metadata_blocks;
+  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
   unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
   unsigned freed_metadata_blocks[MAX_TASK_TYPES];
 
@@ -219,8 +223,8 @@ typedef struct scheduler_datastate_block_struct {
   //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
   pthread_t scheduling_thread;
 
-  blockid_linked_list_t critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
   blockid_linked_list_t* critical_live_task_head;
+  blockid_linked_list_t  critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
   int free_critlist_pool[GLOBAL_METADATA_POOL_BLOCKS];
   int free_critlist_entries;
   int total_critical_tasks;
@@ -233,7 +237,6 @@ typedef struct scheduler_datastate_block_struct {
 
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
-  char scheduler_selection_policy_str[NUM_SELECTION_POLICIES][64];
 
   // This is a table of the execution functions for the various Task Types in the scheduler
   //  We set this up with one "set" of entries per JOB_TYPE
@@ -252,8 +255,8 @@ typedef struct scheduler_datastate_block_struct {
   unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][GLOBAL_METADATA_POOL_BLOCKS];
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
-  struct timeval last_accel_use_update_time;
-  uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];
+  /*struct timeval last_accel_use_update_time;
+    uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];*/
 
   // Scheduler Library statistics
   uint64_t scheduler_decision_time_usec;
@@ -264,7 +267,8 @@ typedef struct scheduler_datastate_block_struct {
 
 //extern scheduler_datastate_block_t sched_state;
 
-extern scheduler_datastate_block_t* get_new_scheduler_datastate();
+scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointer();
+scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 

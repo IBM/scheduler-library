@@ -30,6 +30,7 @@ typedef float distance_t;
 
 /* These are some top-level defines for the dictionaries */
 
+#include "fft_accel.h"
 #include "calc_fmcw_dist.h"
 
 typedef struct {

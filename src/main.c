@@ -262,7 +262,8 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
 int main(int argc, char *argv[])
 {
   // Get a scheduler_datastate_block
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate();
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   
   vehicle_state_t vehicle_state;
   label_t label;
@@ -669,7 +670,7 @@ int main(int argc, char *argv[])
   /* The input trace contains the per-epoch (time-step) input data */
  #ifdef TIME
   gettimeofday(&start_prog, NULL);
-  init_accelerators_in_use_interval(sptr, start_prog);
+  /*init_accelerators_in_use_interval(sptr, start_prog);*/
  #endif
   
  #ifdef USE_SIM_ENVIRON

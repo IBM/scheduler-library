@@ -48,17 +48,17 @@ typedef struct { // The "Viterbi" view of "data"
 typedef struct {
   struct timeval dodec_start;
   struct timeval depunc_start;
-  struct timeval time_val[16-2];
+  struct timeval time_val[MAX_TASK_TIMING_SETS-2];
 
-  unsigned comp_by[MAX_TASK_TARGETS];
+  unsigned comp_by[MAX_ACCEL_TYPES];
 
-  uint64_t dodec_sec[MAX_TASK_TARGETS];
-  uint64_t depunc_sec[MAX_TASK_TARGETS];
-  uint64_t time_sec[(16-2)*MAX_TASK_TARGETS];
+  uint64_t dodec_sec[MAX_ACCEL_TYPES];
+  uint64_t depunc_sec[MAX_ACCEL_TYPES];
+  uint64_t time_sec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 
-  uint64_t dodec_usec[MAX_TASK_TARGETS];
-  uint64_t depunc_usec[MAX_TASK_TARGETS];
-  uint64_t time_usec[(16-2)*MAX_TASK_TARGETS];
+  uint64_t dodec_usec[MAX_ACCEL_TYPES];
+  uint64_t depunc_usec[MAX_ACCEL_TYPES];
+  uint64_t time_usec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 } vit_timing_data_t;
 
 
