@@ -47,7 +47,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
       cleanup_and_exit(sptr, -20);
     }
 
-    DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, task_name_str[task_metadata_block->task_type]));
+    DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %s\n", i, task_metadata_block->block_id, sptr->task_name_str[task_metadata_block->task_type]));
                #ifdef INT_TIME
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -62,14 +62,14 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
 
       // Find an acceptable accelerator for this task (task_type)
       for (int check_accel = sptr->next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-        DEBUG(printf("SCHED-FFFQ: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
+        DEBUG(printf("SCHED-FFFQ: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], check_accel, sptr->accel_name_str[check_accel], sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
         if (sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
           DEBUG(printf("SCHED-FFFQ: task %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
           uint64_t new_proj_finish_time;
           int i = 0;
-          DEBUG(printf("SCHED-FFFQ:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
+          DEBUG(printf("SCHED-FFFQ:  Checking from i = %u : num_acc = %u\n", i, sptr->num_accelerators_of_type[check_accel]));
           while ((i < sptr->num_accelerators_of_type[check_accel])) { // && (accel_id < 0)) {
-            DEBUG(printf("SCHED-FFFQ:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
+            DEBUG(printf("SCHED-FFFQ:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, sptr->accel_name_str[check_accel], check_accel, i, sptr->accelerator_in_use_by[check_accel][i]));
             int bi = sptr->accelerator_in_use_by[check_accel][i];
             if (bi == -1) { // Not in use -- available
               new_proj_finish_time = task_metadata_block->task_profile[check_accel];
