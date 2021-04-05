@@ -47,7 +47,7 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
 
   .max_task_timing_sets = MAX_TASK_TIMING_SETS,
-  
+
   .max_data_space_bytes = MAX_DATA_SPACE_BYTES
 };
 
@@ -248,7 +248,7 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
     sptr->total_critical_tasks += 1;
   }
   DEBUG(printf("  returning block %u\n", bi);
-	print_critical_task_list_ids());
+	print_critical_task_list_ids(sptr));
   TDEBUG(printf(" AFTER_GET : MB%u : free_metadata_pool : ", bi);
 	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
 	   printf("%d ", free_metadata_pool[i]);
@@ -375,8 +375,8 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 void
 execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
 {
-  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
+  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, sptr->accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   if (task_metadata_block->accelerator_type != NO_Accelerator) {
     if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < sptr->limits.max_task_types)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
@@ -679,9 +679,9 @@ release_accelerator_for_task(task_metadata_block_t* task_metadata_block)
   pthread_mutex_lock(&(sptr->accel_alloc_mutex));
 
   //printf("MB%u RELEASE  accelerator %u %u for %d cl %u\n", mdb_id, accel_type, accel_id, accelerator_in_use_by[accel_type][accel_id], task_metadata_block->crit_level);
-  DEBUG(printf(" RELEASE accelerator %u  %u  = %d  : ", accel_type, accel_id, accelerator_in_use_by[accel_type][accel_id]);
+  DEBUG(printf(" RELEASE accelerator %u  %u  = %d  : ", accel_type, accel_id, sptr->accelerator_in_use_by[accel_type][accel_id]);
 	for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type]; ai++) {
-	  printf("%u %d : ", ai, accelerator_in_use_by[accel_type][ai]);
+	  printf("%u %d : ", ai, sptr->accelerator_in_use_by[accel_type][ai]);
 	}
 	printf("\n"));
   if (sptr->accelerator_in_use_by[accel_type][accel_id] != mdb_id) {
@@ -713,9 +713,9 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
   while(1) {
     // If there is nothing on the queue -- return;
     if (sptr->num_tasks_in_ready_queue > 0) {
-      DEBUG(printf("SCHED: num_tasks_in_ready_queue = %u\n", num_tasks_in_ready_queue);
+      DEBUG(printf("SCHED: num_tasks_in_ready_queue = %u\n", sptr->num_tasks_in_ready_queue);
 	    int ti = 0;
-	    sptr->ready_mb_task_queue_entry_t* t_te = sptr->ready_mb_task_queue_head;
+	    ready_mb_task_queue_entry_t* t_te = sptr->ready_mb_task_queue_head;
 	    while(t_te != NULL) {
 	      printf("SCHED:    Ready_Task_Entry %2u : MB%u  %p %p\n", ti, t_te->block_id, t_te->prev, t_te->next);
 	      ti++;
@@ -760,7 +760,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	//printf("MB%u ALLOCATE accelerator %u %u to  %d cl %u\n", bi, accel_type, accel_id, bi, task_metadata_block->crit_level);
 	DEBUG(printf("SCHED: MB%u ALLOC accelerator %u  %u to %d  : ", bi, accel_type, accel_id, bi);
 	      for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type]; ai++) {
-		printf("%u %d : ", ai, accelerator_in_use_by[accel_type][ai]);
+		printf("%u %d : ", ai, sptr->accelerator_in_use_by[accel_type][ai]);
 	      }
 	      printf("\n"));
 	// Update the ready task queue... Connect selected_task_entry.prev->next = selected_task_entry.next
@@ -785,9 +785,9 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	  DEBUG(printf("SCHED:   Removed internal entry of queue\n"));
 	}
 	sptr->num_tasks_in_ready_queue--;
-	DEBUG(printf("SCHED:   Set num_tasks_in_ready_queue to %u\n", num_tasks_in_ready_queue));
+	DEBUG(printf("SCHED:   Set num_tasks_in_ready_queue to %u\n", sptr->num_tasks_in_ready_queue));
 
-	DEBUG(printf("SCHED:   Adding back the ready task entry to the free list pre: %u entries\n", num_free_task_queue_entries));
+	DEBUG(printf("SCHED:   Adding back the ready task entry to the free list pre: %u entries\n", sptr->num_free_task_queue_entries));
 	// Prepend to the free_ready_mb_task_queue_entries;
 	if (sptr->free_ready_mb_task_queue_entries != NULL) {
 	  // There are other free task queue entries
@@ -798,9 +798,9 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	  selected_task_entry->next = sptr->free_ready_mb_task_queue_entries;
 	}
 	selected_task_entry->prev = NULL; // As head of the list, the prev should be NULL
-	sptr->free_ready_mb_task_queue_entries = selected_task_entry;  
+	sptr->free_ready_mb_task_queue_entries = selected_task_entry;
 	sptr->num_free_task_queue_entries++;
-	DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u entries now\n", num_free_task_queue_entries));
+	DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u entries now\n", sptr->num_free_task_queue_entries));
 	SDEBUG(print_free_ready_tasks_list());
 	/* // And clean up the ready task storage... */
 	/* ready_task_entry->block_id = -1; */
@@ -851,17 +851,17 @@ request_execution(task_metadata_block_t* task_metadata_block)
   // Put this into the ready-task-queue
   //   Get a ready_task_queue_entry
   pthread_mutex_lock(&(sptr->task_queue_mutex));
-  DEBUG(printf("APP: there are currently %u free task queue entries in the list\n", num_free_task_queue_entries));
+  DEBUG(printf("APP: there are currently %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
   SDEBUG(print_free_ready_tasks_list());
   ready_mb_task_queue_entry_t* my_queue_entry = sptr->free_ready_mb_task_queue_entries;
   sptr->free_ready_mb_task_queue_entries = sptr->free_ready_mb_task_queue_entries->next;
   sptr->free_ready_mb_task_queue_entries->prev = NULL; // disconnect the prev pointer
   sptr->num_free_task_queue_entries--;
-  DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", num_free_task_queue_entries));
+  DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
   SDEBUG(print_free_ready_tasks_list());
   //   Now fill it in
   my_queue_entry->block_id = task_metadata_block->block_id;
-  DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", num_free_task_queue_entries));
+  DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
   //   And add to the tail of the task queue
   if (sptr->ready_mb_task_queue_head == NULL) {
     my_queue_entry->prev = NULL;
@@ -876,8 +876,8 @@ request_execution(task_metadata_block_t* task_metadata_block)
   }
   sptr->ready_mb_task_queue_tail = my_queue_entry;
   sptr->num_tasks_in_ready_queue++;
-  DEBUG(printf("APP: and now there are %u ready tasks in the queue\n", num_tasks_in_ready_queue);
-	print_ready_tasks_queue(););
+  DEBUG(printf("APP: and now there are %u ready tasks in the queue\n", sptr->num_tasks_in_ready_queue);
+	print_ready_tasks_queue(sptr););
   pthread_mutex_unlock(&(sptr->task_queue_mutex));
 
   // NOW we should return -- we can later schedule tasks off the queue...
