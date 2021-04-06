@@ -266,6 +266,14 @@ int main(int argc, char *argv[])
   // Get a scheduler_datastate_block
   scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
   //sched_inparms->max_metadata_pool_blocks = 16;
+  printf("Got Sched-Datastate-Parms:\n");
+  printf("   max_task_types           = %u\n", sched_inparms->max_task_types);
+  printf("   max_accel_types          = %u\n", sched_inparms->max_accel_types);
+  printf("   max_metadata_pool_blocks = %u\n", sched_inparms->max_metadata_pool_blocks);
+  printf("   max_data_space_bytes     = %u\n", sched_inparms->max_data_space_bytes);
+  printf("   max_task_timing_sets     = %u\n", sched_inparms->max_task_timing_sets);
+  printf("   max_accel_of_any_type    = %u\n", sched_inparms->max_accel_of_any_type);
+
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   
   vehicle_state_t vehicle_state;

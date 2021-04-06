@@ -445,6 +445,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   // Set up the input-parameter limits
   sptr->limits.max_task_types            = inp->max_task_types;
   sptr->limits.max_accel_types           = inp->max_accel_types;
+  sptr->limits.max_accel_of_any_type     = inp->max_accel_of_any_type;
   sptr->limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
   sptr->limits.max_task_timing_sets      = inp->max_task_timing_sets;
   sptr->limits.max_data_space_bytes      = inp->max_data_space_bytes;
@@ -838,20 +839,20 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   }
 
   int parms_error = 0;
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CPU_ACCEL);
+  if (sptr->limits.max_accel_of_any_type < NUM_CPU_ACCEL) {
+    printf("INIT-SCHED: ERROR : sptr->limits.max_accel_of_any_type < NUM_CPU_ACCEL : %u < %u\n", sptr->limits.max_accel_of_any_type, NUM_CPU_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_FFT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_FFT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_FFT_ACCEL);
+  if (sptr->limits.max_accel_of_any_type < NUM_FFT_ACCEL) {
+    printf("INIT-SCHED: ERROR : sptr->limits.max_accel_of_any_type < NUM_FFT_ACCEL : %u < %u\n", sptr->limits.max_accel_of_any_type, NUM_FFT_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_VIT_ACCEL);
+  if (sptr->limits.max_accel_of_any_type < NUM_VIT_ACCEL) {
+    printf("INIT-SCHED: ERROR : sptr->limits.max_accel_of_any_type < NUM_VIT_ACCEL : %u < %u\n", sptr->limits.max_accel_of_any_type, NUM_VIT_ACCEL);
     parms_error = 1;
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
+  if (sptr->limits.max_accel_of_any_type < NUM_CV_ACCEL) {
+    printf("INIT-SCHED: ERROR : sptr->limits.max_accel_of_any_type < NUM_CV_ACCEL : %u < %u\n", sptr->limits.max_accel_of_any_type, NUM_CV_ACCEL);
     parms_error = 1;
   }
   if (parms_error != 0) {
@@ -950,7 +951,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   }
   
   for (int i = 0; i < sptr->limits.max_accel_types-1; i++) {
-    for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
+    for (int j = 0; j < sptr->limits.max_accel_of_any_type; j++) {
       sptr->accelerator_in_use_by[i][j] = -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
     }
   }
@@ -972,7 +973,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 
   // And some stats stuff:
   for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
-    for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+    for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
       for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
 	sptr->accelerator_allocated_to_MB[ti][ai][bi] = 0;
       }
@@ -1398,11 +1399,11 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 
   printf("\nAccelerator Usage Statistics:\n");
   {
-    unsigned totals[sptr->limits.max_accel_types-1][MAX_ACCEL_OF_EACH_TYPE];
+    unsigned totals[sptr->limits.max_accel_types-1][sptr->limits.max_accel_of_any_type];
     unsigned top_totals[sptr->limits.max_accel_types-1];
     for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
       top_totals[ti] = 0;
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
 	totals[ti][ai] = 0;
 	for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
 	  totals[ti][ai] += sptr->accelerator_allocated_to_MB[ti][ai][bi];
@@ -1411,7 +1412,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
     }
     printf("\nPer-Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
 	if (ai < sptr->num_accelerators_of_type[ti]) { 
 	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, sptr->accel_name_str[ti], ai, totals[ti][ai]);
 	} else {
@@ -1633,8 +1634,8 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < sptr->num_accelerators_of_type[acid]) {
-    printf("ERROR: MAX_ACCEL_OF_EACH_TYPE < sptr->num_accelerators_of_type[%u] : %u < %u\n", acid, MAX_ACCEL_OF_EACH_TYPE, sptr->num_accelerators_of_type[acid]);
+  if (sptr->limits.max_accel_of_any_type < sptr->num_accelerators_of_type[acid]) {
+    printf("ERROR: sptr->limits.max_accel_of_any_type < sptr->num_accelerators_of_type[%u] : %u < %u\n", acid, sptr->limits.max_accel_of_any_type, sptr->num_accelerators_of_type[acid]);
     cleanup_and_exit(sptr, -33);
   }
   return acid;
