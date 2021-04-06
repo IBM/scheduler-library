@@ -466,6 +466,20 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
       printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].task_on_accel_profile\n", mi);
       exit(-99);
     }
+
+    sptr->master_metadata_pool[mi].gets_by_task_type = calloc(inp->max_task_types, sizeof(uint32_t));
+    mb_size += sizeof(uint32_t) * inp->max_task_types;
+    if (sptr->master_metadata_pool[mi].gets_by_task_type == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].gets_by_task_type\n", mi);
+      exit(-99);
+    }
+    
+    sptr->master_metadata_pool[mi].frees_by_task_type = calloc(inp->max_task_types, sizeof(uint32_t));
+    mb_size += sizeof(uint32_t) * inp->max_task_types;
+    if (sptr->master_metadata_pool[mi].frees_by_task_type == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].frees_by_task_type\n", mi);
+      exit(-99);
+    }
     
 
     sptr->master_metadata_pool[mi].sched_timings.running_sec = calloc(inp->max_accel_types, sizeof(uint64_t));
@@ -1468,6 +1482,9 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   for (int mi = 0; mi < sptr->limits.max_metadata_pool_blocks; mi++) {
     free(sptr->master_metadata_pool[mi].sched_timings.running_usec);
     free(sptr->master_metadata_pool[mi].sched_timings.running_sec);
+    free(sptr->master_metadata_pool[mi].task_on_accel_profile);
+    free(sptr->master_metadata_pool[mi].gets_by_task_type);
+    free(sptr->master_metadata_pool[mi].frees_by_task_type);
   }
   free(sptr->master_metadata_pool);
   free(sptr);

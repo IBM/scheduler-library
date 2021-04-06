@@ -128,8 +128,8 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  unsigned gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  unsigned frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t* gets_by_task_type; //[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t* frees_by_task_type; //[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
 
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
