@@ -137,7 +137,7 @@ typedef struct task_metadata_entry_struct {
 
   // This is the segment for data for the jobs
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[MAX_DATA_SPACE_BYTES];     // 128 KB is the current MAX data size for all jobs
+  uint8_t data_space[MAX_DATA_SPACE_BYTES];     // 128 KB is the current MAX data size for all jobs
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs

@@ -508,7 +508,17 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     }
     mbi_size += stru_size;
     DEBUG(printf("                    MB_pool %3u :     sch_tm_usec %lu = total %lu\n", mi, stru_size, mbi_size));
-
+#if(0)
+      sptr->master_metadata_pool[mi].data_space = calloc(MAX_DATA_SPACE_BYTES /*inp->max_data_space_bytes*/, sizeof(uint8_t));
+    size_t ds_size = sizeof(uint8_t) * MAX_DATA_SPACE_BYTES; /*inp->max_data_space_bytes;*/
+    //DEBUG(printf("                    MB_pool %3u : data_space (%lu) =  %lu\n", mi, ds_size, mb_size));
+    if (sptr->master_metadata_pool[mi].data_space == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].data_space\n", mi);
+      exit(-99);
+    }
+    mbi_size += ds_size;
+    DEBUG(printf("                    MB_pool %3u :     data_space %lu = total %lu\n", mi, ds_size, mbi_size));
+#endif
     mb_size += mbi_size;
     DEBUG(printf("                    MB_pool %3u : one_copy  %lu =  total %lu\n", mi, mbi_size, mb_size));
   } // for (mi = 0 .. max_metadata_pool_blocks)
@@ -711,31 +721,31 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     sptr_size += sizeof(output_accel_run_stats_t) * inp->max_accel_types;
     DEBUG(printf("                 : + out_aqcc_run_stats_fn (%lu) =  %lu\n", (sizeof(output_accel_run_stats_t) * inp->max_accel_types), sptr_size));
   }
-  //volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-  sptr->accelerator_in_use_by = calloc(inp->max_accel_types, (sizeof(volatile int) * MAX_ACCEL_OF_EACH_TYPE));
+  //volatile int accelerator_in_use_by
+  sptr->accelerator_in_use_by = calloc(inp->max_accel_types, sizeof(volatile int*));
+  sptr_size += sizeof(volatile int*) * inp->max_accel_types;
   if (sptr->accelerator_in_use_by == NULL) {
     printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for accelerator_in_use_by\n");
     exit(-99);
-  } else {
-    for (int i = 0; i < inp->max_accel_types; i++) {
-      sptr->accelerator_in_use_by[i] = calloc(MAX_ACCEL_OF_EACH_TYPE, sizeof(volatile int));
-      if (sptr->accelerator_in_use_by[i] == NULL) {
-	printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for accelerator_in_use_by[%u]\n", i);
-	exit(-99);
-      }
-    }
-    sptr_size += sizeof(volatile int) * inp->max_accel_types * MAX_ACCEL_OF_EACH_TYPE;
-    DEBUG(printf("                 : + acc_in_use_by (%lu) =  %lu\n", (sizeof(volatile int) * inp->max_accel_types * MAX_ACCEL_OF_EACH_TYPE), sptr_size));
   }
+  for (int i = 0; i < inp->max_accel_types; i++) {
+    sptr->accelerator_in_use_by[i] = calloc(inp->max_accel_of_any_type, sizeof(volatile int));
+    if (sptr->accelerator_in_use_by[i] == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for accelerator_in_use_by[%u]\n", i);
+      exit(-99);
+    }
+  }
+  sptr_size += sizeof(volatile int) * inp->max_accel_types * inp->max_accel_of_any_type;
+  DEBUG(printf("                 : + acc_in_use_by (%lu) =  %lu\n", sizeof(volatile int*) * inp->max_accel_types + (sizeof(volatile int) * inp->max_accel_types *inp->max_accel_of_any_type), sptr_size));
 
-  //unsigned accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][GLOBAL_METADATA_POOL_BLOCKS];
+  // accelerator_allocated_to_MB
   sptr->accelerator_allocated_to_MB = calloc(inp->max_accel_types, sizeof(int*));
   if (sptr->accelerator_allocated_to_MB == NULL) {
     printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for accelerator_allocated_to_MB\n");
     exit(-99);
   } else {
     for (int i = 0; i < inp->max_accel_types; i++) {
-      sptr->accelerator_allocated_to_MB[i] = calloc(MAX_ACCEL_OF_EACH_TYPE, sizeof(int*));
+      sptr->accelerator_allocated_to_MB[i] = calloc(inp->max_accel_of_any_type, sizeof(int*));
       if (sptr->accelerator_allocated_to_MB == NULL) {
 	printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for accelerator_allocated_to_MB[%u]\n", i);
 	exit(-99);
@@ -750,11 +760,11 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 	}
       }
     }
-    sptr_size += sizeof(int) * inp->max_accel_types * MAX_ACCEL_OF_EACH_TYPE * inp->max_metadata_pool_blocks;
-    DEBUG(printf("                 : + acc_alloc_to_MB (%lu) =  %lu\n", (sizeof(int) * inp->max_accel_types * MAX_ACCEL_OF_EACH_TYPE), sptr_size));
+    sptr_size += sizeof(int) * inp->max_accel_types * inp->max_accel_of_any_type * inp->max_metadata_pool_blocks;
+    DEBUG(printf("                 : + acc_alloc_to_MB (%lu) =  %lu\n", (sizeof(int) * inp->max_accel_types * inp->max_accel_of_any_type), sptr_size));
   }
   
-  //int num_accelerators_of_type[MAX_ACCEL_TYPES];
+  // num_accelerators_of_type
   sptr->num_accelerators_of_type = malloc(sizeof(int) * inp->max_accel_types);
   if (sptr->num_accelerators_of_type == NULL) {
     printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for num_accelerators_of_type\n");
