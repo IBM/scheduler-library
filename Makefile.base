@@ -21,7 +21,7 @@ ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 -g
+CFLAGS ?= -O3 -g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -103,14 +103,6 @@ endif
 
 ifdef CONFIG_VERBOSE
 CFLAGS += -DVERBOSE
-endif
-
-ifdef CONFIG_DBG_THREADS
-CFLAGS += -DDBG_THREADS
-endif
-
-ifdef CONFIG_SUPER_VERBOSE
-CFLAGS += -DSUPER_VERBOSE
 endif
 
 ifdef CONFIG_FUSED_MAP
