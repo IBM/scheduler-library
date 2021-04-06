@@ -124,7 +124,7 @@ typedef struct task_metadata_entry_struct {
   task_id_t task_type;      // see above enumeration
   task_criticality_t crit_level;  // [0 .. ?] ?
 
-  uint64_t task_on_accel_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
+  uint64_t* task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 

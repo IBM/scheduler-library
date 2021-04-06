@@ -426,6 +426,10 @@ scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointe
   return &sched_state_def_parms;
 }
 
+
+#undef DEBUG
+#define DEBUG(x)  x
+
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
 {
   scheduler_datastate_block_t* sptr = calloc(1, sizeof(scheduler_datastate_block_t));
@@ -447,29 +451,39 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 
   // master_metadata_pool
   sptr->master_metadata_pool = malloc(sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks);
+  size_t mb_size = sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks;
   if (sptr->master_metadata_pool == NULL) {
     printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool\n");
     exit(-99);
   }
-  sptr_size += sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks;
-  DEBUG(printf("                 : + MB_pool (%lu) =  %lu\n", (sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks), sptr_size));
+  /* sptr_size += sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks; */
+  /* DEBUG(printf("                 : + MB_pool (%lu) =  %lu\n", (sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks), sptr_size)); */
 
-  size_t st_size = 0;
   for (int mi = 0; mi < inp->max_metadata_pool_blocks; mi++) {
+    sptr->master_metadata_pool[mi].task_on_accel_profile = calloc(inp->max_accel_types, sizeof(uint64_t));
+    mb_size += sizeof(uint64_t) * inp->max_accel_types;
+    if (sptr->master_metadata_pool[mi].task_on_accel_profile == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].task_on_accel_profile\n", mi);
+      exit(-99);
+    }
+    
+
     sptr->master_metadata_pool[mi].sched_timings.running_sec = calloc(inp->max_accel_types, sizeof(uint64_t));
-    st_size += sizeof(uint64_t) * inp->max_accel_types;
+    mb_size += sizeof(uint64_t) * inp->max_accel_types;
     if (sptr->master_metadata_pool[mi].sched_timings.running_sec == NULL) {
       printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].sched_timings.running_sec\n", mi);
       exit(-99);
     }
 
     sptr->master_metadata_pool[mi].sched_timings.running_usec = calloc(inp->max_accel_types, sizeof(uint64_t));
-    st_size += sizeof(uint64_t) * inp->max_accel_types;
+    mb_size += sizeof(uint64_t) * inp->max_accel_types;
     if (sptr->master_metadata_pool[mi].sched_timings.running_usec == NULL) {
       printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].sched_timings.running_usec\n", mi);
       exit(-99);
     }
   } // for (mi = 0 .. max_metadata_pool_blocks)
+  sptr_size += mb_size;
+  DEBUG(printf("                 : + MB_pool (%lu) =  %lu\n", mb_size, sptr_size));
   
   // free_metadata_pool
   sptr->free_metadata_pool = malloc(sizeof(int) * inp->max_metadata_pool_blocks);
@@ -724,6 +738,8 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   return sptr;
 }
   
+#undef DEBUG
+#define DEBUG(x) 
   
 status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 {
