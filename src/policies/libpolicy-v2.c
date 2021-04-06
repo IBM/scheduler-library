@@ -40,7 +40,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
     cleanup_and_exit(sptr, -19);
   }
-  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : task %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type]));
+  DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : task %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, task_name_str[task_metadata_block->task_type]));
 
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
@@ -53,29 +53,29 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
   if (task_metadata_block->task_type != NO_Task) {
     // Find an acceptable accelerator for this task (task_type)
     for (int check_accel = sptr->next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-      DEBUG(printf("SCHED_FF: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], check_accel, sptr->accel_name_str[check_accel], sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
+      DEBUG(printf("SCHED_FF: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, task_name_str[task_metadata_block->task_type], check_accel, accel_name_str[check_accel], scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
       if (sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
-        DEBUG(printf("SCHED_FF: task %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_profile[check_accel], proj_finish_time, (task_metadata_block->task_profile[check_accel] < proj_finish_time)));
-        //if (task_metadata_block->task_profile[check_accel] < proj_finish_time)
+        DEBUG(printf("SCHED_FF: task %u check_accel = %u Tprof 0x%016lx proj_finish_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_on_accel_profile[check_accel], proj_finish_time, (task_metadata_block->task_on_accel_profile[check_accel] < proj_finish_time)));
+        //if (task_metadata_block->task_on_accel_profile[check_accel] < proj_finish_time)
         {
           uint64_t new_proj_finish_time;
           int i = 0;
-          DEBUG(printf("SCHED_FF:  Checking from i = %u : num_acc = %u\n", i, sptr->num_accelerators_of_type[check_accel]));
+          DEBUG(printf("SCHED_FF:  Checking from i = %u : num_acc = %u\n", i, num_accelerators_of_type[check_accel]));
           while ((i < sptr->num_accelerators_of_type[check_accel])) { // && (accel_id < 0)) {
-            DEBUG(printf("SCHED_FF:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, sptr->accel_name_str[check_accel], check_accel, i, sptr->accelerator_in_use_by[check_accel][i]));
+            DEBUG(printf("SCHED_FF:  Checking i = %u %s : acc_in_use[%u][%u] = %d\n", i, accel_name_str[check_accel], check_accel, i, accelerator_in_use_by[check_accel][i]));
             int bi = sptr->accelerator_in_use_by[check_accel][i];
             if (bi == -1) { // Not in use -- available
-              new_proj_finish_time = task_metadata_block->task_profile[check_accel];
+              new_proj_finish_time = task_metadata_block->task_on_accel_profile[check_accel];
               DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu\n", check_accel, i, new_proj_finish_time));
             } else {
               // Compute the remaining execution time (estimate) for task currently on accelerator
               uint64_t elapsed_sec = current_time.tv_sec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec;
               uint64_t elapsed_usec = current_time.tv_usec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec;
               uint64_t total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-              uint64_t remaining_time = sptr->master_metadata_pool[bi].task_profile[check_accel] - total_elapsed_usec;
+              uint64_t remaining_time = sptr->master_metadata_pool[bi].task_on_accel_profile[check_accel] - total_elapsed_usec;
               // and add that to the projected task run time to get the estimated finish time.
-              new_proj_finish_time = task_metadata_block->task_profile[check_accel] + remaining_time;
-              DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu = %lu + %lu\n", check_accel, i, new_proj_finish_time, task_metadata_block->task_profile[check_accel], remaining_time));
+              new_proj_finish_time = task_metadata_block->task_on_accel_profile[check_accel] + remaining_time;
+              DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu = %lu + %lu\n", check_accel, i, new_proj_finish_time, task_metadata_block->task_on_accel_profile[check_accel], remaining_time));
             }
             if (new_proj_finish_time < proj_finish_time) {
               proposed_accel = check_accel;
