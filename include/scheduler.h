@@ -83,8 +83,8 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec[MAX_ACCEL_TYPES];
-  uint64_t running_usec[MAX_ACCEL_TYPES];
+  uint64_t* running_sec; //[MAX_ACCEL_TYPES];
+  uint64_t* running_usec; //[MAX_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
