@@ -64,13 +64,13 @@ typedef enum { TASK_FREE = 0,
 typedef struct {
   unsigned max_task_types;	// The max number of task types that might be used in this run/usage
   unsigned max_accel_types;	// The max number of accelerator type that might be used in this run/usage
+  unsigned max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
 
   unsigned max_metadata_pool_blocks; // The max number of Metadata blocks that can be used during this run/usage
   unsigned max_data_space_bytes; // The max number of Data (Memory) bytes that any task can use this run/usage (i.e. Metadata Block In/Out memory size)
 
   unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
 
-  unsigned max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
 } scheduler_get_datastate_in_parms_t;
 
 

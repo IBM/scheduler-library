@@ -428,10 +428,35 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 {
   sched_state.limits.max_task_types            = inp->max_task_types;
   sched_state.limits.max_accel_types           = inp->max_accel_types;
+  sched_state.limits.max_accel_of_any_type     = inp->max_accel_of_any_type;
   sched_state.limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
   sched_state.limits.max_task_timing_sets      = inp->max_task_timing_sets;
   sched_state.limits.max_data_space_bytes      = inp->max_data_space_bytes;
+  printf("In get_new_scheduler_datastate_pointer with limits:\n");
+  printf("  max_task_types            = %u\n", inp->max_task_types);
+  printf("  max_accel_types           = %u\n", inp->max_accel_types);
+  printf("  max_accel_of_any_type     = %u\n", inp->max_accel_of_any_type);
+  printf("  max_metadata_pool_blocks  = %u\n", inp->max_metadata_pool_blocks);
+  printf("  max_task_timing_sets      = %u\n", inp->max_task_timing_sets);
+  printf("  max_data_space_bytes      = %u\n", inp->max_data_space_bytes);
+#if(0)
+  size_t sched_state_size = sizeof(scheduler_datastate_block_t);
+  printf("get_new_sched_state: base_size = %lu\n", sched_state_size);
+  size_t dtsp_size = 0;
+  for (int mi = 0; mi < inp->max_metadata_pool_blocks; mi++) {
+    sched_state.master_metadata_pool[mi].data_space = calloc(inp->max_data_space_bytes, 1);
+    if (sched_state.master_metadata_pool[mi].data_space == NULL) {
+      printf("ERROR: cannot allocate memory for master_metadata_pool[%u].data_space\n", mi);
+      exit(-99);
+    }
+    printf("  Set MB%2u data_space @ %p to %p = %lu\n", mi, &(sched_state.master_metadata_pool[mi].data_space[0]), &(sched_state.master_metadata_pool[mi].data_space[inp->max_data_space_bytes-1]), (uint64_t)((uint64_t)(&(sched_state.master_metadata_pool[mi].data_space[inp->max_data_space_bytes-1])) - (uint64_t)(&(sched_state.master_metadata_pool[mi].data_space[0]))));
+    dtsp_size += inp->max_data_space_bytes * sizeof(uint8_t);
+  }
+  printf("get_new_sched_state: data_space = %lu\n", dtsp_size);
 
+  sched_state_size += dtsp_size;
+  printf("get_new_sched_state: final_size = %lu\n", sched_state_size);
+#endif
   return &sched_state;
 }
 
