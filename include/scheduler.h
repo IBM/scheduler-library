@@ -24,7 +24,7 @@
 
 #include "base_types.h"
 
-// SA value that stands in for Infinite Time for task profiles.
+// A value that stands in for Infinite Time for task profiles.
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
 // These are "global" Scheduler-defined fields, etc.
