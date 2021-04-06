@@ -218,11 +218,11 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
   sptr->free_metadata_blocks -= 1;
   // For neatness (not "security") we'll clear the meta-data in the block (not the data data,though)
   sptr->master_metadata_pool[bi].task_type = in_task_type;
-  sptr->master_metadata_pool[bi].gets_by_type[in_task_type]++;
+  sptr->master_metadata_pool[bi].gets_by_task_type[in_task_type]++;
   sptr->master_metadata_pool[bi].status = TASK_ALLOCATED;
   sptr->master_metadata_pool[bi].crit_level = crit_level;
   for (int i = 0; i < sptr->limits.max_accel_types; ++i) {
-    sptr->master_metadata_pool[bi].task_profile[i] = task_profile[i];
+    sptr->master_metadata_pool[bi].task_on_accel_profile[i] = task_profile[i];
   }
   sptr->master_metadata_pool[bi].data_size = 0;
   sptr->master_metadata_pool[bi].accelerator_type = NO_Accelerator;
@@ -280,7 +280,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
 	 printf("\n"));
 
   if (sptr->free_metadata_blocks < sptr->total_metadata_pool_blocks) {
-    sptr->master_metadata_pool[bi].frees_by_type[mb->task_type]++;
+    sptr->master_metadata_pool[bi].frees_by_task_type[mb->task_type]++;
     sptr->free_metadata_pool[sptr->free_metadata_blocks] = bi;
     sptr->free_metadata_blocks += 1;
     if (sptr->master_metadata_pool[bi].crit_level > 1) { // is this a critical tasks?
@@ -812,8 +812,8 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     
     sptr->master_metadata_pool[i].block_id = i; // Set the master pool's block_ids
     for (int ji = 0; ji < sptr->limits.max_task_types; ji++) {
-      sptr->master_metadata_pool[i].gets_by_type[ji] = 0;
-      sptr->master_metadata_pool[i].frees_by_type[ji] = 0;
+      sptr->master_metadata_pool[i].gets_by_task_type[ji] = 0;
+      sptr->master_metadata_pool[i].frees_by_task_type[ji] = 0;
     }
     // Clear the (full-run, aggregate) timing data spaces
     gettimeofday( &(sptr->master_metadata_pool[i].sched_timings.idle_start), NULL);
@@ -1256,9 +1256,9 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
   for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
     printf("%6u ", bi);
     for (int ji = 1; ji < sptr->limits.max_task_types; ji++) {
-      type_gets[ji]  += sptr->master_metadata_pool[bi].gets_by_type[ji];
-      type_frees[ji] += sptr->master_metadata_pool[bi].frees_by_type[ji];
-      printf("%14u %14u ", sptr->master_metadata_pool[bi].gets_by_type[ji], sptr->master_metadata_pool[bi].frees_by_type[ji]);
+      type_gets[ji]  += sptr->master_metadata_pool[bi].gets_by_task_type[ji];
+      type_frees[ji] += sptr->master_metadata_pool[bi].frees_by_task_type[ji];
+      printf("%14u %14u ", sptr->master_metadata_pool[bi].gets_by_task_type[ji], sptr->master_metadata_pool[bi].frees_by_task_type[ji]);
     }
     printf("\n");
   }
@@ -1497,12 +1497,12 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 	   sptr->master_metadata_pool[mbi].crit_level);
     printf("  MB%u GETS:  ", mbi);
     for (int i = 0; i < sptr->limits.max_task_types; i++) {
-      printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].gets_by_type[i]);
+      printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].gets_by_task_type[i]);
     }
     printf("\n");
     printf("  MB%u FREES:  ", mbi);
     for (int i = 0; i < sptr->limits.max_task_types; i++) {
-      printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].frees_by_type[i]);
+      printf("( %s, %u ) ", sptr->task_name_str[i], sptr->master_metadata_pool[mbi].frees_by_task_type[i]);
     }
     printf("\n");
   } // for (mbi loop over Metablocks)
