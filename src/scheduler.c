@@ -48,7 +48,9 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
 
   .max_task_timing_sets = MAX_TASK_TIMING_SETS,
 
-  .max_data_space_bytes = MAX_DATA_SPACE_BYTES
+  .max_data_space_bytes = MAX_DATA_SPACE_BYTES,
+
+  .max_accel_of_any_type = MAX_ACCEL_OF_EACH_TYPE,
 };
 
 
