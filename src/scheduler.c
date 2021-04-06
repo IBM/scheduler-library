@@ -448,10 +448,26 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   if (sptr->master_metadata_pool == NULL) {
     printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool\n");
     exit(-99);
-  } else {
-    sptr_size += sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks;
-    DEBUG(printf("                 : + MB_pool (%lu) =  %lu\n", (sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks), sptr_size));
   }
+  sptr_size += sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks;
+  DEBUG(printf("                 : + MB_pool (%lu) =  %lu\n", (sizeof(task_metadata_block_t) * inp->max_metadata_pool_blocks), sptr_size));
+
+  size_t st_size = 0;
+  for (int mi = 0; mi < inp->max_metadata_pool_blocks; mi++) {
+    sptr->master_metadata_pool[mi].sched_timings.running_sec = calloc(inp->max_accel_types, sizeof(uint64_t));
+    st_size += sizeof(uint64_t) * inp->max_accel_types;
+    if (sptr->master_metadata_pool[mi].sched_timings.running_sec == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].sched_timings.running_sec\n", mi);
+      exit(-99);
+    }
+
+    sptr->master_metadata_pool[mi].sched_timings.running_usec = calloc(inp->max_accel_types, sizeof(uint64_t));
+    st_size += sizeof(uint64_t) * inp->max_accel_types;
+    if (sptr->master_metadata_pool[mi].sched_timings.running_usec == NULL) {
+      printf("get_new_scheduler_datastate_pointer ERROR: Cannot allocate memory for master_metadata_pool[%u].sched_timings.running_usec\n", mi);
+      exit(-99);
+    }
+  } // for (mi = 0 .. max_metadata_pool_blocks)
   
   // free_metadata_pool
   sptr->free_metadata_pool = malloc(sizeof(int) * inp->max_metadata_pool_blocks);
@@ -1073,7 +1089,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	sptr->free_ready_mb_task_queue_entries = selected_task_entry;
 	sptr->num_free_task_queue_entries++;
 	DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u entries now\n", sptr->num_free_task_queue_entries));
-	SDEBUG(print_free_ready_tasks_list());
+	SDEBUG(print_free_ready_tasks_list(sptr));
 	/* // And clean up the ready task storage... */
 	/* ready_task_entry->block_id = -1; */
 	/* ready_task_entry->next = NULL; */
@@ -1124,13 +1140,13 @@ request_execution(task_metadata_block_t* task_metadata_block)
   //   Get a ready_task_queue_entry
   pthread_mutex_lock(&(sptr->task_queue_mutex));
   DEBUG(printf("APP: there are currently %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
-  SDEBUG(print_free_ready_tasks_list());
+  SDEBUG(print_free_ready_tasks_list(sptr));
   ready_mb_task_queue_entry_t* my_queue_entry = sptr->free_ready_mb_task_queue_entries;
   sptr->free_ready_mb_task_queue_entries = sptr->free_ready_mb_task_queue_entries->next;
   sptr->free_ready_mb_task_queue_entries->prev = NULL; // disconnect the prev pointer
   sptr->num_free_task_queue_entries--;
   DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
-  SDEBUG(print_free_ready_tasks_list());
+  SDEBUG(print_free_ready_tasks_list(sptr));
   //   Now fill it in
   my_queue_entry->block_id = task_metadata_block->block_id;
   DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
@@ -1430,6 +1446,11 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   free(sptr->freed_metadata_blocks);
   free(sptr->allocated_metadata_blocks);
   free(sptr->free_metadata_pool);
+
+  for (int mi = 0; mi < sptr->limits.max_metadata_pool_blocks; mi++) {
+    free(sptr->master_metadata_pool[mi].sched_timings.running_usec);
+    free(sptr->master_metadata_pool[mi].sched_timings.running_sec);
+  }
   free(sptr->master_metadata_pool);
   free(sptr);
 }

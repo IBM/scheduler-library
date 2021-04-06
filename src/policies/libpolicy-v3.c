@@ -110,7 +110,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     //if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {
     if (sptr->accelerator_in_use_by[accel_type][accel_id] == -1) {
       // Task is schedulable on the best accelerator
-      DEBUG(printf("SCHED-FFFQ: Best accel type: %d id: accel_id: %d tid: %d\n", task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, task_metadata_block->thread_id));
+      DEBUG(printf("SCHED-FFFQ: MB%u Best accel type: %d id: accel_id: %d\n", task_metadata_block->block_id, task_metadata_block->accelerator_type, task_metadata_block->accelerator_id));
       task_metadata_block->accelerator_type = accel_type;
       task_metadata_block->accelerator_id   = accel_id;
       return selected_task_entry;
