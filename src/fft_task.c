@@ -339,7 +339,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
  #endif // INT_TIME
   for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
     data[j] = (float)fx2float(fftHW_lmem[fn][j], FX_IL);
-    DEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
+    SDEBUG(printf("MB%u : Data[ %u ] = %f\n", task_metadata_block->block_id, j, data[j]));
   }
  #ifdef INT_TIME
   struct timeval cvtout_stop;
