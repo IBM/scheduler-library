@@ -93,7 +93,7 @@ typedef struct {
 
 typedef struct { // This allows each task to track up to 16 total internal task timings...
   struct timeval time_val[MAX_TASK_TIMING_SETS];
-  unsigned comp_by[MAX_ACCEL_TYPES]; 
+  uint32_t comp_by[MAX_ACCEL_TYPES]; 
   uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
   uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
 } task_timing_data_t;
@@ -128,8 +128,8 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  unsigned gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  unsigned frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
