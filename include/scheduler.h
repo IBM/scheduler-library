@@ -62,13 +62,15 @@ typedef enum { TASK_FREE = 0,
 #define MAX_DATA_SPACE_BYTES   128*1024
 
 typedef struct {
-  unsigned max_task_types;
-  unsigned max_accel_types;
+  unsigned max_task_types;	// The max number of task types that might be used in this run/usage
+  unsigned max_accel_types;	// The max number of accelerator type that might be used in this run/usage
 
-  unsigned max_metadata_pool_blocks;
+  unsigned max_metadata_pool_blocks; // The max number of Metadata blocks that can be used during this run/usage
+  unsigned max_data_space_bytes; // The max number of Data (Memory) bytes that any task can use this run/usage (i.e. Metadata Block In/Out memory size)
 
-  unsigned max_task_timing_sets;
-  unsigned max_data_space_bytes;
+  unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
+
+  unsigned max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
 } scheduler_get_datastate_in_parms_t;
 
 
@@ -96,10 +98,10 @@ typedef struct { // This allows each task to track up to 16 total internal task 
   uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
 } task_timing_data_t;
 
-// This is a metadata structure; it is used to hold all information for any job
+// This is a metadata structure; it is used to hold all information for any task
 //  to be invoked through the scheduler.  This includes a description of the
-//  job type, and all input/output data space for the task
-// The job types are defined above in the scheduler_jobs_t enumeration
+//  task type, and all input/output data space for the task
+// The task types are defined when the application registers them.
 // The data (i.e. inputs, outputs, etc. ) are transferred here as a "bulk data"
 //  memory (of abstract uint8_t or bytes) and a size.  The interpretation of this
 //  block of data is task-dependent, and can have an over-laid structure, etc.
@@ -117,25 +119,25 @@ typedef struct task_metadata_entry_struct {
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata conditional variables
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
 
-  accelerator_type_t  accelerator_type; // indicates which accelerator this task is executing on
+  accelerator_type_t  accelerator_type; // indicates which accelerator type is being used (id's set at accelerator registration)
   int32_t  accelerator_id;        // indicates which accelerator this task is executing on
-  task_id_t task_type;      // see above enumeration
-  task_criticality_t crit_level;  // [0 .. ?] ?
+  task_id_t task_type;            // An indication of the task type; defined when tasks are registeres
+  task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
-  uint64_t task_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
+  uint64_t task_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
   unsigned gets_by_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
   unsigned frees_by_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
 
-  // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
+  // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
   task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
 
-  // This is the segment for data for the jobs
+  // This is the segment for data for the tasks
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[MAX_DATA_SPACE_BYTES];     // 128 KB is the current MAX data size for all jobs
+  uint8_t  data_space[MAX_DATA_SPACE_BYTES];
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
@@ -181,6 +183,7 @@ typedef struct accel_pool_defn_info_struct {
 
 
 typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } blockid_linked_list_t;
+
 
 typedef struct scheduler_datastate_block_struct {
   // These are limits (e.g. max-task-types) for this instantiation of the scheduler datasatate space
