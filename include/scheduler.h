@@ -119,17 +119,17 @@ typedef struct task_metadata_entry_struct {
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata conditional variables
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
 
-  accelerator_type_t  accelerator_type; // indicates which accelerator this task is executing on
+  accelerator_type_t  accelerator_type; // indicates which accelerator type is being used (id's set at accelerator registration)
   int32_t  accelerator_id;        // indicates which accelerator this task is executing on
-  task_id_t task_type;      // see above enumeration
-  task_criticality_t crit_level;  // [0 .. ?] ?
+  task_id_t task_type;            // An indication of the task type; defined when tasks are registeres
+  task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
-  uint64_t* task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps job to accelerator projected time on accelerator...
+  uint64_t* task_on_accel_profile; // Timing profile for task (in usec) running on wach accelerator type
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  uint32_t* gets_by_task_type; //[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  uint32_t* frees_by_task_type; //[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t* gets_by_task_type;  // Count of times this metadata block allocated per task type.
+  uint32_t* frees_by_task_type; // Count of times this metadata block freed (task finished) per task type.
 
   // These are timing-related storage; currently we keep per-job-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
