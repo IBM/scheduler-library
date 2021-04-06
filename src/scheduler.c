@@ -195,7 +195,7 @@ output_task_and_accel_run_stats(scheduler_datastate_block_t* sptr)
 task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_id_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&(sptr->free_metadata_mutex));
-  TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", free_metadata_blocks));
+  TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", sptr->free_metadata_blocks));
   if (sptr->free_metadata_blocks < 1) {
     // Out of metadata blocks -- all in use, cannot enqueue new tasks!
     printf("No free metadata blocks: %d\n", sptr->free_metadata_blocks);
@@ -203,8 +203,8 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
   }
   int bi = sptr->free_metadata_pool[sptr->free_metadata_blocks - 1];
   TDEBUG(printf(" BEFORE_GET : MB%d : free_metadata_pool : ", bi);
-	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
-	   printf("%d ", free_metadata_pool[i]);
+	 for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+	   printf("%d ", sptr->free_metadata_pool[i]);
 	 }
 	 printf("\n"));
   if ((bi < 0) || (bi > sptr->total_metadata_pool_blocks)) {
@@ -250,8 +250,8 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
   DEBUG(printf("  returning block %u\n", bi);
 	print_critical_task_list_ids(sptr));
   TDEBUG(printf(" AFTER_GET : MB%u : free_metadata_pool : ", bi);
-	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
-	   printf("%d ", free_metadata_pool[i]);
+	 for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+	   printf("%d ", sptr->free_metadata_pool[i]);
 	 }
 	 printf("\n"));
   sptr->allocated_metadata_blocks[in_task_type]++;
@@ -272,10 +272,10 @@ void free_task_metadata_block(task_metadata_block_t* mb)
 
   int bi = mb->block_id;
   //printf("MB%u getting freed : %u %u\n", bi, mb->task_type, mb->crit_level);
-  TDEBUG(printf("in free_task_metadata_block for block %u with %u free_metadata_blocks\n", bi, free_metadata_blocks);//);
+  TDEBUG(printf("in free_task_metadata_block for block %u with %u free_metadata_blocks\n", bi, sptr->free_metadata_blocks);//);
 	 printf(" BEFORE_FREE : MB%u : free_metadata_pool : ", bi);
-	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
-	   printf("%d ", free_metadata_pool[i]);
+	 for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+	   printf("%d ", sptr->free_metadata_pool[i]);
 	 }
 	 printf("\n"));
 
@@ -333,8 +333,8 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     cleanup_and_exit(sptr, -5);
   }
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
-	 for (int i = 0; i < total_metadata_pool_blocks; i++) {
-	   printf("%d ", free_metadata_pool[i]);
+	 for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+	   printf("%d ", sptr->free_metadata_pool[i]);
 	 }
 	 printf("\n"));
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
@@ -1088,7 +1088,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	sptr->master_metadata_pool[bi].sched_timings.queued_sec += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec - sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
 	sptr->master_metadata_pool[bi].sched_timings.queued_usec += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec - sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
 
-	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, task_name_str[task_metadata_block->task_type], task_criticality_str[task_metadata_block->crit_level], sptr->accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
+	TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n", bi, sptr->task_name_str[task_metadata_block->task_type], sptr->task_criticality_str[task_metadata_block->crit_level], sptr->accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
 
 	// Lock the mutex associated to the conditional variable
 	pthread_mutex_lock(&(task_metadata_block->metadata_mutex));
