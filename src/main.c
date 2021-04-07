@@ -285,13 +285,14 @@ int main(int argc, char *argv[])
 
   unsigned sched_holdoff_usec = 0;
   char policy[256];
-
+  unsigned num_MBs_to_use = GLOBAL_METADATA_POOL_BLOCKS;
+  
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -385,6 +386,10 @@ int main(int argc, char *argv[])
       cv_cpu_run_time_in_usec = atoi(optarg);
       break;
 
+    case 'B':
+      num_MBs_to_use = atoi(optarg);
+      break;
+
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
     {
       unsigned in_cpu = 0;
@@ -426,6 +431,7 @@ int main(int argc, char *argv[])
   // Get a scheduler_datastate_block
   scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
   // Alter the default parms to those values we want for this run...
+  sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   // Set the scheduler state values we need to for this run
