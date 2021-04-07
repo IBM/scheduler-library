@@ -205,16 +205,16 @@ typedef struct scheduler_datastate_block_struct {
 
   // The pool of metadata blocks for use by the tasks, etc.
   unsigned total_metadata_pool_blocks;
-  task_metadata_block_t master_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  task_metadata_block_t* master_metadata_pool; // [GLOBAL_METADATA_POOL_BLOCKS];
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
-  int free_metadata_blocks;
-  int free_metadata_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  int  free_metadata_blocks;
+  int* free_metadata_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
   unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
   unsigned freed_metadata_blocks[MAX_TASK_TYPES];
 
   pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
-  ready_mb_task_queue_entry_t ready_mb_task_queue_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  ready_mb_task_queue_entry_t* ready_mb_task_queue_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
   ready_mb_task_queue_entry_t* free_ready_mb_task_queue_entries;
   ready_mb_task_queue_entry_t* ready_mb_task_queue_head;
   ready_mb_task_queue_entry_t* ready_mb_task_queue_tail;
@@ -223,14 +223,14 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
-  pthread_t metadata_threads[GLOBAL_METADATA_POOL_BLOCKS]; // One thread per metadata block (to exec it in)
+  pthread_t* metadata_threads;//[GLOBAL_METADATA_POOL_BLOCKS]; // One thread per metadata block (to exec it in)
 
   //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
   pthread_t scheduling_thread;
 
   blockid_linked_list_t* critical_live_task_head;
-  blockid_linked_list_t  critical_live_tasks_list[GLOBAL_METADATA_POOL_BLOCKS];
-  int free_critlist_pool[GLOBAL_METADATA_POOL_BLOCKS];
+  blockid_linked_list_t* critical_live_tasks_list;//[GLOBAL_METADATA_POOL_BLOCKS];
+  int* free_critlist_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
   int free_critlist_entries;
   int total_critical_tasks;
 
@@ -257,7 +257,6 @@ typedef struct scheduler_datastate_block_struct {
   output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
   volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
