@@ -51,8 +51,6 @@ typedef struct {
   struct timeval cdfmcw_start;
   struct timeval time_val[MAX_TASK_TIMING_SETS-8];
 
-  unsigned comp_by[MAX_ACCEL_TYPES];
-
   uint64_t call_sec[MAX_ACCEL_TYPES];
   uint64_t fft_sec[MAX_ACCEL_TYPES];
   uint64_t fft_br_sec[MAX_ACCEL_TYPES];

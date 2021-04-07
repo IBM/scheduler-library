@@ -50,8 +50,6 @@ typedef struct {
   struct timeval depunc_start;
   struct timeval time_val[MAX_TASK_TIMING_SETS-2];
 
-  unsigned comp_by[MAX_ACCEL_TYPES];
-
   uint64_t dodec_sec[MAX_ACCEL_TYPES];
   uint64_t depunc_sec[MAX_ACCEL_TYPES];
   uint64_t time_sec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];

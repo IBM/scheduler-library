@@ -134,7 +134,7 @@ typedef struct task_metadata_entry_struct {
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  uint32_t            task_computed_on[MAX_TASK_TYPES][MAX_ACCEL_TYPES]; 
+  uint32_t            task_computed_on[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
   task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
 
   // This is the segment for data for the tasks

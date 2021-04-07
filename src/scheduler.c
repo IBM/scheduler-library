@@ -583,9 +583,9 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     sptr->master_metadata_pool[i].sched_timings.done_sec = 0;
     sptr->master_metadata_pool[i].sched_timings.done_usec = 0;
     // Reset all the per-task type and targets timing data, too.
-    for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
-      for (int ai = 0; ai < sptr->limits.max_accel_types; ai++) {
-	sptr->master_metadata_pool[i].task_computed_on[ti][ai] = 0;
+    for (int ai = 0; ai < sptr->limits.max_accel_types; ai++) {
+      for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
+	sptr->master_metadata_pool[i].task_computed_on[ai][ti] = 0;
       }
     }
     for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
@@ -1066,17 +1066,17 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
     double avg;
     printf("\nScheduler Timings: Aggregate Across all Metadata Blocks with %u used blocks\n", total_blocks_used);
     avg = (double)total_idle_usec/(double)total_blocks_used;
-    printf("  Metablocks_IDLE total run time:    %15lu usec : %16.2lf (average)\n", total_idle_usec, avg);
+    printf("  Metablocks_IDLE total run time:                %15lu usec : %16.2lf (average)\n", total_idle_usec, avg);
     avg = (double)total_get_usec/(double)total_blocks_used;
-    printf("  Metablocks_GET total run time:     %15lu usec : %16.2lf (average)\n", total_get_usec, avg);
+    printf("  Metablocks_GET total run time:                 %15lu usec : %16.2lf (average)\n", total_get_usec, avg);
     avg = (double)total_queued_usec/(double)total_blocks_used;
-    printf("  Metablocks_QUEUED total run time:  %15lu usec : %16.2lf (average)\n", total_queued_usec, avg);
+    printf("  Metablocks_QUEUED total run time:              %15lu usec : %16.2lf (average)\n", total_queued_usec, avg);
     for (int ti = 0; ti < sptr->limits.max_accel_types; ti++) {
       avg = (double)total_running_usec[ti]/(double)total_blocks_used;
-      printf("  Metablocks_RUNNING total %u %s run time: %15lu usec : %16.2lf (average)\n", ti, sptr->accel_name_str[ti], total_running_usec[ti], avg);
+      printf("  Metablocks_RUNNING %u %15s run time: %15lu usec : %16.2lf (average)\n", ti, sptr->accel_name_str[ti], total_running_usec[ti], avg);
     }
     avg = (double)total_done_usec/(double)total_blocks_used;
-    printf("  Metablocks_DONE total run time:    %15lu usec : %16.2lf (average)\n", total_done_usec, avg);
+    printf("  Metablocks_DONE total run time:                %15lu usec : %16.2lf (average)\n", total_done_usec, avg);
   }
 
   output_task_and_accel_run_stats(sptr);
