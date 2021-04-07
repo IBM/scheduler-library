@@ -599,7 +599,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     }
 
     // And some allocation stats stuff:
-    for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
+    for (int ti = 0; ti < sptr->limits.max_accel_types; ti++) {
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
 	sptr->master_metadata_pool[i].accelerator_allocated_to_MB[ti][ai] = 0;
       }
@@ -657,7 +657,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     sptr->num_accelerators_of_type[i] = 0;
   }
   
-  for (int i = 0; i < sptr->limits.max_accel_types-1; i++) {
+  for (int i = 0; i < sptr->limits.max_accel_types; i++) {
     for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
       sptr->accelerator_in_use_by[i][j] = -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
     }

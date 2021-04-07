@@ -56,7 +56,7 @@ typedef enum { TASK_FREE = 0,
 
 // These are fields defined by the application when it gets/sets up a new cheduler datastate block
 #define MAX_TASK_TYPES     4
-#define MAX_ACCEL_TYPES    5
+#define MAX_ACCEL_TYPES    4
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
 #define MAX_DATA_SPACE_BYTES   128*1024
@@ -130,7 +130,7 @@ typedef struct task_metadata_entry_struct {
   uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
   uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
 
-  uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+  uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
@@ -256,7 +256,7 @@ typedef struct scheduler_datastate_block_struct {
   do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
   output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
-  volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
+  volatile int accelerator_in_use_by[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
