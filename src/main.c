@@ -168,14 +168,16 @@ void print_usage(char * pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
 void radar_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
