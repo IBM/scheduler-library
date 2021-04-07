@@ -584,10 +584,17 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
     sptr->master_metadata_pool[i].sched_timings.done_usec = 0;
     // Reset all the per-task type and targets timing data, too.
     for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
-      for (int tii = 0; tii < sptr->limits.max_accel_types; tii++) {
-	sptr->master_metadata_pool[i].task_timings[ti].comp_by[tii] = 0;
-	sptr->master_metadata_pool[i].task_timings[ti].time_sec[tii] = 0;
-	sptr->master_metadata_pool[i].task_timings[ti].time_usec[tii] = 0;
+      for (int ai = 0; ai < sptr->limits.max_accel_types; ai++) {
+	sptr->master_metadata_pool[i].task_computed_on[ti][ai] = 0;
+      }
+    }
+    for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
+      for (int tii = 0; tii < sptr->limits.max_task_timing_sets; tii++) {
+	//sptr->master_metadata_pool[i].task_timings[ti].time_val[tii] = 0;
+	for (int ai = 0; ai < sptr->limits.max_accel_types; ai++) {
+	  sptr->master_metadata_pool[i].task_timings[ti].time_sec[tii][ai] = 0;
+	  sptr->master_metadata_pool[i].task_timings[ti].time_usec[tii][ai] = 0;
+	}
       }
     }
 

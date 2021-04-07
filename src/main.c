@@ -150,6 +150,7 @@ void print_usage(char * pname) {
   printf("                :      0 = No variability (e.g. all messages same size, etc.)\n");
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
+  printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
 //  printf("    -P <N>      : defines the Scheduler Accelerator Selection Policy:\n");

@@ -93,9 +93,8 @@ typedef struct {
 
 typedef struct { // This allows each task to track up to 16 total internal task timings...
   struct timeval time_val[MAX_TASK_TIMING_SETS];
-  unsigned comp_by[MAX_ACCEL_TYPES]; 
-  uint64_t time_sec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
-  uint64_t time_usec[MAX_TASK_TIMING_SETS*MAX_ACCEL_TYPES];
+  uint64_t time_sec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES];
+  uint64_t time_usec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES];
 } task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any task
@@ -135,6 +134,7 @@ typedef struct task_metadata_entry_struct {
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
+  uint32_t            task_computed_on[MAX_TASK_TYPES][MAX_ACCEL_TYPES]; 
   task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
 
   // This is the segment for data for the tasks
@@ -205,16 +205,16 @@ typedef struct scheduler_datastate_block_struct {
 
   // The pool of metadata blocks for use by the tasks, etc.
   unsigned total_metadata_pool_blocks;
-  task_metadata_block_t* master_metadata_pool; // [GLOBAL_METADATA_POOL_BLOCKS];
+  task_metadata_block_t* master_metadata_pool;
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
   int  free_metadata_blocks;
-  int* free_metadata_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
+  int* free_metadata_pool;
   unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
   unsigned freed_metadata_blocks[MAX_TASK_TYPES];
 
   pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
-  ready_mb_task_queue_entry_t* ready_mb_task_queue_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
+  ready_mb_task_queue_entry_t* ready_mb_task_queue_pool;
   ready_mb_task_queue_entry_t* free_ready_mb_task_queue_entries;
   ready_mb_task_queue_entry_t* ready_mb_task_queue_head;
   ready_mb_task_queue_entry_t* ready_mb_task_queue_tail;
@@ -223,14 +223,14 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
-  pthread_t* metadata_threads;//[GLOBAL_METADATA_POOL_BLOCKS]; // One thread per metadata block (to exec it in)
+  pthread_t* metadata_threads;
 
   //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
   pthread_t scheduling_thread;
 
   blockid_linked_list_t* critical_live_task_head;
-  blockid_linked_list_t* critical_live_tasks_list;//[GLOBAL_METADATA_POOL_BLOCKS];
-  int* free_critlist_pool; //[GLOBAL_METADATA_POOL_BLOCKS];
+  blockid_linked_list_t* critical_live_tasks_list;
+  int* free_critlist_pool;
   int free_critlist_entries;
   int total_critical_tasks;
 
