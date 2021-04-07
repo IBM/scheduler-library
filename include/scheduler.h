@@ -194,7 +194,7 @@ typedef struct scheduler_datastate_block_struct {
   task_id_t next_avail_task_id;
   accelerator_type_t next_avail_accel_id;
 
-  unsigned int scheduler_holdoff_usec;
+  unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy
   void *policy_handle;

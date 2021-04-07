@@ -433,37 +433,45 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   sched_state.limits.max_task_timing_sets      = inp->max_task_timing_sets;
   sched_state.limits.max_data_space_bytes      = inp->max_data_space_bytes;
 
+  size_t sched_state_size = sizeof(sched_state);
   // Now allocate those elements we need to dynamically allocate...
   sched_state.free_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sched_state.free_metadata_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.free_metadata_pool\n");
     exit(-99);
   }
   sched_state.ready_mb_task_queue_pool = calloc(inp->max_metadata_pool_blocks, sizeof(ready_mb_task_queue_entry_t));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(ready_mb_task_queue_entry_t);
   if (sched_state.ready_mb_task_queue_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.ready_mb_task_queue_pool\n");
     exit(-99);
   }
   sched_state.metadata_threads = calloc(inp->max_metadata_pool_blocks, sizeof(pthread_t));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(pthread_t);
   if (sched_state.metadata_threads == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.metadata_threads\n");
     exit(-99);
   }
   sched_state.critical_live_tasks_list = calloc(inp->max_metadata_pool_blocks, sizeof(blockid_linked_list_t));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(blockid_linked_list_t);
   if (sched_state.critical_live_tasks_list == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.critical_live_tasks_list\n");
     exit(-99);
   }
   sched_state.free_critlist_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sched_state.free_critlist_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.free_critlist_pool\n");
     exit(-99);
   }
   sched_state.master_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(task_metadata_block_t));
+  sched_state_size += inp->max_metadata_pool_blocks * sizeof(task_metadata_block_t);
   if (sched_state.master_metadata_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sched_state.master_metadata_pool\n");
     exit(-99);
   }
+  printf("TOTAL Schedule DataState Size is %lu bytes\n", sched_state_size);
   return &sched_state;
 }
 

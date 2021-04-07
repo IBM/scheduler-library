@@ -261,9 +261,6 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
 
 int main(int argc, char *argv[])
 {
-  // Get a scheduler_datastate_block
-  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   
   vehicle_state_t vehicle_state;
   label_t label;
@@ -285,6 +282,9 @@ int main(int argc, char *argv[])
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
   unsigned max_additional_tasks_per_time_step = 0;
+
+  unsigned sched_holdoff_usec = 0;
+  char policy[256];
 
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
       bypass_h264_functions = true;
       break;
     case 'u':
-      sptr->scheduler_holdoff_usec = atoi(optarg);
+      sched_holdoff_usec = atoi(optarg);
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
       additional_cv_tasks_per_time_step = atoi(optarg);
       break;
     case 'P':
-      snprintf(sptr->policy, 255, "%s", optarg);
+      snprintf(policy, 255, "%s", optarg);
       //global_scheduler_selection_policy = atoi(optarg);
       break;
 
@@ -423,13 +423,19 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-//  printf("Run using Scheduler Policy %u using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-//	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
-//	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+  // Get a scheduler_datastate_block
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
+  // Alter the default parms to those values we want for this run...
+  
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
+  // Set the scheduler state values we need to for this run
+  sptr->scheduler_holdoff_usec = sched_holdoff_usec;
+  snprintf(sptr->policy, 255, "%s", policy);
+
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
 	 sptr->policy,
 	 accel_limit_cpu, accel_limit_fft, accel_limit_vit, accel_limit_cv, 
-	sptr-> scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+	 sptr-> scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
 
   #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
