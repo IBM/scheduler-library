@@ -85,7 +85,7 @@ output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_tas
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
       cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(sptr->master_metadata_pool[bi].task_timings[my_task_id]);
-      unsigned this_comp_by = (unsigned)(cv_timings_p->comp_by[ai]);
+      unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_id]);
       uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ai]);
       uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ai]);
       if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[my_task_id][ai] != NULL)) {
@@ -154,9 +154,9 @@ void
 execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   int fn = task_metadata_block->accelerator_id;
-  int tidx = task_metadata_block->accelerator_type;
+  int aidx = task_metadata_block->accelerator_type;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
-  cv_timings_p->comp_by[tidx]++;
+  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   TDEBUG(printf("In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
 #ifdef HW_CV
   // Add the call to the NVDLA stuff here.
@@ -173,16 +173,16 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   }
  #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->parse_start), NULL);
-  cv_timings_p->call_sec[tidx]  += cv_timings_p->parse_start.tv_sec  - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[tidx]  += cv_timings_p->parse_start.tv_usec  - cv_timings_p->call_start.tv_usec;
-  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", cv_timings_p->call_sec[tidx], cv_timings_p->call_usec[tidx]));
+  cv_timings_p->call_sec[aidx]  += cv_timings_p->parse_start.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[aidx]  += cv_timings_p->parse_start.tv_usec  - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
  #endif
   label_t pred_label = parse_output_dimg();
  #ifdef INT_TIME
   struct timeval stop;
   gettimeofday(&(stop), NULL);
-  cv_timings_p->parse_sec[tidx]  += stop.tv_sec  - cv_timings_p->parse_start.tv_sec;
-  cv_timings_p->parse_usec[tidx] += stop.tv_usec - cv_timings_p->parse_start.tv_usec;
+  cv_timings_p->parse_sec[aidx]  += stop.tv_sec  - cv_timings_p->parse_start.tv_sec;
+  cv_timings_p->parse_usec[aidx] += stop.tv_usec - cv_timings_p->parse_start.tv_usec;
  #endif
   TDEBUG(printf("---> Predicted label = %d\n", pred_label));
   // Set result into the metatdata block
@@ -198,9 +198,9 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  cv_timings_p->call_sec[tidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", tidx, cv_timings_p->call_sec[tidx], cv_timings_p->call_usec[tidx]));
+  cv_timings_p->call_sec[aidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", aidx, cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
   #endif
 
  #else
@@ -297,9 +297,9 @@ label_t run_object_classification(unsigned tr_val)
 void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level ));
-  int tidx = task_metadata_block->accelerator_type;
+  int aidx = task_metadata_block->accelerator_type;
+  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
-  cv_timings_p->comp_by[tidx]++;
 
  #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
@@ -310,8 +310,8 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
  #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  cv_timings_p->call_sec[tidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+  cv_timings_p->call_sec[aidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
  #endif
 
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));

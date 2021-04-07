@@ -22,21 +22,21 @@
 #include "base_types.h"
 
 //                                                            CPU  VIT  FFT  CV
-unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES-1] = { {101, 101, 101, 101},   // NO_Task : 0% chance of using any HWR
+unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES] = { {101, 101, 101, 101},   // NO_Task : 0% chance of using any HWR
 #ifdef HW_VIT
-							     {101,  25, 101, 101},   // VIT : 75% chance on HWR on VIT_HWR
+							   {101,  25, 101, 101},   // VIT : 75% chance on HWR on VIT_HWR
 #else
-							     {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
+							   {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
 #endif
 #if (defined(HW_CV) || defined(FAKE_HW_CV))
-							     {101, 101, 101,  25},   // CV  : 75% chance on HWR on CV_HWR
+							   {101, 101, 101,  25},   // CV  : 75% chance on HWR on CV_HWR
 #else
-							     {101, 101, 101, 101},   // NO_HWR_CV : 0% chance of using any HWR
+							   {101, 101, 101, 101},   // NO_HWR_CV : 0% chance of using any HWR
 #endif
 #ifdef HW_FFT
-							     {101, 101,  25, 101}};  // FFT : 75% chance on HWR on FFT_HWR
+							   {101, 101,  25, 101}};  // FFT : 75% chance on HWR on FFT_HWR
 #else
-							     {101, 101, 101, 101}};  // NO_HWR_FFT : 0% chance of using any HWR
+							   {101, 101, 101, 101}};  // NO_HWR_FFT : 0% chance of using any HWR
 #endif
 
 

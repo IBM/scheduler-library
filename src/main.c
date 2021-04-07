@@ -150,6 +150,7 @@ void print_usage(char * pname) {
   printf("                :      0 = No variability (e.g. all messages same size, etc.)\n");
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
+  printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
 //  printf("    -P <N>      : defines the Scheduler Accelerator Selection Policy:\n");
@@ -167,14 +168,16 @@ void print_usage(char * pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and then releases the MetaData Block
 void base_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
 void radar_release_metadata_block(task_metadata_block_t* mb)
 {
-  TDEBUG(printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, task_name_str[mb->job_type], task_criticality_str[mb->crit_level], accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
@@ -261,9 +264,6 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
 
 int main(int argc, char *argv[])
 {
-  // Get a scheduler_datastate_block
-  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   
   vehicle_state_t vehicle_state;
   label_t label;
@@ -286,12 +286,16 @@ int main(int argc, char *argv[])
   unsigned additional_vit_tasks_per_time_step = 0;
   unsigned max_additional_tasks_per_time_step = 0;
 
+  unsigned sched_holdoff_usec = 0;
+  char policy[256];
+  unsigned num_MBs_to_use = GLOBAL_METADATA_POOL_BLOCKS;
+  
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -321,7 +325,7 @@ int main(int argc, char *argv[])
       bypass_h264_functions = true;
       break;
     case 'u':
-      sptr->scheduler_holdoff_usec = atoi(optarg);
+      sched_holdoff_usec = atoi(optarg);
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -368,7 +372,7 @@ int main(int argc, char *argv[])
       additional_cv_tasks_per_time_step = atoi(optarg);
       break;
     case 'P':
-      snprintf(sptr->policy, 255, "%s", optarg);
+      snprintf(policy, 255, "%s", optarg);
       //global_scheduler_selection_policy = atoi(optarg);
       break;
 
@@ -383,6 +387,10 @@ int main(int argc, char *argv[])
       break;
     case 'D':
       cv_cpu_run_time_in_usec = atoi(optarg);
+      break;
+
+    case 'B':
+      num_MBs_to_use = atoi(optarg);
       break;
 
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
@@ -423,13 +431,20 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-//  printf("Run using Scheduler Policy %u using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
-//	  global_scheduler_selection_policy, input_cpu_accel_limit, input_cv_accel_limit, input_fft_accel_limit, input_vit_accel_limit, scheduler_holdoff_usec,
-//	  NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+  // Get a scheduler_datastate_block
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
+  // Alter the default parms to those values we want for this run...
+  sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
+  
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
+  // Set the scheduler state values we need to for this run
+  sptr->scheduler_holdoff_usec = sched_holdoff_usec;
+  snprintf(sptr->policy, 255, "%s", policy);
+
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
 	 sptr->policy,
 	 accel_limit_cpu, accel_limit_fft, accel_limit_vit, accel_limit_cv, 
-	sptr-> scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
+	 sptr-> scheduler_holdoff_usec, NUM_CPU_ACCEL, NUM_FFT_ACCEL, NUM_VIT_ACCEL, NUM_CV_ACCEL);
 
   #ifdef HW_FFT
   printf("Run has enabled Hardware-FFT : Device base is %s\n", FFT_DEV_BASE);
