@@ -551,6 +551,13 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
       }
     }
 
+    // And some allocation stats stuff:
+    for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
+      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+	sptr->master_metadata_pool[i].accelerator_allocated_to_MB[ti][ai] = 0;
+      }
+    }
+
     pthread_mutex_init(&(sptr->master_metadata_pool[i].metadata_mutex), NULL);
     pthread_cond_init(&(sptr->master_metadata_pool[i].metadata_condv), NULL);
 
@@ -574,7 +581,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
       sptr->ready_mb_task_queue_pool[i].next = NULL;
     }
     DEBUG(printf("  set pool[%2u] @ %p id %i prev %p next %p\n", i, &(sptr->ready_mb_task_queue_pool[i]), sptr->ready_mb_task_queue_pool[i].block_id, sptr->ready_mb_task_queue_pool[i].prev, sptr->ready_mb_task_queue_pool[i].next));
-  }
+  } // for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
   sptr->free_ready_mb_task_queue_entries = &(sptr->ready_mb_task_queue_pool[0]);
   sptr->ready_mb_task_queue_head = NULL;
   sptr->ready_mb_task_queue_tail = NULL;
@@ -623,15 +630,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
      printf(" Calling do_accelerator_type_initialization...\n");
      do_accelerator_type_initialization();
   **/
-
-  // And some stats stuff:
-  for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
-    for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
-      for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-	sptr->accelerator_allocated_to_MB[ti][ai][bi] = 0;
-      }
-    }
-  }
 
   // Set up the Scheduler's Execution-Task-Function Table (for now by hand)
   for (int i = 0; i < sptr->limits.max_task_types; i++) {
@@ -755,7 +753,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
 	account_accelerators_in_use_interval(sptr);
 	int bi = task_metadata_block->block_id; // short name for the block_id
 	sptr->accelerator_in_use_by[accel_type][accel_id] = bi;
-	sptr->accelerator_allocated_to_MB[accel_type][accel_id][bi] += 1;
+	sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[accel_type][accel_id] += 1;
 	// Okay -- we can allocate to the accelerator -- remove from the queue
 	//printf("MB%u ALLOCATE accelerator %u %u to  %d cl %u\n", bi, accel_type, accel_id, bi, task_metadata_block->crit_level);
 	DEBUG(printf("SCHED: MB%u ALLOC accelerator %u  %u to %d  : ", bi, accel_type, accel_id, bi);
@@ -1059,7 +1057,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
       for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
 	totals[ti][ai] = 0;
 	for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-	  totals[ti][ai] += sptr->accelerator_allocated_to_MB[ti][ai][bi];
+	  totals[ti][ai] += sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[ti][ai];
 	}
       }
     }
@@ -1084,8 +1082,8 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
     for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
       for (int ai = 0; ai < sptr->num_accelerators_of_type[ti]; ai++) {
 	for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-	  if (sptr->accelerator_allocated_to_MB[ti][ai][bi] != 0) {
-	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB%u\n", ti, sptr->accel_name_str[ti], ai, sptr->accelerator_allocated_to_MB[ti][ai][bi], bi);
+	  if (sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[ti][ai] != 0) {
+	    printf(" Per-MB Acc_Type %u %s : Accel %2u Allocated %6u times for MB%u\n", ti, sptr->accel_name_str[ti], ai, sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[ti][ai], bi);
 	  }
 	}
       }

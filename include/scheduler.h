@@ -128,8 +128,10 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  unsigned gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  unsigned frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+
+  uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
@@ -255,7 +257,7 @@ typedef struct scheduler_datastate_block_struct {
   output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
   volatile int accelerator_in_use_by[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE];
-  unsigned int accelerator_allocated_to_MB[MAX_ACCEL_TYPES-1][MAX_ACCEL_OF_EACH_TYPE][GLOBAL_METADATA_POOL_BLOCKS];
+
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
