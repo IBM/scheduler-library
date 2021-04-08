@@ -271,7 +271,7 @@ typedef struct scheduler_datastate_block_struct {
 
 //extern scheduler_datastate_block_t sched_state;
 
-scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointer();
+void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
