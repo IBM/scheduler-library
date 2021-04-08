@@ -432,10 +432,17 @@ int main(int argc, char *argv[])
   }
 
   // Get a scheduler_datastate_block
-  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_default_parms_pointer();
+  scheduler_get_datastate_in_parms_t* sched_inparms = malloc(sizeof(scheduler_get_datastate_in_parms_t));
+  if( sched_inparms == NULL) {
+    printf("ERROR: Couldn't allocate the sched_inparms memory\n");
+    exit(-99);
+  }
+  // Copy the scheduler's default parms into the new sched_inparms values
+  copy_scheduler_datastate_defaults_into_parms(sched_inparms);
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
-  
+
+  // Now get a new scheduler datastate space
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
@@ -1087,6 +1094,7 @@ int main(int argc, char *argv[])
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
  #endif // TIME
+  free(sched_inparms);
   shutdown_scheduler(sptr);
   printf("\nDone.\n");
   return 0;

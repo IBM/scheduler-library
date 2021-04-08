@@ -419,9 +419,14 @@ metadata_thread_wait_for_task(void* void_parm_ptr)
 
 /* Input parameters: */
 
-scheduler_get_datastate_in_parms_t* get_scheduler_datastate_default_parms_pointer()
+void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* pptr)
 {
-  return &sched_state_def_parms;
+  pptr->max_task_types            = sched_state_def_parms.max_task_types;
+  pptr->max_accel_types           = sched_state_def_parms.max_accel_types;
+  pptr->max_accel_of_any_type     = sched_state_def_parms.max_accel_of_any_type;
+  pptr->max_metadata_pool_blocks  = sched_state_def_parms.max_metadata_pool_blocks;
+  pptr->max_task_timing_sets      = sched_state_def_parms.max_task_timing_sets;
+  pptr->max_data_space_bytes      = sched_state_def_parms.max_data_space_bytes;
 }
 
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
