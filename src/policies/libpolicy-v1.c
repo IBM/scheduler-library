@@ -55,8 +55,8 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     do { // We will spin (in this policy) until we find an available accelerator...
       // Find an acceptable accelerator for this task (task_type)
       for (int check_accel = sptr->next_avail_accel_id-1; check_accel >= 0; check_accel--) { // Last accel is "no-accelerator"
-        DEBUG(printf("F2S_FA: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], check_accel, sptr->accel_name_str[check_accel], sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel]));
-        if (sptr->scheduler_execute_task_function[task_metadata_block->task_type][check_accel] != NULL) {
+        DEBUG(printf("F2S_FA: task %u %s : check_accel = %u %s : SchedFunc %p\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], check_accel, sptr->accel_name_str[check_accel], sptr->scheduler_execute_task_function[check_accel][task_metadata_block->task_type]));
+        if (sptr->scheduler_execute_task_function[check_accel][task_metadata_block->task_type] != NULL) {
           DEBUG(printf("F2S_FA: task %u check_accel = %u Tprof 0x%016lx prop_time 0x%016lx : %u\n", task_metadata_block->task_type, check_accel, task_metadata_block->task_on_accel_profile[check_accel], prop_time, (task_metadata_block->task_on_accel_profile[check_accel] < prop_time)));
           if (task_metadata_block->task_on_accel_profile[check_accel] < prop_time) {
             int i = 0;

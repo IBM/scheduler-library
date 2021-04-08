@@ -380,7 +380,7 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   if (task_metadata_block->accelerator_type != NO_Accelerator) {
     if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < sptr->limits.max_task_types)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
-      sptr->scheduler_execute_task_function[task_metadata_block->task_type][task_metadata_block->accelerator_type](task_metadata_block);
+      sptr->scheduler_execute_task_function[task_metadata_block->accelerator_type][task_metadata_block->task_type](task_metadata_block);
     } else {
       printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->task_type);
       cleanup_and_exit(sptr, -13);
@@ -444,6 +444,21 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   sptr->limits.max_task_timing_sets      = inp->max_task_timing_sets;
   sptr->limits.max_data_space_bytes      = inp->max_data_space_bytes;
 
+  // Allocate the scheduler_datastate_block_t dynamic (per-task-type) elements
+  /*
+    unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
+    unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+
+    char task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
+    char task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
+
+    sched_execute_task_function_t scheduler_execute_task_function[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
+
+    print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
+    output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
+  */
+
+  
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
   // Now allocate those elements we need to dynamically allocate...
   sptr->free_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
@@ -692,7 +707,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   // Set up the Scheduler's Execution-Task-Function Table (for now by hand)
   for (int i = 0; i < sptr->limits.max_task_types; i++) {
     for (int j = 0; j < sptr->limits.max_accel_types; j++) {
-      sptr->scheduler_execute_task_function[i][j] = NULL; // Set all to default to NULL
+      sptr->scheduler_execute_task_function[j][i] = NULL; // Set all to default to NULL
     }
     sptr->print_metablock_contents_function[i] = NULL;
     sptr->output_task_run_stats_function[i] = NULL;
@@ -1304,10 +1319,10 @@ register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type
     printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n", tid, sptr->next_avail_task_id);
     cleanup_and_exit(sptr, -37);
   }
-  if (sptr->scheduler_execute_task_function[tid][acid] != NULL) {
-    printf("In register_accel_can_exec_task for task_type %u and accel_type %u - Already have a registered execution (%p)\n", tid, acid, sptr->scheduler_execute_task_function[tid][acid]);
+  if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {
+    printf("In register_accel_can_exec_task for accel_type %u and task_type %u - Already have a registered execution (%p)\n", acid, tid, sptr->scheduler_execute_task_function[tid][acid]);
     cleanup_and_exit(sptr, -38);
   }
-  sptr->scheduler_execute_task_function[tid][acid] = fptr;
-  printf("  Set scheduler_execute_task_function[tid = %u ][acid = %u ]  to %p\n", tid, acid, fptr);
+  sptr->scheduler_execute_task_function[acid][tid] = fptr;
+  printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr);
 }
