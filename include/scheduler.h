@@ -127,15 +127,15 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t* gets_by_task_type; // Count of times this metadata block allocated per task type.
+  uint32_t* frees_by_task_type; // Count of times this metadata block allocated per task type.
 
   uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  uint32_t            task_computed_on[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
-  task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
+  uint32_t*           task_computed_on[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  task_timing_data_t* task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
@@ -210,8 +210,8 @@ typedef struct scheduler_datastate_block_struct {
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
   int  free_metadata_blocks;
   int* free_metadata_pool;
-  unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
-  unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+  uint32_t* allocated_metadata_blocks; // array over TASK_TYPES
+  uint32_t* freed_metadata_blocks;     // array over TASK_TYPES
 
   pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
   ready_mb_task_queue_entry_t* ready_mb_task_queue_pool;
@@ -234,8 +234,8 @@ typedef struct scheduler_datastate_block_struct {
   int free_critlist_entries;
   int total_critical_tasks;
 
-  char task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
-  char task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
+  char** task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
+  char** task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
 
   char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
   char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
@@ -247,10 +247,10 @@ typedef struct scheduler_datastate_block_struct {
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
   //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-  sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
+  sched_execute_task_function_t* scheduler_execute_task_function[MAX_ACCEL_TYPES]; // array over TASK_TYPES
 
-  print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
-  output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
+  print_metadata_block_contents_t* print_metablock_contents_function; // array over TASK_TYPES
+  output_task_type_run_stats_t* output_task_run_stats_function;       // array over TASK_TYPES
 
   do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
   do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
