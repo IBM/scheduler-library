@@ -446,19 +446,6 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   sptr->limits.max_data_space_bytes      = inp->max_data_space_bytes;
 
   // Allocate the scheduler_datastate_block_t dynamic (per-task-type) elements
-  /*
-    unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
-    unsigned freed_metadata_blocks[MAX_TASK_TYPES];
-
-    char task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
-    char task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
-
-    sched_execute_task_function_t scheduler_execute_task_function[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
-
-    print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
-    output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
-  */
-
   sptr->allocated_metadata_blocks = malloc(inp->max_task_types * sizeof(uint32_t));
   sched_state_size += inp->max_task_types * sizeof(uint32_t);
   if (sptr == NULL) {
@@ -527,7 +514,6 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     exit(-99);
   }
   
-  // Now allocate those elements we need to dynamically allocate...
   sptr->free_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sptr->free_metadata_pool == NULL) {
@@ -558,12 +544,54 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->free_critlist_pool\n");
     exit(-99);
   }
+
+  // Now allocate the metadata block entries...
   sptr->master_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(task_metadata_block_t));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(task_metadata_block_t);
   if (sptr->master_metadata_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool\n");
     exit(-99);
   }
+
+  /*
+    uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+    uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+    uint32_t            task_computed_on[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
+    task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
+  */
+  for (int mi = 0; mi < inp->max_metadata_pool_blocks; mi++) {
+    sptr->master_metadata_pool[mi].gets_by_task_type = malloc(inp->max_task_types * sizeof(uint32_t));
+    sched_state_size += inp->max_task_types * sizeof(uint32_t);
+    if (sptr->master_metadata_pool[mi].gets_by_task_type == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].gets_by_task_type\n", mi);
+      exit(-99);
+    }
+    
+    sptr->master_metadata_pool[mi].frees_by_task_type = malloc(inp->max_task_types * sizeof(uint32_t));
+    sched_state_size += inp->max_task_types * sizeof(uint32_t);
+    if (sptr->master_metadata_pool[mi].frees_by_task_type == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].frees_by_task_type\n", mi);
+      exit(-99);
+    }
+    
+    for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+      sptr->master_metadata_pool[mi].task_computed_on[ai] = malloc(inp->max_task_types * sizeof(uint32_t));
+      sched_state_size += inp->max_task_types * sizeof(uint32_t);
+      if (sptr->master_metadata_pool[mi].task_computed_on[ai] == NULL) {
+	printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_computed_on[%u]\n", mi, ai);
+	exit(-99);
+      }
+    }
+
+    sptr->master_metadata_pool[mi].task_timings = malloc(inp->max_task_types * sizeof(task_timing_data_t));
+    sched_state_size += inp->max_task_types * sizeof(task_timing_data_t);
+    if (sptr->master_metadata_pool[mi].task_timings == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_timings\n", mi);
+      exit(-99);
+    }
+  }
+
+
   printf("TOTAL Schedule DataState Size is %lu bytes\n", sched_state_size);
   return sptr;
 }

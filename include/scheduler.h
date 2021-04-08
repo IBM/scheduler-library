@@ -127,15 +127,15 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
-  uint32_t gets_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
-  uint32_t frees_by_task_type[MAX_TASK_TYPES]; // Count of times this metadata block allocated per job type.
+  uint32_t* gets_by_task_type; // Count of times this metadata block allocated per task type.
+  uint32_t* frees_by_task_type; // Count of times this metadata block allocated per task type.
 
   uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  uint32_t            task_computed_on[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
-  task_timing_data_t  task_timings[MAX_TASK_TYPES];  // This allows for N types of tasks (e.g. FFT, Viterbi, etc.)
+  uint32_t*           task_computed_on[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  task_timing_data_t* task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
   int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
