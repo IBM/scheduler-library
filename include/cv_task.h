@@ -25,7 +25,7 @@
 #include "base_types.h"
 
 // Some Profiling Data:
-#define usecHwrCV   150000
+//#define usecHwrCV   150000
 
 // This is a structure that defines the "CV" task's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
@@ -43,8 +43,8 @@ typedef struct {
   uint64_t parse_sec[MAX_ACCEL_TYPES];
   uint64_t time_sec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 
-  uint64_t parse_usec[MAX_ACCEL_TYPES];
   uint64_t call_usec[MAX_ACCEL_TYPES];
+  uint64_t parse_usec[MAX_ACCEL_TYPES];
   uint64_t time_usec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
 } cv_timing_data_t;
 

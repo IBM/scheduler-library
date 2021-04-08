@@ -26,8 +26,8 @@
 
 //#include "scheduler.h"
 
-#define usecHwrFFT0   6000
-#define usecHwrFFT1 143000
+//#define usecHwrFFT0   6000
+//#define usecHwrFFT1 143000
 
 // This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
 extern unsigned crit_fft_samples_set;

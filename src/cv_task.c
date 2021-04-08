@@ -56,8 +56,18 @@ char *python_func_load = "loadmodel";
 #endif
 
 
-unsigned cv_cpu_run_time_in_usec      = 10000;
-unsigned cv_fake_hwr_run_time_in_usec =  1000;
+#ifdef FAKE_HW_CV
+ unsigned cv_cpu_run_time_in_usec      = 10000;
+ unsigned cv_fake_hwr_run_time_in_usec =  1000;
+#else
+ #ifdef COMPILE_TO_ESP
+  unsigned cv_cpu_run_time_in_usec      = 10000;
+  unsigned cv_fake_hwr_run_time_in_usec =  1000;
+ #else
+  unsigned cv_cpu_run_time_in_usec      =     1;
+  unsigned cv_fake_hwr_run_time_in_usec =     1;
+ #endif
+#endif
 
 
 void print_cv_metadata_block_contents(task_metadata_block_t* mb) {
@@ -202,10 +212,6 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
   DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", aidx, cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
   #endif
-
- #else
-  printf("ERROR : This executable DOES NOT support Hardware-CV execution!\n");
-  cleanup_and_exit(-2);
  #endif
 #endif
   TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));

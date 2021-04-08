@@ -21,24 +21,14 @@
 #include "verbose.h"
 #include "base_types.h"
 
-//                                                            CPU  VIT  FFT  CV
-unsigned HW_THRESHOLD[MAX_TASK_TYPES][MAX_ACCEL_TYPES] = { {101, 101, 101, 101},   // NO_Task : 0% chance of using any HWR
-#ifdef HW_VIT
-							   {101,  25, 101, 101},   // VIT : 75% chance on HWR on VIT_HWR
-#else
-							   {101, 101, 101, 101},   // NO_HWR_VIT : 0% chance of using any HWR
-#endif
-#if (defined(HW_CV) || defined(FAKE_HW_CV))
-							   {101, 101, 101,  25},   // CV  : 75% chance on HWR on CV_HWR
-#else
-							   {101, 101, 101, 101},   // NO_HWR_CV : 0% chance of using any HWR
-#endif
-#ifdef HW_FFT
-							   {101, 101,  25, 101}};  // FFT : 75% chance on HWR on FFT_HWR
-#else
-							   {101, 101, 101, 101}};  // NO_HWR_FFT : 0% chance of using any HWR
-#endif
+// unsigned HW_THRESHOLD[TASK_TYPE][EACH_ACCEL_TYPE]
+unsigned** HW_THRESHOLD;
 
+void 
+initialize_assign_task_to_pe(void * in_parm_ptr)
+{
+  HW_THRESHOLD = (unsigned**)in_parm_ptr;
+}
 
 // This is a basic accelerator selection policy:
 //   This one selects an accelerator type (HWR or CPU) randomly
@@ -75,8 +65,8 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     // Scheduler should now run this either on CPU or HWR
 
     int num = (rand() % (100)); // Return a value from [0,99]
-    for (int i = 1; i < sptr->next_avail_task_id; i++) {
-      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u][%u] = %u\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type, i,  HW_THRESHOLD[task_metadata_block->task_type][i]));
+    for (int i = 1; i < sptr->next_avail_accel_id; i++) {
+      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u = %s][%u = %s] = %u\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], i, sptr->accel_name_str[i],  HW_THRESHOLD[task_metadata_block->task_type][i]));
       if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;

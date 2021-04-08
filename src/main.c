@@ -31,6 +31,7 @@
 #include "fft_task.h"
 #include "vit_task.h"
 #include "cv_task.h"
+#include "test_task.h"
 
 #include "kernels_api.h"
 #include "sim_environs.h"
@@ -66,13 +67,14 @@ accelerator_type_t fft_hwr_accel_id;
 accelerator_type_t vit_hwr_accel_id;
 accelerator_type_t cv_hwr_accel_id;
 
-#define my_num_accel_types  4
+//#define my_num_accel_types  4
 
 // Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
 task_id_t no_task_id;
 task_id_t fft_task_id;
 task_id_t vit_task_id;
 task_id_t cv_task_id;
+task_id_t test_task_id;
 
 #define my_num_task_types  4
 
@@ -81,36 +83,22 @@ unsigned accel_limit_fft = NUM_FFT_ACCEL;
 unsigned accel_limit_vit = NUM_VIT_ACCEL;
 unsigned accel_limit_cv  = NUM_CV_ACCEL;
 
+// This is a set of HW Threshold values for use in the P0 (Policy-v0)
+//  This is of size [NUM_TASKS][MAX_ACCELERATORS] (so dynamically allocated when we know NUM_TASKS)
+//  The order is also significant, so "filled in" as we register the tasks
+unsigned** p0_hw_threshold;
 
-
-// These are now defined in terms of measurements (recorded in macro definitions, in scheduler.h)
-// The order here MUST correspond to the order of the accelerator registrations...
-// Currently this is CPU, VIT, FFT, CV
-
-// FFT has 2 profiles depending on input size (1k or 16k samples)
-uint64_t fft_profile[2][my_num_accel_types] = {
-//   CPU        VIT        FFT        CV
-  { 23000, ACINFPROF, usecHwrFFT0, ACINFPROF},  //  1k-sample FFT
-  {600000, ACINFPROF, usecHwrFFT1, ACINFPROF}}; // 16k-sample FFT
-
-// Viterbi has 4 profiles, depending on input size
-uint64_t vit_profile[4][my_num_accel_types] = {
-//    CPU        VIT        FFT          CV
-  { 120000, usecHwrVIT0, ACINFPROF, ACINFPROF},  // short-message Vit
-  {1700000, usecHwrVIT1, ACINFPROF, ACINFPROF},  // medium-message Vit
-  {3400000, usecHwrVIT2, ACINFPROF, ACINFPROF},  // long-message Vit
-  {4800000, usecHwrVIT3, ACINFPROF, ACINFPROF}}; // max-message Vit
-
-uint64_t cv_profile[my_num_accel_types]  = {
-//    CPU       VIT        FFT         CV
-   ACINFPROF, ACINFPROF, ACINFPROF, usecHwrCV};
-
+uint64_t fft_profile[2][MAX_ACCEL_TYPES];
+uint64_t vit_profile[4][MAX_ACCEL_TYPES];
+uint64_t cv_profile[MAX_ACCEL_TYPES];
+uint64_t test_profile[MAX_ACCEL_TYPES];
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
+
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -208,7 +196,7 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   accel_def.do_accel_closeout       = &do_vit_accel_type_closeout;
   accel_def.output_accel_run_stats  = &output_vit_accel_type_run_stats;
   vit_hwr_accel_id = register_accelerator_pool(sptr, &accel_def);
-
+    
   sprintf(accel_def.name, "FFT-HW-Acc");
   sprintf(accel_def.description, "Run task on the 1-D FFT Hardware Accelerator");
   accel_def.number_available        = accel_limit_fft;
@@ -240,26 +228,120 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
   vit_task_id = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_id);
   register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
   register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
-
+  if (NUM_VIT_ACCEL > 0) {
+    // Add the new Policy-v0 HW_Threshold values for VIT tasks
+    p0_hw_threshold[vit_task_id][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_id][vit_hwr_accel_id]);
+  }
+  
   sprintf(task_defn.name, "CV-Task");
   sprintf(task_defn.description, "A CV/CNN task to execute");
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
   cv_task_id = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_id);
   register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
   register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
-
+  if (NUM_CV_ACCEL > 0) {
+    // Add the new Policy-v0 HW_Threshold values for CV tasks
+    p0_hw_threshold[cv_task_id][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_id][cv_hwr_accel_id]);
+  }
+  
   sprintf(task_defn.name, "FFT-Task");
   sprintf(task_defn.description, "A 1-D FFT task to execute");
   task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
   fft_task_id = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_id);
   register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
   register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+  if (NUM_FFT_ACCEL > 0) {
+    // Add the new Policy-v0 HW_Threshold values for FFT tasks
+    p0_hw_threshold[fft_task_id][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_id][fft_hwr_accel_id]);
+  }
+  
+  // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
+  if (num_Crit_test_tasks + num_Base_test_tasks) {
+    sprintf(task_defn.name, "TEST-Task");
+    sprintf(task_defn.description, "A TESTING task to execute");
+    task_defn.print_metadata_block_contents  = &print_test_metadata_block_contents;
+    task_defn.output_task_type_run_stats  = &output_test_task_type_run_stats;
+    test_task_id = register_task_type(sptr, &task_defn);
+    //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_id);
+    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_id, &execute_on_cpu_test_accelerator);
+    if ((NUM_VIT_ACCEL > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
+      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_id, &execute_on_hwr_vit_test_accelerator);
+      p0_hw_threshold[test_task_id][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, vit_hwr_accel_id, p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
+    }
+    if ((NUM_FFT_ACCEL > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
+      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_id, &execute_on_hwr_fft_test_accelerator);
+      p0_hw_threshold[test_task_id][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, fft_hwr_accel_id, p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
+    }
+    if ((NUM_CV_ACCEL > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
+      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_id, &execute_on_hwr_cv_test_accelerator);
+      p0_hw_threshold[test_task_id][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_id][cv_hwr_accel_id]);
+    }
+  }
 
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
+}
+
+
+
+void set_up_task_on_accel_profile_data()
+{
+  for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+    fft_profile[0][ai] = ACINFPROF;
+    fft_profile[1][ai] = ACINFPROF;
+    vit_profile[0][ai] = ACINFPROF;
+    vit_profile[1][ai] = ACINFPROF;
+    vit_profile[2][ai] = ACINFPROF;
+    vit_profile[3][ai] = ACINFPROF;
+    cv_profile[ai]   = ACINFPROF;
+    test_profile[ai] = ACINFPROF;
+  }
+  // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
+  fft_profile[0][cpu_accel_id]     =  23000;
+  fft_profile[0][fft_hwr_accel_id] =   6000;
+  fft_profile[1][cpu_accel_id]     = 600000;
+  fft_profile[1][fft_hwr_accel_id] = 143000;
+  
+  vit_profile[0][cpu_accel_id]     =  120000;
+  vit_profile[0][vit_hwr_accel_id] =    5950;
+  vit_profile[1][cpu_accel_id]     = 1700000;
+  vit_profile[1][vit_hwr_accel_id] =   67000;
+  vit_profile[2][cpu_accel_id]     = 3400000;
+  vit_profile[2][vit_hwr_accel_id] =  135000;
+  vit_profile[3][cpu_accel_id]     = 4800000;
+  vit_profile[3][vit_hwr_accel_id] =  191000;
+  
+  cv_profile[cpu_accel_id]     = 5000000;
+  cv_profile[cv_hwr_accel_id]  =  150000;
+
+  if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
+    if (test_on_cpu_run_time_in_usec > 0) {
+      test_profile[cpu_accel_id] = test_on_cpu_run_time_in_usec;
+    }
+    if (test_on_hwr_vit_run_time_in_usec > 0) {
+      test_profile[vit_hwr_accel_id] = test_on_hwr_vit_run_time_in_usec;
+    }
+    if (test_on_hwr_fft_run_time_in_usec > 0) {
+      test_profile[fft_hwr_accel_id] = test_on_hwr_fft_run_time_in_usec;
+    }
+    if (test_on_hwr_cv_run_time_in_usec > 0) {
+      test_profile[cv_hwr_accel_id]  =  test_on_hwr_cv_run_time_in_usec;
+    }
+  }
 }
 
 
@@ -297,7 +379,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -416,6 +498,29 @@ int main(int argc, char *argv[])
     }
     break;
 
+    case 'X': // Add an X-tra task type (with "fake" execution usec times
+      {
+	unsigned nCrit = 0;
+	unsigned nBase = 0;
+	unsigned on_cpu = 0;
+	unsigned on_fft = 0;
+	unsigned on_vit = 0;
+	unsigned on_cv  = 0;
+	int sres = sscanf(optarg, "%u,%u,%u,%u,%u,%u", &nCrit, &nBase, &on_cpu, &on_fft, &on_vit, &on_cv);
+	if ((sres != 2) && (sres != 6)) {
+	  printf("ERROR : Accelerator Limits (-L) argument didn't specify proper format: #CPU,#FFT,#VIT,#CV\n");
+	  exit(-1);
+	}
+	num_Crit_test_tasks = nCrit;
+	num_Base_test_tasks = nBase;
+	if (sres = 6) {
+	  test_on_cpu_run_time_in_usec        = on_cpu;
+	  test_on_hwr_fft_run_time_in_usec    = on_fft;
+	  test_on_hwr_vit_run_time_in_usec    = on_vit;
+	  test_on_hwr_cv_run_time_in_usec     = on_cv;
+	}
+      }
+
     case ':':
       printf("option needs a value\n");
       break;
@@ -454,6 +559,23 @@ int main(int argc, char *argv[])
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
+
+  // Set up the task_on_accel profiles...
+  p0_hw_threshold = calloc(num_maxTasks_to_use, sizeof(unsigned*));
+  if (p0_hw_threshold == NULL) {
+    printf("ERROR: main couldn't allocate memory for p0_hw_threshold\n");
+    exit(-1);
+  }
+  for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
+    p0_hw_threshold[ti] = malloc(MAX_ACCEL_TYPES * sizeof(unsigned));
+    if (p0_hw_threshold[ti] == NULL) {
+      printf("ERROR: main couldn't allocate memory for p0_hw_threshold[%u]\n", ti);
+      exit(-1);
+    }
+    for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+      p0_hw_threshold[ti][ai] = 101; // Pre-set all to be 0% chance of using any HWR
+    }
+  }
 
   printf("Run using scheduling policy %s using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV and hold-off %u (of %u %u %u %u )\n",
 	 sptr->policy,
@@ -567,6 +689,22 @@ int main(int argc, char *argv[])
 
   printf("Doing initialization tasks...\n");
   initialize_scheduler(sptr);
+
+  // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
+  sptr->initialize_assign_task_to_pe(p0_hw_threshold);
+
+  // Set up the profiles we will be using...
+  set_up_task_on_accel_profile_data();
+
+  DEBUG(printf("p0_hw_threshold is @ %p\n", p0_hw_threshold);
+	for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
+	  printf("p0_hw_threshold[%2u] @ %p :", ti, p0_hw_threshold[ti]);
+	  for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	    printf(" %3u", p0_hw_threshold[ti][ai]);
+	  }
+	  printf("\n");
+	});
+
 
   // Set up the Accelerators for this application
   set_up_scheduler_accelerators_and_tasks(sptr);

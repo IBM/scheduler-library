@@ -198,6 +198,8 @@ typedef struct scheduler_datastate_block_struct {
 
   // Handle for the dynamically loaded policy
   void *policy_handle;
+  // Function pointer to the policy initialization routine
+  void (*initialize_assign_task_to_pe)(void * in_parm_ptr);
   // Function pointer for the policy's assign_task_to_pe() function
   ready_mb_task_queue_entry_t *
   (*assign_task_to_pe)(struct scheduler_datastate_block_struct* sptr, ready_mb_task_queue_entry_t* ready_task_entry);
