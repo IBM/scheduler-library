@@ -151,6 +151,7 @@ void print_usage(char * pname) {
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
   printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
+  printf("    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
 //  printf("    -P <N>      : defines the Scheduler Accelerator Selection Policy:\n");
@@ -288,14 +289,15 @@ int main(int argc, char *argv[])
 
   unsigned sched_holdoff_usec = 0;
   char policy[256];
-  unsigned num_MBs_to_use = GLOBAL_METADATA_POOL_BLOCKS;
+  unsigned num_MBs_to_use      = GLOBAL_METADATA_POOL_BLOCKS;
+  unsigned num_maxTasks_to_use = my_num_task_types;
   
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -393,6 +395,10 @@ int main(int argc, char *argv[])
       num_MBs_to_use = atoi(optarg);
       break;
 
+    case 'T':
+      num_maxTasks_to_use = atoi(optarg);
+      break;
+
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
     {
       unsigned in_cpu = 0;
@@ -441,6 +447,7 @@ int main(int argc, char *argv[])
   copy_scheduler_datastate_defaults_into_parms(sched_inparms);
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
+  sched_inparms->max_task_types = num_maxTasks_to_use;
 
   // Now get a new scheduler datastate space
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
