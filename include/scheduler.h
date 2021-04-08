@@ -210,8 +210,8 @@ typedef struct scheduler_datastate_block_struct {
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the free-list metadata information, etc.
   int  free_metadata_blocks;
   int* free_metadata_pool;
-  unsigned allocated_metadata_blocks[MAX_TASK_TYPES];
-  unsigned freed_metadata_blocks[MAX_TASK_TYPES];
+  uint32_t* allocated_metadata_blocks;//[MAX_TASK_TYPES];
+  uint32_t* freed_metadata_blocks;//[MAX_TASK_TYPES];
 
   pthread_mutex_t task_queue_mutex;   // Used to guard access to altering the ready-task-queue contents
   ready_mb_task_queue_entry_t* ready_mb_task_queue_pool;
@@ -249,8 +249,8 @@ typedef struct scheduler_datastate_block_struct {
   //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
   sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
 
-  print_metadata_block_contents_t print_metablock_contents_function[MAX_TASK_TYPES];
-  output_task_type_run_stats_t output_task_run_stats_function[MAX_TASK_TYPES];
+  print_metadata_block_contents_t* print_metablock_contents_function;//[MAX_TASK_TYPES];
+  output_task_type_run_stats_t* output_task_run_stats_function;//[MAX_TASK_TYPES];
 
   do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
   do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
