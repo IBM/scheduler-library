@@ -234,8 +234,8 @@ typedef struct scheduler_datastate_block_struct {
   int free_critlist_entries;
   int total_critical_tasks;
 
-  char task_name_str[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
-  char task_desc_str[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
+  char** task_name_str; //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
+  char** task_desc_str; //[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
 
   char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
   char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
@@ -247,7 +247,7 @@ typedef struct scheduler_datastate_block_struct {
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
   //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-  sched_execute_task_function_t scheduler_execute_task_function[MAX_TASK_TYPES][MAX_ACCEL_TYPES];
+  sched_execute_task_function_t* scheduler_execute_task_function[MAX_ACCEL_TYPES]; //[MAX_ACCEL_TYPES];
 
   print_metadata_block_contents_t* print_metablock_contents_function;//[MAX_TASK_TYPES];
   output_task_type_run_stats_t* output_task_run_stats_function;//[MAX_TASK_TYPES];
