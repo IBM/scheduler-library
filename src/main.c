@@ -1094,8 +1094,8 @@ int main(int argc, char *argv[])
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
  #endif // TIME
-  free(sched_inparms);
   shutdown_scheduler(sptr);
+  free(sched_inparms);
   printf("\nDone.\n");
   return 0;
 }
