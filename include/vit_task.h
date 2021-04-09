@@ -27,10 +27,10 @@
 //#include "scheduler.h"
 
 // Some Profiling Data:
-#define usecHwrVIT0   5950
-#define usecHwrVIT1  67000
-#define usecHwrVIT2 135000
-#define usecHwrVIT3 191000
+//#define usecHwrVIT0   5950
+//#define usecHwrVIT1  67000
+//#define usecHwrVIT2 135000
+//#define usecHwrVIT3 191000
 
 // This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.

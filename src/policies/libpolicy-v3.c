@@ -19,6 +19,16 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+// This is an initialization routine
+//  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
+// and sets internal policy-required parameters, etc.
+
+void 
+initialize_assign_task_to_pe(void * in_parm_ptr)
+{
+  ; // Nothing to do
+}
+
 // This is an accelerator selection policy that prefers the accelerator target that results in earliest projected finish time.
 //   This one scans through all the potential accelerators, and if the accelerator can
 //    execute this type of job, AND the proposed accelerator's finish time is earlier than any
@@ -26,8 +36,6 @@
 // This version is non-blocking, in that if the current task is selected to target an
 //  accelerator that is not currently available, it will continue to check younger
 //  ready tasks from the task queue.
-/* #undef DEBUG */
-/* #define DEBUG(x) x */
 
 ready_mb_task_queue_entry_t *
 assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)

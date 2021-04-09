@@ -19,6 +19,16 @@
 #include "scheduler.h"
 #include "verbose.h"
 
+// This is an initialization routine
+//  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
+// and sets internal policy-required parameters, etc.
+
+void 
+initialize_assign_task_to_pe(void * in_parm_ptr)
+{
+  ; // Nothing to do
+}
+
 
 // This is a basic accelerator selection policy:
 //   This one scans through all the potential accelerators, and if the accelerator can

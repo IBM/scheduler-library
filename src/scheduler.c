@@ -600,7 +600,6 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 {
   DEBUG(printf("In initialize...\n"));
-  printf("In initialize: sizeof sched_state = %lu\n", sizeof(scheduler_datastate_block_t));
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = sptr->limits.max_metadata_pool_blocks;
   
@@ -643,6 +642,13 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_policy() not found in scheduling policy %s\n", policy_filename);
+    cleanup_and_exit(sptr, -1);
+  }
+
+  sptr->initialize_assign_task_to_pe = dlsym(sptr->policy_handle, "initialize_assign_task_to_pe");
+  if (dlerror() != NULL) {
+    dlclose(sptr->policy_handle);
+    printf("Function initialize_assign_task_to_pe() not found in scheduling policy %s\n", policy_filename);
     cleanup_and_exit(sptr, -1);
   }
 
@@ -877,7 +883,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
   // This will now be an eternally-running scheduler process, I think.
   //pthread_mutex_lock(&schedule_from_queue_mutex);
   while(1) {
-    // If there is nothing on the queue -- return;
+    // If there is something in the task ready queue;
     if (sptr->num_tasks_in_ready_queue > 0) {
       DEBUG(printf("SCHED: num_tasks_in_ready_queue = %u\n", sptr->num_tasks_in_ready_queue);
 	    int ti = 0;
@@ -996,6 +1002,7 @@ void* schedule_executions_from_queue(void* void_parm_ptr) {
     } else { // if (num_tasks_in_queue > 0)
       // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
+      //DEBUG(printf("Waiting for ready task in the queue...\n"));
       usleep(sptr->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     }
   } // while (1)
@@ -1344,7 +1351,7 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
   printf("  output_task_type_run_stats_t  = %p\n", tinfo->output_task_type_run_stats);
   
   if (tinfo->print_metadata_block_contents == NULL) {
-    printf("Must set print_metadata_block_contents function -- can use base routine\n");
+    printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
     cleanup_and_exit(sptr, -30);
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information for this task
@@ -1352,7 +1359,7 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
   if (tid < sptr->limits.max_task_types) {
     sptr->next_avail_task_id++;
   } else {
-    printf("Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
+    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
     cleanup_and_exit(sptr, -31);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
@@ -1378,7 +1385,7 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
   if (acid < sptr->limits.max_accel_types) {
     sptr->next_avail_accel_id++;
   } else {
-    printf("Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding %u\n", sptr->limits.max_accel_types, acid);
+    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding %u\n", sptr->limits.max_accel_types, acid);
     cleanup_and_exit(sptr, -32);
   }
   snprintf(sptr->accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
