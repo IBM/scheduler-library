@@ -600,7 +600,6 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 {
   DEBUG(printf("In initialize...\n"));
-  printf("In initialize: sizeof sched_state = %lu\n", sizeof(scheduler_datastate_block_t));
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = sptr->limits.max_metadata_pool_blocks;
   
