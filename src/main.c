@@ -693,9 +693,6 @@ int main(int argc, char *argv[])
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
 
-  // Set up the profiles we will be using...
-  set_up_task_on_accel_profile_data();
-
   DEBUG(printf("p0_hw_threshold is @ %p\n", p0_hw_threshold);
 	for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
 	  printf("p0_hw_threshold[%2u] @ %p :", ti, p0_hw_threshold[ti]);
@@ -708,6 +705,9 @@ int main(int argc, char *argv[])
 
   // Set up the Accelerators for this application
   set_up_scheduler_accelerators_and_tasks(sptr);
+
+  // Set up the profiles we will be using... NOTE: This must be AFTER we've added the accelerator and task definitions!
+  set_up_task_on_accel_profile_data();
 
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
