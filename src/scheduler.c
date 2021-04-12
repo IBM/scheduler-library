@@ -1381,22 +1381,19 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
 	printf("  do_accel_initialization   = %p\n", info->do_accel_initialization);
 	printf("  do_accel_closeout_t       = %p\n", info->do_accel_closeout);
 	printf("  output_accel_run_stats_t  = %p\n", info->output_accel_run_stats));
-  printf("Registering Accelerator %s : %s\n", info->name, info->description);
 	
   // Okay, so here is where we "fill in" the scheduler's accel-type information for this accel
   accelerator_type_t acid = sptr->next_avail_accel_id;
-  if (acid < sptr->limits.max_accel_types) {
-    sptr->next_avail_accel_id++;
-  } else {
+  if (acid >= sptr->limits.max_accel_types) {
     printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", (sptr->limits.max_accel_types-1), acid);
     cleanup_and_exit(sptr, -32);
   }
-  if (acid < MAX_ACCEL_TYPES) {
-    sptr->next_avail_accel_id++;
-  } else {
+  if (acid >= MAX_ACCEL_TYPES) {
     printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", MAX_ACCEL_TYPES, (acid+1));
     cleanup_and_exit(sptr, -32);
   }
+  sptr->next_avail_accel_id++;
+  printf("Registering Accelerator ID %u %s : %s\n", acid, info->name, info->description);
   snprintf(sptr->accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
   snprintf(sptr->accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
   sptr->num_accelerators_of_type[acid]   = info->number_available;
