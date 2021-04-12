@@ -100,7 +100,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     total_dodec_usec[ai] = 0;
   }  
   for (int ai = 0; ai < total_accel_types; ai++) {
-    if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+    if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, sptr->task_name_str[my_task_id], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
@@ -108,7 +108,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_id]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
       uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ai]);
-      if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+      if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
 	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
       } else {
 	if ((this_comp_by + this_depunc_usec + this_dodec_usec) != 0) {

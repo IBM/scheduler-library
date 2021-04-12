@@ -599,6 +599,8 @@ int main(int argc, char *argv[])
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
 
+  printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
+
   // Set up the task_on_accel profiles...
   p0_hw_threshold = calloc(num_maxTasks_to_use, sizeof(unsigned*));
   if (p0_hw_threshold == NULL) {

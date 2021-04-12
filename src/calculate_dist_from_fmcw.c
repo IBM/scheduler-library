@@ -28,7 +28,6 @@
 
 void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, uint32_t fft_log_nsamples, float* data)
 {
-  int tidx = fft_metadata_block->accelerator_type;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->task_type]);
   fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
   //fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;

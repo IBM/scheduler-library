@@ -459,6 +459,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     exit(-99);
   }
 
+  // Set up the task_name_str
   sptr->task_name_str = calloc(inp->max_task_types, sizeof(char*)); //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
   sched_state_size += inp->max_task_types * sizeof(char*);
   if (sptr == NULL) {
@@ -475,6 +476,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     sptr->task_name_str[ti] = tptr;
     tptr += MAX_TASK_NAME_LEN;
   }
+  // Set up the task_desc_str
   sptr->task_desc_str = calloc(inp->max_task_types, sizeof(char*)); //[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
   sched_state_size += inp->max_task_types * sizeof(char*);
   if (sptr == NULL) {

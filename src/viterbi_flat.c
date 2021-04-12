@@ -161,21 +161,17 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
 {
   d_ofdm = ofdm;
   d_frame = frame;
-  int tidx = vit_metadata_block->accelerator_type;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
   reset();
 
-#ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&vit_timings_p->depunc_start, NULL);
-#endif
+ #endif
   uint8_t *depunctured = depuncture(in);
-#ifdef INT_TIME
+ #ifdef INT_TIME
   struct timeval depunc_stop;
-  gettimeofday(&depunc_stop, NULL);
-  vit_timings_p->depunc_sec[tidx]  += depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
-  vit_timings_p->depunc_usec[tidx] += depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
-#endif
-
+  gettimeofday(&vit_timings_p->depunc_stop, NULL);
+ #endif
   DO_VERBOSE({
       printf("VBS: depunctured = [\n");
       for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
@@ -245,12 +241,21 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
 uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out)
 {
   // Set up the Viterbit Data view of the metatdata block data
+  int aidx = vit_metadata_block->accelerator_type;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+
   viterbi_data_struct_t* vdsptr = (viterbi_data_struct_t*)&(vit_metadata_block->data_space);
   uint8_t* in_Mem   = &(vdsptr->theData[0]);
   uint8_t* in_Data  = &(vdsptr->theData[vdsptr->inMem_size]);
   uint8_t* out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
 
   *psdu_size_out = vdsptr->psdu_size;
+
+ #ifdef INT_TIME
+  vit_timings_p->depunc_sec[aidx]  += vit_timings_p->depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
+  vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
+  //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
+ #endif
 
   DEBUG(printf("BACK FROM EXECUTION OF VITERBI TASK:\n");
 	  print_viterbi_metadata_block_contents(vit_metadata_block);//);
