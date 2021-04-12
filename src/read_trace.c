@@ -135,6 +135,7 @@ bool_t read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t
   last_i = 0;
   in_tok = 0;
   in_lane = 1;
+  DEBUG(printf("read_trace: scanning the next input trace line...\n"));
   for (int i = 0; i < 256; i++) { // Scan the input line
     // Find the token seperators
     char c = in_line_buf[i];
@@ -183,6 +184,7 @@ bool_t read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t
     }
   }
 #endif
+  DEBUG(printf("read_trace: returning the input trace data...\n"));
   return true;
 }
 

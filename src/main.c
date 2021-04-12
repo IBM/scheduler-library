@@ -893,19 +893,20 @@ int main(int argc, char *argv[])
   gettimeofday(&start_prog, NULL);
   /*init_accelerators_in_use_interval(sptr, start_prog);*/
  #endif
-  
+
  #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
  #else //TRACE DRIVEN MODE
   read_next_trace_record(sptr, vehicle_state);
+  DEBUG(printf("Starting main while loop : max_stim_steps %u\n", max_time_steps));
   while ((time_step < max_time_steps) && (!eof_trace_reader()))
  #endif
   {
     DEBUG(printf("Vehicle_State: Lane %u %s Speed %.1f\n", vehicle_state.lane, lane_names[vehicle_state.lane], vehicle_state.speed));
 
     /* The computer vision kernel performs object recognition on the
-     * next image, and returns the corresponding label. 
+     * next image, and returns the corresponding label.
      * This process takes place locally (i.e. within this car).
      */
     /**
@@ -1307,7 +1308,7 @@ int main(int argc, char *argv[])
 
     // TEST - trying this here.
     //wait_all_tasks_finish();
-    
+
     #ifndef USE_SIM_ENVIRON
     read_next_trace_record(sptr, vehicle_state);
     #endif
@@ -1316,7 +1317,7 @@ int main(int argc, char *argv[])
   // This is the end of time steps... wait for all tasks to be finished (?)
   // Adding this results in never completing...  not sure why.
   // wait_all_tasks_finish();
-  
+
  #ifdef TIME
   gettimeofday(&stop_prog, NULL);
  #endif

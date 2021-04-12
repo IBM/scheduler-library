@@ -28,7 +28,7 @@
 //  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
 // and sets internal policy-required parameters, etc.
 
-void 
+void
 initialize_assign_task_to_pe(void * in_parm_ptr)
 {
   ; // Nothing to do
@@ -124,7 +124,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
 
     // Check if best accelerator is available
     //if (accelerator_in_use_by[task_metadata_block->accelerator_type][task_metadata_block->accelerator_id] == -1) {
-    
+
     DEBUG(printf("SCHED-FFFQ: ACCEL_TY %u ACC_DI %u\n", accel_type, accel_id));
     if (sptr->accelerator_in_use_by[accel_type][accel_id] == -1) {
       // Task is schedulable on the best accelerator

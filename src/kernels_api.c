@@ -937,7 +937,7 @@ void closeout_vit_kernel()
 void closeout_test_kernel()
 {
   // Nothing to do?
-  printf("\nThere were a total of %u Test-Takss run, with %u bas Test-Task results\n", total_test_tasks, bad_test_task_res);
+  printf("\nThere were a total of %u Test-Tasks run, with %u bad Test-Task results\n", total_test_tasks, bad_test_task_res);
   printf("\n");
 }
 

@@ -205,6 +205,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   #endif
   // This usleep call stands in as the "Fake" CNN accelerator
   usleep(cv_fake_hwr_run_time_in_usec);
+
   #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
