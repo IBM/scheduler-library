@@ -41,7 +41,7 @@
 #include "scheduler.h"
 
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
-  .max_task_types   = MAX_TASK_TYPES,
+  .max_task_types   = 8,   // MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
   .max_accel_of_any_type = MAX_ACCEL_OF_EACH_TYPE,
 
@@ -1361,7 +1361,7 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
   if (tid < sptr->limits.max_task_types) {
     sptr->next_avail_task_id++;
   } else {
-    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
+    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding id %u\n", (sptr->limits.max_task_types-1), tid);
     cleanup_and_exit(sptr, -31);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
@@ -1388,7 +1388,13 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
   if (acid < sptr->limits.max_accel_types) {
     sptr->next_avail_accel_id++;
   } else {
-    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding %u\n", sptr->limits.max_accel_types, acid);
+    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", (sptr->limits.max_accel_types-1), acid);
+    cleanup_and_exit(sptr, -32);
+  }
+  if (acid < MAX_ACCEL_TYPES) {
+    sptr->next_avail_accel_id++;
+  } else {
+    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", MAX_ACCEL_TYPES, (acid+1));
     cleanup_and_exit(sptr, -32);
   }
   snprintf(sptr->accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);

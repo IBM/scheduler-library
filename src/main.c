@@ -181,7 +181,7 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   printf("\nSetting up/Registering the ACCELERATORS...\n");
   accelerator_pool_defn_info_t accel_def;
 
-  sprintf(accel_def.name, "CPU_Acc");
+  sprintf(accel_def.name, "CPU-Acc");
   sprintf(accel_def.description, "Run task on a RISC-V CPU thread");
   accel_def.number_available        = accel_limit_cpu;
   accel_def.do_accel_initialization = &do_cpu_accel_type_initialization;

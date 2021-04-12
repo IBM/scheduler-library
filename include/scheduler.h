@@ -55,7 +55,7 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_DESC_LEN   256
 
 // These are fields defined by the application when it gets/sets up a new cheduler datastate block
-#define MAX_TASK_TYPES     4
+//#define MAX_TASK_TYPES     32
 #define MAX_ACCEL_TYPES    4
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
