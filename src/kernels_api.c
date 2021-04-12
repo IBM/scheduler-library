@@ -137,6 +137,84 @@ unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the f
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
 
+unsigned total_test_tasks = 0;  // Total test tasks executed during the full run
+unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full run
+
+
+
+
+
+status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn)
+{
+  DEBUG(printf("In the init_cv_kernel routine\n"));
+  /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
+  // Initialization to run Keras CNN code
+  return success;
+}
+
+label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+{
+  DEBUG(printf("In iterate_cv_kernel\n"));
+
+  unsigned tr_val = 0; // Default nothing
+  switch(nearest_obj[vs.lane]) {
+    case 'N' : tr_val = no_label; break;
+    case 'B' : tr_val = bicycle; break;
+    case 'C' : tr_val = car; break;
+    case 'P' : tr_val = pedestrian; break;
+    case 'T' : tr_val = truck; break;
+  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); cleanup_and_exit(sptr, -2);
+  }
+  label_t d_object = (label_t)tr_val;
+
+  return d_object;
+}
+
+
+void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
+{
+  /* 2) Set up to request object detection on an image frame */
+  int tidx = mb_ptr->accelerator_type;
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
+  // Currently we don't send in any data this way (though we should include the input image here)
+  // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
+  cv_data_p->object_label = in_tr_val;
+  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, cv_data_p->object_label, in_tr_val));
+ #ifdef INT_TIME
+  gettimeofday(&(cv_timings_p->call_start), NULL);
+ #endif
+  //  schedule_task(data);
+  request_execution(mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
+{
+  DEBUG(printf("In finish_execution_of_cv_kernel\n"));
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
+  label_t the_label = cv_data_p->object_label;
+  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+
+  return the_label;
+}
+
+void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
+{
+  //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
+  if (cv_object == tr_val) {
+    label_match[cv_object]++;
+    label_match[NUM_OBJECTS]++;
+  } else {
+    label_mismatch[tr_val][cv_object]++;
+  }
+  label_lookup[NUM_OBJECTS]++;
+  label_lookup[cv_object]++;
+}
+
+
 
 status_t init_rad_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
@@ -247,6 +325,93 @@ status_t init_rad_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 
   return success;
 }
+
+// These routine selects a random FFT input (from the dictionary) or the specific Critical Radar Task FFT Input
+//  Used to support variable non-critical task sizes, and histogram stats gathering.
+radar_dict_entry_t* select_random_radar_input()
+{
+  int s_num = (rand() % (num_radar_samples_sets)); // Return a value from [0,num_radar_samples_sets) */
+  int e_num = (rand() % (radar_dict_items_per_set)); // Return a value from [0,radar_dict_items_per_set) */
+  radar_inputs_histogram[s_num][e_num]++;
+  return &(the_radar_return_dict[s_num][e_num]);
+}
+
+radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
+{
+  radar_inputs_histogram[rdentry_p->set][rdentry_p->index_in_set]++;
+  return rdentry_p;
+}
+
+
+
+radar_dict_entry_t* iterate_rad_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+{
+  DEBUG(printf("In iterate_rad_kernel\n"));
+  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
+  radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
+  return &(the_radar_return_dict[crit_fft_samples_set][tr_val]);
+}
+
+
+void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
+{
+  DEBUG(printf("In start_execution_of_rad_kernel\n"));
+  DEBUG(printf("  Calling start_calculate_peak_dist_from_fmcw\n"));
+  start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
+}
+
+
+distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
+{
+  DEBUG(printf("In finish_execution_of_rad_kernel\n"));
+  DEBUG(printf("  Calling finalize_calculate_peak_dist_from_fmcw\n"));
+  distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
+
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+
+  DEBUG(printf("  Returning distance = %.1f\n", dist));
+  return dist;
+}
+
+
+void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
+{
+  // Get an error estimate (Root-Squared?)
+  float error;
+  radar_total_calc++;
+  hist_distances[set][index]++;
+  if ((tr_dist >= 500.0) && (dist > 10000.0)) {
+    error = 0.0;
+  } else {
+    error = (tr_dist - dist);
+  }
+  float abs_err = fabs(error);
+  float pct_err;
+  if (tr_dist != 0.0) {
+    pct_err = abs_err/tr_dist;
+  } else {
+    pct_err = abs_err;
+  }
+
+  DEBUG(printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err));
+  //printf("IDX: %u :: %f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", index, tr_dist, dist, error, abs_err, pct_err);
+  if (pct_err == 0.0) {
+    hist_pct_errs[set][index][0]++;
+  } else if (pct_err < 0.01) {
+    hist_pct_errs[set][index][1]++;
+  } else if (pct_err < 0.1) {
+    printf("RADAR_LT010_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
+    hist_pct_errs[set][index][2]++;
+  } else if (pct_err < 1.00) {
+    printf("RADAR_LT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
+    hist_pct_errs[set][index][3]++;
+  } else {
+    printf("RADAR_GT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
+    hist_pct_errs[set][index][4]++;
+  }
+}
+
 
 
 /* This is the initialization of the Viterbi dictionary data, etc.
@@ -362,169 +527,6 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   DEBUG(printf("DONE with init_vit_kernel -- returning success\n"));
   return success;
 }
-
-status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn)
-{
-  DEBUG(printf("In the init_cv_kernel routine\n"));
-  /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
-  // Initialization to run Keras CNN code
-  return success;
-}
-
-
-
-
-
-label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
-{
-  DEBUG(printf("In iterate_cv_kernel\n"));
-
-  unsigned tr_val = 0; // Default nothing
-  switch(nearest_obj[vs.lane]) {
-    case 'N' : tr_val = no_label; break;
-    case 'B' : tr_val = bicycle; break;
-    case 'C' : tr_val = car; break;
-    case 'P' : tr_val = pedestrian; break;
-    case 'T' : tr_val = truck; break;
-  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); cleanup_and_exit(sptr, -2);
-  }
-  label_t d_object = (label_t)tr_val;
-
-  return d_object;
-}
-
-
-void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
-{
-  /* 2) Set up to request object detection on an image frame */
-  int tidx = mb_ptr->accelerator_type;
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
-  // Currently we don't send in any data this way (though we should include the input image here)
-  // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
-  cv_data_p->object_label = in_tr_val;
-  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, cv_data_p->object_label, in_tr_val));
- #ifdef INT_TIME
-  gettimeofday(&(cv_timings_p->call_start), NULL);
- #endif
-  //  schedule_task(data);
-  request_execution(mb_ptr);
-  // This now ends this block -- we've kicked off execution
-}
-
-label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("In finish_execution_of_cv_kernel\n"));
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
-  label_t the_label = cv_data_p->object_label;
-  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
-  // We've finished the execution and lifetime for this task; free its metadata
-  free_task_metadata_block(mb_ptr);
-
-  return the_label;
-}
-
-void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
-{
-  //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
-  if (cv_object == tr_val) {
-    label_match[cv_object]++;
-    label_match[NUM_OBJECTS]++;
-  } else {
-    label_mismatch[tr_val][cv_object]++;
-  }
-  label_lookup[NUM_OBJECTS]++;
-  label_lookup[cv_object]++;
-}
-
-
-
-
-// These routine selects a random FFT input (from the dictionary) or the specific Critical Radar Task FFT Input
-//  Used to support variable non-critical task sizes, and histogram stats gathering.
-radar_dict_entry_t* select_random_radar_input()
-{
-  int s_num = (rand() % (num_radar_samples_sets)); // Return a value from [0,num_radar_samples_sets) */
-  int e_num = (rand() % (radar_dict_items_per_set)); // Return a value from [0,radar_dict_items_per_set) */
-  radar_inputs_histogram[s_num][e_num]++;
-  return &(the_radar_return_dict[s_num][e_num]);
-}
-
-radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
-{
-  radar_inputs_histogram[rdentry_p->set][rdentry_p->index_in_set]++;
-  return rdentry_p;
-}
-
-
-radar_dict_entry_t* iterate_rad_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
-{
-  DEBUG(printf("In iterate_rad_kernel\n"));
-  unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
-  radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
-  return &(the_radar_return_dict[crit_fft_samples_set][tr_val]);
-}
-
-
-void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
-{
-  DEBUG(printf("In start_execution_of_rad_kernel\n"));
-  DEBUG(printf("  Calling start_calculate_peak_dist_from_fmcw\n"));
-  start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
-}
-
-
-distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("In finish_execution_of_rad_kernel\n"));
-  DEBUG(printf("  Calling finalize_calculate_peak_dist_from_fmcw\n"));
-  distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
-
-  // We've finished the execution and lifetime for this task; free its metadata
-  free_task_metadata_block(mb_ptr);
-
-  DEBUG(printf("  Returning distance = %.1f\n", dist));
-  return dist;
-}
-
-
-void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
-{
-  // Get an error estimate (Root-Squared?)
-  float error;
-  radar_total_calc++;
-  hist_distances[set][index]++;
-  if ((tr_dist >= 500.0) && (dist > 10000.0)) {
-    error = 0.0;
-  } else {
-    error = (tr_dist - dist);
-  }
-  float abs_err = fabs(error);
-  float pct_err;
-  if (tr_dist != 0.0) {
-    pct_err = abs_err/tr_dist;
-  } else {
-    pct_err = abs_err;
-  }
-
-  DEBUG(printf("%f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", tr_dist, dist, error, abs_err, pct_err));
-  //printf("IDX: %u :: %f vs %f : ERROR : %f   ABS_ERR : %f PCT_ERR : %f\n", index, tr_dist, dist, error, abs_err, pct_err);
-  if (pct_err == 0.0) {
-    hist_pct_errs[set][index][0]++;
-  } else if (pct_err < 0.01) {
-    hist_pct_errs[set][index][1]++;
-  } else if (pct_err < 0.1) {
-    printf("RADAR_LT010_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
-    hist_pct_errs[set][index][2]++;
-  } else if (pct_err < 1.00) {
-    printf("RADAR_LT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
-    hist_pct_errs[set][index][3]++;
-  } else {
-    printf("RADAR_GT100_ERR : TS %u : %f vs %f : ERROR : %f   PCT_ERR : %f\n", time_step, tr_dist, dist, error, pct_err);
-    hist_pct_errs[set][index][4]++;
-  }
-}
-
 
 /* Each time-step of the trace, we read in the
  * trace values for the left, middle and right lanes
@@ -678,6 +680,58 @@ void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
   }
 }
 
+
+// The Test Task is just a dummy task we can apply to any accelerator
+//  during a run, with a fixed execution time...
+
+status_t init_test_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+{
+  DEBUG(printf("In init_test_kernel...\n"));
+  /* Read in the object images dictionary file
+     FILE *dictF = fopen(dict_fn,"r");
+     if (!dictF)
+     {
+     printf("Error: unable to open test-task dictionary definition file %s\n", dict_fn);
+     return error;
+     }
+
+     fclose(dictF);
+  */
+
+  DEBUG(printf("DONE with init_test_kernel -- returning success\n"));
+  return success;
+}
+
+test_dict_entry_t* iterate_test_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+{
+  DEBUG(printf("In iterate_test_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
+  test_dict_entry_t* tde = NULL; // Currently we don't have a test-dictionary
+
+  return tde;
+}
+
+void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)
+{
+  request_execution(mb_ptr);
+}
+
+test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)
+{
+  test_res_t tres = TEST_TASK_DONE;
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+  
+  DEBUG(printf("The execute_test_kernel is returning tres %u\n", tres));
+  return tres;
+}
+
+void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
+{
+  total_test_tasks++;
+  if (exec_res != gold_res) {
+    bad_test_task_res++;
+  }
+}
 
 /* #undef DEBUG */
 /* #define DEBUG(x) x */
@@ -875,6 +929,15 @@ void closeout_vit_kernel()
       printf("    %3u | %3u | %9u \n", li, mi, viterbi_messages_histogram[li][mi]);
     }
   }
+  printf("\n");
+}
+
+
+
+void closeout_test_kernel()
+{
+  // Nothing to do?
+  printf("\nThere were a total of %u Test-Tasks run, with %u bad Test-Task results\n", total_test_tasks, bad_test_task_res);
   printf("\n");
 }
 

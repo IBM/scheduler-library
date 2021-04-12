@@ -1342,13 +1342,15 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 task_id_t
 register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tinfo)
 {
-  printf("In register_task_type with inputs:\n");
-  printf("  name  = %s\n", tinfo->name);
-  printf("  description  = %s\n", tinfo->description);
-  printf("  print_metadata_block_contents = %p\n", tinfo->print_metadata_block_contents);
-  /* printf("  do_task_type_initialization   = %p\n", tinfo->do_task_type_initialization); */
-  /* printf("  do_task_type_closeout_t       = %p\n", tinfo->do_task_type_closeout); */
-  printf("  output_task_type_run_stats_t  = %p\n", tinfo->output_task_type_run_stats);
+  DEBUG(printf("In register_task_type with inputs:\n");
+	printf("  name  = %s\n", tinfo->name);
+	printf("  description  = %s\n", tinfo->description);
+	printf("  print_metadata_block_contents = %p\n", tinfo->print_metadata_block_contents);
+	/* printf("  do_task_type_initialization   = %p\n", tinfo->do_task_type_initialization); */
+	/* printf("  do_task_type_closeout_t       = %p\n", tinfo->do_task_type_closeout); */
+	printf("  output_task_type_run_stats_t  = %p\n", tinfo->output_task_type_run_stats));
+
+  printf("Registering Task %s : %s\n", tinfo->name, tinfo->description);
   
   if (tinfo->print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
@@ -1373,13 +1375,14 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
 accelerator_type_t
 register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t* info)
 {
-  printf("In register_accelerator_pool with inputs:\n");
-  printf("  name  = %s\n", info->name);
-  printf("  description  = %s\n", info->description);
-  printf("  do_accel_initialization   = %p\n", info->do_accel_initialization);
-  printf("  do_accel_closeout_t       = %p\n", info->do_accel_closeout);
-  printf("  output_accel_run_stats_t  = %p\n", info->output_accel_run_stats);
-  
+  DEBUG(printf("In register_accelerator_pool with inputs:\n");
+	printf("  name  = %s\n", info->name);
+	printf("  description  = %s\n", info->description);
+	printf("  do_accel_initialization   = %p\n", info->do_accel_initialization);
+	printf("  do_accel_closeout_t       = %p\n", info->do_accel_closeout);
+	printf("  output_accel_run_stats_t  = %p\n", info->output_accel_run_stats));
+  printf("Registering Accelerator %s : %s\n", info->name, info->description);
+	
   // Okay, so here is where we "fill in" the scheduler's accel-type information for this accel
   accelerator_type_t acid = sptr->next_avail_accel_id;
   if (acid < sptr->limits.max_accel_types) {
@@ -1396,7 +1399,7 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
   sptr->output_accel_run_stats_function[acid] =  info->output_accel_run_stats;
   // Now initialize this accelerator
   if (sptr->do_accel_init_function[acid] != NULL) {
-    printf(" Calling the accelerator initialization function...\n");
+    DEBUG(printf(" Calling the accelerator initialization function...\n"));
     sptr->do_accel_init_function[acid](NULL);
   } else {
     printf("Note: accelerator initialization function is NULL\n");
@@ -1412,7 +1415,7 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
 void
 register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr)
 {
-  printf("In register_accel_can_exec_task for accel %u and task %u with fptr %p\n", acid, tid, fptr);
+  DEBUG(printf("In register_accel_can_exec_task for accel %u and task %u with fptr %p\n", acid, tid, fptr));
   if (acid >= sptr->next_avail_accel_id) {
     printf("In register_accel_can_exec_task specified an illegal accelerator id: %u vs %u currently defined\n", acid, sptr->next_avail_accel_id);
     cleanup_and_exit(sptr, -36);
@@ -1426,5 +1429,6 @@ register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type
     cleanup_and_exit(sptr, -38);
   }
   sptr->scheduler_execute_task_function[acid][tid] = fptr;
-  printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr);
+  DEBUG(printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr));
+  printf("Set scheduler_execute_task_function for Task %s on Accelerator Type %s\n", sptr->task_name_str[tid], sptr->accel_name_str[acid]);
 }
