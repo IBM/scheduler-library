@@ -194,9 +194,10 @@ typedef struct scheduler_datastate_block_struct {
   task_type_t next_avail_task_type;
   accelerator_type_t next_avail_accel_id;
 
+  int32_t     visualizer_task_start_count;
   int32_t     visualizer_task_stop_count;
   task_type_t visualizer_task_enable_type;
-  
+  unsigned    visualizer_output_started;
   unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy

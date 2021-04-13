@@ -380,9 +380,34 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 
   // IF we should output Visualizer info for this task, output it now...
  #ifdef SL_VIZ
-  DEBUG(printf(" STOP_CT %d vs curr_ct %d  :  en_task %d vs curr_task %d\n", sptr->visualizer_task_stop_count, global_finished_task_id_counter, sptr->visualizer_task_enable_type, task_metadata_block->task_type));
-  if (((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count)) &&
-      ((sptr->visualizer_task_enable_type == NO_Task) || (task_metadata_block->task_type == sptr->visualizer_task_enable_type))) {
+  DEBUG(printf("  Glob_Fin_Tasks %d : START_CT %d  :  STOP_CT %d  :  en_task %d vs curr_task %d\n", global_finished_task_id_counter, sptr->visualizer_task_start_count, sptr->visualizer_task_stop_count, sptr->visualizer_task_enable_type, task_metadata_block->task_type));
+  if (!sptr->visualizer_output_started) {
+    int start_logging = false;
+    if (sptr->visualizer_task_start_count < 0) {
+      DEBUG(printf(" start_logging : no_start_count : task_en_ty = %d vs curr_type %d\n", sptr->visualizer_task_enable_type, task_metadata_block->task_type));
+      if ((sptr->visualizer_task_enable_type == NO_Task) || (task_metadata_block->task_type == sptr->visualizer_task_enable_type)) {
+	start_logging = true;
+      }
+    } else {
+      DEBUG(printf(" start_logging : start_count %d vs curr_count %d : task_en_ty = %d vs curr_type %d\n", global_finished_task_id_counter, sptr->visualizer_task_start_count, sptr->visualizer_task_enable_type, task_metadata_block->task_type));
+      if ((global_finished_task_id_counter >= sptr->visualizer_task_start_count) ||
+	  (task_metadata_block->task_type == sptr->visualizer_task_enable_type)) {
+	start_logging = true;
+      }
+    }
+    if (start_logging) {
+      sptr->visualizer_output_started = true;
+      if (sptr->visualizer_task_stop_count >= 0) {
+	sptr->visualizer_task_stop_count += global_finished_task_id_counter; // This means we get stop_count starting from here...
+	DEBUG(printf("Starting SL_VIZ logging at %d .. stop at count %d\n", global_finished_task_id_counter, sptr->visualizer_task_stop_count));
+      } else {
+	DEBUG(printf("Starting SL_VIZ logging at %d .. stop at count end of run\n", global_finished_task_id_counter));
+      }
+    }
+  }
+  
+  if (sptr->visualizer_output_started && 
+      ((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count))) {
     uint64_t curr_time  = 1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec;
     uint64_t arr_time   = 1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec;
     uint64_t start_time = 1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec;
@@ -402,6 +427,8 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 	    arr_time, //task_arrival_time
 	    start_time, //curr_job_start_time
 	    end_time); //curr_job_end_time
+  } else {
+    DEBUG(printf("          skip : NOT printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
   }
  #endif
 
@@ -489,6 +516,11 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
   sptr->limits.max_metadata_pool_blocks  = inp->max_metadata_pool_blocks;
   sptr->limits.max_task_timing_sets      = inp->max_task_timing_sets;
   sptr->limits.max_data_space_bytes      = inp->max_data_space_bytes;
+
+  sptr->visualizer_task_start_count =  0; // default to starting with the first task
+  sptr->visualizer_task_stop_count  =  0; // default to no output
+  sptr->visualizer_task_enable_type = -1; // default to any task type
+  sptr->visualizer_output_started = false;
 
   // Allocate the scheduler_datastate_block_t dynamic (per-task-type) elements
   sptr->allocated_metadata_blocks = malloc(inp->max_task_types * sizeof(uint32_t));

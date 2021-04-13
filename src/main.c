@@ -153,8 +153,11 @@ void print_usage(char * pname) {
   #ifdef SL_VIZ
   printf("\n");
   printf(" Options for the STOMP-viz visualization tool (tracing enabled):\n");
-  printf("    -i <type>   : Task type that triggers task logging for the STOMP-viz visualization tool\n");
+  printf("    -i <N>      : Number of executed tasks (of any type) before starting task logging\n");
   printf("                :   If not specified, then logging starts with the execution\n");
+  printf("    -I <type>   : Task type that triggers task logging for the STOMP-viz visualization tool\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
   printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
   printf("                :   This parameter is mandatory to keep control of the trace file size\n");
 #endif
@@ -420,8 +423,9 @@ int main(int argc, char *argv[])
   unsigned num_maxTasks_to_use = my_num_task_types;
   
   // STOMP-viz tracing parameters
-  task_type_t viz_task_type  = NO_Task;
-  int32_t     viz_task_count = -1;
+  task_type_t viz_task_start_type  = NO_Task;
+  int32_t     viz_task_start_count = -1;
+  int32_t     viz_task_stop_count  = -1;
 
 
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
@@ -429,7 +433,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:i:e:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:i:I:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -574,15 +578,21 @@ int main(int argc, char *argv[])
       }
       break;
 
+    case 'I':
+     #ifdef SL_VIZ
+      viz_task_start_type = atol(optarg);
+     #endif
+      break;
+
     case 'i':
      #ifdef SL_VIZ
-      viz_task_type = atol(optarg);
+      viz_task_start_count = atol(optarg);
      #endif
       break;
 
     case 'e':
      #ifdef SL_VIZ
-      viz_task_count = atol(optarg);
+      viz_task_stop_count = atol(optarg);
      #endif
       break;
 
@@ -602,8 +612,8 @@ int main(int argc, char *argv[])
   }
 
   /**#ifdef SL_VIZ
-     if (viz_task_count == 0){
-     printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", viz_task_count);
+     if (viz_task_stop_count == 0){
+     printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", viz_task_stop_count);
      print_usage(argv[0]);
      exit(-1);
      }
@@ -633,9 +643,9 @@ int main(int argc, char *argv[])
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
-  sptr->visualizer_task_stop_count  = viz_task_count;
-  sptr->visualizer_task_enable_type = viz_task_type;
-
+  sptr->visualizer_task_start_count = viz_task_start_count;
+  sptr->visualizer_task_stop_count  = viz_task_stop_count;
+  sptr->visualizer_task_enable_type = viz_task_start_type;
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
 
@@ -732,14 +742,26 @@ int main(int argc, char *argv[])
     sprintf(h264_dict, "traces/h264_dictionary.dfn");
   }
 
-#ifdef SL_VIZ
- if (viz_task_type == NO_Task) {
-     printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
- } else {
-     printf("\nSTOMP-viz tracing starts with task type %d\n", viz_task_type);
- }
- printf("STOMP-viz tracing stops after %d executed task(s) of any type\n", viz_task_count);
-#endif
+ #ifdef SL_VIZ
+  if (viz_task_start_type == NO_Task) {
+    if (viz_task_start_count < 0) {
+      printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
+    } else {
+      printf("\nSTOMP-viz tracing starts on task number %d\n", viz_task_start_count);
+    }
+  } else {
+    if (viz_task_start_count < 0) {
+      printf("\nSTOMP-viz tracing starts with task type %d\n", viz_task_start_type);
+    } else {
+      printf("\nSTOMP-viz tracing starts on earlier of task number %d or task type %d\n", viz_task_start_count, viz_task_start_type);
+    }
+  }
+  if (viz_task_stop_count < 0) {
+    printf("STOMP-viz tracing continues for the full run (no executed tasks limit)\n");
+  } else {
+    printf("STOMP-viz tracing stops %d executed task(s) of any type after it starts\n", viz_task_stop_count);
+  }
+ #endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
