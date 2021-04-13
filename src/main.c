@@ -148,7 +148,16 @@ void print_usage(char * pname) {
   printf("    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.\n");
   printf("                :   Two tuple formats are acceptable:\n");
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
-  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type\n");
+  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
+  printf("                :              per each accelerator type\n");
+  #ifdef SL_VIZ
+  printf("\n");
+  printf(" Options for the STOMP-viz visualization tool (tracing enabled):\n");
+  printf("    -i <type>   : Task type that triggers task logging for the STOMP-viz visualization tool\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
+  printf("                :   This parameter is mandatory to keep control of the trace file size\n");
+#endif
 
 }
 
@@ -410,12 +419,17 @@ int main(int argc, char *argv[])
   unsigned num_MBs_to_use      = GLOBAL_METADATA_POOL_BLOCKS;
   unsigned num_maxTasks_to_use = my_num_task_types;
   
+  // STOMP-viz tracing parameters
+  task_type_t task_type = NO_Task;
+  unsigned task_count   = 0;
+
+
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:i:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -559,7 +573,19 @@ int main(int argc, char *argv[])
 	}
       }
       break;
-      
+
+    case 'i':
+     #ifdef SL_VIZ
+      task_type = atol(optarg);
+     #endif
+      break;
+
+    case 'e':
+     #ifdef SL_VIZ
+      task_count = atol(optarg);
+     #endif
+      break;
+
     case ':':
       printf("option %c needs a value\n", optopt);
       break;
@@ -574,6 +600,14 @@ int main(int argc, char *argv[])
   for(; optind < argc; optind++){
     printf("extra arguments: %s\n", argv[optind]);
   }
+
+#ifdef SL_VIZ
+  if (task_count == 0){
+    printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", task_count);
+    print_usage(argv[0]);
+    exit(-1);
+  }
+#endif
 
   if (pandc_repeat_factor == 0) {
     printf("ERROR - Plan-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
@@ -693,6 +727,15 @@ int main(int argc, char *argv[])
   if (h264_dict[0] == '\0') {
     sprintf(h264_dict, "traces/h264_dictionary.dfn");
   }
+
+#ifdef SL_VIZ
+ if (task_type == NO_Task) {
+     printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
+ } else {
+     printf("\nSTOMP-viz tracing starts with task type %ld\n", task_type);
+ }
+ printf("STOMP-viz tracing stops after %ld executed task(s) of any type\n", task_count);
+#endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
