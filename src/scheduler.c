@@ -370,6 +370,30 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   task_metadata_block->sched_timings.running_sec[idx] += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
   task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.running_start.tv_usec;
 
+  // IF we should output Visualizer info for this task, output it now...
+ #ifdef SL_VIZ
+  {
+    uint64_t curr_time  = 1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec;
+    uint64_t arr_time   = 1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec;
+    uint64_t start_time = 1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec;
+    uint64_t end_time   = curr_time;
+    //fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
+    //                                                   
+    fprintf(sl_viz_fp,
+	    "%lu,%d,%d,%d,%d,%d,%d,%lu,%lu,%lu\n",
+	    curr_time,   //  sim_time,   
+	    0,		 // task_dag_id, task_tid,                    dag_dtime,
+	    task_metadata_block->task_id, // task_tid
+	    0, // dag_dtime
+	    task_metadata_block->accelerator_id, // accelerator_id ?,
+	    task_metadata_block->accelerator_type, //accelerator_type ?,
+	    0, //task_parent_ids
+	    arr_time, //task_arrival_time
+	    start_time, //curr_job_start_time
+	    end_time); //curr_job_end_time
+  }
+ #endif
+  
   // And finally, call the call-back if there is one... (which might clear out the metadata_block entirely)
   if (task_metadata_block->atFinish != NULL) {
     // And finally, call the atFinish call-back routine specified in the MetaData Block
