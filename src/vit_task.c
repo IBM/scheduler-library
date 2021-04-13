@@ -50,7 +50,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
 {  
   print_base_metadata_block_contents(mb);
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(mb->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(mb->data_space);
   int32_t  inMem_offset = 0;
   int32_t  inData_offset = vdata->inMem_size;
   int32_t  outData_offset = inData_offset + vdata->inData_size;
@@ -157,7 +157,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
   int32_t  in_data_bits = vdata->n_data_bits;
@@ -225,7 +225,7 @@ void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
   int32_t  in_data_bits = vdata->n_data_bits;

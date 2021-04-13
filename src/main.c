@@ -88,8 +88,9 @@ unsigned accel_limit_cv  = NUM_CV_ACCEL;
 //  The order is also significant, so "filled in" as we register the tasks
 unsigned** p0_hw_threshold;
 
-uint64_t fft_profile[2][MAX_ACCEL_TYPES];
-uint64_t vit_profile[4][MAX_ACCEL_TYPES];
+// These are defined by the task-type
+uint64_t fft_profile[2][MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+uint64_t vit_profile[4][MAX_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
 uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
 

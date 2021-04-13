@@ -138,8 +138,8 @@ typedef struct task_metadata_entry_struct {
   task_timing_data_t* task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
-  int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[MAX_DATA_SPACE_BYTES];
+  int32_t  data_size;    // Number of bytes occupied in data (in case the task evaluation wants to know)
+  uint8_t* data_space;   // The total data space for the metadata block (holds ALL data for the task)
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs

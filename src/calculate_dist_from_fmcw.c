@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+#include "verbose.h"
 #include "fft-1d.h"
 
 #include "calc_fmcw_dist.h"
@@ -29,13 +30,14 @@
 void start_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block, uint32_t fft_log_nsamples, float* data)
 {
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->task_type]);
-  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(fft_metadata_block->data_space);
   //fft_metadata_block->data_view.fft_data.log_nsamples = fft_log_nsamples;
   fft_data_p->log_nsamples = fft_log_nsamples;
   fft_metadata_block->data_size = 2 * (1<<fft_log_nsamples) * sizeof(float);
   // Copy over our task data to the MetaData Block
   //fft_metadata_block->data = (uint8_t*)data;
   float* mdataptr = (float*)fft_data_p->theData;
+  DEBUG(printf("scpdff: log_n = %u data_size = %u mdatp = %p\n",  fft_data_p->log_nsamples, fft_metadata_block->data_size, mdataptr));
   for (int i = 0; i < 2*(1<<fft_log_nsamples); i++) {
     mdataptr[i] = data[i];
   }
@@ -59,7 +61,7 @@ finish_calculate_peak_dist_from_fmcw(task_metadata_block_t* fft_metadata_block)
 {
   int tidx = fft_metadata_block->accelerator_type;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->task_type]);
-  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(fft_metadata_block->data_space);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(fft_metadata_block->data_space);
   uint32_t fft_log_nsamples = fft_data_p->log_nsamples;
   float*   data = (float*)fft_data_p->theData;
  #ifdef INT_TIME

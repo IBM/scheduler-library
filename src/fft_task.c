@@ -291,7 +291,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   int aidx = task_metadata_block->accelerator_type;
   int fn = task_metadata_block->accelerator_id;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
-  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(task_metadata_block->data_space);
   uint32_t log_nsamples = fft_data_p->log_nsamples;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   DEBUG(printf("EHFA: MB%u In execute_hwr_fft_accelerator on FFT_HWR Accel %u : MB%d  CL %d  %u log_nsamples\n", task_metadata_block->block_id, fn, task_metadata_block->block_id, task_metadata_block->crit_level, log_nsamples));
@@ -368,7 +368,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   int aidx = task_metadata_block->accelerator_type;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
-  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)&(task_metadata_block->data_space);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(task_metadata_block->data_space);
   int32_t fft_log_nsamples = fft_data_p->log_nsamples;
   float * data = (float*)(fft_data_p->theData);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;

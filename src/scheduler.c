@@ -135,7 +135,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
     printf(" ** crit_level = %d <= NOT a legal value!\n",  mb->crit_level);
   }
   printf("    data_size  = %d\n",  mb->data_size);
-  printf("    data_space @ %p\n", &(mb->data_space));
+  printf("    data_space @ %p\n",  mb->data_space);
 }
 
 
@@ -591,6 +591,13 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     sched_state_size += inp->max_task_types * sizeof(task_timing_data_t);
     if (sptr->master_metadata_pool[mi].task_timings == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_timings\n", mi);
+      exit(-99);
+    }
+
+    sptr->master_metadata_pool[mi].data_space = malloc(inp->max_data_space_bytes);
+    sched_state_size += inp->max_data_space_bytes;
+    if (sptr->master_metadata_pool[mi].data_space == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].data_space\n", mi);
       exit(-99);
     }
   }
