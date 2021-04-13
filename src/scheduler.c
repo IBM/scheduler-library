@@ -40,6 +40,8 @@
 
 #include "scheduler.h"
 
+int32_t global_task_id_counter = 0;
+
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_types   = 8,   // MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
@@ -128,6 +130,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
   } else {
     printf(" ** task_type = %d <= NOT a legal value!\n", mb->task_type);
   }
+  printf("    task_id = %d\n", mb->task_id);
   unsigned crit_level = mb->crit_level;
   if (crit_level < NUM_TASK_CRIT_LEVELS) {
     printf("    crit_level = %s\n",  sptr->task_criticality_str[crit_level]);
@@ -220,6 +223,8 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
   sptr->free_metadata_blocks -= 1;
   // For neatness (not "security") we'll clear the meta-data in the block (not the data data,though)
   sptr->master_metadata_pool[bi].task_type = in_task_type;
+  //TASKID: sptr->master_metadata_pool[bi].task_id   = -1; // Unset as yet --- but we could track get_task_metadata_block order rather than request_execution order..
+  sptr->master_metadata_pool[bi].task_id = global_task_id_counter++; // Set a task id for this task (which is the global request_execution order, for now)
   sptr->master_metadata_pool[bi].gets_by_task_type[in_task_type]++;
   sptr->master_metadata_pool[bi].status = TASK_ALLOCATED;
   sptr->master_metadata_pool[bi].crit_level = crit_level;
@@ -1031,6 +1036,7 @@ void
 request_execution(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("APP: in request_execution for MB%u\n", task_metadata_block->block_id));
+  //TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a task id for this task (which is the global request_execution order, for now)
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   task_metadata_block->status = TASK_QUEUED; // queued
   gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
