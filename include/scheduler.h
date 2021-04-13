@@ -119,8 +119,9 @@ typedef struct task_metadata_entry_struct {
   pthread_cond_t  metadata_condv; // These phthreads conditional variables are used to "signal" a thread to do work
 
   accelerator_type_t  accelerator_type; // indicates which accelerator type is being used (id's set at accelerator registration)
-  int32_t  accelerator_id;        // indicates which accelerator this task is executing on
+  int32_t             accelerator_id;   // indicates which (of the N of that type) accelerator this task is executing on
   task_type_t task_type;            // An indication of the task type; defined when tasks are registeres
+  int32_t     task_id;              // A unique identifier for this task (across the full run)
   task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
   uint64_t task_on_accel_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
