@@ -35,10 +35,6 @@
 
 #include "scheduler.h"
 
-void print_cpu_metadata_block_contents(task_metadata_block_t* mb) {
-  print_base_metadata_block_contents(mb);
-}
-
 void
 do_cpu_accel_type_initialization()
 {
@@ -54,7 +50,7 @@ do_cpu_accel_type_closeout()
 
 
 void
-output_cpu_accel_type_run_stats(unsigned my_accel_id, unsigned total_task_types)
+output_cpu_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
 {
   ; // In development
 }
