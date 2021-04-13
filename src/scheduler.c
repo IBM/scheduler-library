@@ -57,6 +57,8 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
 //  This also could allow multiple scheduler states to be in effect simultaneously...?
 //scheduler_datastate_block_t sched_state; 
 
+// ASCII trace for STOMP-viz
+FILE *sl_viz_fp = NULL;
 
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
@@ -837,6 +839,11 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
    pthread_detach(scheduling_thread);
   **/
 
+#ifdef SL_VIZ
+  sl_viz_fp = fopen("./sl_viz.trace", "w");
+  fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
+#endif
+
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
 }
@@ -1284,6 +1291,11 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   free(sptr->free_critlist_pool);
   free(sptr->master_metadata_pool);
   free(sptr);
+
+#ifdef SL_VIZ
+  fclose(sl_viz_fp);
+#endif
+
 }
 
 
