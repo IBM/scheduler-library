@@ -59,7 +59,7 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_TYPES    4
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
-#define MAX_DATA_SPACE_BYTES   128*1024
+#define MAX_DATA_SPACE_BYTES   (128*1024 + 64)  // Slightly larger than max size used in FFT
 
 typedef struct {
   unsigned max_task_types;	// The max number of task types that might be used in this run/usage
