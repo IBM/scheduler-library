@@ -397,6 +397,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
     }
     if (start_logging) {
       sptr->visualizer_output_started = true;
+      sptr->visualizer_start_time_usec = 1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec;
       if (sptr->visualizer_task_stop_count >= 0) {
 	sptr->visualizer_task_stop_count += global_finished_task_id_counter; // This means we get stop_count starting from here...
 	DEBUG(printf("Starting SL_VIZ logging at %d .. stop at count %d\n", global_finished_task_id_counter, sptr->visualizer_task_stop_count));
@@ -408,9 +409,9 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   
   if (sptr->visualizer_output_started && 
       ((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count))) {
-    uint64_t curr_time  = 1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec;
-    uint64_t arr_time   = 1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec;
-    uint64_t start_time = 1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec;
+    uint64_t curr_time  = (1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec) - sptr->visualizer_start_time_usec;
+    uint64_t arr_time   = (1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec) - sptr->visualizer_start_time_usec;
+    uint64_t start_time = (1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec) - sptr->visualizer_start_time_usec;
     uint64_t end_time   = curr_time;
     //fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
     //                                                   

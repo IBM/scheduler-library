@@ -198,6 +198,7 @@ typedef struct scheduler_datastate_block_struct {
   int32_t     visualizer_task_stop_count;
   task_type_t visualizer_task_enable_type;
   unsigned    visualizer_output_started;
+  uint64_t    visualizer_start_time_usec;
   unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy
