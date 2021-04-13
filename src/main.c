@@ -70,7 +70,7 @@ accelerator_type_t cv_hwr_accel_id;
 //#define my_num_accel_types  4
 
 // Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
-task_type_t no_task_type;
+//task_type_t no_task_type;
 task_type_t fft_task_type;
 task_type_t vit_task_type;
 task_type_t cv_task_type;
@@ -226,11 +226,11 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   printf("\nSetting up/Registering the TASK TYPES...\n");
   task_type_defn_info_t task_defn;
 
-  sprintf(task_defn.name, "NO-Task");
-  sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
-  task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
-  task_defn.output_task_type_run_stats  = NULL;
-  no_task_type = register_task_type(sptr, &task_defn);
+  /* sprintf(task_defn.name, "NO-Task"); */
+  /* sprintf(task_defn.description, "A place-holder that indicates NO task to execute"); */
+  /* task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents; */
+  /* task_defn.output_task_type_run_stats  = NULL; */
+  /* no_task_type = register_task_type(sptr, &task_defn); */
 
   sprintf(task_defn.name, "VIT-Task");
   sprintf(task_defn.description, "A Viterbi Decoding task to execute");
@@ -420,8 +420,8 @@ int main(int argc, char *argv[])
   unsigned num_maxTasks_to_use = my_num_task_types;
   
   // STOMP-viz tracing parameters
-  task_type_t task_type = NO_Task;
-  unsigned task_count   = 0;
+  task_type_t viz_task_type  = NO_Task;
+  int32_t     viz_task_count = -1;
 
 
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
@@ -576,13 +576,13 @@ int main(int argc, char *argv[])
 
     case 'i':
      #ifdef SL_VIZ
-      task_type = atol(optarg);
+      viz_task_type = atol(optarg);
      #endif
       break;
 
     case 'e':
      #ifdef SL_VIZ
-      task_count = atol(optarg);
+      viz_task_count = atol(optarg);
      #endif
       break;
 
@@ -601,14 +601,15 @@ int main(int argc, char *argv[])
     printf("extra arguments: %s\n", argv[optind]);
   }
 
-#ifdef SL_VIZ
-  if (task_count == 0){
-    printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", task_count);
-    print_usage(argv[0]);
-    exit(-1);
-  }
-#endif
-
+  /**#ifdef SL_VIZ
+     if (viz_task_count == 0){
+     printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", viz_task_count);
+     print_usage(argv[0]);
+     exit(-1);
+     }
+     #endif
+  **/
+  
   if (pandc_repeat_factor == 0) {
     printf("ERROR - Plan-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
     print_usage(argv[0]);
@@ -632,6 +633,9 @@ int main(int argc, char *argv[])
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
+  sptr->visualizer_task_stop_count  = viz_task_count;
+  sptr->visualizer_task_enable_type = viz_task_type;
+
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
 
@@ -729,12 +733,12 @@ int main(int argc, char *argv[])
   }
 
 #ifdef SL_VIZ
- if (task_type == NO_Task) {
+ if (viz_task_type == NO_Task) {
      printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
  } else {
-     printf("\nSTOMP-viz tracing starts with task type %ld\n", task_type);
+     printf("\nSTOMP-viz tracing starts with task type %d\n", viz_task_type);
  }
- printf("STOMP-viz tracing stops after %ld executed task(s) of any type\n", task_count);
+ printf("STOMP-viz tracing stops after %d executed task(s) of any type\n", viz_task_count);
 #endif
 
   printf("\nDictionaries:\n");

@@ -34,8 +34,7 @@ typedef int task_type_t;
 enum {NO_Accelerator = -1};
 typedef int accelerator_type_t;
 
-typedef enum { NO_TASK   = 0,
-	       BASE_TASK = 1,
+typedef enum { BASE_TASK = 1,
 	       ELEVATED_TASK = 2,
 	       CRITICAL_TASK = 3,
 	       NUM_TASK_CRIT_LEVELS} task_criticality_t;
@@ -195,6 +194,9 @@ typedef struct scheduler_datastate_block_struct {
   task_type_t next_avail_task_type;
   accelerator_type_t next_avail_accel_id;
 
+  int32_t     visualizer_task_stop_count;
+  task_type_t visualizer_task_enable_type;
+  
   unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy

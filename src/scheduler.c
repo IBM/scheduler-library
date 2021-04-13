@@ -41,6 +41,7 @@
 #include "scheduler.h"
 
 int32_t global_task_id_counter = 0;
+int32_t global_finished_task_id_counter = 0;
 
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_types   = 8,   // MAX_TASK_TYPES,
@@ -137,6 +138,13 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
   } else {
     printf(" ** crit_level = %d <= NOT a legal value!\n",  mb->crit_level);
   }
+  unsigned accelerator_type = mb->accelerator_type;
+  if (accelerator_type < sptr->limits.max_accel_types) {
+    printf("    accelerator_type = %s\n", sptr->accel_name_str[accelerator_type]);
+  } else {
+    printf(" ** accelerator_type = %d <= NOT a legal value!\n", mb->accelerator_type);
+  }
+  printf("    accelerator_id = %d\n", mb->accelerator_id);
   printf("    data_size  = %d\n",  mb->data_size);
   printf("    data_space @ %p\n",  mb->data_space);
 }
@@ -327,7 +335,7 @@ void free_task_metadata_block(task_metadata_block_t* mb)
     gettimeofday(&sptr->master_metadata_pool[bi].sched_timings.idle_start, NULL);
     sptr->master_metadata_pool[bi].sched_timings.done_sec += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_sec - sptr->master_metadata_pool[bi].sched_timings.done_start.tv_sec;
     sptr->master_metadata_pool[bi].sched_timings.done_usec += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec - sptr->master_metadata_pool[bi].sched_timings.done_start.tv_usec;
-    sptr->master_metadata_pool[bi].crit_level = NO_TASK; // lowest/free?
+    sptr->master_metadata_pool[bi].crit_level = BASE_TASK; // lowest/free?
     sptr->master_metadata_pool[bi].data_size = 0;
   } else {
     printf("ERROR : We are freeing a metadata block when we already have max metadata blocks free...\n");
@@ -372,27 +380,32 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 
   // IF we should output Visualizer info for this task, output it now...
  #ifdef SL_VIZ
-  {
+  DEBUG(printf(" STOP_CT %d vs curr_ct %d  :  en_task %d vs curr_task %d\n", sptr->visualizer_task_stop_count, global_finished_task_id_counter, sptr->visualizer_task_enable_type, task_metadata_block->task_type));
+  if (((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count)) &&
+      ((sptr->visualizer_task_enable_type == NO_Task) || (task_metadata_block->task_type == sptr->visualizer_task_enable_type))) {
     uint64_t curr_time  = 1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec;
     uint64_t arr_time   = 1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec;
     uint64_t start_time = 1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec;
     uint64_t end_time   = curr_time;
     //fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
     //                                                   
+    DEBUG(printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
     fprintf(sl_viz_fp,
-	    "%lu,%d,%d,%d,%d,%d,%d,%lu,%lu,%lu\n",
+	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    curr_time,   //  sim_time,   
 	    0,		 // task_dag_id, task_tid,                    dag_dtime,
 	    task_metadata_block->task_id, // task_tid
 	    0, // dag_dtime
 	    task_metadata_block->accelerator_id, // accelerator_id ?,
-	    task_metadata_block->accelerator_type, //accelerator_type ?,
-	    0, //task_parent_ids
+	    sptr->accel_name_str[task_metadata_block->accelerator_type], //accelerator_type ?,
+	    "nan", //task_parent_ids
 	    arr_time, //task_arrival_time
 	    start_time, //curr_job_start_time
 	    end_time); //curr_job_end_time
   }
  #endif
+
+  global_finished_task_id_counter++;
   
   // And finally, call the call-back if there is one... (which might clear out the metadata_block entirely)
   if (task_metadata_block->atFinish != NULL) {
@@ -409,11 +422,12 @@ execute_task_on_accelerator(task_metadata_block_t* task_metadata_block)
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and Number %u\n", task_metadata_block->block_id, sptr->accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->accelerator_id));
   if (task_metadata_block->accelerator_type != NO_Accelerator) {
-    if ((task_metadata_block->task_type > 0) && (task_metadata_block->task_type < sptr->limits.max_task_types)) {
+    if ((task_metadata_block->task_type != NO_Task) && (task_metadata_block->task_type < sptr->limits.max_task_types)) {
       DEBUG(printf("Executing Task for MB%d : Type %u on %u\n", task_metadata_block->block_id, task_metadata_block->task_type, task_metadata_block->accelerator_type));
       sptr->scheduler_execute_task_function[task_metadata_block->accelerator_type][task_metadata_block->task_type](task_metadata_block);
     } else {
-      printf("ERROR : execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->task_type);
+      printf("ERROR: execute_task_on_accelerator called for unknown task type: %u\n", task_metadata_block->task_type);
+      print_base_metadata_block_contents(task_metadata_block);
       cleanup_and_exit(sptr, -13);
     }
   } else {
