@@ -48,7 +48,8 @@ typedef struct { // The "Viterbi" view of "data"
 typedef struct {
   struct timeval dodec_start;
   struct timeval depunc_start;
-  struct timeval time_val[MAX_TASK_TIMING_SETS-2];
+  struct timeval depunc_stop;
+  struct timeval time_val[MAX_TASK_TIMING_SETS-3];
 
   uint64_t dodec_sec[MAX_ACCEL_TYPES];
   uint64_t depunc_sec[MAX_ACCEL_TYPES];

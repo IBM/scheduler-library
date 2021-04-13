@@ -50,7 +50,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
 {  
   print_base_metadata_block_contents(mb);
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(mb->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(mb->data_space);
   int32_t  inMem_offset = 0;
   int32_t  inData_offset = vdata->inMem_size;
   int32_t  outData_offset = inData_offset + vdata->inData_size;
@@ -100,7 +100,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     total_dodec_usec[ai] = 0;
   }  
   for (int ai = 0; ai < total_accel_types; ai++) {
-    if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+    if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, sptr->task_name_str[my_task_id], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
@@ -108,7 +108,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_id]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
       uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ai]);
-      if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+      if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
 	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
       } else {
 	if ((this_comp_by + this_depunc_usec + this_dodec_usec) != 0) {
@@ -157,7 +157,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
   int32_t  in_data_bits = vdata->n_data_bits;
@@ -225,7 +225,7 @@ void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
 {
   DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
-  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)&(task_metadata_block->data_space);
+  viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
   int32_t  in_data_bits = vdata->n_data_bits;

@@ -69,18 +69,18 @@ output_test_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_t
     total_test_call_usec[ai] = 0;
   }
   for (int ai = 0; ai < total_accel_types; ai++) {
-    if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+    if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, sptr->task_name_str[my_task_id], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
       test_timing_data_t * test_timings_p = (test_timing_data_t*)&(sptr->master_metadata_pool[bi].task_timings[my_task_id]);
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_id]);
       uint64_t this_test_call_usec = (uint64_t)(test_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(test_timings_p->call_usec[ai]);
-      if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
-	printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi, ai, sptr->accel_name_str[my_task_id], this_comp_by, this_test_call_usec);
+      if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
+	printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_test_call_usec);
       } else {
 	if ((this_comp_by + this_test_call_usec) != 0) {
-	  printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi, ai, sptr->accel_name_str[my_task_id], this_comp_by, this_test_call_usec);
+	  printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_test_call_usec);
 	}
       }
       // Per acceleration (CPU, HWR)

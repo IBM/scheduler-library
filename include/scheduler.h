@@ -55,11 +55,11 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_DESC_LEN   256
 
 // These are fields defined by the application when it gets/sets up a new cheduler datastate block
-#define MAX_TASK_TYPES     4
+//#define MAX_TASK_TYPES     32
 #define MAX_ACCEL_TYPES    4
 #define GLOBAL_METADATA_POOL_BLOCKS 32
 #define MAX_TASK_TIMING_SETS   16
-#define MAX_DATA_SPACE_BYTES   128*1024
+#define MAX_DATA_SPACE_BYTES   (128*1024 + 64)  // Slightly larger than max size used in FFT
 
 typedef struct {
   unsigned max_task_types;	// The max number of task types that might be used in this run/usage
@@ -138,8 +138,8 @@ typedef struct task_metadata_entry_struct {
   task_timing_data_t* task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
-  int32_t  data_size;                // Number of bytes occupied in data (NOT USED/NOT NEEDED?)
-  uint8_t  data_space[MAX_DATA_SPACE_BYTES];
+  int32_t  data_size;    // Number of bytes occupied in data (in case the task evaluation wants to know)
+  uint8_t* data_space;   // The total data space for the metadata block (holds ALL data for the task)
 } task_metadata_block_t;
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs

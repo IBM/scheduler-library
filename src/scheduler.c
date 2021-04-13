@@ -41,7 +41,7 @@
 #include "scheduler.h"
 
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
-  .max_task_types   = MAX_TASK_TYPES,
+  .max_task_types   = 8,   // MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
   .max_accel_of_any_type = MAX_ACCEL_OF_EACH_TYPE,
 
@@ -57,6 +57,8 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
 //  This also could allow multiple scheduler states to be in effect simultaneously...?
 //scheduler_datastate_block_t sched_state; 
 
+// ASCII trace for STOMP-viz
+FILE *sl_viz_fp = NULL;
 
 // Forward declarations
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
@@ -133,7 +135,7 @@ void print_base_metadata_block_contents(task_metadata_block_t* mb)
     printf(" ** crit_level = %d <= NOT a legal value!\n",  mb->crit_level);
   }
   printf("    data_size  = %d\n",  mb->data_size);
-  printf("    data_space @ %p\n", &(mb->data_space));
+  printf("    data_space @ %p\n",  mb->data_space);
 }
 
 
@@ -459,6 +461,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     exit(-99);
   }
 
+  // Set up the task_name_str
   sptr->task_name_str = calloc(inp->max_task_types, sizeof(char*)); //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
   sched_state_size += inp->max_task_types * sizeof(char*);
   if (sptr == NULL) {
@@ -475,6 +478,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     sptr->task_name_str[ti] = tptr;
     tptr += MAX_TASK_NAME_LEN;
   }
+  // Set up the task_desc_str
   sptr->task_desc_str = calloc(inp->max_task_types, sizeof(char*)); //[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
   sched_state_size += inp->max_task_types * sizeof(char*);
   if (sptr == NULL) {
@@ -587,6 +591,13 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     sched_state_size += inp->max_task_types * sizeof(task_timing_data_t);
     if (sptr->master_metadata_pool[mi].task_timings == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_timings\n", mi);
+      exit(-99);
+    }
+
+    sptr->master_metadata_pool[mi].data_space = malloc(inp->max_data_space_bytes);
+    sched_state_size += inp->max_data_space_bytes;
+    if (sptr->master_metadata_pool[mi].data_space == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].data_space\n", mi);
       exit(-99);
     }
   }
@@ -834,6 +845,11 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
    }
    pthread_detach(scheduling_thread);
   **/
+
+#ifdef SL_VIZ
+  sl_viz_fp = fopen("./sl_viz.trace", "w");
+  fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
+#endif
 
   DEBUG(printf("DONE with initialize -- returning success\n"));
   return success;
@@ -1282,6 +1298,11 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   free(sptr->free_critlist_pool);
   free(sptr->master_metadata_pool);
   free(sptr);
+
+#ifdef SL_VIZ
+  fclose(sl_viz_fp);
+#endif
+
 }
 
 
@@ -1361,7 +1382,7 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
   if (tid < sptr->limits.max_task_types) {
     sptr->next_avail_task_id++;
   } else {
-    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding %u\n", sptr->limits.max_task_types, tid);
+    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding id %u\n", (sptr->limits.max_task_types-1), tid);
     cleanup_and_exit(sptr, -31);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
@@ -1381,16 +1402,19 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
 	printf("  do_accel_initialization   = %p\n", info->do_accel_initialization);
 	printf("  do_accel_closeout_t       = %p\n", info->do_accel_closeout);
 	printf("  output_accel_run_stats_t  = %p\n", info->output_accel_run_stats));
-  printf("Registering Accelerator %s : %s\n", info->name, info->description);
 	
   // Okay, so here is where we "fill in" the scheduler's accel-type information for this accel
   accelerator_type_t acid = sptr->next_avail_accel_id;
-  if (acid < sptr->limits.max_accel_types) {
-    sptr->next_avail_accel_id++;
-  } else {
-    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding %u\n", sptr->limits.max_accel_types, acid);
+  if (acid >= sptr->limits.max_accel_types) {
+    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", (sptr->limits.max_accel_types-1), acid);
     cleanup_and_exit(sptr, -32);
   }
+  if (acid >= MAX_ACCEL_TYPES) {
+    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", MAX_ACCEL_TYPES, (acid+1));
+    cleanup_and_exit(sptr, -32);
+  }
+  sptr->next_avail_accel_id++;
+  printf("Registering Accelerator ID %u %s : %s\n", acid, info->name, info->description);
   snprintf(sptr->accel_name_str[acid], MAX_ACCEL_NAME_LEN, "%s", info->name);
   snprintf(sptr->accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", info->description);
   sptr->num_accelerators_of_type[acid]   = info->number_available;

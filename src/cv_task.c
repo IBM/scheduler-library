@@ -90,7 +90,7 @@ output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_tas
     total_parse_usec[ai] = 0;
   }
   for (int ai = 0; ai < total_accel_types; ai++) {
-    if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
+    if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_id, sptr->task_name_str[my_task_id], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
@@ -98,11 +98,11 @@ output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_tas
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_id]);
       uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->call_usec[ai]);
       uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ai]) * 1000000 + (uint64_t)(cv_timings_p->parse_usec[ai]);
-      if ((ai == total_accel_types-1) || (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL)) {
-	printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai, sptr->accel_name_str[my_task_id], this_comp_by, this_cv_call_usec, this_parse_usec);
+      if (sptr->scheduler_execute_task_function[ai][my_task_id] != NULL) {
+	printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec, this_parse_usec);
       } else {
 	if ((this_comp_by + this_cv_call_usec + this_parse_usec) != 0) {
-	  printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai, sptr->accel_name_str[my_task_id], this_comp_by, this_cv_call_usec, this_parse_usec);
+	  printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec, this_parse_usec);
 	}
       }
       // Per acceleration (CPU, HWR)

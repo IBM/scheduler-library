@@ -176,7 +176,7 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
   /* 2) Set up to request object detection on an image frame */
   int tidx = mb_ptr->accelerator_type;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
   // Currently we don't send in any data this way (though we should include the input image here)
   // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
   cv_data_p->object_label = in_tr_val;
@@ -192,7 +192,7 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 {
   DEBUG(printf("In finish_execution_of_cv_kernel\n"));
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)&(mb_ptr->data_space);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
   label_t the_label = cv_data_p->object_label;
   //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
   // We've finished the execution and lifetime for this task; free its metadata

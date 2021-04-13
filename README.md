@@ -20,11 +20,11 @@ make clean
 make
 ```
 
-The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. The `make` command should produce the `test-scheduler*.exe` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
+The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. The `make` command should produce the `test-scheduler*` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
 
 The `make` process uses the contents of a `.config` file to set various compile-time parameters.  The current version of this software produces an executable target that includes some representation of these configuration parameters.  Thus, the output executable will likely have a name like `test-scheduler-CF-P3V0F0N0` which indicates:
- - this is the `test-scheduler` trace-driven (as opposed to `test-scheduler-sim` simulation-driven) run-type
- - the build uses the "fake" CV/CNN accelerators (`CF`)
+ - this is the `test-scheduler` trace-driven (as opposed to `sim-test-scheduler` simulation-driven) run-type
+ - the 'S' indicates it is all-software (no hardware accelerators; only uses CPUs)
  - the build allows for 'P3' three CPU accelerators (processors), 'V0' and zero hardware Viterbi accelerators, 'F0' and zero FFT accelerators, and 'N0' zero CV/CNN
 When building for hardware that includes hardware accelerators (e.g. 3 FFT, 2 Viterbi, and 1 CV/CNN) then the name would reflect that, e.g. the target executable could read `test-scheduler-RV-F2VCHo-P3V2F3N1` which indicates:
  - it was cross-compiled for `RV` (RISC-V) target architecture
@@ -36,8 +36,8 @@ This new naming convention is primarily used to make clearer the target plaftfor
 ### Targets
 
 The standard ```make``` of the scheduler-library code will produce two executables:
- - `test-scheduler.exe`: corresponds to the trace-driven `mini-era` executable.
- - `test-scheduler-sim.exe`: corresponds to the simulation version of `mini-era` (where the inputs are derived by simulation of arrival events, guided by thresholds and random number selection).  For more details on the simulation versus trae-driven `mini-era` programs, please see the documentation in the mini-era github repository.
+ - `test-scheduler*`: corresponds to the trace-driven `mini-era` executable.
+ - `sim-test-scheduler*`: corresponds to the simulation version of `mini-era` (where the inputs are derived by simulation of arrival events, guided by thresholds and random number selection).  For more details on the simulation versus trae-driven `mini-era` programs, please see the documentation in the mini-era github repository.
 
 ### Configuration
 
@@ -68,72 +68,91 @@ The config file contains a series of definitions, like #define macros or environ
 As indicated, there are two executables that will execute the Mini-ERA functionality on the SL, and their usage is very similar,
 but with a few distinctions owing to the differences in running with a trace input as versus a simulated world  providing inputs.
 
-#### Trace-Driven Version: `test-scheduler.exe`
+#### Trace-Driven Version: `test-scheduler*`
 ```
-./test-scheduler.exe -h
-Usage: ./cmain.exe <OPTIONS>
+./test-scheduler-S-P3V0F0N0 -h
+Usage: ./test-scheduler-S-P3V0F0N0 <OPTIONS>
  OPTIONS:
-    -h         : print this helpful usage info
-    -o         : print the Visualizer output traace information during the run
-    -R <file>  : defines the input Radar dictionary file <file> to use
-    -V <file>  : defines the input Viterbi dictionary file <file> to use
-    -C <file>  : defines the input CV/CNN dictionary file <file> to use
-    -t <trace> : defines the input trace file <trace> to use
-    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)
-    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
-               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
-    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
-    -v <N>     : defines Viterbi message size:
-               :      0 = Short messages (4 characters)
-               :      1 = Medium messages (500 characters)
-               :      2 = Long messages (1000 characters)
-               :      3 = Max-sized messages (1500 characters)
-    -M <N>     : Adds <N> additional (non-critical) Viterbi message tasks per time step.
-    -S <N>     : Task-Size Variability: Varies the sizes of input tasks where appropriate
-               :      0 = No variability (e.g. all messages same size, etc.)
-    -P <N>     : defines the Scheduler Accelerator Selection Policy:
-               :      0 = Select_Accelerator_Type_And_Wait
-               :      1 = Fastest_to_Slowest_First_Available
-               :      2 = Fastest_Finish_Time_First
-               :      3 = Fastest_Finish_Time_First_Queued
+    -h          : print this helpful usage info
+    -o          : print the Visualizer output traace information during the run
+    -R <file>   : defines the input Radar dictionary file <file> to use
+    -V <file>   : defines the input Viterbi dictionary file <file> to use
+    -C <file>   : defines the input CV/CNN dictionary file <file> to use
+    -s <N>      : Sets the max number of time steps to simulate
+    -t <trace>  : defines the input trace file <trace> to use
+    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)
+    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks
+                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.
+    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.
+    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)
+    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.
+    -v <N>      : defines Viterbi message size:
+                :      0 = Short messages (4 characters)
+                :      1 = Medium messages (500 characters)
+                :      2 = Long messages (1000 characters)
+                :      3 = Max-sized messages (1500 characters)
+    -M <N>      : Adds <N> additional (non-critical) Viterbi message tasks per time step.
+    -S <N>      : Task-Size Variability: Varies the sizes of input tasks where appropriate
+                :      0 = No variability (e.g. all messages same size, etc.)
+    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue
+                :   This reduces the busy-spin-loop rate for the scheduler thread
+    -B <N>      : Sets the number of Metadata Blocks (max) to <N>
+    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)
+    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)
+                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so
+    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.
+                :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)
+    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.
+                :   Two tuple formats are acceptable:
+                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected
+                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type
 ```
 
 To actually execute a trace, one must point to the trace in the trace repository (subdirectory ```traces```) using the ```-t``` option.
 
-#### Simulation-Driven Version: ```test-scheduler-sim.exe```
+#### Simulation-Driven Version: ```sim-test-scheduler*```
 ```
-./test-scheduler-sim.exe  -h
-Usage: ./test-scheduler-sim.exe <OPTIONS>
+./sim-test-scheduler-S-P3V0F0N0 -h
+Usage: ./sim-test-scheduler-S-P3V0F0N0 <OPTIONS>
  OPTIONS:
-    -h         : print this helpful usage info
-    -o         : print the Visualizer output traace information during the run
-    -R <file>  : defines the input Radar dictionary file <file> to use
-    -V <file>  : defines the input Viterbi dictionary file <file> to use
-    -C <file>  : defines the input CV/CNN dictionary file <file> to use
-    -s <N>     : Sets the max number of time steps to simulate
-    -r <N>     : Sets the rand random number seed to N
-    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)
-    -W <wfile> : defines the world environment parameters description file <wfile> to use
-    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)
-    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks
-               :      Each Set ofRadar Dictionary Entries Can use a different sample size, etc.
-    -F <N>     : Adds <N> additional (non-critical) FFT tasks per time step.
-    -v <N>     : defines Viterbi message size:
-               :      0 = Short messages (4 characters)
-               :      1 = Medium messages (500 characters)
-               :      2 = Long messages (1000 characters)
-               :      3 = Max-sized messages (1500 characters)
-    -M <N>     : Adds <N> additional (non-critical) Viterbi message tasks per time step.
-    -S <N>     : Task-Size Variability: Varies the sizes of input tasks where appropriate
-               :      0 = No variability (e.g. all messages same size, etc.)
-    -P <N>     : defines the Scheduler Accelerator Selection Policy:
-               :      0 = Select_Accelerator_Type_And_Wait
-               :      1 = Fastest_to_Slowest_First_Available
-               :      2 = Fastest_Finish_Time_First
-               :      3 = Fastest_Finish_Time_First_Queued
+    -h          : print this helpful usage info
+    -o          : print the Visualizer output traace information during the run
+    -R <file>   : defines the input Radar dictionary file <file> to use
+    -V <file>   : defines the input Viterbi dictionary file <file> to use
+    -C <file>   : defines the input CV/CNN dictionary file <file> to use
+    -s <N>      : Sets the max number of time steps to simulate
+    -r <N>      : Sets the rand random number seed to N
+    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)
+    -W <wfile>  : defines the world environment parameters description file <wfile> to use
+    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)
+    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks
+                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.
+    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.
+    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)
+    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.
+    -v <N>      : defines Viterbi message size:
+                :      0 = Short messages (4 characters)
+                :      1 = Medium messages (500 characters)
+                :      2 = Long messages (1000 characters)
+                :      3 = Max-sized messages (1500 characters)
+    -M <N>      : Adds <N> additional (non-critical) Viterbi message tasks per time step.
+    -S <N>      : Task-Size Variability: Varies the sizes of input tasks where appropriate
+                :      0 = No variability (e.g. all messages same size, etc.)
+    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue
+                :   This reduces the busy-spin-loop rate for the scheduler thread
+    -B <N>      : Sets the number of Metadata Blocks (max) to <N>
+    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)
+    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)
+                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so
+    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.
+                :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)
+    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.
+                :   Two tuple formats are acceptable:
+                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected
+                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type
 ```
 
-For execution in simulation mode (e.g. using ```test-scheduler-sim.exe```) no trace is necessary, and the simulation provides the inputs.
+For execution in simulation mode (e.g. using ```sim-test-scheduler*```) no trace is necessary, and the simulation provides the inputs.
 
 ## Status
 
@@ -142,11 +161,11 @@ This platform is meant for SL development and integration, so it is expected to 
 There are currently some example traces in the `traces` subdirectory. Note that most development of Mini-ERA and its off-shoots to date has focused around the `tt02.new` trace.
 
  - `tt00.new` is a 5000 record illustrative trace.
- - `tt001new` is a 5000 record illustrative trace.
- - `tt002new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
- - `tt003new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
+ - `tt01.new` is a 5000 record illustrative trace.
+ - `tt02.new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
+ - `tt03.new` is a 5000 record trace that includes multiple obstacle vehicles per lane (at times).
 
-There is a default set of world parameter setings for the simulation-driven mode (```test-scheduler-sim.exe```) as well.
+There is a default set of world parameter setings for the simulation-driven mode (```sim-test-scheduler*```) as well.
 This file (```default-world.desc```) describes the thresholds for various input occurrences, etc.
 
 For additional information on all aspects of the Mini-ERA baseline workload,

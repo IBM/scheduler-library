@@ -88,8 +88,9 @@ unsigned accel_limit_cv  = NUM_CV_ACCEL;
 //  The order is also significant, so "filled in" as we register the tasks
 unsigned** p0_hw_threshold;
 
-uint64_t fft_profile[2][MAX_ACCEL_TYPES];
-uint64_t vit_profile[4][MAX_ACCEL_TYPES];
+// These are defined by the task-type
+uint64_t fft_profile[2][MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+uint64_t vit_profile[4][MAX_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
 uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
 
@@ -103,29 +104,29 @@ unsigned task_size_variability;
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
-  printf("    -h         : print this helpful usage info\n");
-  printf("    -o         : print the Visualizer output traace information during the run\n");
-  printf("    -R <file>  : defines the input Radar dictionary file <file> to use\n");
-  printf("    -V <file>  : defines the input Viterbi dictionary file <file> to use\n");
-  printf("    -C <file>  : defines the input CV/CNN dictionary file <file> to use\n");
+  printf("    -h          : print this helpful usage info\n");
+  printf("    -o          : print the Visualizer output traace information during the run\n");
+  printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
+  printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
+  printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to use\n");
   //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
   //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
-  printf("    -s <N>     : Sets the max number of time steps to simulate\n");
+  printf("    -s <N>      : Sets the max number of time steps to simulate\n");
  #ifdef USE_SIM_ENVIRON
-  printf("    -r <N>     : Sets the rand random number seed to N\n");
-  printf("    -A         : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
-  printf("    -W <wfile> : defines the world environment parameters description file <wfile> to use\n");
+  printf("    -r <N>      : Sets the rand random number seed to N\n");
+  printf("    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
+  printf("    -W <wfile>  : defines the world environment parameters description file <wfile> to use\n");
  #else
-  printf("    -t <trace> : defines the input trace file <trace> to use\n");
+  printf("    -t <trace>  : defines the input trace file <trace> to use\n");
  #endif
-  printf("    -p <N>     : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
-  printf("    -f <N>     : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
-  printf("               :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
+  printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
+  printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
+  printf("                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
   
-  printf("    -N <N>     : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
-  printf("    -D <N>     : Delay (in usec) of CPU CV Tasks (faked execution)\n");
+  printf("    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
+  printf("    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)\n");
  #ifdef FAKE_HW_CV
-  printf("    -d <N>     : Delay (in usec) of HWR CV Tasks (faked execution)\n");
+  printf("    -d <N>      : Delay (in usec) of HWR CV Tasks (faked execution)\n");
  #endif
   printf("    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>      : defines Viterbi message size:\n");
@@ -142,13 +143,12 @@ void print_usage(char * pname) {
   printf("    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
-//  printf("    -P <N>      : defines the Scheduler Accelerator Selection Policy:\n");
-//  printf("                :      0 = Select_Accelerator_Type_And_Wait\n");
-//  printf("                :      1 = Fastest_to_Slowest_First_Available\n");
-//  printf("                :      2 = Fastest_Finish_Time_First\n");
-//  printf("                :      3 = Fastest_Finish_Time_First_Queued\n");
-  printf("    -L <tuple> : Sets the limits on number of each accelerator type available in this run.\n");
-  printf("               :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
+  printf("    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.\n");
+  printf("                :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
+  printf("    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.\n");
+  printf("                :   Two tuple formats are acceptable:\n");
+  printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
+  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type\n");
 
 }
 
@@ -181,7 +181,7 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   printf("\nSetting up/Registering the ACCELERATORS...\n");
   accelerator_pool_defn_info_t accel_def;
 
-  sprintf(accel_def.name, "CPU_Acc");
+  sprintf(accel_def.name, "CPU-Acc");
   sprintf(accel_def.description, "Run task on a RISC-V CPU thread");
   accel_def.number_available        = accel_limit_cpu;
   accel_def.do_accel_initialization = &do_cpu_accel_type_initialization;
@@ -598,6 +598,8 @@ int main(int argc, char *argv[])
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
+
+  printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
 
   // Set up the task_on_accel profiles...
   p0_hw_threshold = calloc(num_maxTasks_to_use, sizeof(unsigned*));
