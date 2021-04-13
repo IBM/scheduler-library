@@ -76,4 +76,8 @@ erav3-app/verbose_erav3c
 
 #Executables in root
 test-scheduler-*
+sim-test-scheduler-*
+
+#Traces
+*.trace
 

@@ -103,6 +103,10 @@ ifdef CONFIG_CV_ONLY_HWR
  CFLAGS += -DHW_ONLY_CV
 endif
 
+ifdef SL_VIZ
+CFLAGS += -DSL_VIZ
+endif
+
 ifdef CONFIG_VERBOSE
 CFLAGS += -DVERBOSE
 endif
