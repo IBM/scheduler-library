@@ -175,7 +175,7 @@ void
 output_task_and_accel_run_stats(scheduler_datastate_block_t* sptr)
 {
   printf("\nPer-MetaData-Block Job Timing Data:\n");
-  for (int ti = 0; ti < sptr->next_avail_task_id; ti++) {
+  for (int ti = 0; ti < sptr->next_avail_task_type; ti++) {
     if (sptr->output_task_run_stats_function[ti] != NULL) {
       sptr->output_task_run_stats_function[ti](sptr, ti, sptr->next_avail_accel_id);
     }
@@ -183,7 +183,7 @@ output_task_and_accel_run_stats(scheduler_datastate_block_t* sptr)
 
   for (int ai = 0; ai < sptr->next_avail_accel_id; ai++) {
     if (sptr->output_accel_run_stats_function[ai] != NULL) {
-      sptr->output_accel_run_stats_function[ai](sptr, ai, sptr->next_avail_task_id);
+      sptr->output_accel_run_stats_function[ai](sptr, ai, sptr->next_avail_task_type);
     }
   }
 }
@@ -194,7 +194,7 @@ output_task_and_accel_run_stats(scheduler_datastate_block_t* sptr)
 //  Currently, we have to return, or else the scheduler task cannot make progress and free
 //  additional metablocks.... so we require the caller to do the "while" loop...
 
-task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_id_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
+task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_type_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&(sptr->free_metadata_mutex));
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", sptr->free_metadata_blocks));
@@ -346,8 +346,8 @@ void free_task_metadata_block(task_metadata_block_t* mb)
 
 
 int
-get_task_status(scheduler_datastate_block_t* sptr, int task_id) {
-  return sptr->master_metadata_pool[task_id].status;
+get_task_status(scheduler_datastate_block_t* sptr, int task_type) {
+  return sptr->master_metadata_pool[task_type].status;
 }
 
 
@@ -614,7 +614,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = sptr->limits.max_metadata_pool_blocks;
   
-  sptr->next_avail_task_id  = 0;
+  sptr->next_avail_task_type  = 0;
   sptr->next_avail_accel_id = 0;
 
   sptr->scheduler_holdoff_usec      = 1;
@@ -1360,7 +1360,7 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 
 
 
-task_id_t
+task_type_t
 register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tinfo)
 {
   DEBUG(printf("In register_task_type with inputs:\n");
@@ -1378,11 +1378,11 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
     cleanup_and_exit(sptr, -30);
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information for this task
-  task_id_t tid = sptr->next_avail_task_id;
+  task_type_t tid = sptr->next_avail_task_type;
   if (tid < sptr->limits.max_task_types) {
-    sptr->next_avail_task_id++;
+    sptr->next_avail_task_type++;
   } else {
-    printf("ERROR: Ran out of Task IDs: MAX_TASK_ID = %u and we are adding id %u\n", (sptr->limits.max_task_types-1), tid);
+    printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding id %u\n", (sptr->limits.max_task_types-1), tid);
     cleanup_and_exit(sptr, -31);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
@@ -1437,15 +1437,15 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
 
 
 void
-register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr)
+register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_type_t tid, sched_execute_task_function_t fptr)
 {
   DEBUG(printf("In register_accel_can_exec_task for accel %u and task %u with fptr %p\n", acid, tid, fptr));
   if (acid >= sptr->next_avail_accel_id) {
     printf("In register_accel_can_exec_task specified an illegal accelerator id: %u vs %u currently defined\n", acid, sptr->next_avail_accel_id);
     cleanup_and_exit(sptr, -36);
   }
-  if (tid >= sptr->next_avail_task_id) {
-    printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n", tid, sptr->next_avail_task_id);
+  if (tid >= sptr->next_avail_task_type) {
+    printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n", tid, sptr->next_avail_task_type);
     cleanup_and_exit(sptr, -37);
   }
   if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {

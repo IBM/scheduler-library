@@ -70,11 +70,11 @@ accelerator_type_t cv_hwr_accel_id;
 //#define my_num_accel_types  4
 
 // Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
-task_id_t no_task_id;
-task_id_t fft_task_id;
-task_id_t vit_task_id;
-task_id_t cv_task_id;
-task_id_t test_task_id;
+task_type_t no_task_type;
+task_type_t fft_task_type;
+task_type_t vit_task_type;
+task_type_t cv_task_type;
+task_type_t test_task_type;
 
 #define my_num_task_types  4
 
@@ -221,48 +221,48 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
   task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
   task_defn.output_task_type_run_stats  = NULL;
-  no_task_id = register_task_type(sptr, &task_defn);
+  no_task_type = register_task_type(sptr, &task_defn);
 
   sprintf(task_defn.name, "VIT-Task");
   sprintf(task_defn.description, "A Viterbi Decoding task to execute");
   task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
-  vit_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
+  vit_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_type, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
   if (NUM_VIT_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
-    p0_hw_threshold[vit_task_id][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_id][vit_hwr_accel_id]);
+    p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
   }
   
   sprintf(task_defn.name, "CV-Task");
   sprintf(task_defn.description, "A CV/CNN task to execute");
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
-  cv_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
+  cv_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
-    p0_hw_threshold[cv_task_id][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_id][cv_hwr_accel_id]);
+    p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
   
   sprintf(task_defn.name, "FFT-Task");
   sprintf(task_defn.description, "A 1-D FFT task to execute");
   task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  fft_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+  fft_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_type, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_type, &execute_hwr_fft_accelerator);
   if (NUM_FFT_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
-    p0_hw_threshold[fft_task_id][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_id][fft_hwr_accel_id]);
+    p0_hw_threshold[fft_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_type][fft_hwr_accel_id]);
   }
   
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
@@ -271,25 +271,25 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
     sprintf(task_defn.description, "A TESTING task to execute");
     task_defn.print_metadata_block_contents  = &print_test_metadata_block_contents;
     task_defn.output_task_type_run_stats  = &output_test_task_type_run_stats;
-    test_task_id = register_task_type(sptr, &task_defn);
-    //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_id);
-    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_id, &execute_on_cpu_test_accelerator);
+    test_task_type = register_task_type(sptr, &task_defn);
+    //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_type);
+    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_type, &execute_on_cpu_test_accelerator);
     if ((NUM_VIT_ACCEL > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_id, &execute_on_hwr_vit_test_accelerator);
-      p0_hw_threshold[test_task_id][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
-      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, vit_hwr_accel_id, p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_type, &execute_on_hwr_vit_test_accelerator);
+      p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, vit_hwr_accel_id, p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((NUM_FFT_ACCEL > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_id, &execute_on_hwr_fft_test_accelerator);
-      p0_hw_threshold[test_task_id][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
-      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, fft_hwr_accel_id, p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_type, &execute_on_hwr_fft_test_accelerator);
+      p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, fft_hwr_accel_id, p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((NUM_CV_ACCEL > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_id, &execute_on_hwr_cv_test_accelerator);
-      p0_hw_threshold[test_task_id][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_id][cv_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_type, &execute_on_hwr_cv_test_accelerator);
+      p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }
   }
 
@@ -1008,7 +1008,7 @@ int main(int argc, char *argv[])
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
       do {
-        cv_mb_ptr = get_task_metadata_block(sptr, cv_task_id, CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(sptr, cv_task_type, CRITICAL_TASK, cv_profile);
 	//usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -1035,7 +1035,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
       do {
-        fft_mb_ptr = get_task_metadata_block(sptr, fft_task_id, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(sptr, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	//usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -1061,7 +1061,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
     do {
-      vit_mb_ptr = get_task_metadata_block(sptr, vit_task_id, CRITICAL_TASK, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(sptr, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       //usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -1088,7 +1088,7 @@ int main(int argc, char *argv[])
       //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
       // Request a MetadataBlock for a Testerbi Task at Critical Level
       do {
-	test_mb_ptr = get_task_metadata_block(sptr, test_task_id, CRITICAL_TASK, test_profile);
+	test_mb_ptr = get_task_metadata_block(sptr, test_task_type, CRITICAL_TASK, test_profile);
 	//usleep(get_mb_holdoff);
       } while (0); //(test_mb_ptr == NULL);
      #ifdef TIME
@@ -1119,7 +1119,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(sptr, cv_task_id, BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(sptr, cv_task_type, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1153,7 +1153,7 @@ int main(int argc, char *argv[])
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(sptr, fft_task_id, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(sptr, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1197,7 +1197,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(sptr, vit_task_id, BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(sptr, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1223,7 +1223,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* test_mb_ptr_2 = NULL;
         do {
-          test_mb_ptr_2 = get_task_metadata_block(sptr, test_task_id, BASE_TASK, test_profile);
+          test_mb_ptr_2 = get_task_metadata_block(sptr, test_task_type, BASE_TASK, test_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); // (test_mb_ptr_2 == NULL);
        #ifdef TIME

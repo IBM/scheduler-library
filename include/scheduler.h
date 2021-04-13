@@ -28,8 +28,8 @@
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
 // These are "global" Scheduler-defined fields, etc.
-enum { NO_Task = -1} task_id_enum_t;
-typedef int task_id_t;
+enum { NO_Task = -1} task_type_enum_t;
+typedef int task_type_t;
 
 enum {NO_Accelerator = -1};
 typedef int accelerator_type_t;
@@ -120,7 +120,7 @@ typedef struct task_metadata_entry_struct {
 
   accelerator_type_t  accelerator_type; // indicates which accelerator type is being used (id's set at accelerator registration)
   int32_t  accelerator_id;        // indicates which accelerator this task is executing on
-  task_id_t task_type;            // An indication of the task type; defined when tasks are registeres
+  task_type_t task_type;            // An indication of the task type; defined when tasks are registeres
   task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
   uint64_t task_on_accel_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
@@ -158,7 +158,7 @@ typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
 
 // These are function pointer prototype declaration types, used for the regsiter_task_type routine.
 typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
-typedef void (*output_task_type_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_task_id, unsigned total_accel_types);
+typedef void (*output_task_type_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_task_type, unsigned total_accel_types);
 
 // This typedef defines a structure used to describe a task (for the register_task_type routine)
 typedef struct task_type_defn_info_struct {
@@ -191,7 +191,7 @@ typedef struct scheduler_datastate_block_struct {
   // These are limits (e.g. max-task-types) for this instantiation of the scheduler datasatate space
   scheduler_get_datastate_in_parms_t limits;
 
-  task_id_t next_avail_task_id;
+  task_type_t next_avail_task_type;
   accelerator_type_t next_avail_accel_id;
 
   unsigned scheduler_holdoff_usec;
@@ -278,11 +278,11 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_id_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
-extern int get_task_status(scheduler_datastate_block_t* sptr, int task_id);
+extern int get_task_status(scheduler_datastate_block_t* sptr, int task_type);
 extern void wait_all_critical(scheduler_datastate_block_t* sptr);
 extern void wait_all_tasks_finish(scheduler_datastate_block_t* sptr);
 void mark_task_done(task_metadata_block_t* task_metadata_block);
@@ -296,10 +296,10 @@ extern void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr,
 
 extern void cleanup_and_exit(scheduler_datastate_block_t* sptr, int rval);
 
-extern task_id_t register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t*);
+extern task_type_t register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t*);
 
 extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
 
-extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_id_t tid, sched_execute_task_function_t fptr);
+extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_type_t tid, sched_execute_task_function_t fptr);
 
 #endif
