@@ -17,13 +17,13 @@ group_bys = [
 ]
 
 colors = [
-        '#e41a1c',
-        '#377eb8',
-        '#4daf4a'
-        # '#a6cee3',
-        # '#1f78b4',
-        # '#b2df8a'
-        ]
+    '#e41a1c',
+    '#377eb8',
+    '#4daf4a',
+    '#a6cee3',
+    '#1f78b4',
+    '#b2df8a'
+]
 server2col = {} # Map of server type to color.
 
 assert len(sys.argv) >= 2, "Insufficient args"
