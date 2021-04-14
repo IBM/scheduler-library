@@ -409,9 +409,9 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   
   if (sptr->visualizer_output_started && 
       ((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count))) {
-    uint64_t curr_time  = (1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec) - sptr->visualizer_start_time_usec;
-    uint64_t arr_time   = (1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec) - sptr->visualizer_start_time_usec;
-    uint64_t start_time = (1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec) - sptr->visualizer_start_time_usec;
+    int64_t curr_time  = (1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec) - sptr->visualizer_start_time_usec;
+    int64_t arr_time   = (1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec) - sptr->visualizer_start_time_usec;
+    int64_t start_time = (1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec) - sptr->visualizer_start_time_usec;
     if (curr_time < 0)  { curr_time = 0; }
     if (arr_time < 0)   { arr_time = 0; }
     if (start_time < 0) { start_time = 0; }
@@ -1200,8 +1200,8 @@ void wait_all_critical(scheduler_datastate_block_t* sptr)
  #ifdef SL_VIZ
   if (sptr->visualizer_output_started && 
       ((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count))) {
-    uint64_t wait_start = 1000000 * start_wait_all_crit.tv_sec + start_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
-    uint64_t wait_stop  = 1000000 * stop_wait_all_crit.tv_sec  + stop_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
+    int64_t wait_start = 1000000 * start_wait_all_crit.tv_sec + start_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
+    int64_t wait_stop  = 1000000 * stop_wait_all_crit.tv_sec  + stop_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
     if (wait_start < 0) { wait_start = 0; }
     fprintf(sl_viz_fp,
 	    "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
