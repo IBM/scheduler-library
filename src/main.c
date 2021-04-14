@@ -140,7 +140,6 @@ void print_usage(char * pname) {
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
   printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
-  printf("    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
   printf("    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.\n");
@@ -150,7 +149,7 @@ void print_usage(char * pname) {
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
   printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
   printf("                :              per each accelerator type\n");
-  #ifdef SL_VIZ
+ #ifdef SL_VIZ
   printf("\n");
   printf(" Options for the STOMP-viz visualization tool (tracing enabled):\n");
   printf("    -i <N>      : Number of executed tasks (of any type) before starting task logging\n");
@@ -160,7 +159,7 @@ void print_usage(char * pname) {
   printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
   printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
   printf("                :   This parameter is mandatory to keep control of the trace file size\n");
-#endif
+ #endif
 
 }
 
@@ -421,6 +420,7 @@ int main(int argc, char *argv[])
   char policy[256];
   unsigned num_MBs_to_use      = GLOBAL_METADATA_POOL_BLOCKS;
   unsigned num_maxTasks_to_use = my_num_task_types;
+  unsigned using_the_Test_Tasks = false;
   
   // STOMP-viz tracing parameters
   task_type_t viz_task_start_type  = NO_Task;
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:i:I:e:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:X:i:I:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -531,10 +531,6 @@ int main(int argc, char *argv[])
       num_MBs_to_use = atoi(optarg);
       break;
 
-    case 'T':
-      num_maxTasks_to_use = atoi(optarg);
-      break;
-
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
     {
       unsigned in_cpu = 0;
@@ -565,6 +561,7 @@ int main(int argc, char *argv[])
 	  printf("ERROR : -X option (Add Xtra Test-Task) argument didn't specify proper format: Crit,Base<,CPU,FFT,VIT,CV>\n");
 	  exit(-1);
 	}
+	using_the_Test_Tasks = true;
 	DEBUG(printf("From -X option, sres = %u\n", sres););
 	num_Crit_test_tasks = nCrit;
 	num_Base_test_tasks = nBase;
@@ -634,6 +631,10 @@ int main(int argc, char *argv[])
   }
   // Copy the scheduler's default parms into the new sched_inparms values
   copy_scheduler_datastate_defaults_into_parms(sched_inparms);
+  // If we enabled the Test-Task type, add one to the maxTasks count
+  if (using_the_Test_Tasks) {
+    num_maxTasks_to_use++;
+  }
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;

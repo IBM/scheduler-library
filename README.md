@@ -97,7 +97,6 @@ Usage: ./test-scheduler-S-P3V0F0N0 <OPTIONS>
     -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue
                 :   This reduces the busy-spin-loop rate for the scheduler thread
     -B <N>      : Sets the number of Metadata Blocks (max) to <N>
-    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)
     -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)
                 :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so
     -L <tuple>  : Sets the limits on number of each accelerator type available in this run.
@@ -141,7 +140,6 @@ Usage: ./sim-test-scheduler-S-P3V0F0N0 <OPTIONS>
     -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue
                 :   This reduces the busy-spin-loop rate for the scheduler thread
     -B <N>      : Sets the number of Metadata Blocks (max) to <N>
-    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)
     -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)
                 :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so
     -L <tuple>  : Sets the limits on number of each accelerator type available in this run.
