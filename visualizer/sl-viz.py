@@ -10,7 +10,7 @@ import os
 start_ts = 0 # 1618345816857925 # 0
 end_ts   = -1
 group_bys = [
-    # 'server_type_flat',
+    'server_type_flat',
     'server_type',
     # 'criticality',
     None
