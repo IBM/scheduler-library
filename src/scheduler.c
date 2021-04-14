@@ -412,20 +412,36 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
     uint64_t curr_time  = (1000000*task_metadata_block->sched_timings.done_start.tv_sec + task_metadata_block->sched_timings.done_start.tv_usec) - sptr->visualizer_start_time_usec;
     uint64_t arr_time   = (1000000*task_metadata_block->sched_timings.queued_start.tv_sec + task_metadata_block->sched_timings.queued_start.tv_usec) - sptr->visualizer_start_time_usec;
     uint64_t start_time = (1000000*task_metadata_block->sched_timings.running_start.tv_sec + task_metadata_block->sched_timings.running_start.tv_usec) - sptr->visualizer_start_time_usec;
+    if (curr_time < 0)  { curr_time = 0; }
+    if (arr_time < 0)   { arr_time = 0; }
+    if (start_time < 0) { start_time = 0; }
     uint64_t end_time   = curr_time;
     //fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
     //                                                   
     DEBUG(printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
+    // First a line for the "Queue" PE
+    fprintf(sl_viz_fp,
+	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	    start_time,  //  sim_time,   ( pretend this was reported at start_time)
+	    0,		 // task_dag_id
+	    task_metadata_block->task_id, // task_tid
+	    0, // dag_dtime
+	    sptr->limits.max_accel_types+1, // accelerator_id  - use a number that cannot be a legal accel_id,
+	    "Rdy_Que",  //accelerator_type ?,
+	    "nan", //task_parent_ids
+	    arr_time, //task_arrival_time
+	    start_time, //curr_job_start_time  (Should chart only the "Arraival" period
+	    start_time); //curr_job_end_time    up to the start time, at which point it is moved into the actual PE)
     fprintf(sl_viz_fp,
 	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    curr_time,   //  sim_time,   
-	    0,		 // task_dag_id, task_tid,                    dag_dtime,
+	    0,		 // task_dag_id
 	    task_metadata_block->task_id, // task_tid
 	    0, // dag_dtime
 	    task_metadata_block->accelerator_id, // accelerator_id ?,
 	    sptr->accel_name_str[task_metadata_block->accelerator_type], //accelerator_type ?,
 	    "nan", //task_parent_ids
-	    arr_time, //task_arrival_time
+	    start_time, //task_arrival_time  (now this is in the Rdy_Que above)
 	    start_time, //curr_job_start_time
 	    end_time); //curr_job_end_time
   } else {
@@ -1160,6 +1176,11 @@ request_execution(task_metadata_block_t* task_metadata_block)
  ********************************************************************************/
 void wait_all_critical(scheduler_datastate_block_t* sptr)
 {
+  struct timeval stop_wait_all_crit, start_wait_all_crit;
+  uint64_t wait_all_crit_sec = 0LL;
+  uint64_t wait_all_crit_usec = 0LL;
+
+  gettimeofday(&start_wait_all_crit, NULL);
   // Loop through the critical tasks list and check whether they are all in status "done"
   blockid_linked_list_t* cli = sptr->critical_live_task_head;
   while (cli != NULL) {
@@ -1171,6 +1192,29 @@ void wait_all_critical(scheduler_datastate_block_t* sptr)
       cli = cli->next;
     }
   }
+  gettimeofday(&stop_wait_all_crit, NULL);
+  wait_all_crit_sec  += stop_wait_all_crit.tv_sec  - start_wait_all_crit.tv_sec;
+  wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
+ #ifdef SL_VIZ
+  if (sptr->visualizer_output_started && 
+      ((sptr->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->visualizer_task_stop_count))) {
+    uint64_t wait_start = 1000000 * start_wait_all_crit.tv_sec + start_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
+    uint64_t wait_stop  = 1000000 * stop_wait_all_crit.tv_sec  + stop_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
+    if (wait_start < 0) { wait_start = 0; }
+    fprintf(sl_viz_fp,
+	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	    wait_start,  //  sim_time,   ( pretend this was reported at start_time)
+	    0,		 // task_dag_id
+	    0, // task_tid (This is a "fake" one, as there is no real single task here)
+	    0, // dag_dtime
+	    sptr->limits.max_accel_types+2, // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
+	    "Wait_Crit",  //accelerator_type ?,
+	    "nan", //task_parent_ids
+	    wait_start, //task_arrival_time    (Make arrival and start the same, as we really only have start time?
+	    wait_start, //curr_job_start_time  (Make arrival and start the same, as we really only have start time?
+	    wait_stop); //curr_job_end_time
+  }
+ #endif
 }
 
 void wait_all_tasks_finish(scheduler_datastate_block_t* sptr)
