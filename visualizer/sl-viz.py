@@ -10,7 +10,7 @@ import os
 start_ts = 0 # 1618345816857925 # 0
 end_ts   = -1
 group_bys = [
-    'server_type_flat',
+    # 'server_type_flat',
     'server_type',
     # 'criticality',
     None
@@ -65,27 +65,23 @@ def gen_svg_for_group(group_by):
         # print(row)
         dag_id = int(row.task_dag_id)
         tid = int(row.task_tid)
+        tcrit = int(row.task_crit)
         is_last = int(row.is_last)
         # Get task name
-        t = "%u.%u" % (dag_id, tid)
+        t = "%u.%u.%s.%u" % (dag_id, tid, row.task_name, tcrit)
 
         server = row.type
         server_type_id = "%s (%u)" % (row.type, int(row.id))
-        # criticality = 'C' + str(row.task_priority)
         # Get resource name
         if group_by == 'server_type' or \
             group_by == 'server_type_flat':
             r = server_type_id # Server type (ID).
-            name = t # + ', ' + criticality
+            name = t
         elif group_by == 'criticality':
             print("Not supported.\n")
             exit(1)
-            # r = criticality # Criticality.
-            # name = t + ', ' + server_type_id
         elif group_by == None:
             name = t + ', ' + server_type_id
-            # r = criticality # Criticality.
-            # name += ', ' + server_type_id
         else:
             raise(ValueError)
         if server not in server2col:

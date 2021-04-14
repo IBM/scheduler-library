@@ -416,15 +416,15 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
     if (arr_time < 0)   { arr_time = 0; }
     if (start_time < 0) { start_time = 0; }
     uint64_t end_time   = curr_time;
-    //fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
-    //                                                   
     DEBUG(printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
     // First a line for the "Queue" PE
     fprintf(sl_viz_fp,
-	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	    "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    start_time,  //  sim_time,   ( pretend this was reported at start_time)
 	    0,		 // task_dag_id
 	    task_metadata_block->task_id, // task_tid
+	    sptr->task_name_str[task_metadata_block->task_type], //task_type ?,
+	    task_metadata_block->crit_level, // task_tid
 	    0, // dag_dtime
 	    sptr->limits.max_accel_types+1, // accelerator_id  - use a number that cannot be a legal accel_id,
 	    "Rdy_Que",  //accelerator_type ?,
@@ -433,10 +433,12 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 	    start_time, //curr_job_start_time  (Should chart only the "Arraival" period
 	    start_time); //curr_job_end_time    up to the start time, at which point it is moved into the actual PE)
     fprintf(sl_viz_fp,
-	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	    "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    curr_time,   //  sim_time,   
 	    0,		 // task_dag_id
 	    task_metadata_block->task_id, // task_tid
+	    sptr->task_name_str[task_metadata_block->task_type], //task_type ?,
+	    task_metadata_block->crit_level, // task_tid
 	    0, // dag_dtime
 	    task_metadata_block->accelerator_id, // accelerator_id ?,
 	    sptr->accel_name_str[task_metadata_block->accelerator_type], //accelerator_type ?,
@@ -940,7 +942,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
 
 #ifdef SL_VIZ
   sl_viz_fp = fopen("./sl_viz.trace", "w");
-  fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
+  fprintf(sl_viz_fp, "sim_time,task_dag_id,task_tid,task_name,task_crit,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");
 #endif
 
   DEBUG(printf("DONE with initialize -- returning success\n"));
@@ -1202,10 +1204,12 @@ void wait_all_critical(scheduler_datastate_block_t* sptr)
     uint64_t wait_stop  = 1000000 * stop_wait_all_crit.tv_sec  + stop_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
     if (wait_start < 0) { wait_start = 0; }
     fprintf(sl_viz_fp,
-	    "%lu,%d,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	    "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    wait_start,  //  sim_time,   ( pretend this was reported at start_time)
 	    0,		 // task_dag_id
 	    0, // task_tid (This is a "fake" one, as there is no real single task here)
+	    "Waiting",
+	    0,
 	    0, // dag_dtime
 	    sptr->limits.max_accel_types+2, // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
 	    "Wait_Crit",  //accelerator_type ?,
