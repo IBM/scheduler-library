@@ -218,7 +218,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
       vdsptr->theData[imi++] = d_depuncture_pattern[ti];
     }
     if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
-  } // scpoe block for defn of imi
+  } // scope block for defn of imi
     
   for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) { // This is over-kill for messages that are not max size
     in_Data[ti] = depunctured[ti];
