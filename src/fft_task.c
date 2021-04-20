@@ -101,13 +101,6 @@ void fft_bit_reverse(float *w, unsigned int n, unsigned int bits)
   }
 }
 
-static void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
-{
-  if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
-    perror("ERROR : fft_in_hw : IOCTL:");
-    cleanup_and_exit(sptr, EXIT_FAILURE);
-  }
-}
 #endif
 
 

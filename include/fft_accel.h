@@ -28,24 +28,24 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 #ifdef COMPILE_TO_ESP
-#include "contig.h"
-#include "mini-era.h"
+ #include "contig.h"
+ #include "mini-era.h"
 
-#define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
+ #define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
-extern int fftHW_fd[NUM_FFT_ACCEL];
-extern contig_handle_t fftHW_mem[NUM_FFT_ACCEL];
+ extern int fftHW_fd[NUM_FFT_ACCEL];
+ extern contig_handle_t fftHW_mem[NUM_FFT_ACCEL];
 
-extern fftHW_token_t* fftHW_lmem[NUM_FFT_ACCEL];  // Pointer to local version (mapping) of fftHW_mem
-extern fftHW_token_t* fftHW_li_mem[NUM_FFT_ACCEL]; // Pointer to input memory block
-extern fftHW_token_t* fftHW_lo_mem[NUM_FFT_ACCEL]; // Pointer to output memory block
-extern size_t fftHW_in_len[NUM_FFT_ACCEL];
-extern size_t fftHW_out_len[NUM_FFT_ACCEL];
-extern size_t fftHW_in_size[NUM_FFT_ACCEL];
-extern size_t fftHW_out_size[NUM_FFT_ACCEL];
-extern size_t fftHW_out_offset[NUM_FFT_ACCEL];
-extern size_t fftHW_size[NUM_FFT_ACCEL];
-extern struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
+ extern fftHW_token_t* fftHW_lmem[NUM_FFT_ACCEL];  // Pointer to local version (mapping) of fftHW_mem
+ extern fftHW_token_t* fftHW_li_mem[NUM_FFT_ACCEL]; // Pointer to input memory block
+ extern fftHW_token_t* fftHW_lo_mem[NUM_FFT_ACCEL]; // Pointer to output memory block
+ extern size_t fftHW_in_len[NUM_FFT_ACCEL];
+ extern size_t fftHW_out_len[NUM_FFT_ACCEL];
+ extern size_t fftHW_in_size[NUM_FFT_ACCEL];
+ extern size_t fftHW_out_size[NUM_FFT_ACCEL];
+ extern size_t fftHW_out_offset[NUM_FFT_ACCEL];
+ extern size_t fftHW_size[NUM_FFT_ACCEL];
+ extern struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 #endif
 
 void do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr);
