@@ -321,6 +321,7 @@ void set_up_task_on_accel_profile_data()
     cv_profile[ai]   = ACINFPROF;
     test_profile[ai] = ACINFPROF;
   }
+ #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   fft_profile[0][cpu_accel_id]     =  23000;
   fft_profile[0][fft_hwr_accel_id] =   6000;
@@ -336,9 +337,21 @@ void set_up_task_on_accel_profile_data()
   vit_profile[3][cpu_accel_id]     = 4800000;
   vit_profile[3][vit_hwr_accel_id] =  191000;
   
-  cv_profile[cpu_accel_id]     = 5000000;
-  cv_profile[cv_hwr_accel_id]  =  150000;
-
+  cv_profile[cpu_accel_id]     =  cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
+  #ifdef FAKE_HW_CV
+   cv_profile[cv_hwr_accel_id]  =  cv_fake_hwr_run_time_in_usec; // Specified in the run
+  #else
+   cv_profile[cv_hwr_accel_id]  =  150000;
+  #endif
+ #else
+  fft_profile[0][cpu_accel_id]  =    50;
+  fft_profile[1][cpu_accel_id]  =  1250;
+  vit_profile[0][cpu_accel_id]  =   200;
+  vit_profile[1][cpu_accel_id]  =  2400;
+  vit_profile[2][cpu_accel_id]  =  5000;
+  vit_profile[3][cpu_accel_id]  =  6600;
+  cv_profile[cpu_accel_id]      =  cv_cpu_run_time_in_usec; // Specified in the run - was 50
+ #endif
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (test_on_cpu_run_time_in_usec > 0) {
       test_profile[cpu_accel_id] = test_on_cpu_run_time_in_usec;
@@ -1078,7 +1091,7 @@ int main(int argc, char *argv[])
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
       do {
-        cv_mb_ptr = get_task_metadata_block(sptr, cv_task_type, CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(sptr, time_step, cv_task_type, CRITICAL_TASK, cv_profile);
 	//usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -1105,7 +1118,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
       do {
-        fft_mb_ptr = get_task_metadata_block(sptr, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(sptr, time_step, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	//usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -1131,7 +1144,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
     do {
-      vit_mb_ptr = get_task_metadata_block(sptr, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(sptr, time_step, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       //usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -1158,7 +1171,7 @@ int main(int argc, char *argv[])
       //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
       // Request a MetadataBlock for a Testerbi Task at Critical Level
       do {
-	test_mb_ptr = get_task_metadata_block(sptr, test_task_type, CRITICAL_TASK, test_profile);
+	test_mb_ptr = get_task_metadata_block(sptr, time_step, test_task_type, CRITICAL_TASK, test_profile);
 	//usleep(get_mb_holdoff);
       } while (0); //(test_mb_ptr == NULL);
      #ifdef TIME
@@ -1189,7 +1202,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(sptr, cv_task_type, BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(sptr, time_step, cv_task_type, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1223,7 +1236,7 @@ int main(int argc, char *argv[])
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(sptr, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(sptr, time_step, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1267,7 +1280,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(sptr, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(sptr, time_step, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1293,7 +1306,7 @@ int main(int argc, char *argv[])
        #endif
         task_metadata_block_t* test_mb_ptr_2 = NULL;
         do {
-          test_mb_ptr_2 = get_task_metadata_block(sptr, test_task_type, BASE_TASK, test_profile);
+          test_mb_ptr_2 = get_task_metadata_block(sptr, time_step, test_task_type, BASE_TASK, test_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); // (test_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1311,6 +1324,8 @@ int main(int argc, char *argv[])
         start_execution_of_test_kernel(test_mb_ptr_2, tdentry_p); // Non-Critical TESTERBI task
       } // if (i < Additional TEST tasks)
     } // for (i over MAX_additional_tasks)
+
+    sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
    #ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
    #endif

@@ -62,10 +62,10 @@ char *python_func_load = "loadmodel";
 #else
  #ifdef COMPILE_TO_ESP
   unsigned cv_cpu_run_time_in_usec      = 10000;
-  unsigned cv_fake_hwr_run_time_in_usec =  1000;
+  //unsigned cv_fake_hwr_run_time_in_usec =  1000;
  #else
-  unsigned cv_cpu_run_time_in_usec      =     1;
-  unsigned cv_fake_hwr_run_time_in_usec =     1;
+  unsigned cv_cpu_run_time_in_usec      =    50;
+  //unsigned cv_fake_hwr_run_time_in_usec =     1;
  #endif
 #endif
 
