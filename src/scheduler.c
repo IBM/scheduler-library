@@ -205,7 +205,7 @@ output_task_and_accel_run_stats(scheduler_datastate_block_t* sptr)
 //  Currently, we have to return, or else the scheduler task cannot make progress and free
 //  additional metablocks.... so we require the caller to do the "while" loop...
 
-task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_type_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
+task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t in_dag_id, task_type_t in_task_type, task_criticality_t crit_level, uint64_t * task_profile)
 {
   pthread_mutex_lock(&(sptr->free_metadata_mutex));
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n", sptr->free_metadata_blocks));
@@ -231,6 +231,7 @@ task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr
   sptr->free_metadata_blocks -= 1;
   // For neatness (not "security") we'll clear the meta-data in the block (not the data data,though)
   sptr->master_metadata_pool[bi].task_type = in_task_type;
+  sptr->master_metadata_pool[bi].dag_id = in_dag_id;
   //TASKID: sptr->master_metadata_pool[bi].task_id   = -1; // Unset as yet --- but we could track get_task_metadata_block order rather than request_execution order..
   sptr->master_metadata_pool[bi].task_id = global_task_id_counter++; // Set a task id for this task (which is the global request_execution order, for now)
   sptr->master_metadata_pool[bi].gets_by_task_type[in_task_type]++;
@@ -421,7 +422,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
     fprintf(sl_viz_fp,
 	    "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    start_time,  //  sim_time,   ( pretend this was reported at start_time)
-	    0,		 // task_dag_id
+	    task_metadata_block->dag_id,  // task_dag_id
 	    task_metadata_block->task_id, // task_tid
 	    sptr->task_name_str[task_metadata_block->task_type], //task_type ?,
 	    task_metadata_block->crit_level, // task_tid
@@ -435,7 +436,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
     fprintf(sl_viz_fp,
 	    "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    curr_time,   //  sim_time,   
-	    0,		 // task_dag_id
+	    task_metadata_block->dag_id,  // task_dag_id
 	    task_metadata_block->task_id, // task_tid
 	    sptr->task_name_str[task_metadata_block->task_type], //task_type ?,
 	    task_metadata_block->crit_level, // task_tid
@@ -710,6 +711,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr)
   
   sptr->next_avail_task_type  = 0;
   sptr->next_avail_accel_id = 0;
+  sptr->next_avail_DAG_id = 0;
 
   sptr->scheduler_holdoff_usec      = 1;
   sptr->free_metadata_blocks        = sptr->total_metadata_pool_blocks;
@@ -1206,7 +1208,7 @@ void wait_all_critical(scheduler_datastate_block_t* sptr)
     fprintf(sl_viz_fp,
 	    "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
 	    wait_start,  //  sim_time,   ( pretend this was reported at start_time)
-	    0,		 // task_dag_id
+	    (sptr->next_avail_DAG_id-1), // task_dag_id
 	    0, // task_tid (This is a "fake" one, as there is no real single task here)
 	    "Waiting",
 	    0,

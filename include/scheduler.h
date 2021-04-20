@@ -34,6 +34,7 @@ typedef int task_type_t;
 enum {NO_Accelerator = -1};
 typedef int accelerator_type_t;
 
+
 typedef enum { BASE_TASK = 1,
 	       ELEVATED_TASK = 2,
 	       CRITICAL_TASK = 3,
@@ -121,6 +122,7 @@ typedef struct task_metadata_entry_struct {
   int32_t             accelerator_id;   // indicates which (of the N of that type) accelerator this task is executing on
   task_type_t task_type;            // An indication of the task type; defined when tasks are registeres
   int32_t     task_id;              // A unique identifier for this task (across the full run)
+  int32_t     dag_id;               // Indicates which DAG spawns or owns this task
   task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
   uint64_t task_on_accel_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
@@ -194,6 +196,8 @@ typedef struct scheduler_datastate_block_struct {
   task_type_t next_avail_task_type;
   accelerator_type_t next_avail_accel_id;
 
+  int32_t     next_avail_DAG_id;
+  
   int32_t     visualizer_task_start_count;
   int32_t     visualizer_task_stop_count;
   task_type_t visualizer_task_enable_type;
@@ -283,7 +287,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 
-extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
+extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
