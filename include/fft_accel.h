@@ -50,7 +50,9 @@
 
 void do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr);
 
+#ifdef HW_FFT
 void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc);
+#endif
 
 void do_fft_accel_type_closeout(scheduler_datastate_block_t* sptr);
 void output_fft_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
