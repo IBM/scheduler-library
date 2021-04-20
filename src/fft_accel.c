@@ -157,7 +157,7 @@ do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr)
 
 
 #ifdef HW_FFT
-static void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
+void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
 {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("ERROR : fft_in_hw : IOCTL:");
