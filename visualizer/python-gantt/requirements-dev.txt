@@ -24,7 +24,7 @@ docutils==0.12
     # via
     #   recommonmark
     #   sphinx
-jinja2==2.8
+jinja2==2.11.3
     # via sphinx
 livereload==2.4.1
     # via sphinx-autobuild
