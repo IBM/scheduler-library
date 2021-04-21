@@ -1264,10 +1264,14 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
   printf("\nTotal Scheduler Decision-Making Time was %lu usec for %lu decisions spanning %lu checks\n", sptr->scheduler_decision_time_usec, sptr->scheduler_decisions, sptr->scheduler_decision_checks);
 
   printf("\nScheduler block allocation/free statistics:\n");
+  uint32_t total_alloc_MBs = 0;
+  uint32_t total_freed_MBs = 0;
   for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
     printf("  For %12s Scheduler allocated %9u blocks and freed %9u blocks\n", sptr->task_name_str[ti], sptr->allocated_metadata_blocks[ti], sptr->freed_metadata_blocks[ti]);
+    total_alloc_MBs += sptr->allocated_metadata_blocks[ti];
+    total_freed_MBs += sptr->freed_metadata_blocks[ti];
   }
-  printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", sptr->allocated_metadata_blocks[NO_Task], sptr->freed_metadata_blocks[NO_Task]);
+  printf(" During FULL run,  Scheduler allocated %9u blocks and freed %9u blocks in total\n", total_alloc_MBs, total_freed_MBs);
 
   printf("\nPer-MetaData-Block Scheduler Allocation/Frees by Job-Type Data:\n");
   printf("%6s ", "Block");
