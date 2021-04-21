@@ -48,6 +48,8 @@
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb) {
   print_base_metadata_block_contents(mb);
+  fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(mb->data_space);
+  printf("  FFT using logn_samples %u for %u samples\n", fft_data_p->log_nsamples, (1<<fft_data_p->log_nsamples));
 }
 
 // Right now default to max of 16k-samples
@@ -101,13 +103,6 @@ void fft_bit_reverse(float *w, unsigned int n, unsigned int bits)
   }
 }
 
-static void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
-{
-  if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
-    perror("ERROR : fft_in_hw : IOCTL:");
-    cleanup_and_exit(sptr, EXIT_FAILURE);
-  }
-}
 #endif
 
 
@@ -208,7 +203,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fft_comp_by[total_accel_types], total_fft_usec[total_accel_types], avg);
   }
 
-  
+
   printf("     bit-reverse run time ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_br_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -219,7 +214,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fft_comp_by[total_accel_types], total_fft_br_usec[total_accel_types], avg);
   }
 
-  
+
   printf("     bit-reverse run time ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_br_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -250,7 +245,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     double avg = (double)total_fft_cvtin_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fft_comp_by[total_accel_types], total_fft_cvtin_usec[total_accel_types], avg);
   }
-  
+
   printf("     fft-comp run time    ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_comp_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -260,7 +255,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     double avg = (double)total_fft_comp_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fft_comp_by[total_accel_types], total_fft_comp_usec[total_accel_types], avg);
   }
-  
+
   printf("     fft-cvtout run time  ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_cvtout_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -270,7 +265,7 @@ output_fft_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     double avg = (double)total_fft_cvtout_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fft_comp_by[total_accel_types], total_fft_cvtout_usec[total_accel_types], avg);
   }
-  
+
   printf("     calc-dist run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_cdfmcw_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];

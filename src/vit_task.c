@@ -75,17 +75,6 @@ void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
 
 
 
-
-#ifdef HW_VIT
-static void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc)
-{
-  if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
-    perror("ERROR : do_decoding_in_hw : IOCTL:");
-    cleanup_and_exit(sptr, EXIT_FAILURE);
-  }
-}
-#endif
-
 void
 output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types)
 {

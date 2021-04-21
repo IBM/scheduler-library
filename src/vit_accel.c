@@ -111,6 +111,16 @@ do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
 }
 
 
+#ifdef HW_VIT
+void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc)
+{
+  if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
+    perror("ERROR : do_decoding_in_hw : IOCTL:");
+    cleanup_and_exit(sptr, EXIT_FAILURE);
+  }
+}
+#endif
+
 void
 do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
 {

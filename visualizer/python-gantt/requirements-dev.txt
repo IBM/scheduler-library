@@ -36,7 +36,7 @@ pathtools==0.1.2
     #   watchdog
 pluggy==0.3.1
     # via tox
-py==1.4.31
+py==1.10.0
     # via tox
 pygments==2.1
     # via sphinx
