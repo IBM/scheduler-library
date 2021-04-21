@@ -76,7 +76,7 @@ task_type_t vit_task_type;
 task_type_t cv_task_type;
 task_type_t test_task_type;
 
-#define my_num_task_types  4
+#define my_num_task_types  3
 
 unsigned accel_limit_cpu = NUM_CPU_ACCEL;
 unsigned accel_limit_fft = NUM_FFT_ACCEL;
@@ -652,6 +652,8 @@ int main(int argc, char *argv[])
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
 
+  printf("Using %u tasks\n", sched_inparms->max_task_types);
+  
   // Now get a new scheduler datastate space
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   // Set the scheduler state values we need to for this run
