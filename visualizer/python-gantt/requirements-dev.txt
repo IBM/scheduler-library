@@ -48,7 +48,7 @@ pytz==2015.7
     # via
     #   babel
     #   dateutils
-pyyaml==3.11
+pyyaml==5.4
     # via
     #   sphinx-autobuild
     #   watchdog
