@@ -23,6 +23,8 @@
 #include "fft_task.h"
 #include "vit_task.h"
 #include "cv_task.h"
+#include "test_task.h"
+#include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
 
@@ -746,6 +748,7 @@ void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
 
 vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t message, vehicle_state_t vehicle_state)
 {
+  printf("In the plan_and_control routine...\n");
   DEBUG(printf("In the plan_and_control routine : label %u %s distance %.1f (T1 %.1f T1 %.1f T3 %.1f) message %u\n", 
 	       label, object_names[label], distance, THRESHOLD_1, THRESHOLD_2, THRESHOLD_3, message));
   vehicle_state_t new_vehicle_state = vehicle_state;
@@ -950,4 +953,33 @@ void closeout_test_kernel()
 }
 
 
+
+
+
+
+
+void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
+{
+  int tidx = mb_ptr->accelerator_type;
+  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
+  // Data is set up prior to call here...
+  //plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
+ #ifdef INT_TIME
+  gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
+ #endif
+  request_execution(mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
+{
+  DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));
+  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
+  vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;
+  DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+
+  return vehicle_state;
+}
 

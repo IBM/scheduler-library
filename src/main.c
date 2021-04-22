@@ -32,6 +32,7 @@
 #include "vit_task.h"
 #include "cv_task.h"
 #include "test_task.h"
+#include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
 #include "sim_environs.h"
@@ -74,9 +75,10 @@ accelerator_type_t cv_hwr_accel_id;
 task_type_t fft_task_type;
 task_type_t vit_task_type;
 task_type_t cv_task_type;
+task_type_t plan_ctrl_task_type;
 task_type_t test_task_type;
 
-#define my_num_task_types  3
+#define my_num_task_types  4
 
 unsigned accel_limit_cpu = NUM_CPU_ACCEL;
 unsigned accel_limit_fft = NUM_FFT_ACCEL;
@@ -93,6 +95,7 @@ uint64_t fft_profile[2][MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
 uint64_t vit_profile[4][MAX_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
 uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
+uint64_t plan_ctrl_profile[MAX_ACCEL_TYPES];
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
@@ -279,6 +282,14 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
     printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_type][fft_hwr_accel_id]);
   }
   
+  sprintf(task_defn.name, "PnC-Task");
+  sprintf(task_defn.description, "The vehicle state Plan and Control task to execute");
+  task_defn.print_metadata_block_contents  = &print_plan_ctrl_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_plan_ctrl_task_type_run_stats;
+  plan_ctrl_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, plan_ctrl_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
+  
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     sprintf(task_defn.name, "TEST-Task");
@@ -323,6 +334,7 @@ void set_up_task_on_accel_profile_data()
     vit_profile[3][ai] = ACINFPROF;
     cv_profile[ai]   = ACINFPROF;
     test_profile[ai] = ACINFPROF;
+    plan_ctrl_profile[ai] = ACINFPROF;
   }
  #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
@@ -355,6 +367,9 @@ void set_up_task_on_accel_profile_data()
   vit_profile[3][cpu_accel_id]  =  6600;
   cv_profile[cpu_accel_id]      =  cv_cpu_run_time_in_usec; // Specified in the run - was 50
  #endif
+
+  plan_ctrl_profile[cpu_accel_id] = 1; // Picked a small value...
+
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (test_on_cpu_run_time_in_usec > 0) {
       test_profile[cpu_accel_id] = test_on_cpu_run_time_in_usec;
@@ -397,6 +412,10 @@ void set_up_task_on_accel_profile_data()
 	printf("%15s :", "cv_profile");
 	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", cv_profile[ai]);
+	} printf("\n");
+	printf("%15s :", "pnc_profile");
+	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	  printf(" 0x%016lx", plan_ctrl_profile[ai]);
 	} printf("\n");
 	printf("%15s :", "test_profile");
 	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
@@ -1370,10 +1389,46 @@ int main(int argc, char *argv[])
     exec_cv_usec  += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
    #endif
 
-    // POST-EXECUTE each kernel to gather stats, etc.
-    /*if (!bypass_h264_functions) {
-      post_execute_h264_kernel();
-      }*/
+    /* The plan_and_control() function makes planning and control decisions
+     * based on the currently perceived information. It returns the new
+     * vehicle state.
+     */
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
+    vehicle_state_t new_vehicle_state;
+
+   #ifdef TIME
+    gettimeofday(&start_exec_pandc, NULL);
+   #endif
+    task_metadata_block_t* pnc_mb_ptr = get_task_metadata_block(sptr, time_step, plan_ctrl_task_type, CRITICAL_TASK, plan_ctrl_profile);    
+    /* #ifdef TIME */
+    /*  struct timeval got_time; */
+    /*  gettimeofday(&got_time, NULL); */
+    /*  exec_get_pnc_sec  += got_time.tv_sec  - start_exec_pnc.tv_sec; */
+    /*  exec_get_pnc_usec += got_time.tv_usec - start_exec_pnc.tv_usec; */
+    /* #endif */
+
+    if (pnc_mb_ptr == NULL) {
+      // We ran out of metadata blocks -- PANIC!
+      printf("Out of metadata blocks for PNC -- PANIC Quit the run (for now)\n");
+      dump_all_metadata_blocks_states(sptr);
+      exit (-4);
+    }
+    DEBUG(printf(" PnC Task got a metablock : MB%u\n", pnc_mb_ptr->block_id));
+
+    // Set up parameters to the Plan-and-Control task
+    plan_ctrl_data_struct_t * pnc_dp = (plan_ctrl_data_struct_t*)(pnc_mb_ptr->data_space);
+    pnc_dp->time_step       = time_step;           // The current time-step of the simulation
+    pnc_dp->repeat_factor   = pandc_repeat_factor; // The current time-step of the simulation
+    pnc_dp->object_label    = label;               // The determined label of the object in the image
+    pnc_dp->object_distance = distance;            // The distance to the closest vehicle in our lane
+    pnc_dp->safe_lanes_msg  = message;             // The message indicating which lanes are safe to change into
+    pnc_dp->vehicle_state   = vehicle_state;       // The current (input) vehicle state
+    DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
+    DEBUG(printf("Calling start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    start_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
+    DEBUG(printf(" Back from start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    
+    // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
@@ -1383,24 +1438,38 @@ int main(int argc, char *argv[])
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
     }
     
-    /* The plan_and_control() function makes planning and control decisions
-     * based on the currently perceived information. It returns the new
-     * vehicle state.
-     */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    vehicle_state_t new_vehicle_state;
+    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
    #ifdef TIME
-    gettimeofday(&start_exec_pandc, NULL);
+    gettimeofday(&start_wait_all_crit, NULL);
    #endif
-    for (int prfi = 0; prfi <= pandc_repeat_factor; prfi++) {
-      new_vehicle_state = plan_and_control(label, distance, message, vehicle_state);
-    }
+
+    wait_all_critical(sptr);
+
+   #ifdef TIME
+    gettimeofday(&stop_wait_all_crit, NULL);
+    wait_all_crit_sec  += stop_wait_all_crit.tv_sec  - start_wait_all_crit.tv_sec;
+    wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
+   #endif
+    DEBUG(printf("MAIN:  Back from wait_all_critical\n"));
+    /* #if(0) */
+    /*  #ifdef TIME */
+    /*   gettimeofday(&start_exec_pandc, NULL); */
+    /*  #endif */
+    /*   for (int prfi = 0; prfi <= pandc_repeat_factor; prfi++) { */
+    /*     new_vehicle_state = plan_and_control(label, distance, message, vehicle_state); */
+    /*   } */
+    /*   vehicle_state = new_vehicle_state; */
+    /* #endif // #if(0) */
+    
+    DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    vehicle_state = finish_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
+    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
+
    #ifdef TIME
     gettimeofday(&stop_exec_pandc, NULL);
     exec_pandc_sec  += stop_exec_pandc.tv_sec  - start_exec_pandc.tv_sec;
     exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
    #endif
-    vehicle_state = new_vehicle_state;
 
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 

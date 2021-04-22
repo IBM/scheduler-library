@@ -26,8 +26,6 @@
 
 #include "scheduler.h"
 
-typedef float distance_t;
-
 /* These are some top-level defines for the dictionaries */
 
 #include "fft_accel.h"
@@ -55,28 +53,6 @@ typedef struct {
 
 #define VITERBI_MSG_LENGTHS     4
 #define VITERBI_MSGS_PER_STEP   3
-
-/* These are GLOBAL and affect the underlying world, etc. */
-#define NUM_LANES     5
-#define NUM_OBJECTS   5
-#define NUM_MESSAGES  4
-
-#define MAX_OBJ_IN_LANE  16
-
-#define MAX_DISTANCE     500.0  // Max resolution distance of radar is < 500.0m
-#define DIST_STEP_SIZE    50.0
-#define INF_DISTANCE     (MAX_DISTANCE + DIST_STEP_SIZE)
-#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
-
-/* These thresholds (in meters) are used by the plan_and_control()
- * function to make plan and control decisions.
- */
-#define THRESHOLD_1 155.0
-#define THRESHOLD_2 205.0
-#define THRESHOLD_3 305.0
-
-#define VIT_CLEAR_THRESHOLD  THRESHOLD_1
-
 
 
 extern bool_t   output_viz_trace;
@@ -154,7 +130,10 @@ test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr);
 void       post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res);
 
 
-vehicle_state_t plan_and_control(label_t, distance_t, message_t, vehicle_state_t);
+
+void            start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
+vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
+//vehicle_state_t plan_and_control(label_t, distance_t, message_t, vehicle_state_t);
 
 // These routines are used for any finalk, end-of-run operations/output
 void closeout_cv_kernel(void);

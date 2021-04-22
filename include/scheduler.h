@@ -234,6 +234,12 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
+ #ifdef SL_VIZ
+  // ASCII trace for STOMP-viz
+  FILE *sl_viz_fp;
+  pthread_mutex_t sl_viz_out_mutex;   // Used to guard access to writing the sl_viz output entries.
+ #endif
+  
   pthread_t* metadata_threads;
 
   //pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to scheduling functionality
@@ -285,7 +291,7 @@ typedef struct scheduler_datastate_block_struct {
 void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
-extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
+extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fname);
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);

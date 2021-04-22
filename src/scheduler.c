@@ -456,6 +456,7 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
 	    start_time, //task_arrival_time  (now this is in the Rdy_Que above)
 	    start_time, //curr_job_start_time
 	    end_time); //curr_job_end_time
+    pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
   } else {
     DEBUG(printf("          skip : NOT printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
   }
@@ -1446,11 +1447,11 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   // Dynamically unload the scheduling policy (plug-in)
   dlclose(sptr->policy_handle);
 
-#ifdef SL_VIZ
+ #ifdef SL_VIZ
   if (sptr->sl_viz_fp != NULL) {
     fclose(sptr->sl_viz_fp);
   }
-#endif
+ #endif
 
   cleanup_state(sptr);
 
@@ -1461,7 +1462,6 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   free(sptr->free_critlist_pool);
   free(sptr->master_metadata_pool);
   free(sptr);
-
 }
 
 
