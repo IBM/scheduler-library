@@ -200,7 +200,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
 	  printf("%u ", out_Data[ti]);
 	});
 
-  DEBUG(printf("EHVA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  DEBUG(printf("EHVA: MB%u VIT_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
 #else // HW_VIT
@@ -248,7 +248,7 @@ void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
   vit_timings_p->dodec_usec[aidx] += dodec_stop.tv_usec - vit_timings_p->dodec_start.tv_usec;
 #endif
 
-  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u VIT_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 

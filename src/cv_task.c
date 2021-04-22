@@ -215,7 +215,7 @@ execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block)
   #endif
  #endif
 #endif
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u CV_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -321,7 +321,7 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
   cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
  #endif
 
-  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u CV_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 

@@ -100,6 +100,7 @@ unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
 
+char* my_sl_viz_fname = "./sl_viz.trace";
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -170,6 +171,7 @@ void base_release_metadata_block(task_metadata_block_t* mb)
 {
   TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
 	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u base_atFin Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
@@ -181,6 +183,7 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
+  DEBUG(printf("  MB%u rad_atFin Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
@@ -253,7 +256,7 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
   cv_task_type = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_type);
+  printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_type);
   register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
   register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
@@ -652,7 +655,7 @@ int main(int argc, char *argv[])
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
 
-  printf("Using %u tasks\n", sched_inparms->max_task_types);
+  //printf("Using %u tasks\n", sched_inparms->max_task_types);
   
   // Now get a new scheduler datastate space
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
@@ -818,7 +821,7 @@ int main(int argc, char *argv[])
   }
 
   printf("Doing initialization tasks...\n");
-  initialize_scheduler(sptr);
+  initialize_scheduler(sptr, my_sl_viz_fname);
 
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
@@ -1092,6 +1095,7 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
+      DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
       do {
         cv_mb_ptr = get_task_metadata_block(sptr, time_step, cv_task_type, CRITICAL_TASK, cv_profile);
 	//usleep(get_mb_holdoff);
@@ -1119,6 +1123,7 @@ int main(int argc, char *argv[])
    #endif
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
+      DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
       do {
         fft_mb_ptr = get_task_metadata_block(sptr, time_step, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	//usleep(get_mb_holdoff);
@@ -1145,6 +1150,7 @@ int main(int argc, char *argv[])
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
+    DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
     do {
       vit_mb_ptr = get_task_metadata_block(sptr, time_step, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       //usleep(get_mb_holdoff);
@@ -1172,6 +1178,7 @@ int main(int argc, char *argv[])
      #endif
       //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
       // Request a MetadataBlock for a Testerbi Task at Critical Level
+      DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
       do {
 	test_mb_ptr = get_task_metadata_block(sptr, time_step, test_task_type, CRITICAL_TASK, test_profile);
 	//usleep(get_mb_holdoff);
@@ -1203,6 +1210,7 @@ int main(int argc, char *argv[])
         gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit CV-Task %u\n", cv_task_type));
         do {
           cv_mb_ptr_2 = get_task_metadata_block(sptr, time_step, cv_task_type, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
@@ -1237,6 +1245,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit FFT-Task %u\n", fft_task_type));
         do {
 	  fft_mb_ptr_2 = get_task_metadata_block(sptr, time_step, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
@@ -1281,6 +1290,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit VIT-Task %u\n", vit_task_type));
         do {
           vit_mb_ptr_2 = get_task_metadata_block(sptr, time_step, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
@@ -1307,6 +1317,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* test_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit TEST-Task %u\n", test_task_type));
         do {
           test_mb_ptr_2 = get_task_metadata_block(sptr, time_step, test_task_type, BASE_TASK, test_profile);
 	  //usleep(get_mb_holdoff);

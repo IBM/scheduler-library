@@ -128,7 +128,7 @@ execute_on_hwr_fft_test_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx], test_timings_p->call_usec[aidx]));
  #endif
 
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u TEST_FFThwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -154,7 +154,7 @@ execute_on_hwr_vit_test_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx], test_timings_p->call_usec[aidx]));
  #endif
 
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u TEST_VIThwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -180,7 +180,7 @@ execute_on_hwr_cv_test_accelerator(task_metadata_block_t* task_metadata_block)
   DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx], test_timings_p->call_usec[aidx]));
  #endif
 
-  TDEBUG(printf("MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u TEST_CVhwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -204,7 +204,7 @@ void execute_on_cpu_test_accelerator(task_metadata_block_t* task_metadata_block)
   test_timings_p->call_usec[aidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
  #endif
 
-  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u TEST_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 

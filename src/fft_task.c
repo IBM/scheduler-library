@@ -348,7 +348,7 @@ execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block)
   fft_timings_p->fft_usec[aidx]  += cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
  #endif // INT_TIME
 
-  DEBUG(printf("EHFA: MB%u calling mark_task_done...\n", task_metadata_block->block_id));
+  DEBUG(printf("EHFA: MB%u FFT_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 
 #else
@@ -382,7 +382,7 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   fft_timings_p->fft_usec[aidx] += stop_time.tv_usec - fft_timings_p->fft_start.tv_usec;
  #endif
 
-  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
+  TDEBUG(printf("MB%u FFT_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
