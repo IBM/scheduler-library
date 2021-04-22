@@ -49,13 +49,9 @@
 
 //#define get_mb_holdoff 10  // usec
 
-char h264_dict[256]; 
 char cv_dict[256]; 
 char rad_dict[256];
 char vit_dict[256];
-
-bool_t bypass_h264_functions = false; // This is a global-disable of executing H264 execution functions...
-
 
 #include "cpu_accel.h"
 #include "fft_accel.h"
@@ -68,7 +64,7 @@ accelerator_type_t fft_hwr_accel_id;
 accelerator_type_t vit_hwr_accel_id;
 accelerator_type_t cv_hwr_accel_id;
 
-//#define my_num_accel_types  4
+//#define my_num_accel_2types  4
 
 // Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
 //task_type_t no_task_type;
@@ -113,8 +109,6 @@ void print_usage(char * pname) {
   printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
   printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
   printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to use\n");
-  //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
-  //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
   printf("    -s <N>      : Sets the max number of time steps to simulate\n");
  #ifdef USE_SIM_ENVIRON
   printf("    -r <N>      : Sets the rand random number seed to N\n");
@@ -444,7 +438,6 @@ int main(int argc, char *argv[])
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0]  = '\0';
-  h264_dict[0]  = '\0';
 
   unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
@@ -468,7 +461,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:X:i:I:e:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:i:I:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -488,14 +481,8 @@ int main(int argc, char *argv[])
     case 'C':
       snprintf(cv_dict, 255, "%s", optarg);
       break;
-    case 'H':
-      snprintf(h264_dict, 255, "%s", optarg);
-      break;
     case 'V':
       snprintf(vit_dict, 255, "%s", optarg);
-      break;
-    case 'b':
-      bypass_h264_functions = true;
       break;
     case 'u':
       sched_holdoff_usec = atoi(optarg);
@@ -776,9 +763,6 @@ int main(int argc, char *argv[])
   if (cv_dict[0] == '\0') {
     sprintf(cv_dict, "traces/objects_dictionary.dfn");
   }
-  if (h264_dict[0] == '\0') {
-    sprintf(h264_dict, "traces/h264_dictionary.dfn");
-  }
 
  #ifdef SL_VIZ
   if (viz_task_start_type == NO_Task) {
@@ -872,17 +856,6 @@ int main(int argc, char *argv[])
 #endif
 
   /* Kernels initialization */
-  /**if (bypass_h264_functions) {
-    printf("Bypassing the H264 Functionality in this run...\n");
-  } else {
-    printf("Initializing the H264 kernel...\n");
-    if (!init_h264_kernel(h264_dict))
-      {
-	printf("Error: the H264 decoding kernel couldn't be initialized properly.\n");
-	return 1;
-      }
-      }**/
-
   printf("Initializing the CV kernel...\n");
   if (!init_cv_kernel(sptr, cv_py_file, cv_dict)) {
     printf("Error: the computer vision kernel couldn't be initialized properly.\n");
@@ -943,49 +916,41 @@ int main(int argc, char *argv[])
   struct timeval stop_iter_vit, start_iter_vit;
   struct timeval stop_iter_cv , start_iter_cv;
   struct timeval stop_iter_test , start_iter_test;
-  struct timeval stop_iter_h264 , start_iter_h264;
 
   uint64_t iter_rad_sec = 0LL;
   uint64_t iter_vit_sec = 0LL;
   uint64_t iter_cv_sec  = 0LL;
   uint64_t iter_test_sec  = 0LL;
-  uint64_t iter_h264_sec  = 0LL;
 
   uint64_t iter_rad_usec = 0LL;
   uint64_t iter_vit_usec = 0LL;
   uint64_t iter_cv_usec  = 0LL;
   uint64_t iter_test_usec  = 0LL;
-  uint64_t iter_h264_usec  = 0LL;
 
   struct timeval stop_exec_rad, start_exec_rad;
   struct timeval stop_exec_vit, start_exec_vit;
   struct timeval stop_exec_cv , start_exec_cv;
   struct timeval stop_exec_test , start_exec_test;
-  struct timeval stop_exec_h264 , start_exec_h264;
 
   uint64_t exec_rad_sec = 0LL;
   uint64_t exec_vit_sec = 0LL;
   uint64_t exec_cv_sec  = 0LL;
   uint64_t exec_test_sec  = 0LL;
-  uint64_t exec_h264_sec  = 0LL;
 
   uint64_t exec_rad_usec = 0LL;
   uint64_t exec_vit_usec = 0LL;
   uint64_t exec_cv_usec  = 0LL;
   uint64_t exec_test_usec  = 0LL;
-  uint64_t exec_h264_usec  = 0LL;
 
   uint64_t exec_get_rad_sec = 0LL;
   uint64_t exec_get_vit_sec = 0LL;
   uint64_t exec_get_cv_sec  = 0LL;
   uint64_t exec_get_test_sec  = 0LL;
-  uint64_t exec_get_h264_sec  = 0LL;
 
   uint64_t exec_get_rad_usec = 0LL;
   uint64_t exec_get_vit_usec = 0LL;
   uint64_t exec_get_cv_usec  = 0LL;
   uint64_t exec_get_test_usec  = 0LL;
-  uint64_t exec_get_h264_usec  = 0LL;
 
   struct timeval stop_exec_pandc , start_exec_pandc;
   uint64_t exec_pandc_sec  = 0LL;
@@ -1014,24 +979,6 @@ int main(int argc, char *argv[])
   {
     DEBUG(printf("Vehicle_State: Lane %u %s Speed %.1f\n", vehicle_state.lane, lane_names[vehicle_state.lane], vehicle_state.speed));
 
-    /* The computer vision kernel performs object recognition on the
-     * next image, and returns the corresponding label.
-     * This process takes place locally (i.e. within this car).
-     */
-    /**
-   #ifdef TIME
-    gettimeofday(&start_iter_h264, NULL);
-   #endif
-    h264_dict_entry_t* hdep = 0x0;
-    if (!bypass_h264_functions) {
-      hdep = iterate_h264_kernel(sptr, vehicle_state);
-    }
-   #ifdef TIME
-    gettimeofday(&stop_iter_h264, NULL);
-    iter_h264_sec  += stop_iter_h264.tv_sec  - start_iter_h264.tv_sec;
-    iter_h264_usec += stop_iter_h264.tv_usec - start_iter_h264.tv_usec;
-   #endif
-    **/
     /* The computer vision kernel performs object recognition on the
      * next image, and returns the corresponding label. 
      * This process takes place locally (i.e. within this car).
@@ -1092,22 +1039,6 @@ int main(int argc, char *argv[])
     }
     
     // EXECUTE the kernels using the now known inputs
-    /**
-   #ifdef TIME
-    gettimeofday(&start_exec_h264, NULL);
-   #endif
-    char* found_frame_ptr = 0x0;
-    if (!bypass_h264_functions) {
-      execute_h264_kernel(hdep, found_frame_ptr);
-    } else {
-      found_frame_ptr = (char*)0xAD065BED;
-    }
-   #ifdef TIME
-    gettimeofday(&stop_exec_h264, NULL);
-    exec_h264_sec  += stop_exec_h264.tv_sec  - start_exec_h264.tv_sec;
-    exec_h264_usec += stop_exec_h264.tv_usec - start_exec_h264.tv_usec;
-   #endif
-    **/
    #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
    #endif
@@ -1389,7 +1320,7 @@ int main(int argc, char *argv[])
     exec_cv_usec  += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
    #endif
 
-    /* The plan_and_control() function makes planning and control decisions
+    /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
@@ -1451,15 +1382,6 @@ int main(int argc, char *argv[])
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
    #endif
     DEBUG(printf("MAIN:  Back from wait_all_critical\n"));
-    /* #if(0) */
-    /*  #ifdef TIME */
-    /*   gettimeofday(&start_exec_pandc, NULL); */
-    /*  #endif */
-    /*   for (int prfi = 0; prfi <= pandc_repeat_factor; prfi++) { */
-    /*     new_vehicle_state = plan_and_control(label, distance, message, vehicle_state); */
-    /*   } */
-    /*   vehicle_state = new_vehicle_state; */
-    /* #endif // #if(0) */
     
     DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
     vehicle_state = finish_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
@@ -1494,9 +1416,6 @@ int main(int argc, char *argv[])
   /* All the trace/simulation-time has been completed -- Quitting... */
   printf("\nRun completed %u time steps\n\n", time_step);
 
-  if (!bypass_h264_functions) {
-    //closeout_h264_kernel();
-  }
   closeout_cv_kernel();
   closeout_rad_kernel();
   closeout_vit_kernel();
@@ -1512,29 +1431,24 @@ int main(int argc, char *argv[])
     uint64_t iter_rad   = (uint64_t) (iter_rad_sec) * 1000000 + (uint64_t) (iter_rad_usec);
     uint64_t iter_vit   = (uint64_t) (iter_vit_sec) * 1000000 + (uint64_t) (iter_vit_usec);
     uint64_t iter_cv    = (uint64_t) (iter_cv_sec)  * 1000000 + (uint64_t) (iter_cv_usec);
-    //uint64_t iter_h264  = (uint64_t) (iter_h264_sec) * 1000000 + (uint64_t) (iter_h264_usec);
     uint64_t exec_rad   = (uint64_t) (exec_rad_sec) * 1000000 + (uint64_t) (exec_rad_usec);
     uint64_t exec_vit   = (uint64_t) (exec_vit_sec) * 1000000 + (uint64_t) (exec_vit_usec);
     uint64_t exec_cv    = (uint64_t) (exec_cv_sec)  * 1000000 + (uint64_t) (exec_cv_usec);
-    //uint64_t exec_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
     uint64_t exec_get_rad   = (uint64_t) (exec_get_rad_sec) * 1000000 + (uint64_t) (exec_get_rad_usec);
     uint64_t exec_get_vit   = (uint64_t) (exec_get_vit_sec) * 1000000 + (uint64_t) (exec_get_vit_usec);
     uint64_t exec_get_cv    = (uint64_t) (exec_get_cv_sec)  * 1000000 + (uint64_t) (exec_get_cv_usec);
-    //uint64_t exec_get_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
     uint64_t exec_pandc = (uint64_t) (exec_pandc_sec) * 1000000 + (uint64_t) (exec_pandc_usec);
     uint64_t wait_all_crit   = (uint64_t) (wait_all_crit_sec) * 1000000 + (uint64_t) (wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
     printf("  iterate_rad_kernel run time       %lu usec\n", iter_rad);
     printf("  iterate_vit_kernel run time       %lu usec\n", iter_vit);
     printf("  iterate_cv_kernel run time        %lu usec\n", iter_cv);
-    //printf("  iterate_h264_kernel run time      %lu usec\n", iter_h264);
     printf("  Crit execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("  Crit execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("  Crit execute_cv_kernel run time   %lu usec\n", exec_cv);
     printf("    GET_MB execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("    GET_MB execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("    GET_MB execute_cv_kernel run time   %lu usec\n", exec_cv);
-    //printf("  execute_h264_kernel run time      %lu usec\n", exec_h264);
     printf("  plan_and_control run time         %lu usec at %u factor\n", exec_pandc, pandc_repeat_factor);
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
