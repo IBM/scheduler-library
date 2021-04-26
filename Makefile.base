@@ -233,7 +233,7 @@ $(STARGET): obj_s $(OBJ_S)
 
 
 clean:
-	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P) $(TARGET) $(STARGET)
+	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P)
 	$(RM) -r obj_t obj_s obj_p
 
 clobber: clean
