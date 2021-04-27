@@ -23,6 +23,6 @@ void init_cpu_parameters(unsigned n, uint32_t log_nsamples);
 
 void do_cpu_accel_type_initialization();
 void do_cpu_accel_type_closeout();
-void output_cpu_accel_type_run_stats();
+void output_cpu_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

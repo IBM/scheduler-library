@@ -65,7 +65,7 @@ void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
 
 void init_vit_parameters(int vn);
 
-void output_vit_task_type_run_stats();
+void output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
 
 void exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block);
 void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block);

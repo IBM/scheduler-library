@@ -32,6 +32,7 @@
 #include "vit_task.h"
 #include "cv_task.h"
 #include "test_task.h"
+#include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
 #include "sim_environs.h"
@@ -48,13 +49,9 @@
 
 //#define get_mb_holdoff 10  // usec
 
-char h264_dict[256]; 
 char cv_dict[256]; 
 char rad_dict[256];
 char vit_dict[256];
-
-bool_t bypass_h264_functions = false; // This is a global-disable of executing H264 execution functions...
-
 
 #include "cpu_accel.h"
 #include "fft_accel.h"
@@ -67,14 +64,15 @@ accelerator_type_t fft_hwr_accel_id;
 accelerator_type_t vit_hwr_accel_id;
 accelerator_type_t cv_hwr_accel_id;
 
-//#define my_num_accel_types  4
+//#define my_num_accel_2types  4
 
 // Storage to hold the task IDs (returned when we register taske) of the task types we will need/use
-task_id_t no_task_id;
-task_id_t fft_task_id;
-task_id_t vit_task_id;
-task_id_t cv_task_id;
-task_id_t test_task_id;
+//task_type_t no_task_type;
+task_type_t fft_task_type;
+task_type_t vit_task_type;
+task_type_t cv_task_type;
+task_type_t plan_ctrl_task_type;
+task_type_t test_task_type;
 
 #define my_num_task_types  4
 
@@ -93,6 +91,7 @@ uint64_t fft_profile[2][MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
 uint64_t vit_profile[4][MAX_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
 uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
+uint64_t plan_ctrl_profile[MAX_ACCEL_TYPES];
 
 bool_t all_obstacle_lanes_mode = false;
 bool_t no_crit_cnn_task = false;
@@ -100,6 +99,7 @@ unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
 
+char* my_sl_viz_fname = "./sl_viz.trace";
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -109,8 +109,6 @@ void print_usage(char * pname) {
   printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
   printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
   printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to use\n");
-  //printf("    -H <file>  : defines the input H264 dictionary file <file> to use\n");
-  //printf("    -b         : Bypass (do not use) the H264 functions in this run.\n");
   printf("    -s <N>      : Sets the max number of time steps to simulate\n");
  #ifdef USE_SIM_ENVIRON
   printf("    -r <N>      : Sets the rand random number seed to N\n");
@@ -140,7 +138,6 @@ void print_usage(char * pname) {
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
   printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
   printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
-  printf("    -T <N>      : Sets the number of Task Types (max) to <N> (but must be >= 4 for this usage)\n");
   printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
   printf("                :   <policy> needs to exist as a dynamic shared object (DSO) with filename lib<policy>.so\n");
   printf("    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.\n");
@@ -148,7 +145,19 @@ void print_usage(char * pname) {
   printf("    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.\n");
   printf("                :   Two tuple formats are acceptable:\n");
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
-  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type\n");
+  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
+  printf("                :              per each accelerator type\n");
+ #ifdef SL_VIZ
+  printf("\n");
+  printf(" Options for the STOMP-viz visualization tool (tracing enabled):\n");
+  printf("    -i <N>      : Number of executed tasks (of any type) before starting task logging\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("    -I <type>   : Task type that triggers task logging for the STOMP-viz visualization tool\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
+  printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
+  printf("                :   This parameter is mandatory to keep control of the trace file size\n");
+ #endif
 
 }
 
@@ -159,6 +168,7 @@ void base_release_metadata_block(task_metadata_block_t* mb)
 {
   TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
 	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u base_atFin Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
@@ -170,6 +180,7 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
   // Call this so we get final stats (call-time)
   distance_t distance = finish_execution_of_rad_kernel(mb);
 
+  DEBUG(printf("  MB%u rad_atFin Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
@@ -217,53 +228,61 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
   printf("\nSetting up/Registering the TASK TYPES...\n");
   task_type_defn_info_t task_defn;
 
-  sprintf(task_defn.name, "NO-Task");
-  sprintf(task_defn.description, "A place-holder that indicates NO task to execute");
-  task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents;
-  task_defn.output_task_type_run_stats  = NULL;
-  no_task_id = register_task_type(sptr, &task_defn);
+  /* sprintf(task_defn.name, "NO-Task"); */
+  /* sprintf(task_defn.description, "A place-holder that indicates NO task to execute"); */
+  /* task_defn.print_metadata_block_contents  = &print_base_metadata_block_contents; */
+  /* task_defn.output_task_type_run_stats  = NULL; */
+  /* no_task_type = register_task_type(sptr, &task_defn); */
 
   sprintf(task_defn.name, "VIT-Task");
   sprintf(task_defn.description, "A Viterbi Decoding task to execute");
   task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
-  vit_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_id, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_id, &exec_vit_task_on_vit_hwr_accel);
+  vit_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_type, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
   if (NUM_VIT_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
-    p0_hw_threshold[vit_task_id][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_id][vit_hwr_accel_id]);
+    p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
   }
   
   sprintf(task_defn.name, "CV-Task");
   sprintf(task_defn.description, "A CV/CNN task to execute");
   task_defn.print_metadata_block_contents  = &print_cv_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
-  cv_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_id, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_id, &execute_hwr_cv_accelerator);
+  cv_task_type = register_task_type(sptr, &task_defn);
+  printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
-    p0_hw_threshold[cv_task_id][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_id][cv_hwr_accel_id]);
+    p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
   
   sprintf(task_defn.name, "FFT-Task");
   sprintf(task_defn.description, "A 1-D FFT task to execute");
   task_defn.print_metadata_block_contents  = &print_fft_metadata_block_contents;
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
-  fft_task_id = register_task_type(sptr, &task_defn);
-  //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_id);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_id, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_id, &execute_hwr_fft_accelerator);
+  fft_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_type, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_type, &execute_hwr_fft_accelerator);
   if (NUM_FFT_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
-    p0_hw_threshold[fft_task_id][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_id][fft_hwr_accel_id]);
+    p0_hw_threshold[fft_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[fft_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[fft_task_type][fft_hwr_accel_id]);
   }
+  
+  sprintf(task_defn.name, "PnC-Task");
+  sprintf(task_defn.description, "The vehicle state Plan and Control task to execute");
+  task_defn.print_metadata_block_contents  = &print_plan_ctrl_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_plan_ctrl_task_type_run_stats;
+  plan_ctrl_task_type = register_task_type(sptr, &task_defn);
+  //printf("Setting up %s with task-type %u\n", task_defn.name, plan_ctrl_task_type);
+  register_accel_can_exec_task(sptr, cpu_accel_id,     plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
   
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -271,25 +290,25 @@ void set_up_scheduler_accelerators_and_tasks(scheduler_datastate_block_t* sptr) 
     sprintf(task_defn.description, "A TESTING task to execute");
     task_defn.print_metadata_block_contents  = &print_test_metadata_block_contents;
     task_defn.output_task_type_run_stats  = &output_test_task_type_run_stats;
-    test_task_id = register_task_type(sptr, &task_defn);
-    //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_id);
-    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_id, &execute_on_cpu_test_accelerator);
+    test_task_type = register_task_type(sptr, &task_defn);
+    //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_type);
+    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_type, &execute_on_cpu_test_accelerator);
     if ((NUM_VIT_ACCEL > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_id, &execute_on_hwr_vit_test_accelerator);
-      p0_hw_threshold[test_task_id][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
-      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, vit_hwr_accel_id, p0_hw_threshold[test_task_id][vit_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_type, &execute_on_hwr_vit_test_accelerator);
+      p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, vit_hwr_accel_id, p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((NUM_FFT_ACCEL > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_id, &execute_on_hwr_fft_test_accelerator);
-      p0_hw_threshold[test_task_id][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
-      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_id, fft_hwr_accel_id, p0_hw_threshold[test_task_id][fft_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_type, &execute_on_hwr_fft_test_accelerator);
+      p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
+      //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, fft_hwr_accel_id, p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((NUM_CV_ACCEL > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_id, &execute_on_hwr_cv_test_accelerator);
-      p0_hw_threshold[test_task_id][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_id], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_id][cv_hwr_accel_id]);
+      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_type, &execute_on_hwr_cv_test_accelerator);
+      p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }
   }
 
@@ -309,7 +328,9 @@ void set_up_task_on_accel_profile_data()
     vit_profile[3][ai] = ACINFPROF;
     cv_profile[ai]   = ACINFPROF;
     test_profile[ai] = ACINFPROF;
+    plan_ctrl_profile[ai] = ACINFPROF;
   }
+ #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   fft_profile[0][cpu_accel_id]     =  23000;
   fft_profile[0][fft_hwr_accel_id] =   6000;
@@ -325,8 +346,23 @@ void set_up_task_on_accel_profile_data()
   vit_profile[3][cpu_accel_id]     = 4800000;
   vit_profile[3][vit_hwr_accel_id] =  191000;
   
-  cv_profile[cpu_accel_id]     = 5000000;
-  cv_profile[cv_hwr_accel_id]  =  150000;
+  cv_profile[cpu_accel_id]     =  cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
+  #ifdef FAKE_HW_CV
+   cv_profile[cv_hwr_accel_id]  =  cv_fake_hwr_run_time_in_usec; // Specified in the run
+  #else
+   cv_profile[cv_hwr_accel_id]  =  150000;
+  #endif
+ #else
+  fft_profile[0][cpu_accel_id]  =    50;
+  fft_profile[1][cpu_accel_id]  =  1250;
+  vit_profile[0][cpu_accel_id]  =   200;
+  vit_profile[1][cpu_accel_id]  =  2400;
+  vit_profile[2][cpu_accel_id]  =  5000;
+  vit_profile[3][cpu_accel_id]  =  6600;
+  cv_profile[cpu_accel_id]      =  cv_cpu_run_time_in_usec; // Specified in the run - was 50
+ #endif
+
+  plan_ctrl_profile[cpu_accel_id] = 1; // Picked a small value...
 
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (test_on_cpu_run_time_in_usec > 0) {
@@ -371,6 +407,10 @@ void set_up_task_on_accel_profile_data()
 	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", cv_profile[ai]);
 	} printf("\n");
+	printf("%15s :", "pnc_profile");
+	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	  printf(" 0x%016lx", plan_ctrl_profile[ai]);
+	} printf("\n");
 	printf("%15s :", "test_profile");
 	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", test_profile[ai]);
@@ -398,7 +438,6 @@ int main(int argc, char *argv[])
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0]  = '\0';
-  h264_dict[0]  = '\0';
 
   unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
@@ -409,13 +448,20 @@ int main(int argc, char *argv[])
   char policy[256];
   unsigned num_MBs_to_use      = GLOBAL_METADATA_POOL_BLOCKS;
   unsigned num_maxTasks_to_use = my_num_task_types;
+  unsigned using_the_Test_Tasks = false;
   
+  // STOMP-viz tracing parameters
+  task_type_t viz_task_start_type  = NO_Task;
+  int32_t     viz_task_start_count = -1;
+  int32_t     viz_task_stop_count  = -1;
+
+
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAbot:v:s:r:W:R:V:C:H:f:p:F:M:P:S:N:d:D:u:L:B:T:X:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:i:I:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -435,14 +481,8 @@ int main(int argc, char *argv[])
     case 'C':
       snprintf(cv_dict, 255, "%s", optarg);
       break;
-    case 'H':
-      snprintf(h264_dict, 255, "%s", optarg);
-      break;
     case 'V':
       snprintf(vit_dict, 255, "%s", optarg);
-      break;
-    case 'b':
-      bypass_h264_functions = true;
       break;
     case 'u':
       sched_holdoff_usec = atoi(optarg);
@@ -513,10 +553,6 @@ int main(int argc, char *argv[])
       num_MBs_to_use = atoi(optarg);
       break;
 
-    case 'T':
-      num_maxTasks_to_use = atoi(optarg);
-      break;
-
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
     {
       unsigned in_cpu = 0;
@@ -547,6 +583,7 @@ int main(int argc, char *argv[])
 	  printf("ERROR : -X option (Add Xtra Test-Task) argument didn't specify proper format: Crit,Base<,CPU,FFT,VIT,CV>\n");
 	  exit(-1);
 	}
+	using_the_Test_Tasks = true;
 	DEBUG(printf("From -X option, sres = %u\n", sres););
 	num_Crit_test_tasks = nCrit;
 	num_Base_test_tasks = nBase;
@@ -559,7 +596,25 @@ int main(int argc, char *argv[])
 	}
       }
       break;
-      
+
+    case 'I':
+     #ifdef SL_VIZ
+      viz_task_start_type = atol(optarg);
+     #endif
+      break;
+
+    case 'i':
+     #ifdef SL_VIZ
+      viz_task_start_count = atol(optarg);
+     #endif
+      break;
+
+    case 'e':
+     #ifdef SL_VIZ
+      viz_task_stop_count = atol(optarg);
+     #endif
+      break;
+
     case ':':
       printf("option %c needs a value\n", optopt);
       break;
@@ -575,6 +630,15 @@ int main(int argc, char *argv[])
     printf("extra arguments: %s\n", argv[optind]);
   }
 
+  /**#ifdef SL_VIZ
+     if (viz_task_stop_count == 0){
+     printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", viz_task_stop_count);
+     print_usage(argv[0]);
+     exit(-1);
+     }
+     #endif
+  **/
+  
   if (pandc_repeat_factor == 0) {
     printf("ERROR - Plan-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
     print_usage(argv[0]);
@@ -589,15 +653,24 @@ int main(int argc, char *argv[])
   }
   // Copy the scheduler's default parms into the new sched_inparms values
   copy_scheduler_datastate_defaults_into_parms(sched_inparms);
+  // If we enabled the Test-Task type, add one to the maxTasks count
+  if (using_the_Test_Tasks) {
+    num_maxTasks_to_use++;
+  }
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
 
+  //printf("Using %u tasks\n", sched_inparms->max_task_types);
+  
   // Now get a new scheduler datastate space
   scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
   // Set the scheduler state values we need to for this run
   sptr->scheduler_holdoff_usec = sched_holdoff_usec;
   snprintf(sptr->policy, 255, "%s", policy);
+  sptr->visualizer_task_start_count = viz_task_start_count;
+  sptr->visualizer_task_stop_count  = viz_task_stop_count;
+  sptr->visualizer_task_enable_type = viz_task_start_type;
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
 
@@ -690,9 +763,27 @@ int main(int argc, char *argv[])
   if (cv_dict[0] == '\0') {
     sprintf(cv_dict, "traces/objects_dictionary.dfn");
   }
-  if (h264_dict[0] == '\0') {
-    sprintf(h264_dict, "traces/h264_dictionary.dfn");
+
+ #ifdef SL_VIZ
+  if (viz_task_start_type == NO_Task) {
+    if (viz_task_start_count < 0) {
+      printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
+    } else {
+      printf("\nSTOMP-viz tracing starts on task number %d\n", viz_task_start_count);
+    }
+  } else {
+    if (viz_task_start_count < 0) {
+      printf("\nSTOMP-viz tracing starts with task type %d\n", viz_task_start_type);
+    } else {
+      printf("\nSTOMP-viz tracing starts on earlier of task number %d or task type %d\n", viz_task_start_count, viz_task_start_type);
+    }
   }
+  if (viz_task_stop_count < 0) {
+    printf("STOMP-viz tracing continues for the full run (no executed tasks limit)\n");
+  } else {
+    printf("STOMP-viz tracing stops %d executed task(s) of any type after it starts\n", viz_task_stop_count);
+  }
+ #endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
@@ -733,7 +824,7 @@ int main(int argc, char *argv[])
   }
 
   printf("Doing initialization tasks...\n");
-  initialize_scheduler(sptr);
+  initialize_scheduler(sptr, my_sl_viz_fname);
 
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
@@ -765,17 +856,6 @@ int main(int argc, char *argv[])
 #endif
 
   /* Kernels initialization */
-  /**if (bypass_h264_functions) {
-    printf("Bypassing the H264 Functionality in this run...\n");
-  } else {
-    printf("Initializing the H264 kernel...\n");
-    if (!init_h264_kernel(h264_dict))
-      {
-	printf("Error: the H264 decoding kernel couldn't be initialized properly.\n");
-	return 1;
-      }
-      }**/
-
   printf("Initializing the CV kernel...\n");
   if (!init_cv_kernel(sptr, cv_py_file, cv_dict)) {
     printf("Error: the computer vision kernel couldn't be initialized properly.\n");
@@ -836,49 +916,41 @@ int main(int argc, char *argv[])
   struct timeval stop_iter_vit, start_iter_vit;
   struct timeval stop_iter_cv , start_iter_cv;
   struct timeval stop_iter_test , start_iter_test;
-  struct timeval stop_iter_h264 , start_iter_h264;
 
   uint64_t iter_rad_sec = 0LL;
   uint64_t iter_vit_sec = 0LL;
   uint64_t iter_cv_sec  = 0LL;
   uint64_t iter_test_sec  = 0LL;
-  uint64_t iter_h264_sec  = 0LL;
 
   uint64_t iter_rad_usec = 0LL;
   uint64_t iter_vit_usec = 0LL;
   uint64_t iter_cv_usec  = 0LL;
   uint64_t iter_test_usec  = 0LL;
-  uint64_t iter_h264_usec  = 0LL;
 
   struct timeval stop_exec_rad, start_exec_rad;
   struct timeval stop_exec_vit, start_exec_vit;
   struct timeval stop_exec_cv , start_exec_cv;
   struct timeval stop_exec_test , start_exec_test;
-  struct timeval stop_exec_h264 , start_exec_h264;
 
   uint64_t exec_rad_sec = 0LL;
   uint64_t exec_vit_sec = 0LL;
   uint64_t exec_cv_sec  = 0LL;
   uint64_t exec_test_sec  = 0LL;
-  uint64_t exec_h264_sec  = 0LL;
 
   uint64_t exec_rad_usec = 0LL;
   uint64_t exec_vit_usec = 0LL;
   uint64_t exec_cv_usec  = 0LL;
   uint64_t exec_test_usec  = 0LL;
-  uint64_t exec_h264_usec  = 0LL;
 
   uint64_t exec_get_rad_sec = 0LL;
   uint64_t exec_get_vit_sec = 0LL;
   uint64_t exec_get_cv_sec  = 0LL;
   uint64_t exec_get_test_sec  = 0LL;
-  uint64_t exec_get_h264_sec  = 0LL;
 
   uint64_t exec_get_rad_usec = 0LL;
   uint64_t exec_get_vit_usec = 0LL;
   uint64_t exec_get_cv_usec  = 0LL;
   uint64_t exec_get_test_usec  = 0LL;
-  uint64_t exec_get_h264_usec  = 0LL;
 
   struct timeval stop_exec_pandc , start_exec_pandc;
   uint64_t exec_pandc_sec  = 0LL;
@@ -907,24 +979,6 @@ int main(int argc, char *argv[])
   {
     DEBUG(printf("Vehicle_State: Lane %u %s Speed %.1f\n", vehicle_state.lane, lane_names[vehicle_state.lane], vehicle_state.speed));
 
-    /* The computer vision kernel performs object recognition on the
-     * next image, and returns the corresponding label.
-     * This process takes place locally (i.e. within this car).
-     */
-    /**
-   #ifdef TIME
-    gettimeofday(&start_iter_h264, NULL);
-   #endif
-    h264_dict_entry_t* hdep = 0x0;
-    if (!bypass_h264_functions) {
-      hdep = iterate_h264_kernel(sptr, vehicle_state);
-    }
-   #ifdef TIME
-    gettimeofday(&stop_iter_h264, NULL);
-    iter_h264_sec  += stop_iter_h264.tv_sec  - start_iter_h264.tv_sec;
-    iter_h264_usec += stop_iter_h264.tv_usec - start_iter_h264.tv_usec;
-   #endif
-    **/
     /* The computer vision kernel performs object recognition on the
      * next image, and returns the corresponding label. 
      * This process takes place locally (i.e. within this car).
@@ -985,30 +1039,15 @@ int main(int argc, char *argv[])
     }
     
     // EXECUTE the kernels using the now known inputs
-    /**
-   #ifdef TIME
-    gettimeofday(&start_exec_h264, NULL);
-   #endif
-    char* found_frame_ptr = 0x0;
-    if (!bypass_h264_functions) {
-      execute_h264_kernel(hdep, found_frame_ptr);
-    } else {
-      found_frame_ptr = (char*)0xAD065BED;
-    }
-   #ifdef TIME
-    gettimeofday(&stop_exec_h264, NULL);
-    exec_h264_sec  += stop_exec_h264.tv_sec  - start_exec_h264.tv_sec;
-    exec_h264_usec += stop_exec_h264.tv_usec - start_exec_h264.tv_usec;
-   #endif
-    **/
    #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
    #endif
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
+      DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
       do {
-        cv_mb_ptr = get_task_metadata_block(sptr, cv_task_id, CRITICAL_TASK, cv_profile);
+        cv_mb_ptr = get_task_metadata_block(sptr, time_step, cv_task_type, CRITICAL_TASK, cv_profile);
 	//usleep(get_mb_holdoff);
      } while (0); // (cv_mb_ptr == NULL);
      #ifdef TIME
@@ -1034,8 +1073,9 @@ int main(int argc, char *argv[])
    #endif
     // Request a MetadataBlock (for an FFT task at Critical Level)
       task_metadata_block_t* fft_mb_ptr = NULL;
+      DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
       do {
-        fft_mb_ptr = get_task_metadata_block(sptr, fft_task_id, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
+        fft_mb_ptr = get_task_metadata_block(sptr, time_step, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
 	//usleep(get_mb_holdoff);
       } while (0); //(fft_mb_ptr == NULL);
      #ifdef TIME
@@ -1060,8 +1100,9 @@ int main(int argc, char *argv[])
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t* vit_mb_ptr = NULL;
+    DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
     do {
-      vit_mb_ptr = get_task_metadata_block(sptr, vit_task_id, CRITICAL_TASK, vit_profile[vit_msgs_size]);
+      vit_mb_ptr = get_task_metadata_block(sptr, time_step, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
       //usleep(get_mb_holdoff);
     } while (0); //(vit_mb_ptr == NULL);
    #ifdef TIME
@@ -1087,8 +1128,9 @@ int main(int argc, char *argv[])
      #endif
       //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
       // Request a MetadataBlock for a Testerbi Task at Critical Level
+      DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
       do {
-	test_mb_ptr = get_task_metadata_block(sptr, test_task_id, CRITICAL_TASK, test_profile);
+	test_mb_ptr = get_task_metadata_block(sptr, time_step, test_task_type, CRITICAL_TASK, test_profile);
 	//usleep(get_mb_holdoff);
       } while (0); //(test_mb_ptr == NULL);
      #ifdef TIME
@@ -1118,8 +1160,9 @@ int main(int argc, char *argv[])
         gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* cv_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit CV-Task %u\n", cv_task_type));
         do {
-          cv_mb_ptr_2 = get_task_metadata_block(sptr, cv_task_id, BASE_TASK, cv_profile);
+          cv_mb_ptr_2 = get_task_metadata_block(sptr, time_step, cv_task_type, BASE_TASK, cv_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); //(cv_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1152,8 +1195,9 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
 	task_metadata_block_t* fft_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit FFT-Task %u\n", fft_task_type));
         do {
-	  fft_mb_ptr_2 = get_task_metadata_block(sptr, fft_task_id, BASE_TASK, fft_profile[base_fft_samples_set]);
+	  fft_mb_ptr_2 = get_task_metadata_block(sptr, time_step, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
 	  //usleep(get_mb_holdoff);
         } while (0); //(fft_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1196,8 +1240,9 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* vit_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit VIT-Task %u\n", vit_task_type));
         do {
-          vit_mb_ptr_2 = get_task_metadata_block(sptr, vit_task_id, BASE_TASK, vit_profile[base_msg_size]);
+          vit_mb_ptr_2 = get_task_metadata_block(sptr, time_step, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
 	  //usleep(get_mb_holdoff);
         } while (0); // (vit_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1222,8 +1267,9 @@ int main(int argc, char *argv[])
 	gettimeofday(&get_time, NULL);
        #endif
         task_metadata_block_t* test_mb_ptr_2 = NULL;
+	DEBUG(printf("Calling get_task_metadata_block for Non-Crit TEST-Task %u\n", test_task_type));
         do {
-          test_mb_ptr_2 = get_task_metadata_block(sptr, test_task_id, BASE_TASK, test_profile);
+          test_mb_ptr_2 = get_task_metadata_block(sptr, time_step, test_task_type, BASE_TASK, test_profile);
 	  //usleep(get_mb_holdoff);
         } while (0); // (test_mb_ptr_2 == NULL);
        #ifdef TIME
@@ -1241,6 +1287,8 @@ int main(int argc, char *argv[])
         start_execution_of_test_kernel(test_mb_ptr_2, tdentry_p); // Non-Critical TESTERBI task
       } // if (i < Additional TEST tasks)
     } // for (i over MAX_additional_tasks)
+
+    sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
    #ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
@@ -1272,10 +1320,46 @@ int main(int argc, char *argv[])
     exec_cv_usec  += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
    #endif
 
-    // POST-EXECUTE each kernel to gather stats, etc.
-    /*if (!bypass_h264_functions) {
-      post_execute_h264_kernel();
-      }*/
+    /* The plan_and_control task makes planning and control decisions
+     * based on the currently perceived information. It returns the new
+     * vehicle state.
+     */
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
+    vehicle_state_t new_vehicle_state;
+
+   #ifdef TIME
+    gettimeofday(&start_exec_pandc, NULL);
+   #endif
+    task_metadata_block_t* pnc_mb_ptr = get_task_metadata_block(sptr, time_step, plan_ctrl_task_type, CRITICAL_TASK, plan_ctrl_profile);    
+    /* #ifdef TIME */
+    /*  struct timeval got_time; */
+    /*  gettimeofday(&got_time, NULL); */
+    /*  exec_get_pnc_sec  += got_time.tv_sec  - start_exec_pnc.tv_sec; */
+    /*  exec_get_pnc_usec += got_time.tv_usec - start_exec_pnc.tv_usec; */
+    /* #endif */
+
+    if (pnc_mb_ptr == NULL) {
+      // We ran out of metadata blocks -- PANIC!
+      printf("Out of metadata blocks for PNC -- PANIC Quit the run (for now)\n");
+      dump_all_metadata_blocks_states(sptr);
+      exit (-4);
+    }
+    DEBUG(printf(" PnC Task got a metablock : MB%u\n", pnc_mb_ptr->block_id));
+
+    // Set up parameters to the Plan-and-Control task
+    plan_ctrl_data_struct_t * pnc_dp = (plan_ctrl_data_struct_t*)(pnc_mb_ptr->data_space);
+    pnc_dp->time_step       = time_step;           // The current time-step of the simulation
+    pnc_dp->repeat_factor   = pandc_repeat_factor; // The current time-step of the simulation
+    pnc_dp->object_label    = label;               // The determined label of the object in the image
+    pnc_dp->object_distance = distance;            // The distance to the closest vehicle in our lane
+    pnc_dp->safe_lanes_msg  = message;             // The message indicating which lanes are safe to change into
+    pnc_dp->vehicle_state   = vehicle_state;       // The current (input) vehicle state
+    DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
+    DEBUG(printf("Calling start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    start_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
+    DEBUG(printf(" Back from start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    
+    // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
@@ -1285,24 +1369,29 @@ int main(int argc, char *argv[])
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
     }
     
-    /* The plan_and_control() function makes planning and control decisions
-     * based on the currently perceived information. It returns the new
-     * vehicle state.
-     */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    vehicle_state_t new_vehicle_state;
+    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
    #ifdef TIME
-    gettimeofday(&start_exec_pandc, NULL);
+    gettimeofday(&start_wait_all_crit, NULL);
    #endif
-    for (int prfi = 0; prfi <= pandc_repeat_factor; prfi++) {
-      new_vehicle_state = plan_and_control(label, distance, message, vehicle_state);
-    }
+
+    wait_all_critical(sptr);
+
+   #ifdef TIME
+    gettimeofday(&stop_wait_all_crit, NULL);
+    wait_all_crit_sec  += stop_wait_all_crit.tv_sec  - start_wait_all_crit.tv_sec;
+    wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
+   #endif
+    DEBUG(printf("MAIN:  Back from wait_all_critical\n"));
+    
+    DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    vehicle_state = finish_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
+    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
+
    #ifdef TIME
     gettimeofday(&stop_exec_pandc, NULL);
     exec_pandc_sec  += stop_exec_pandc.tv_sec  - start_exec_pandc.tv_sec;
     exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
    #endif
-    vehicle_state = new_vehicle_state;
 
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 
@@ -1327,9 +1416,6 @@ int main(int argc, char *argv[])
   /* All the trace/simulation-time has been completed -- Quitting... */
   printf("\nRun completed %u time steps\n\n", time_step);
 
-  if (!bypass_h264_functions) {
-    //closeout_h264_kernel();
-  }
   closeout_cv_kernel();
   closeout_rad_kernel();
   closeout_vit_kernel();
@@ -1345,29 +1431,24 @@ int main(int argc, char *argv[])
     uint64_t iter_rad   = (uint64_t) (iter_rad_sec) * 1000000 + (uint64_t) (iter_rad_usec);
     uint64_t iter_vit   = (uint64_t) (iter_vit_sec) * 1000000 + (uint64_t) (iter_vit_usec);
     uint64_t iter_cv    = (uint64_t) (iter_cv_sec)  * 1000000 + (uint64_t) (iter_cv_usec);
-    //uint64_t iter_h264  = (uint64_t) (iter_h264_sec) * 1000000 + (uint64_t) (iter_h264_usec);
     uint64_t exec_rad   = (uint64_t) (exec_rad_sec) * 1000000 + (uint64_t) (exec_rad_usec);
     uint64_t exec_vit   = (uint64_t) (exec_vit_sec) * 1000000 + (uint64_t) (exec_vit_usec);
     uint64_t exec_cv    = (uint64_t) (exec_cv_sec)  * 1000000 + (uint64_t) (exec_cv_usec);
-    //uint64_t exec_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
     uint64_t exec_get_rad   = (uint64_t) (exec_get_rad_sec) * 1000000 + (uint64_t) (exec_get_rad_usec);
     uint64_t exec_get_vit   = (uint64_t) (exec_get_vit_sec) * 1000000 + (uint64_t) (exec_get_vit_usec);
     uint64_t exec_get_cv    = (uint64_t) (exec_get_cv_sec)  * 1000000 + (uint64_t) (exec_get_cv_usec);
-    //uint64_t exec_get_h264  = (uint64_t) (exec_h264_sec) * 1000000 + (uint64_t) (exec_h264_usec);
     uint64_t exec_pandc = (uint64_t) (exec_pandc_sec) * 1000000 + (uint64_t) (exec_pandc_usec);
     uint64_t wait_all_crit   = (uint64_t) (wait_all_crit_sec) * 1000000 + (uint64_t) (wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
     printf("  iterate_rad_kernel run time       %lu usec\n", iter_rad);
     printf("  iterate_vit_kernel run time       %lu usec\n", iter_vit);
     printf("  iterate_cv_kernel run time        %lu usec\n", iter_cv);
-    //printf("  iterate_h264_kernel run time      %lu usec\n", iter_h264);
     printf("  Crit execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("  Crit execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("  Crit execute_cv_kernel run time   %lu usec\n", exec_cv);
     printf("    GET_MB execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("    GET_MB execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("    GET_MB execute_cv_kernel run time   %lu usec\n", exec_cv);
-    //printf("  execute_h264_kernel run time      %lu usec\n", exec_h264);
     printf("  plan_and_control run time         %lu usec at %u factor\n", exec_pandc, pandc_repeat_factor);
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }

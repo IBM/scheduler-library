@@ -23,6 +23,8 @@
 #include "fft_task.h"
 #include "vit_task.h"
 #include "cv_task.h"
+#include "test_task.h"
+#include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
 
@@ -173,6 +175,7 @@ label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
 
 void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
 {
+  DEBUG(printf("MB%u In start_execution_of_cv_kernel\n", mb_ptr->block_id));
   /* 2) Set up to request object detection on an image frame */
   int tidx = mb_ptr->accelerator_type;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
@@ -191,11 +194,12 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 {
-  DEBUG(printf("In finish_execution_of_cv_kernel\n"));
+  DEBUG(printf("MB%u In finish_execution_of_cv_kernel\n", mb_ptr->block_id));
   cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
   label_t the_label = cv_data_p->object_label;
   //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
   // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u fin_cv Calling free_task_metadata_block\n", mb_ptr->block_id));
   free_task_metadata_block(mb_ptr);
 
   return the_label;
@@ -355,22 +359,23 @@ radar_dict_entry_t* iterate_rad_kernel(scheduler_datastate_block_t* sptr, vehicl
 
 void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
 {
-  DEBUG(printf("In start_execution_of_rad_kernel\n"));
-  DEBUG(printf("  Calling start_calculate_peak_dist_from_fmcw\n"));
+  DEBUG(printf("MB%u In start_execution_of_rad_kernel\n", mb_ptr->block_id));
+  //DEBUG(printf("  MB%u Calling start_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
   start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
 }
 
 
 distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
 {
-  DEBUG(printf("In finish_execution_of_rad_kernel\n"));
-  DEBUG(printf("  Calling finalize_calculate_peak_dist_from_fmcw\n"));
+  DEBUG(printf("MB%u In finish_execution_of_rad_kernel\n", mb_ptr->block_id));
+  DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
   distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
 
   // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u fin_rad Calling free_task_metadata_block\n", mb_ptr->block_id));
   free_task_metadata_block(mb_ptr);
 
-  DEBUG(printf("  Returning distance = %.1f\n", dist));
+  DEBUG(printf("  MB%u Returning distance = %.1f\n", mb_ptr->block_id, dist));
   return dist;
 }
 
@@ -631,8 +636,9 @@ vit_dict_entry_t* select_random_vit_input()
 
 void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
 {
+  DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", mb_ptr->block_id));
   // Send each message (here they are all the same) through the viterbi decoder
-  DEBUG(printf("  Calling the viterbi decode routine for message %u\n", trace_msg->msg_num));
+  //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
   start_decode(mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
 }
 
@@ -644,13 +650,14 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   char     msg_text[1600]; // Big enough to hold largest message (1500?)
 
   int psdusize; // set by finish_decode call...
+  DEBUG(printf("  MB%u Calling the finish_decode routine\n", mb_ptr->block_id));
   result = finish_decode(mb_ptr, &psdusize);
   // descramble the output - put it in result
-  DEBUG(printf("  Calling the viterbi descrambler routine; psdusize = %u\n", psdusize));
+  DEBUG(printf("  MB%u Calling the viterbi descrambler routine; psdusize = %u\n", mb_ptr->block_id, psdusize));
   descrambler(result, psdusize, msg_text, NULL /*descram_ref*/, NULL /*msg*/);
 
  #if(0)
-  printf("MB%u PSDU %u : Msg : = `", mb_ptr->metadata.block_id, psdusize);
+  printf("MB%u PSDU %u : Msg : = `", mb_ptr->block_id, psdusize);
   for (int ci = 0; ci < (psdusize - 26); ci++) {
     printf("%c", msg_text[ci]);
   }
@@ -666,9 +673,10 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   }
 
   // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u fin_vit Calling free_task_metadata_block\n", mb_ptr->block_id));
   free_task_metadata_block(mb_ptr);
   
-  DEBUG(printf("The execute_vit_kernel is returning msg %u\n", msg));
+  DEBUG(printf("MB%u The execute_vit_kernel is returning msg %u\n", mb_ptr->block_id, msg));
   return msg;
 }
 
@@ -712,6 +720,7 @@ test_dict_entry_t* iterate_test_kernel(scheduler_datastate_block_t* sptr, vehicl
 
 void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)
 {
+  DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));
   request_execution(mb_ptr);
 }
 
@@ -719,9 +728,10 @@ test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)
 {
   test_res_t tres = TEST_TASK_DONE;
   // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u fin_test Calling free_task_metadata_block\n", mb_ptr->block_id));
   free_task_metadata_block(mb_ptr);
   
-  DEBUG(printf("The execute_test_kernel is returning tres %u\n", tres));
+  DEBUG(printf("MB%u The finish_execution_of_test_kernel is returning tres %u\n", mb_ptr->block_id, tres));
   return tres;
 }
 
@@ -738,6 +748,7 @@ void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
 
 vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t message, vehicle_state_t vehicle_state)
 {
+  printf("In the plan_and_control routine...\n");
   DEBUG(printf("In the plan_and_control routine : label %u %s distance %.1f (T1 %.1f T1 %.1f T3 %.1f) message %u\n", 
 	       label, object_names[label], distance, THRESHOLD_1, THRESHOLD_2, THRESHOLD_3, message));
   vehicle_state_t new_vehicle_state = vehicle_state;
@@ -942,4 +953,33 @@ void closeout_test_kernel()
 }
 
 
+
+
+
+
+
+void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
+{
+  int tidx = mb_ptr->accelerator_type;
+  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
+  // Data is set up prior to call here...
+  //plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
+ #ifdef INT_TIME
+  gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
+ #endif
+  request_execution(mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
+{
+  DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));
+  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
+  vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;
+  DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+
+  return vehicle_state;
+}
 

@@ -54,7 +54,7 @@ extern unsigned cv_fake_hwr_run_time_in_usec;
 
 void print_cv_metadata_block_contents(task_metadata_block_t* mb);
 
-void output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_id, unsigned total_accel_types);
+void output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
 
 void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);

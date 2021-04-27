@@ -218,7 +218,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
       vdsptr->theData[imi++] = d_depuncture_pattern[ti];
     }
     if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
-  } // scpoe block for defn of imi
+  } // scope block for defn of imi
     
   for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) { // This is over-kill for messages that are not max size
     in_Data[ti] = depunctured[ti];
@@ -251,22 +251,23 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
 
   *psdu_size_out = vdsptr->psdu_size;
 
+  // We write this timing here, since we now know the Accelerator ID to which this is accounted.
  #ifdef INT_TIME
   vit_timings_p->depunc_sec[aidx]  += vit_timings_p->depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
   vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
   //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
  #endif
 
-  DEBUG(printf("BACK FROM EXECUTION OF VITERBI TASK:\n");
-	  print_viterbi_metadata_block_contents(vit_metadata_block);//);
-	  printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
+  DEBUG(printf("MB%u is in finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
+	  print_viterbi_metadata_block_contents(vit_metadata_block));
+  SDEBUG(printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
     d_decoded[ti] = out_Data[ti];
     //DEBUG(if (ti < 31) { printf("FIN_VIT_OUT %3u : %3u @ %p \n", ti, out_Data[ti], &(out_Data[ti]));});
     SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
   }
-  DEBUG(printf("\n\n"));
-  SDEBUG(for (int i = 0; i < 32; i++) {
+  SDEBUG(printf("\n\n");
+	 for (int i = 0; i < 32; i++) {
       printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
     });
 
