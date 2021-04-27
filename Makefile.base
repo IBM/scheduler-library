@@ -15,7 +15,7 @@ CC = gcc -std=c99
 
 
 INCDIR ?=
-INCDIR += -I./include
+INCDIR += -I./include -I./sched_lib/include
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -126,18 +126,23 @@ ifdef CONFIG_GDB
 CFLAGS += -g
 endif
 
+SCHED_LIB = ./sched_lib/libscheduler.a
+
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/libesp
 endif
-ifndef CONFIG_KERAS_CV_BYPASS
- LDLIBS += 
-endif
+#ifndef CONFIG_KERAS_CV_BYPASS
+# LDLIBS += 
+#endif
+LDLIBS += -L./sched_lib
+
 LDFLAGS ?=
 LDFLAGS += -lm
 LDFLAGS += -lpthread
+LDFLAGS += -lscheduler
 LDFLAGS += -ldl -rdynamic
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
@@ -224,13 +229,14 @@ obj_p/%.so: %.c
 
 $(OBJ_T): $(HDR_T)
 
-$(TARGET): obj_t $(OBJ_T)
+$(TARGET): $(SCHED_LIB) obj_t $(OBJ_T)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
 
-$(STARGET): obj_s $(OBJ_S)
+$(STARGET): $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
-
+$(SCHED_LIB):
+	(cd sched_lib; make)
 
 clean:
 	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P)
@@ -241,6 +247,7 @@ clobber: clean
 	$(RM) $(STARGET)
 	$(RM) -rf obj_t obj_s
 	$(RM) -rf esp-build
+	(cd sched_lib; make clobber)
 
 
 obj_t:

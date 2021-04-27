@@ -17,10 +17,11 @@
 
 #ifndef H_BASE_TYPES_H
 #define H_BASE_TYPES_H
+#include <stdbool.h>
 
 /* Types definitions */
-typedef enum {false, true} bool_t;
-typedef enum {error, success} status_t;
+//typedef enum {false, true} bool;
+//typedef enum {error, success} status_t;
 
 // This is the type for distance measurements
 typedef float distance_t;
@@ -48,7 +49,7 @@ typedef enum {
 /* These are some global type defines, etc. */
 typedef struct
 {
-  bool_t active;
+  bool active;
   lane_t lane;
   float speed;
 } vehicle_state_t;

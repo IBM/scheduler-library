@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 IBM
+ * Copyright 2020 IBM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,12 +15,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* File pointer to the input trace */
-extern FILE *input_trace;
+#ifndef H_VERBOSE_H
+#define H_VERBOSE_H
 
+#ifdef VERBOSE
+ #define DEBUG(x) x
+#else
+ #define DEBUG(x)
+#endif
 
-status_t init_trace_reader(char* trace_filename);
-bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
-bool eof_trace_reader();
-void closeout_trace_reader();
+#ifdef DBG_THREADS
+ #define TDEBUG(x) x
+#else
+ #define TDEBUG(x)
+#endif
 
+#ifdef SUPER_VERBOSE
+ #define SDEBUG(x) x
+ #define DO_VERBOSE(x) x
+#else
+ #define SDEBUG(x)
+ #define DO_VERBOSE(x)
+#endif
+
+#endif

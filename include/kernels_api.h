@@ -55,7 +55,7 @@ typedef struct {
 #define VITERBI_MSGS_PER_STEP   3
 
 
-extern bool_t   output_viz_trace;
+extern bool  output_viz_trace;
 
 extern char* lane_names[NUM_LANES];
 extern char* message_names[NUM_MESSAGES];

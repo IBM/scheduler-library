@@ -93,13 +93,14 @@ uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
 uint64_t plan_ctrl_profile[MAX_ACCEL_TYPES];
 
-bool_t all_obstacle_lanes_mode = false;
-bool_t no_crit_cnn_task = false;
+bool     all_obstacle_lanes_mode = false;
+bool     no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
 
-char* my_sl_viz_fname = "./sl_viz.trace";
+bool enable_sl_viz_output = false;
+char my_sl_viz_fname[256] = "./sl_viz.trace";
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -147,17 +148,18 @@ void print_usage(char * pname) {
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
   printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
   printf("                :              per each accelerator type\n");
- #ifdef SL_VIZ
+  // #ifdef SL_VIZ
   printf("\n");
-  printf(" Options for the STOMP-viz visualization tool (tracing enabled):\n");
+  printf(" Options for the Scheduler-Visualizer tool (enable tracing to be visualized):\n");
+  printf("    -O <fn>     : Output scheduler visualization trace information to file <fn>\n");
   printf("    -i <N>      : Number of executed tasks (of any type) before starting task logging\n");
   printf("                :   If not specified, then logging starts with the execution\n");
-  printf("    -I <type>   : Task type that triggers task logging for the STOMP-viz visualization tool\n");
+  printf("    -I <type>   : Task type that triggers task logging for the Schedule-Visualization tool\n");
   printf("                :   If not specified, then logging starts with the execution\n");
   printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
   printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
   printf("                :   This parameter is mandatory to keep control of the trace file size\n");
- #endif
+  // #endif
 
 }
 
@@ -429,9 +431,9 @@ int main(int argc, char *argv[])
   message_t message;
   test_res_t test_res;
  #ifdef USE_SIM_ENVIRON
-  char* world_desc_file_name = "default_world.desc";
+  char world_desc_file_name[256] = "default_world.desc";
  #else
-  char* trace_file = "";
+  char trace_file[256] = "";
  #endif
   int opt;
 
@@ -450,7 +452,7 @@ int main(int argc, char *argv[])
   unsigned num_maxTasks_to_use = my_num_task_types;
   unsigned using_the_Test_Tasks = false;
   
-  // STOMP-viz tracing parameters
+  // Scheduler-Visualizer tracing parameters
   task_type_t viz_task_start_type  = NO_Task;
   int32_t     viz_task_start_count = -1;
   int32_t     viz_task_stop_count  = -1;
@@ -461,7 +463,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:i:I:e:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -503,7 +505,7 @@ int main(int argc, char *argv[])
       break;
     case 't':
      #ifndef USE_SIM_ENVIRON
-      trace_file = optarg;
+      snprintf(trace_file, 255, "%s", optarg);
      #endif
       break;
     case 'v':
@@ -519,7 +521,7 @@ int main(int argc, char *argv[])
       break;
     case 'W':
      #ifdef USE_SIM_ENVIRON
-      world_desc_file_name = optarg;
+      snprintf(world_desc_file_name, 255, "%s", optarg);
      #endif
       break;
     case 'F':
@@ -597,22 +599,26 @@ int main(int argc, char *argv[])
       }
       break;
 
-    case 'I':
-     #ifdef SL_VIZ
-      viz_task_start_type = atol(optarg);
-     #endif
+    case 'O':
+      enable_sl_viz_output = true;
+      snprintf(my_sl_viz_fname, 255, "%s", optarg);
       break;
 
     case 'i':
-     #ifdef SL_VIZ
+      //#ifdef SL_VIZ
       viz_task_start_count = atol(optarg);
-     #endif
+      //#endif
       break;
 
+    case 'I':
+      //#ifdef SL_VIZ
+      viz_task_start_type = atol(optarg);
+      //#endif
+
     case 'e':
-     #ifdef SL_VIZ
+      //#ifdef SL_VIZ
       viz_task_stop_count = atol(optarg);
-     #endif
+      //#endif
       break;
 
     case ':':
@@ -660,7 +666,7 @@ int main(int argc, char *argv[])
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
-
+  sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
   //printf("Using %u tasks\n", sched_inparms->max_task_types);
   
   // Now get a new scheduler datastate space
@@ -764,26 +770,30 @@ int main(int argc, char *argv[])
     sprintf(cv_dict, "traces/objects_dictionary.dfn");
   }
 
- #ifdef SL_VIZ
-  if (viz_task_start_type == NO_Task) {
-    if (viz_task_start_count < 0) {
-      printf("\nSTOMP-viz tracing starts from the very beginning (with the execution)\n");
+  //#ifdef SL_VIZ
+  if (enable_sl_viz_output) {
+    if (viz_task_start_type == NO_Task) {
+      if (viz_task_start_count < 0) {
+	printf("\nScheduler-Viz tracing starts from the very beginning (with the execution)\n");
+      } else {
+	printf("\nScheduler-Viz tracing starts on task number %d\n", viz_task_start_count);
+      }
     } else {
-      printf("\nSTOMP-viz tracing starts on task number %d\n", viz_task_start_count);
+      if (viz_task_start_count < 0) {
+	printf("\nScheduler-Viz tracing starts with task type %d\n", viz_task_start_type);
+      } else {
+	printf("\nScheduler-Viz tracing starts on earlier of task number %d or task type %d\n", viz_task_start_count, viz_task_start_type);
+      }
+    }
+    if (viz_task_stop_count < 0) {
+      printf("Scheduler-Viz tracing continues for the full run (no executed tasks limit)\n");
+    } else {
+      printf("Scheduler-Viz tracing stops %d executed task(s) of any type after it starts\n", viz_task_stop_count);
     }
   } else {
-    if (viz_task_start_count < 0) {
-      printf("\nSTOMP-viz tracing starts with task type %d\n", viz_task_start_type);
-    } else {
-      printf("\nSTOMP-viz tracing starts on earlier of task number %d or task type %d\n", viz_task_start_count, viz_task_start_type);
-    }
+    printf("No Scheduler-Viz tracing output\n");
   }
-  if (viz_task_stop_count < 0) {
-    printf("STOMP-viz tracing continues for the full run (no executed tasks limit)\n");
-  } else {
-    printf("STOMP-viz tracing stops %d executed task(s) of any type after it starts\n", viz_task_stop_count);
-  }
- #endif
+  //#endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
@@ -824,6 +834,7 @@ int main(int argc, char *argv[])
   }
 
   printf("Doing initialization tasks...\n");
+  printf(" my_sl_viz_fname = '%s'\n", my_sl_viz_fname);
   initialize_scheduler(sptr, my_sl_viz_fname);
 
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
