@@ -93,8 +93,8 @@ uint64_t cv_profile[MAX_ACCEL_TYPES];
 uint64_t test_profile[MAX_ACCEL_TYPES];
 uint64_t plan_ctrl_profile[MAX_ACCEL_TYPES];
 
-bool_t all_obstacle_lanes_mode = false;
-bool_t no_crit_cnn_task = false;
+bool     all_obstacle_lanes_mode = false;
+bool     no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;

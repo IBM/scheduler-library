@@ -43,9 +43,9 @@ char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" }
 
 
 #ifdef VERBOSE
-bool_t output_viz_trace = true;
+bool output_viz_trace = true;
 #else
-bool_t output_viz_trace = false;
+bool output_viz_trace = false;
 #endif
 
 unsigned total_obj; // Total non-'N' obstacle objects across all lanes this time step

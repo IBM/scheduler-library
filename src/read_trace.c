@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "kernels_api.h"
 #include "sim_environs.h"
 
@@ -97,7 +98,7 @@ get_distance_token(scheduler_datastate_block_t* sptr, char c)
 }
 
 
-bool_t read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
 {
   DEBUG(printf("In read_next_trace_record\n"));
   if (feof(input_trace)) { 
@@ -188,9 +189,9 @@ bool_t read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t
   return true;
 }
 
-bool_t eof_trace_reader()
+bool eof_trace_reader()
 {
-  bool_t res = feof(input_trace);
+  bool res = feof(input_trace);
   DEBUG(printf("In eof_trace_reader feof = %u\n", res));
   return res;
 }

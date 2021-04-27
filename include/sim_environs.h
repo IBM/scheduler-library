@@ -58,7 +58,7 @@ extern float MIN_OBJECT_DIST;
 
 extern unsigned max_time_steps; // The max stime steps to simulate
 
-extern bool_t all_obstacle_lanes_mode;
+extern bool all_obstacle_lanes_mode;
 
 extern float car_goal_speed;  // The speed My Car wants to maintain (if possible)
 extern float car_accel_rate;  // The rate of acceleration toward goal_speed
@@ -67,7 +67,7 @@ extern float car_decel_rate;  // The rate of deceleration toward goal_speed
 // Function/interface declarations
 void     print_object(object_state_t* st);
 status_t init_sim_environs(char* wdecsc_fn, vehicle_state_t* vehicle_state);
-bool_t   iterate_sim_environs(vehicle_state_t vehicle_state);
+bool     iterate_sim_environs(vehicle_state_t vehicle_state);
 void     visualize_world();
 
 
