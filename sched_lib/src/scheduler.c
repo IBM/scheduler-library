@@ -370,6 +370,13 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
   DEBUG(printf("MB%u entered mark_task_done...\n", task_metadata_block->block_id));
   //printf("MB%u in mark_task_done\n", task_metadata_block->block_id);
+
+  gettimeofday(&task_metadata_block->sched_timings.done_start, NULL);
+  int idx = task_metadata_block->accelerator_type;
+  task_metadata_block->sched_timings.running_sec[idx] += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
+  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.running_start.tv_usec;
+  DEBUG(printf("Set MB%u sched_timings.done_start to %lu %lu\n", task_metadata_block->block_id, task_metadata_block->sched_timings.done_start.tv_sec, task_metadata_block->sched_timings.done_start.tv_usec));
+
   // First release the accelerator
   release_accelerator_for_task(task_metadata_block);
 
@@ -413,7 +420,8 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
       if (arr_time < 0)   { arr_time = 0; }
       if (start_time < 0) { start_time = 0; }
       uint64_t end_time   = curr_time;
-      DEBUG(printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]));
+      DEBUG(printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->accelerator_type, task_metadata_block->accelerator_id, sptr->accel_name_str[task_metadata_block->accelerator_type]);
+	    printf("     MB%u : arr_time = %lu start_time = %lu curr_time = %lu\n", task_metadata_block->block_id, arr_time, start_time, curr_time));
       // First a line for the "Queue" PE
       /*printf(" MB%u 4_SL_VIZ: full MB:\n", task_metadata_block->block_id); 
 	print_base_metadata_block_contents(task_metadata_block);
@@ -470,10 +478,6 @@ void mark_task_done(task_metadata_block_t* task_metadata_block)
   global_finished_task_id_counter++;
   
   // Then, mark the task as "DONE" with execution
-  gettimeofday(&task_metadata_block->sched_timings.done_start, NULL);
-  int idx = task_metadata_block->accelerator_type;
-  task_metadata_block->sched_timings.running_sec[idx] += task_metadata_block->sched_timings.done_start.tv_sec - task_metadata_block->sched_timings.running_start.tv_sec;
-  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.running_start.tv_usec;
   task_metadata_block->status = TASK_DONE;
 
   // And finally, call the call-back if there is one... (which might clear out the metadata_block entirely)
