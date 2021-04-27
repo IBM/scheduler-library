@@ -77,6 +77,8 @@ typedef struct {
   unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
 
   unsigned max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
+
+  bool     enable_sched_viz_trace;
 } scheduler_get_datastate_in_parms_t;
 
 
@@ -204,11 +206,13 @@ typedef struct scheduler_datastate_block_struct {
 
   int32_t     next_avail_DAG_id;
   
+  bool        visualizer_output_enabled;
   int32_t     visualizer_task_start_count;
   int32_t     visualizer_task_stop_count;
   task_type_t visualizer_task_enable_type;
   unsigned    visualizer_output_started;
   uint64_t    visualizer_start_time_usec;
+
   unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy
@@ -240,11 +244,11 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
- #ifdef SL_VIZ
-  // ASCII trace for STOMP-viz
+  //#ifdef SL_VIZ
+  // ASCII trace for Scheduler-Visualization Trace Output
   FILE *sl_viz_fp;
   pthread_mutex_t sl_viz_out_mutex;   // Used to guard access to writing the sl_viz output entries.
- #endif
+  //#endif
   
   pthread_t* metadata_threads;
 
