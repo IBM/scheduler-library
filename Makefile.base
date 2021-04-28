@@ -140,9 +140,9 @@ endif
 LDLIBS += -L./sched_lib
 
 LDFLAGS ?=
+LDFLAGS += -lscheduler
 LDFLAGS += -lm
 LDFLAGS += -lpthread
-LDFLAGS += -lscheduler
 LDFLAGS += -ldl -rdynamic
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
