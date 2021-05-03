@@ -244,11 +244,9 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
-  //#ifdef SL_VIZ
   // ASCII trace for Scheduler-Visualization Trace Output
   FILE *sl_viz_fp;
   pthread_mutex_t sl_viz_out_mutex;   // Used to guard access to writing the sl_viz output entries.
-  //#endif
   
   pthread_t* metadata_threads;
 
