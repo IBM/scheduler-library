@@ -24,11 +24,16 @@
 #include<stdbool.h>
 
 //#include "base_types.h"
-typedef enum {error, success} status_t;
+typedef enum {success, error} status_t;
 
-#ifndef MAX_ACCEL_OF_EACH_TYPE
- #define MAX_ACCEL_OF_EACH_TYPE     4
-#endif
+typedef enum {
+  SCHED_CPU_ACCEL_T = 0,
+  SCHED_EPOCHS_1D_FFT_ACCEL_T, 
+  SCHED_EPOCHS_VITDEC_ACCEL_T,
+  SCHED_EPOCHS_CV_CNN_ACCEL_T,
+} scheduler_accelerator_type;
+
+#define MAX_ACCEL_OF_EACH_TYPE     4
 
 // A value that stands in for Infinite Time for task profiles.
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
@@ -244,11 +249,9 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t accel_alloc_mutex;   // Used to guard access to altering the accelerator allocations
 
-  //#ifdef SL_VIZ
   // ASCII trace for Scheduler-Visualization Trace Output
   FILE *sl_viz_fp;
   pthread_mutex_t sl_viz_out_mutex;   // Used to guard access to writing the sl_viz output entries.
-  //#endif
   
   pthread_t* metadata_threads;
 
@@ -301,6 +304,8 @@ typedef struct scheduler_datastate_block_struct {
 void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
+extern status_t set_up_scheduler();
+
 extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fname);
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
@@ -323,7 +328,9 @@ extern void cleanup_and_exit(scheduler_datastate_block_t* sptr, int rval);
 
 extern task_type_t register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t*);
 
-extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
+//extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
+//extern void set_num_accel_avail_of_type(scheduler_datastate_block_t* sptr, scheduler_accelerator_type aid, unsigned new_max_avail);
+extern accelerator_type_t register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_accelerator_type acid, int desired_number_in_pool);
 
 extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_type_t tid, sched_execute_task_function_t fptr);
 

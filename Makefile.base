@@ -34,24 +34,24 @@ CFLAGS += -DUSE_ESP_INTERFACE
 # This sets the maximum number of any Acceleartor type in this build
 #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
 #  But it could be a larger value as well
-ifdef CONFIG_MAX_ACCEL_ANY_TYPE
-CFLAGS += -DMAX_ACCEL_OF_EACH_TYPE=$(CONFIG_MAX_ACCEL_ANY_TYPE)
-endif
+#ifdef CONFIG_MAX_ACCEL_ANY_TYPE
+# CFLAGS += -DMAX_ACCEL_OF_EACH_TYPE=$(CONFIG_MAX_ACCEL_ANY_TYPE)
+#endif
 
 # This selects the number of each Acceleartor type:
 # MAX for the CPU is up to you -- that is "spawned CPU threads"
 # MAX for others is determined by the hardware run on
 ifdef CONFIG_NUM_CPU
-CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
+ CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
 endif
 ifdef CONFIG_NUM_VIT
-CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
+ CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
 endif
 ifdef CONFIG_NUM_FFT
-CFLAGS += -DNUM_FFT_ACCEL=$(CONFIG_NUM_FFT)
+ CFLAGS += -DNUM_FFT_ACCEL=$(CONFIG_NUM_FFT)
 endif
 ifdef CONFIG_NUM_CV
-CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
+ CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
 
 SW_STR = S
