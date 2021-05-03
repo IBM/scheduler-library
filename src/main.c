@@ -148,7 +148,6 @@ void print_usage(char * pname) {
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
   printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
   printf("                :              per each accelerator type\n");
-  // #ifdef SL_VIZ
   printf("\n");
   printf(" Options for the Scheduler-Visualizer tool (enable tracing to be visualized):\n");
   printf("    -O <fn>     : Output scheduler visualization trace information to file <fn>\n");
@@ -159,7 +158,6 @@ void print_usage(char * pname) {
   printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
   printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
   printf("                :   This parameter is mandatory to keep control of the trace file size\n");
-  // #endif
 
 }
 
@@ -452,11 +450,10 @@ int main(int argc, char *argv[])
   unsigned num_maxTasks_to_use = my_num_task_types;
   unsigned using_the_Test_Tasks = false;
   
-  // Scheduler-Visualizer tracing parameters
+  // Scheduler Visualization tracing parameters
   task_type_t viz_task_start_type  = NO_Task;
   int32_t     viz_task_start_count = -1;
   int32_t     viz_task_stop_count  = -1;
-
 
   //printf("SIZEOF pthread_t : %lu\n", sizeof(pthread_t));
   
@@ -605,20 +602,15 @@ int main(int argc, char *argv[])
       break;
 
     case 'i':
-      //#ifdef SL_VIZ
       viz_task_start_count = atol(optarg);
-      //#endif
       break;
 
     case 'I':
-      //#ifdef SL_VIZ
       viz_task_start_type = atol(optarg);
-      //#endif
+      break;
 
     case 'e':
-      //#ifdef SL_VIZ
       viz_task_stop_count = atol(optarg);
-      //#endif
       break;
 
     case ':':
@@ -636,15 +628,6 @@ int main(int argc, char *argv[])
     printf("extra arguments: %s\n", argv[optind]);
   }
 
-  /**#ifdef SL_VIZ
-     if (viz_task_stop_count == 0){
-     printf("ERROR - Task count must be >= 1 : %u specified (with '-e' option)\n", viz_task_stop_count);
-     print_usage(argv[0]);
-     exit(-1);
-     }
-     #endif
-  **/
-  
   if (pandc_repeat_factor == 0) {
     printf("ERROR - Plan-and-Control repeat factor must be >= 1 : %u specified (with '-p' option)\n", pandc_repeat_factor);
     print_usage(argv[0]);
@@ -770,7 +753,6 @@ int main(int argc, char *argv[])
     sprintf(cv_dict, "traces/objects_dictionary.dfn");
   }
 
-  //#ifdef SL_VIZ
   if (enable_sl_viz_output) {
     if (viz_task_start_type == NO_Task) {
       if (viz_task_start_count < 0) {
@@ -793,7 +775,6 @@ int main(int argc, char *argv[])
   } else {
     printf("No Scheduler-Viz tracing output\n");
   }
-  //#endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
