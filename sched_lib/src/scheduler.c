@@ -1480,7 +1480,6 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   if (sptr->sl_viz_fp != NULL) {
     fclose(sptr->sl_viz_fp);
   }
-  //#endif
 
   cleanup_state(sptr);
 
