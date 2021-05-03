@@ -40,6 +40,25 @@
 */
 #include "scheduler.h"
 
+// These are global "invariants" (determined by the physical hardware)
+//  Mostly this is the pool of available hardware accelerator types...
+struct global_hardware_state_block {
+  char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+  char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+
+  // This is a table of the execution functions for the various Task Types in the scheduler
+  //  We set this up with one "set" of entries per JOB_TYPE
+  //   where each set has one execute function per possible TASK TARGET (on which it can execute)
+  //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
+  sched_execute_task_function_t* scheduler_execute_task_function[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+
+  do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
+  do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
+  output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
+
+  int num_accelerators_of_type[MAX_ACCEL_TYPES];
+};
+
 int32_t global_task_id_counter = 0;
 int32_t global_finished_task_id_counter = 0;
 
@@ -830,9 +849,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
   pthread_mutex_init(&(sptr->free_metadata_mutex), NULL);
   pthread_mutex_init(&(sptr->accel_alloc_mutex), NULL);
   pthread_mutex_init(&(sptr->task_queue_mutex), NULL);
-  //#ifdef SL_VIZ
   pthread_mutex_init(&(sptr->sl_viz_out_mutex), NULL);
-  //#endif
 
   struct timeval init_time;
   gettimeofday(&init_time, NULL);
@@ -1460,7 +1477,6 @@ void shutdown_scheduler(scheduler_datastate_block_t* sptr)
   // Dynamically unload the scheduling policy (plug-in)
   dlclose(sptr->policy_handle);
 
-  //#ifdef SL_VIZ
   if (sptr->sl_viz_fp != NULL) {
     fclose(sptr->sl_viz_fp);
   }
