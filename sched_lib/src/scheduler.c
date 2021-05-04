@@ -43,20 +43,20 @@
 // These are global "invariants" (determined by the physical hardware)
 //  Mostly this is the pool of available hardware accelerator types...
 struct global_hardware_state_block_struct {
-  char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
-  char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+  char accel_name_str[SCHED_MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+  char accel_desc_str[SCHED_MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
 
   // This is a table of the execution functions for the various Task Types in the scheduler
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
   //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-  sched_execute_task_function_t* scheduler_execute_task_function[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  sched_execute_task_function_t* scheduler_execute_task_function[SCHED_MAX_ACCEL_TYPES]; // array over TASK_TYPES
 
-  do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
-  do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
-  output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
+  do_accel_initialization_t do_accel_init_function[SCHED_MAX_ACCEL_TYPES];
+  do_accel_closeout_t do_accel_closeout_function[SCHED_MAX_ACCEL_TYPES];
+  output_accel_run_stats_t output_accel_run_stats_function[SCHED_MAX_ACCEL_TYPES];
 
-  int num_accelerators_of_type[MAX_ACCEL_TYPES];
+  int num_accelerators_of_type[SCHED_MAX_ACCEL_TYPES];
 } global_hardware_state_block;
 
 int32_t global_task_id_counter = 0;
@@ -64,7 +64,7 @@ int32_t global_finished_task_id_counter = 0;
 
 scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_types   = 8,   // MAX_TASK_TYPES,
-  .max_accel_types  = MAX_ACCEL_TYPES,
+  .max_accel_types  = SCHED_MAX_ACCEL_TYPES,
   
   .max_accel_of_any_type = 4, // Some random initial value - was MAX_ACCEL_OF_ANY_TYPE,
 
@@ -647,7 +647,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function\n");
     exit(-99);
   }
-  for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+  for (int ai = 0; ai < inp->max_accel_types; ai++) {
     sptr->scheduler_execute_task_function[ai] = calloc(inp->max_task_types, sizeof(sched_execute_task_function_t)); //[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
     sched_state_size += inp->max_task_types * sizeof(sched_execute_task_function_t);
     if (sptr->scheduler_execute_task_function[ai] == NULL) {
@@ -735,7 +735,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accelerator_in_use_by\n");
     exit(-99);
   }
-  for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
+  for (int ti = 0; ti < inp->max_accel_types; ti++) {
     sptr->accelerator_in_use_by[ti] = malloc(inp->max_accel_of_any_type * sizeof(volatile int));
     sched_state_size += inp->max_accel_of_any_type * sizeof(volatile int);
     if (sptr->accelerator_in_use_by[ti] == NULL) {
@@ -836,7 +836,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_computed_on\n", mi);
       exit(-99);
     }
-    for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+    for (int ai = 0; ai < inp->max_accel_types; ai++) {
       sptr->master_metadata_pool[mi].task_computed_on[ai] = malloc(inp->max_task_types * sizeof(uint32_t));
       sched_state_size += inp->max_task_types * sizeof(uint32_t);
       if (sptr->master_metadata_pool[mi].task_computed_on[ai] == NULL) {
@@ -853,7 +853,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].accelerator_allocated_to_MB = malloc(MAX_ACCEL_TYPES /*inp->max_accel_types*/ * sizeof(uint32_t*));
+    sptr->master_metadata_pool[mi].accelerator_allocated_to_MB = malloc(inp->max_accel_types * sizeof(uint32_t*));
     sched_state_size += inp->max_accel_types * sizeof(uint32_t*);
     if (sptr->master_metadata_pool[mi].accelerator_allocated_to_MB == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].accelerator_allocated_to_MB\n", mi);
@@ -1787,8 +1787,8 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
     printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", (sptr->limits.max_accel_types-1), acid);
     cleanup_and_exit(sptr, -32);
   }
-  if (acid >= MAX_ACCEL_TYPES) {
-    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", MAX_ACCEL_TYPES, (acid+1));
+  if (acid >= SCHED_MAX_ACCEL_TYPES) {
+    printf("ERROR: Ran out of Accel IDs: SCHED_MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", SCHED_MAX_ACCEL_TYPES, (acid+1));
     cleanup_and_exit(sptr, -32);
   }
   sptr->next_avail_accel_id++;
@@ -1820,8 +1820,8 @@ void
 set_num_accel_avail_of_type(scheduler_datastate_block_t* sptr, scheduler_accelerator_type acid, unsigned new_max_avail)
 {
   DEBUG(printf("In set_num_accel_aveil_of_type for Accel_Type %u\n"));
-  if (acid >= MAX_ACCEL_TYPES) {
-    printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", MAX_ACCEL_TYPES, (acid+1));
+  if (acid >= SCHED_MAX_ACCEL_TYPES) {
+    printf("ERROR: Ran out of Accel IDs: SCHED_MAX_ACCEL_TYPES = %u and we are adding accelerator %u\n", SCHED_MAX_ACCEL_TYPES, (acid+1));
     cleanup_and_exit(sptr, -32);
   }
   DEBUG(printf("  Limiting to %u for Accel_Type %u = %s ( %s )\n", new_max_avail, acid, sptr->accel_name_str[acid], sptr->accel_desc_str[acid]));
@@ -1833,10 +1833,10 @@ accelerator_type_t
 register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_accelerator_type sa_id, int desired_num)
 {
   //DEBUG(
-  printf("In register_using_accelerator_pool for accelId %u (MAX %u) for %d desired number\n", sa_id, MAX_ACCEL_TYPES, desired_num);//);
-  printf("==> MAX_ACCEL_TYPES = %u : MAX_ACCEL_OF_ANY_TYPE = %u\n", MAX_ACCEL_TYPES, sptr->limits.max_accel_of_any_type);
-  if (sa_id >= MAX_ACCEL_TYPES) {
-    printf("ERROR: Unrecognized scheduler_accelerator_type %u (max is %u)\n", sa_id, MAX_ACCEL_TYPES);
+  printf("In register_using_accelerator_pool for accelId %u (MAX %u) for %d desired number\n", sa_id, SCHED_MAX_ACCEL_TYPES, desired_num);//);
+  //printf("==> MAX_ACCEL_TYPES = %u : MAX_ACCEL_OF_ANY_TYPE = %u\n", MAX_ACCEL_TYPES, sptr->limits.max_accel_of_any_type);
+  if (sa_id >= SCHED_MAX_ACCEL_TYPES) {
+    printf("ERROR: Unrecognized scheduler_accelerator_type %u (max is %u)\n", sa_id, SCHED_MAX_ACCEL_TYPES);
     cleanup_and_exit(sptr, -32);
   }
 	

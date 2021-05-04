@@ -23,6 +23,8 @@
 // This is the type for distance measurements
 typedef float distance_t;
 
+#define MY_APP_ACCEL_TYPES  4
+
 /* Pre-defined labels used by the computer vision kernel */
 typedef enum {
   myself = -1,

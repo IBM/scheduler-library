@@ -80,11 +80,11 @@ task_type_t test_task_type;
 unsigned** p0_hw_threshold;
 
 // These are defined by the task-type
-uint64_t fft_profile[2][MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
-uint64_t vit_profile[4][MAX_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
-uint64_t cv_profile[MAX_ACCEL_TYPES];
-uint64_t test_profile[MAX_ACCEL_TYPES];
-uint64_t plan_ctrl_profile[MAX_ACCEL_TYPES];
+uint64_t fft_profile[2][MY_APP_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
+uint64_t cv_profile[MY_APP_ACCEL_TYPES];
+uint64_t test_profile[MY_APP_ACCEL_TYPES];
+uint64_t plan_ctrl_profile[MY_APP_ACCEL_TYPES];
 
 bool     all_obstacle_lanes_mode = false;
 bool     no_crit_cnn_task = false;
@@ -294,7 +294,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 
 void set_up_task_on_accel_profile_data()
 {
-  for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
     fft_profile[0][ai] = ACINFPROF;
     fft_profile[1][ai] = ACINFPROF;
     vit_profile[0][ai] = ACINFPROF;
@@ -355,39 +355,39 @@ void set_up_task_on_accel_profile_data()
   }
   DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
 	printf("%15s :", "fft_profile[0]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", fft_profile[0][ai]);
 	} printf("\n");
 	printf("%15s :", "fft_profile[1]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", fft_profile[1][ai]);
 	} printf("\n");
 	printf("%15s :", "vit_profile[0]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", vit_profile[0][ai]);
 	} printf("\n");
 	printf("%15s :", "vit_profile[1]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", vit_profile[1][ai]);
 	} printf("\n");
 	printf("%15s :", "vit_profile[2]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", vit_profile[2][ai]);
 	} printf("\n");
 	printf("%15s :", "vit_profile[3]");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", vit_profile[3][ai]);
 	} printf("\n");
 	printf("%15s :", "cv_profile");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", cv_profile[ai]);
 	} printf("\n");
 	printf("%15s :", "pnc_profile");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", plan_ctrl_profile[ai]);
 	} printf("\n");
 	printf("%15s :", "test_profile");
-	for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	  printf(" 0x%016lx", test_profile[ai]);
 	} printf("\n");
 	printf("\n"));
@@ -625,6 +625,7 @@ int main(int argc, char *argv[])
   // Alter the default parms to those values we want for this run...
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
+  sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
   sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
   //printf("Using %u tasks\n", sched_inparms->max_task_types);
   
@@ -646,12 +647,12 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
-    p0_hw_threshold[ti] = malloc(MAX_ACCEL_TYPES * sizeof(unsigned));
+    p0_hw_threshold[ti] = malloc(MY_APP_ACCEL_TYPES * sizeof(unsigned));
     if (p0_hw_threshold[ti] == NULL) {
       printf("ERROR: main couldn't allocate memory for p0_hw_threshold[%u]\n", ti);
       exit(-1);
     }
-    for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+    for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
       p0_hw_threshold[ti][ai] = 101; // Pre-set all to be 0% chance of using any HWR
     }
   }
@@ -797,7 +798,7 @@ int main(int argc, char *argv[])
   DEBUG(printf("p0_hw_threshold is @ %p\n", p0_hw_threshold);
 	for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
 	  printf("p0_hw_threshold[%2u] @ %p :", ti, p0_hw_threshold[ti]);
-	  for (int ai = 0; ai < MAX_ACCEL_TYPES; ai++) {
+	  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
 	    printf(" %3u", p0_hw_threshold[ti][ai]);
 	  }
 	  printf("\n");
