@@ -1,14 +1,17 @@
 # Scheduler Library (SL)
 
-This is a Software Development Environment for initial development, deployment, and testing of a *smart scheduler*. This code provides the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> (FFT and Viterbi) kernels (i.e. the C-Subset of Mini-ERA) implemented atop a Scheduler Library (SL).  Calls to execute the FFT or Viterbi (accelerator functions) are now turned into calls to SL to `request_execution` of a task (either an `FFT_TASK` or a `VITERBI_TASK`) and SL will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
+This is a Software Development Environment for the development, deployment, and testing of a *smart scheduler*. This code provides the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application (FFT and Viterbi kernels -- i.e. the C-Subset of Mini-ERA) implemented atop a Scheduler Library (SL).  Calls to execute the FFT or Viterbi (accelerator functions) are now turned into requests for the Scheduler to execute the task, and the Scheduler will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
 
 ## Requirements
 
 SL has been successfully built and executed using the following set-up:
  - Ubuntu 18.04
  - Ubuntu 16.04
-
-Other platforms should also work; this implementation does NOT support (yet) the CV/CNN tensorflow model code, and thus does not require that support, etc.  This code does require gcc or similar/compatible compiler, an up to date pthreads library, and the C99 standard.
+ - Centos7
+ 
+Other platforms should also work.
+DTthis implementation currently does NOT support invocation of the hardware CV/CNN model code, or the (external, python-based) software CV/CNN tensorflow model code,
+and thus does not require that support, etc.  This code does require gcc or similar/compatible compiler, an up to date pthreads library, and the C99 standard.
 
 ## Installation and Execution
 The installation and execution are fairly standard, via github clone and makefiles:
@@ -51,17 +54,28 @@ The Mini-ERA + SL build supports more than just a basic Linux platform; there is
 
 The config file contains a series of definitions, like #define macros or environment variables, used to guide the default make behavior. These contents are:
 
-- `DO_CROSS_COMPILATION=y`  indicates we are cross-compiling (uses the cross-compiler defined in Makefile)
-- `COMPILE_TO_ESP=y`	  indicates we are compiling to target the ESP RISC-V SoC environment
-- `CONFIG_ESP_INTERFACE=y`  this should always be set -- historical control to choose between some function interfaces.
-- `CONFIG_FFT_EN=y`	  enable FFT Hardware Accelerators
-- `CONFIG_FFT_FX=32`	  indicates FFT accelerators use 32-bit FXP format (can specify 64)
-- `CONFIG_FFT_BITREV=y`	  indicates FFT accelerators include the bit-reverse operation
-- `CONFIG_VITERBI_EN=y`	  enable Viterbi Decode Hardware Accelerators
-- `CONFIG_KERAS_CV_BYPASS=y`	 turns off the Tensorflow code, etc. -- Leave this enabled!
-- `CONFIG_VERBOSE=y`	  turns on a LOT of debugging output
-- `CONFIG_DBG_THREADS=y`	  turns on debugging output for the threads 
-- `CONFIG_GDB=y`		  indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
+- `DO_CROSS_COMPILATION=y`    indicates we are cross-compiling (uses the cross-compiler defined in Makefile)
+- `COMPILE_TO_ESP=y`  	      indicates we are compiling to target the ESP RISC-V SoC environment
+- `CONFIG_ESP_INTERFACE=y`    this should always be set -- historical control to choose between some function interfaces.
+- `CONFIG_FFT_EN=y`	      enable FFT Hardware Accelerators
+- `CONFIG_FFT_FX=32`	      indicates FFT accelerators use 32-bit FXP format (can specify 64)
+- `CONFIG_FFT_BITREV=y`	      indicates FFT accelerators include the bit-reverse operation
+- `CONFIG_VITERBI_EN=y`	      enable Viterbi Decode Hardware Accelerators
+- `CONFIG_KERAS_CV_BYPASS=y`  turns off the Tensorflow code, etc. -- Leave this enabled!
+- `CONFIG_VERBOSE=y`	      turns on a LOT of debugging output
+- `CONFIG_DBG_THREADS=y`      turns on debugging output for the threads 
+- `CONFIG_GDB=y`	      indicates compilation should iclude the "-g" flag to retain symbols, etc. which provides for greater debugger support, etc.
+
+- `CONFIG_NUM_CPU=3`	indicates the number of `CPU` accelerators that can be used/scheduled for this build
+- `CONFIG_NUM_VIT=0`	indicates the number of Viterbi-Decoder hardware accelerators that can be used/scheduled for this build
+- `CONFIG_NUM_FFT=0`	indicates the number of 1D-FFT hardware accelerators that can be used/scheduled for this build
+- `CONFIG_NUM_CV=0`	indicates the number of CV/CNN hardware accelerators that can be used/scheduled for this build
+
+- `CONFIG_GDB=y`	indicates the build should include symbols, to support gdb/debugger use
+- `CONFIG_VERBOSE=y`	indicates the build will include verbose debugging output
+- `CONFIG_DBG_THREADS=y` indicates the build will include thread-debug messaging
+
+There may be others, and these may be modified as we continue development.
 
 ### Usage
 
@@ -104,7 +118,18 @@ Usage: ./test-scheduler-S-P3V0F0N0 <OPTIONS>
     -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.
                 :   Two tuple formats are acceptable:
                 :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected
-                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type
+                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time
+                :              per each accelerator type
+
+ Options for the Scheduler-Visualizer tool (enable tracing to be visualized):
+    -O <fn>     : Output scheduler visualization trace information to file <fn>
+    -i <N>      : Number of executed tasks (of any type) before starting task logging
+                :   If not specified, then logging starts with the execution
+    -I <type>   : Task type that triggers task logging for the Schedule-Visualization tool
+                :   If not specified, then logging starts with the execution
+                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied
+    -e <N>      : Number of executed tasks (of any type) before stopping task logging
+                :   This parameter is mandatory to keep control of the trace file size
 ```
 
 To actually execute a trace, one must point to the trace in the trace repository (subdirectory ```traces```) using the ```-t``` option.
@@ -147,10 +172,28 @@ Usage: ./sim-test-scheduler-S-P3V0F0N0 <OPTIONS>
     -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.
                 :   Two tuple formats are acceptable:
                 :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected
-                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time per each accelerator type
+                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time
+                :              per each accelerator type
+
+ Options for the Scheduler-Visualizer tool (enable tracing to be visualized):
+    -O <fn>     : Output scheduler visualization trace information to file <fn>
+    -i <N>      : Number of executed tasks (of any type) before starting task logging
+                :   If not specified, then logging starts with the execution
+    -I <type>   : Task type that triggers task logging for the Schedule-Visualization tool
+                :   If not specified, then logging starts with the execution
+                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied
+    -e <N>      : Number of executed tasks (of any type) before stopping task logging
+                :   This parameter is mandatory to keep control of the trace file size
 ```
 
 For execution in simulation mode (e.g. using ```sim-test-scheduler*```) no trace is necessary, and the simulation provides the inputs.
+
+## Code/Layout
+
+This code provides a "Scheduler Library" and an example application (Mini-ERA) that uses it.
+The "Scheduler-Library" code is contained under the ```sched_lib``` subdirectory.  There is a brief README there as well, which focuses more on the library portion, adn it has its own Makefiole.  Essentially, the "scheduler Library" should be seen as an entirely separate body of code, that produces a "service platform" to which an application can connect and utilize those services.
+
+The remaining code, at the top level (and in the ```include``` and ```src``` directories) contains the application that is making use of the scheduler, along with some additional code that provides definitions (for the application) of the ```tasks``` that the application will employ (e.g. see ```include/vit_task.h``` and ```src/vit_task.c``` for the Viterbi Decoder task definitions).
 
 ## Status
 
