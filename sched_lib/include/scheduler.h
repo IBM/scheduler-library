@@ -33,8 +33,6 @@ typedef enum {
   SCHED_EPOCHS_CV_CNN_ACCEL_T,
 } scheduler_accelerator_type;
 
-#define MAX_ACCEL_OF_EACH_TYPE     4
-
 // A value that stands in for Infinite Time for task profiles.
 #define ACINFPROF  0x0f00deadbeeff00d    // A recognizable "infinite-time" value
 
@@ -81,7 +79,7 @@ typedef struct {
 
   unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
 
-  unsigned max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
+  int      max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
 
   bool     enable_sched_viz_trace;
 } scheduler_get_datastate_in_parms_t;
@@ -142,10 +140,12 @@ typedef struct task_metadata_entry_struct {
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
+  // Statistics
   uint32_t* gets_by_task_type; // Count of times this metadata block allocated per task type.
   uint32_t* frees_by_task_type; // Count of times this metadata block allocated per task type.
 
-  uint32_t accelerator_allocated_to_MB[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
+  // The number of tiumes this MB was allocated to use each accelerator in the system
+  uint32_t** accelerator_allocated_to_MB; //[MAX_ACCEL_TYPES]; // [MAX_ACCEL_OF_ANY_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
@@ -286,7 +286,7 @@ typedef struct scheduler_datastate_block_struct {
   do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
   output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
 
-  volatile int accelerator_in_use_by[MAX_ACCEL_TYPES][MAX_ACCEL_OF_EACH_TYPE];
+  volatile int* accelerator_in_use_by[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
   int num_accelerators_of_type[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;

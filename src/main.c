@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
     printf("Failed to do initial, one-time Scheduler set-up!\n");
     exit(-1);
   }
-  printf("==> MAX_ACCEL_TYPES = %u : MAX_ACCEL_OF_EACH_TYPE = %u\n", MAX_ACCEL_TYPES, MAX_ACCEL_OF_EACH_TYPE);
+
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'

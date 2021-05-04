@@ -66,7 +66,7 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   .max_task_types   = 8,   // MAX_TASK_TYPES,
   .max_accel_types  = MAX_ACCEL_TYPES,
   
-  .max_accel_of_any_type = MAX_ACCEL_OF_EACH_TYPE,
+  .max_accel_of_any_type = 4, // Some random initial value - was MAX_ACCEL_OF_ANY_TYPE,
 
   .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
   .max_data_space_bytes = MAX_DATA_SPACE_BYTES,
@@ -662,6 +662,16 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     exit(-99);
   }
   
+  //sptr->accelerator_in_use_by = malloc(MAX_ACCEL_TYPES /*inp->max_accel_types*/ * sizeof(volatile int*));
+  for (int ti = 0; ti < MAX_ACCEL_TYPES; ti++) {
+    sptr->accelerator_in_use_by[ti] = malloc(inp->max_accel_of_any_type * sizeof(volatile int));
+    sched_state_size += inp->max_accel_of_any_type * sizeof(volatile int);
+    if (sptr->accelerator_in_use_by[ti] == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->->accelerator_in_use_by[%u]\n", ti);
+      exit(-99);
+    }
+  }
+
   sptr->free_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sptr->free_metadata_pool == NULL) {
@@ -738,6 +748,21 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
       exit(-99);
     }
 
+    sptr->master_metadata_pool[mi].accelerator_allocated_to_MB = malloc(MAX_ACCEL_TYPES /*inp->max_accel_types*/ * sizeof(uint32_t*));
+    sched_state_size += inp->max_accel_types * sizeof(uint32_t*);
+    if (sptr->master_metadata_pool[mi].accelerator_allocated_to_MB == NULL) {
+      printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].accelerator_allocated_to_MB\n", mi);
+      exit(-99);
+    }
+    for (int ti = 0; ti < inp->max_accel_types; ti++) {
+      sptr->master_metadata_pool[mi].accelerator_allocated_to_MB[ti] = malloc(inp->max_accel_of_any_type * sizeof(uint32_t));
+      sched_state_size += inp->max_accel_of_any_type * sizeof(uint32_t);
+      if (sptr->master_metadata_pool[mi].accelerator_allocated_to_MB[ti] == NULL) {
+	printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].accelerator_allocated_to_MB[%u]\n", mi, ti);
+	exit(-99);
+      }
+    }
+    
     sptr->master_metadata_pool[mi].data_space = malloc(inp->max_data_space_bytes);
     sched_state_size += inp->max_data_space_bytes;
     if (sptr->master_metadata_pool[mi].data_space == NULL) {
@@ -902,27 +927,6 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
     cleanup_and_exit(sptr, -1);
   }
 
-  int parms_error = 0;
-  /*if (MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CPU_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CPU_ACCEL);
-    parms_error = 1;
-    }
-    if (MAX_ACCEL_OF_EACH_TYPE < NUM_FFT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_FFT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_FFT_ACCEL);
-    parms_error = 1;
-    }
-    if (MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_VIT_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_VIT_ACCEL);
-    parms_error = 1;
-    }
-    if (MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL) {
-    printf("INIT-SCHED: ERROR : MAX_ACCEL_OF_EACH_TYPE < NUM_CV_ACCEL : %u < %u\n", MAX_ACCEL_OF_EACH_TYPE, NUM_CV_ACCEL);
-    parms_error = 1;
-    }
-    if (parms_error != 0) {
-    cleanup_and_exit(sptr, -2);
-    }*/
-  
   pthread_mutex_init(&(sptr->free_metadata_mutex), NULL);
   pthread_mutex_init(&(sptr->accel_alloc_mutex), NULL);
   pthread_mutex_init(&(sptr->task_queue_mutex), NULL);
@@ -973,7 +977,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
 
     // And some allocation stats stuff:
     for (int ti = 0; ti < sptr->limits.max_accel_types; ti++) {
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
 	sptr->master_metadata_pool[i].accelerator_allocated_to_MB[ti][ai] = 0;
       }
     }
@@ -1031,7 +1035,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
   }
   
   for (int i = 0; i < sptr->limits.max_accel_types; i++) {
-    for (int j = 0; j < MAX_ACCEL_OF_EACH_TYPE; j++) {
+    for (int j = 0; j < sptr->limits.max_accel_of_any_type; j++) {
       sptr->accelerator_in_use_by[i][j] = -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
     }
   }
@@ -1508,11 +1512,11 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
 
   printf("\nAccelerator Usage Statistics:\n");
   {
-    unsigned totals[sptr->limits.max_accel_types-1][MAX_ACCEL_OF_EACH_TYPE];
+    unsigned totals[sptr->limits.max_accel_types-1][sptr->limits.max_accel_of_any_type];
     unsigned top_totals[sptr->limits.max_accel_types-1];
     for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
       top_totals[ti] = 0;
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
 	totals[ti][ai] = 0;
 	for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
 	  totals[ti][ai] += sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[ti][ai];
@@ -1521,7 +1525,7 @@ void output_run_statistics(scheduler_datastate_block_t* sptr)
     }
     printf("\nPer-Accelerator allocation/usage statistics:\n");
     for (int ti = 0; ti < sptr->limits.max_accel_types-1; ti++) {
-      for (int ai = 0; ai < MAX_ACCEL_OF_EACH_TYPE; ai++) {
+      for (int ai = 0; ai < sptr->limits.max_accel_of_any_type; ai++) {
 	if (ai < sptr->num_accelerators_of_type[ti]) { 
 	  printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, sptr->accel_name_str[ti], ai, totals[ti][ai]);
 	} else {
@@ -1697,8 +1701,8 @@ register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_de
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }
-  if (MAX_ACCEL_OF_EACH_TYPE < sptr->num_accelerators_of_type[acid]) {
-    printf("ERROR: MAX_ACCEL_OF_EACH_TYPE < sptr->num_accelerators_of_type[%u] : %u < %u\n", acid, MAX_ACCEL_OF_EACH_TYPE, sptr->num_accelerators_of_type[acid]);
+  if (sptr->limits.max_accel_of_any_type < sptr->num_accelerators_of_type[acid]) {
+    printf("ERROR: MAX_ACCEL_OF_ANY_TYPE < sptr->num_accelerators_of_type[%u] : %u < %u\n", acid, sptr->limits.max_accel_of_any_type, sptr->num_accelerators_of_type[acid]);
     cleanup_and_exit(sptr, -33);
   }
   return acid;
@@ -1725,7 +1729,7 @@ register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_acc
 {
   //DEBUG(
   printf("In register_using_accelerator_pool for accelId %u (MAX %u) for %d desired number\n", sa_id, MAX_ACCEL_TYPES, desired_num);//);
-  printf("==> MAX_ACCEL_TYPES = %u : MAX_ACCEL_OF_EACH_TYPE = %u\n", MAX_ACCEL_TYPES, MAX_ACCEL_OF_EACH_TYPE);
+  printf("==> MAX_ACCEL_TYPES = %u : MAX_ACCEL_OF_ANY_TYPE = %u\n", MAX_ACCEL_TYPES, sptr->limits.max_accel_of_any_type);
   if (sa_id >= MAX_ACCEL_TYPES) {
     printf("ERROR: Unrecognized scheduler_accelerator_type %u (max is %u)\n", sa_id, MAX_ACCEL_TYPES);
     cleanup_and_exit(sptr, -32);
@@ -1743,6 +1747,10 @@ register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_acc
   snprintf(sptr->accel_desc_str[acid], MAX_ACCEL_DESC_LEN, "%s", global_hardware_state_block.accel_desc_str[sa_id]);
   if (desired_num > global_hardware_state_block.num_accelerators_of_type[sa_id]) {
     printf("ERROR: Specified desired number of accelerators ( %u ) is more than available in the hardware ( %u )\n", desired_num, global_hardware_state_block.num_accelerators_of_type[sa_id]);
+    cleanup_and_exit(sptr, -33);
+  }
+  if (desired_num > sptr->limits.max_accel_of_any_type) {
+    printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num,sptr->limits.max_accel_of_any_type);
     cleanup_and_exit(sptr, -33);
   }
   if (desired_num < 0) {
