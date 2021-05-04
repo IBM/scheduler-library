@@ -47,7 +47,6 @@ typedef struct {
   struct timeval fft_comp_start;
   struct timeval fft_cvtout_start;
   struct timeval cdfmcw_start;
-  struct timeval time_val[MAX_TASK_TIMING_SETS-8];
 
   uint64_t call_sec[MAX_ACCEL_TYPES];
   uint64_t fft_sec[MAX_ACCEL_TYPES];
@@ -57,7 +56,6 @@ typedef struct {
   uint64_t fft_comp_sec[MAX_ACCEL_TYPES];
   uint64_t fft_cvtout_sec[MAX_ACCEL_TYPES];
   uint64_t cdfmcw_sec[MAX_ACCEL_TYPES];
-  uint64_t time_sec[(MAX_TASK_TIMING_SETS-8)*MAX_ACCEL_TYPES];
   
   uint64_t call_usec[MAX_ACCEL_TYPES];
   uint64_t fft_usec[MAX_ACCEL_TYPES];
@@ -67,7 +65,6 @@ typedef struct {
   uint64_t fft_comp_usec[MAX_ACCEL_TYPES];
   uint64_t fft_cvtout_usec[MAX_ACCEL_TYPES];
   uint64_t cdfmcw_usec[MAX_ACCEL_TYPES];
-  uint64_t time_usec[(MAX_TASK_TIMING_SETS-8)*MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb);

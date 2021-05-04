@@ -39,13 +39,8 @@ typedef struct { // The "Plan-and-Control" Task view of "data"
 
 typedef struct {
   struct timeval call_start;
-  struct timeval time_val[MAX_TASK_TIMING_SETS-1];
-
   uint64_t call_sec[MAX_ACCEL_TYPES];
-  uint64_t time_sec[(MAX_TASK_TIMING_SETS-1)*MAX_ACCEL_TYPES];
-
   uint64_t call_usec[MAX_ACCEL_TYPES];
-  uint64_t time_usec[(MAX_TASK_TIMING_SETS-1)*MAX_ACCEL_TYPES];
 } plan_ctrl_timing_data_t;
 
 

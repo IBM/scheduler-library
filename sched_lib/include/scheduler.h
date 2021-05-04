@@ -102,9 +102,10 @@ typedef struct {
 } sched_timing_data_t;
 
 typedef struct { // This allows each task to track up to 16 total internal task timings...
-  struct timeval time_val[MAX_TASK_TIMING_SETS];
-  uint64_t time_sec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES];
-  uint64_t time_usec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES];
+/*   struct timeval time_val[MAX_TASK_TIMING_SETS]; */
+/*   uint64_t time_sec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES]; */
+/*   uint64_t time_usec[MAX_TASK_TIMING_SETS][MAX_ACCEL_TYPES]; */
+  uint64_t timing_data[160];
 } task_timing_data_t;
 
 // This is a metadata structure; it is used to hold all information for any task

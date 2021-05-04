@@ -846,7 +846,7 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
     }
 
 
-    sptr->master_metadata_pool[mi].task_timings = malloc(inp->max_task_types * sizeof(task_timing_data_t));
+    sptr->master_metadata_pool[mi].task_timings = calloc(inp->max_task_types, sizeof(task_timing_data_t));
     sched_state_size += inp->max_task_types * sizeof(task_timing_data_t);
     if (sptr->master_metadata_pool[mi].task_timings == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_timings\n", mi);
@@ -1070,7 +1070,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
 	sptr->master_metadata_pool[i].task_computed_on[ai][ti] = 0;
       }
     }
-    for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
+    /*for (int ti = 0; ti < sptr->limits.max_task_types; ti++) {
       for (int tii = 0; tii < sptr->limits.max_task_timing_sets; tii++) {
 	//sptr->master_metadata_pool[i].task_timings[ti].time_val[tii] = 0;
 	for (int ai = 0; ai < sptr->limits.max_accel_types; ai++) {
@@ -1078,7 +1078,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
 	  sptr->master_metadata_pool[i].task_timings[ti].time_usec[tii][ai] = 0;
 	}
       }
-    }
+      }*/
 
     // And some allocation stats stuff:
     for (int ti = 0; ti < sptr->limits.max_accel_types; ti++) {
