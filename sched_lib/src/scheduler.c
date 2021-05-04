@@ -68,10 +68,10 @@ scheduler_get_datastate_in_parms_t sched_state_def_parms = {
   
   .max_accel_of_any_type = 4, // Some random initial value - was MAX_ACCEL_OF_ANY_TYPE,
 
-  .max_metadata_pool_blocks = GLOBAL_METADATA_POOL_BLOCKS,
-  .max_data_space_bytes = MAX_DATA_SPACE_BYTES,
+  .max_metadata_pool_blocks = 32, // Some default value - was GLOBAL_METADATA_POOL_BLOCKS,
+  .max_data_space_bytes = (256*1024), // Some default value - was MAX_DATA_SPACE_BYTES,
 
-  .max_task_timing_sets = MAX_TASK_TIMING_SETS,
+  .max_task_timing_sets = 16, // Some default value - was MAX_TASK_TIMING_SETS,
 
   .enable_sched_viz_trace = false,
 };

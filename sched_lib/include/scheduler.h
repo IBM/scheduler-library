@@ -31,6 +31,7 @@ typedef enum {
   SCHED_EPOCHS_1D_FFT_ACCEL_T, 
   SCHED_EPOCHS_VITDEC_ACCEL_T,
   SCHED_EPOCHS_CV_CNN_ACCEL_T,
+  SCHED_MAX_ACCEL_TYPES,
 } scheduler_accelerator_type;
 
 // A value that stands in for Infinite Time for task profiles.
@@ -63,11 +64,6 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
 
-// These are fields defined by the application when it gets/sets up a new cheduler datastate block
-#define SCHED_MAX_ACCEL_TYPES    4
-#define GLOBAL_METADATA_POOL_BLOCKS 32
-#define MAX_TASK_TIMING_SETS   16
-#define MAX_DATA_SPACE_BYTES   (128*1024 + 64)  // Slightly larger than max size used in FFT
 
 typedef struct {
   unsigned max_task_types;	// The max number of task types that might be used in this run/usage

@@ -420,7 +420,8 @@ int main(int argc, char *argv[])
 
   unsigned sched_holdoff_usec = 0;
   char policy[256];
-  unsigned num_MBs_to_use      = GLOBAL_METADATA_POOL_BLOCKS;
+  unsigned num_MBs_to_use      = 32; // pick a value ...
+  
   unsigned num_maxTasks_to_use = my_num_task_types;
   unsigned using_the_Test_Tasks = false;
   
@@ -626,6 +627,9 @@ int main(int argc, char *argv[])
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
   sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
+  // keep the default sched_inparms->max_accel_of_any_type = 4;
+  sched_inparms->max_data_space_bytes = (128*1024 + 64);
+  
   sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
   //printf("Using %u tasks\n", sched_inparms->max_task_types);
   
