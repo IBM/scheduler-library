@@ -8,10 +8,16 @@ ifdef DO_CROSS_COMPILATION
 endif
 
 ifdef COMPILE_TO_ESP
- ESP_ROOT ?= $(realpath ../../esp)
+ ESP_ROOT ?= $(realpath ../../../esp)
  ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
+
+ $(info $$ESP_ROOT is [${ESP_ROOT}])
+ $(info $$ESP_DRIVERS is [${ESP_DRIVERS}])
+ $(info $$ESP_DRV_LINUX is [${ESP_DRV_LINUX}])
 endif
+
+
 
 CC = gcc -std=c99
 
@@ -164,7 +170,43 @@ TARGET=libscheduler.a
 #$(info $$TARGET is [${TARGET}])
 
 
-all: $(TARGET)
+all: esp-libs $(TARGET)
+
+ESP_BUILD_DRIVERS     = esp-build/drivers
+
+esp-build:
+	@mkdir -p $(ESP_BUILD_DRIVERS)/contig_alloc
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp_cache
+	@mkdir -p $(ESP_BUILD_DRIVERS)/libesp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/probe
+	@mkdir -p $(ESP_BUILD_DRIVERS)/test
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/baremetal
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/linux
+	@ln -sf $(ESP_DRV_LINUX)/contig_alloc/* $(ESP_BUILD_DRIVERS)/contig_alloc
+	@ln -sf $(ESP_DRV_LINUX)/esp/* $(ESP_BUILD_DRIVERS)/esp
+	@ln -sf $(ESP_DRV_LINUX)/esp_cache/* $(ESP_BUILD_DRIVERS)/esp_cache
+	@ln -sf $(ESP_DRV_LINUX)/driver.mk $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/include $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/../common $(ESP_BUILD_DRIVERS)/../common
+
+esp-build-clean:
+
+esp-build-distclean: esp-build-clean
+	$(QUIET_CLEAN)$(RM) -rf esp-build
+
+ifdef COMPILE_TO_ESP
+esp-libs: esp-build
+	  CROSS_COMPILE=$(CROSS_COMPILE) DRIVERS=$(ESP_DRV_LINUX) $(MAKE) -C $(ESP_BUILD_DRIVERS)/contig_alloc/ libcontig.a
+	  cd $(ESP_BUILD_DRIVERS)/test; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/test
+	  cd $(ESP_BUILD_DRIVERS)/libesp; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/libesp
+	  cd $(ESP_BUILD_DRIVERS)/utils; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/utils
+else
+esp-libs: 
+
+endif
+.PHONY: esp-build-clean esp-build-distclean esp-libs
+
 
 obj/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
