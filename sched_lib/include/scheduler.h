@@ -96,8 +96,8 @@ typedef struct {
   struct timeval queued_start;
   uint64_t queued_sec, queued_usec;
   struct timeval running_start;
-  uint64_t running_sec[MAX_ACCEL_TYPES];
-  uint64_t running_usec[MAX_ACCEL_TYPES];
+  uint64_t* running_sec; //[MAX_ACCEL_TYPES];
+  uint64_t* running_usec; //[MAX_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
@@ -136,7 +136,7 @@ typedef struct task_metadata_entry_struct {
   int32_t     dag_id;               // Indicates which DAG spawns or owns this task
   task_criticality_t crit_level;  // [0 .. 3] -- see above enumeration ("Base" to "Critical")
 
-  uint64_t task_on_accel_profile[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
+  uint64_t* task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for task (in usec) -- maps task projected time on accelerator...
 
   void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
@@ -149,7 +149,7 @@ typedef struct task_metadata_entry_struct {
 
   // These are timing-related storage; currently we keep per-task-type in each metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  uint32_t*           task_computed_on[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  uint32_t**          task_computed_on; //[MAX_ACCEL_TYPES]; // array over TASK_TYPES
   task_timing_data_t* task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
@@ -267,8 +267,8 @@ typedef struct scheduler_datastate_block_struct {
   char** task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
   char** task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
 
-  char accel_name_str[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
-  char accel_desc_str[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+  char** accel_name_str; // array over ACCEL_TYPES and of size MAX_ACCEL_NAME_LEN
+  char** accel_desc_str; // array over ACCEL_TYPES and of size MAX_ACCEL_DESC_LEN
 
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
@@ -277,17 +277,17 @@ typedef struct scheduler_datastate_block_struct {
   //  We set this up with one "set" of entries per JOB_TYPE
   //   where each set has one execute function per possible TASK TARGET (on which it can execute)
   //   Currently the targets are "CPU" and "HWR" -- this probably has to change (though this interpretation is only convention).
-  sched_execute_task_function_t* scheduler_execute_task_function[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  sched_execute_task_function_t** scheduler_execute_task_function; //[MAX_ACCEL_TYPES]; // array over TASK_TYPES
 
   print_metadata_block_contents_t* print_metablock_contents_function; // array over TASK_TYPES
   output_task_type_run_stats_t* output_task_run_stats_function;       // array over TASK_TYPES
 
-  do_accel_initialization_t do_accel_init_function[MAX_ACCEL_TYPES];
-  do_accel_closeout_t do_accel_closeout_function[MAX_ACCEL_TYPES];
-  output_accel_run_stats_t output_accel_run_stats_function[MAX_ACCEL_TYPES];
+  do_accel_initialization_t* do_accel_init_function; //[MAX_ACCEL_TYPES];
+  do_accel_closeout_t* do_accel_closeout_function; //[MAX_ACCEL_TYPES];
+  output_accel_run_stats_t* output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
 
-  volatile int* accelerator_in_use_by[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
-  int num_accelerators_of_type[MAX_ACCEL_TYPES];
+  volatile int** accelerator_in_use_by; //[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
+  int* num_accelerators_of_type; //[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
     uint64_t in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];*/
