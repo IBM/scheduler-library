@@ -239,7 +239,7 @@ $(SCHED_LIB):
 	(cd sched_lib; make)
 
 clean:
-	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P)
+	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_P) $(SCHED_LIB)
 	$(RM) -r obj_t obj_s obj_p
 
 clobber: clean
