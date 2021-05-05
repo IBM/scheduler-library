@@ -195,6 +195,20 @@ The "Scheduler-Library" code is contained under the ```sched_lib``` subdirectory
 
 The remaining code, at the top level (and in the ```include``` and ```src``` directories) contains the application that is making use of the scheduler, along with some additional code that provides definitions (for the application) of the ```tasks``` that the application will employ (e.g. see ```include/vit_task.h``` and ```src/vit_task.c``` for the Viterbi Decoder task definitions).
 
+## Using the Scheduler Library from an Application
+
+This distribution contains an example that uses the Scheduler (via the Scheduler-Library), and it can provide a bit of a tutorial on how to integrate the Scheduler into an application.  Unofrtunately, this example is simple, though a bit involved; we have plans to provide a very basic example that really highlights the Scheduler API more clearly.
+
+The basic Scheudler interface is defined in the 
+<a href="https://github.com/IBM/scheduler-library/tree/master/sched_lib">Scheduler Library</a> in the file
+<a href="https://github.com/IBM/scheduler-library/tree/master/sched_lib/include/scheduler.h">scheduler.h</a>.
+We encourage you to look at that file for a genreal description and overview of the Scheduler API.
+
+
+The basic use of the Scheduler Library is illustrated in the
+<a href="https://github.com/IBM/scheduler-library/tree/master/src/main.c">main.c</a> file, though additional portions appear in the
+<a href="https://github.com/IBM/scheduler-library/tree/master/src/main.c">kernels_api.c</a> file as well.
+
 ## Status
 
 This platform is meant for SL development and integration, so it is expected to change over time. Currently, this is a relatively complete but bare-bones trace version Mini-ERA implementation. Additional features of the Mini-ERA code, and extensions thereto should also be developed over time.
