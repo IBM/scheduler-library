@@ -308,7 +308,7 @@ extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
 extern void request_execution(task_metadata_block_t* task_metadata_block);
-extern int get_task_status(scheduler_datastate_block_t* sptr, int task_type);
+//extern int get_task_status(scheduler_datastate_block_t* sptr, int task_id);
 extern void wait_all_critical(scheduler_datastate_block_t* sptr);
 extern void wait_all_tasks_finish(scheduler_datastate_block_t* sptr);
 extern void mark_task_done(task_metadata_block_t* task_metadata_block);

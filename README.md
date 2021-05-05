@@ -209,6 +209,113 @@ The basic use of the Scheduler Library is illustrated in the
 <a href="https://github.com/IBM/scheduler-library/tree/master/src/main.c">main.c</a> file, though additional portions appear in the
 <a href="https://github.com/IBM/scheduler-library/tree/master/src/main.c">kernels_api.c</a> file as well.
 
+In the Mini-ERA based example application, most of the Scheduler interfacing ins managed in the ```main.c``` file, and in the ```main()``` routine.
+In ```main()``` the application starts with the ```set_up_scheduler``` call to initialize the Scheduler.
+After that, the code does a ```scheduler_get_datastate_in_parms_t* sched_inparms = malloc(sizeof(scheduler_get_datastate_in_parms_t));```
+to create a Scheduler get_datastate input parameters space, and a call to ```copy_scheduler_datastate_defaults_into_parms(sched_inparms);```
+to initialize the iScheduler datastate parameters with the (Scheduler-provided) default values.
+These input parameter defaults are then adjusted to correspond to the use by this application:
+```
+  // Alter the default parms to those values we want for this run...
+  sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
+  sched_inparms->max_task_types = num_maxTasks_to_use;
+  sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
+  // keep the default sched_inparms->max_accel_of_any_type = 4;
+  sched_inparms->max_data_space_bytes = (128*1024 + 64);
+  
+  sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
+```
+and then the ```scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);```
+call is made to use these input parms to establish the desired Scheduler Datastate space (i.e. one that supports the required sizes and dimensions of this Application).
+
+With the Scheduler Datastate Block set up, the Application now does a ```initialize_scheduler(sptr, my_sl_viz_fname);```
+call to initialize the Scheduler, using this Datastate Block space.
+Now the Application has to indicate which Accelerators it will us, whcih is does by a series of calls like
+```cpu_accel_id = register_using_accelerator_pool(sptr, SCHED_CPU_ACCEL_T, input_accel_limit_cpu);```
+which in this case registers with the Scheduler that this Application will use a pool of up to ```input_accel_limit_cpu```
+accelerators of type ```SCHED_CPU_ACCEL_T``` during the run.  There are similar calls for the other accelerators that this Mini-ERA application will use (e.g. ```SCHED_EPOCHS_VITDEC_ACCEL_T```).
+
+Once the Accelerators to be used are enumerated, the Application then needs to define the Task types that the Scheduler will have to manage.  Each application defines its own Task types to the scheduler, and this is done here by filling in a task defninition structure and then passing that through to the Scheduler:
+```
+  task_type_defn_info_t task_defn;
+
+  sprintf(task_defn.name, "VIT-Task");
+  sprintf(task_defn.description, "A Viterbi Decoding task to execute");
+  task_defn.print_metadata_block_contents  = &print_viterbi_metadata_block_contents;
+  task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
+  vit_task_type = register_task_type(sptr, &task_defn);
+```
+
+At this point, we now have defined the "VIT-Task" which is a Viterbi Decoder task.  The actual Viterbi Decoder Task definition contents appear in th e```vit_task.h``` and ```vit_task.c``` files, and similarly for the others (e.g. "CV_Task", "FFT_Task" etc.).  All that is left in the setup portion, is to identify which Accelerators (from those we earlier registered for use) can execute the Viterbi Decoder Tasks.  This is done with another API call:
+```
+  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_type, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
+```
+And here we see that the CPU accerators (i.e. the CPU running a task in a separate thread) can execute the Viterbi Decoder tasks, as can the Viterbi Hardware Acceleratror.  Note that the Application provides the function to use to "initiate" the execution on the accelerator, e.g. the ```&exec_vit_task_on_vit_hwr_accel``` (which in this case is in ```vit_task.c``` in this repository.
+
+Now, the Mini-ERA application is ready to start normal executi9on, using the Scheduler to schedule the Tasks (i.e .the FFT, Vit Decode, CV/CNN, and plan-and--control tasks).  The execution of a task involves several steps as well.  First, the Application must acquire a Metadata Block for that Task to use:
+```
+      vit_mb_ptr = get_task_metadata_block(sptr, time_step, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
+```
+Here the Application gets a metadata block to use for a Critical (```CRITICAL_TASK```) Viterbi Decoder task (```vit_task_type```).  The last argument is a set of profile data which estimates the execution time of this Viterbi Decoder Task on each of the Accelerator (types) in this run, which may be used by the Scheduler in sleecting the accelerator to whcih this Task is allocated.
+
+The next step is to start execution of the task.
+```
+    vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
+    start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
+```
+The first line sets the ```atFinish``` function pointer to NULL.  The ```atFinish``` function is used when no outputs are required from the execution of the Task, and the Application simply wants to "fire and forget" the execution; in that case the ```atFinish``` routine can be automatically called at the end of the execution (by the Scheduler) to clean up after execution, and return the Metadata Block to the free pool.
+
+The next line calls the ```start_execution_of_vit_kernel``` routine, which is in ```kernels_api.c``` (the original Mini-ERA used the kernel API to provide a logical separation of the main-line software code and the accelkerated kernels).  Looking at the ```start_execution_of_vit_kernel``` code, we see it simply calls the ```start_decode``` function, which is in the ```viterbi_flat.c``` file.  Looking at the ```start_decode``` file, we find the code to fill in the Metadata Block with input data:
+```
+  // Set up the task_metadata scope block
+  vit_metadata_block->data_size = 43365; // MAX size?
+  // Copy over our task data to the MetaData Block
+  // Get a viterbi_data_struct_t "View" of the metablock data pointer.
+  viterbi_data_struct_t* vdsptr = (viterbi_data_struct_t*)(vit_metadata_block->data_space);
+  // Copy inputs into the vdsptr data view of the metadata_block metadata data segment
+  vdsptr->n_data_bits = frame->n_data_bits;
+  vdsptr->n_cbps      = ofdm->n_cbps;
+  vdsptr->n_traceback = d_ntraceback;
+  vdsptr->psdu_size   = frame->psdu_size;
+  vdsptr->inMem_size = 72; // fixed -- always (add the 2 padding bytes)
+  uint8_t* in_Mem   = &(vdsptr->theData[0]);
+  uint8_t* in_Data  = &(vdsptr->theData[vdsptr->inMem_size]);
+  uint8_t* out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
+```
+Once the Metadata Block contains all the inputs required to execute the Task, the Application calls the Scheduler API to request execution of that Task:
+
+```
+  // Call the do_decoding routine
+  request_execution(vit_metadata_block);
+```
+
+This call instructs the Scheduler to add the Task (specified/described in the Metadata Block) to the "Ready Task Queue" as a ready-to-be-scheduled Task.
+An independent Scheduler thread is continuously examining the "Ready Task Queue" and trying to schedule the ready tasks to accelerators.
+Once a task is scheduled (i.e. allocated to a specific acceleratr) it enters the "Running" state and is "sent" to that accelerator, where it will do the actual execution.
+
+At this point, the Application has effectively "forked" the Task to the Scheduler, and can continue on in it's main-line processing (e.g. to set up and ```request_execution``` of other Tasks for this Application run).  Eventually, the Tasks will finish execution, and enter the "Done" state, at wihch time they will have completed execution and released the accelerator (for other Task' usage).
+
+There are several ways for the Application to identify when tasks are "done" executing.  First, the Metadata Block conatins a field that is the current Task status, and one can simply read out the Task status from there.  There are also a couple of additional Scheduler routines that provide some simple "synchronization barrier" type semantics:
+```
+ void wait_all_critical(scheduler_datastate_block_t* sptr);
+ void wait_all_tasks_finish(scheduler_datastate_block_t* sptr);
+```
+The first of these waits until all "Crtiical" priority tasks in the Scheduler are in the "Done" state, and then returns to the caller.  This is useful for some simple DAGs, and is used in the Mini-ERA Application example, where each time step one Viterbi, one FFT and one CV/CNN task are marked "Critical" and their outputs are used in the Plan-and-Control function.  The Mini-ERA kicks off these critical tasks, then uses ```wait_all_critical``` to delay reading those Tasks' outputs and using them for the Plan-and-Control Task execution.   The scond routine, ```wait_all_tasks_finish``` is similar to ```wait_all_critical``` but waits for ALL task to be done (not just the Critical ones).
+
+After the ```wait_all_critical`` call, the Mini-ERA Application reads out the outputs from the FFT (Radar), Viterbi, Fetc. Tasks:
+```
+    distance = finish_execution_of_rad_kernel(fft_mb_ptr);
+    message = finish_execution_of_vit_kernel(vit_mb_ptr);
+```
+In this Application, it uses those outputs to drive inputs to the Plan-and-Control task in a manner analogous to the set-up and execution of these tasks (e.g. it gets a Metadata Block, fills in the inputs, etc.).  The finish_execution code is also in ```kernels_api.c``` and looking at the code for ```finish_execution_of_vit_kernel``` we see that adt the end, that routine frees the Metadata Block:
+```
+  // We've finished the execution and lifetime for this task; free its metadata
+  free_task_metadata_block(mb_ptr);
+```
+which makes the Metadata Block available (returns it to the free-list of currently unassigned Metadata Blocks) for use by other Tasks.
+
+
 ## Status
 
 This platform is meant for SL development and integration, so it is expected to change over time. Currently, this is a relatively complete but bare-bones trace version Mini-ERA implementation. Additional features of the Mini-ERA code, and extensions thereto should also be developed over time.

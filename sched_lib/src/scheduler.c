@@ -379,10 +379,10 @@ void free_task_metadata_block(task_metadata_block_t* mb)
 
 
 
-int
-get_task_status(scheduler_datastate_block_t* sptr, int task_type) {
-  return sptr->master_metadata_pool[task_type].status;
-}
+/* int */
+/* get_task_status(scheduler_datastate_block_t* sptr, int task_type) { */
+/*   return sptr->master_metadata_pool[task_type].status; */
+/* } */
 
 
 void mark_task_done(task_metadata_block_t* task_metadata_block)
