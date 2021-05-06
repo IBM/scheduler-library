@@ -12,7 +12,7 @@ end_ts   = -1
 group_bys = [
     'server_type_flat',
     'server_type',
-    # 'criticality',
+    'criticality',
     None
 ]
 
@@ -72,15 +72,14 @@ def gen_svg_for_group(group_by):
 
         server = row.type
         server_type_id = "%s (%u)" % (row.type, int(row.id))
+        criticality = 'C' + str(row.task_crit)
         # Get resource name
         if group_by == 'server_type' or \
             group_by == 'server_type_flat':
             r = server_type_id # Server type (ID).
-            name = t
-        elif group_by == 'criticality':
-            print("Not supported.\n")
-            exit(1)
-        elif group_by == None:
+            name = t + ', ' + criticality
+        elif group_by == 'criticality' or group_by == None:
+            r = criticality # Criticality.
             name = t + ', ' + server_type_id
         else:
             raise(ValueError)
@@ -88,7 +87,7 @@ def gen_svg_for_group(group_by):
             assert col_idx < len(colors), 'Not enough colors!'
             server2col[server] = colors[col_idx]
             col_idx += 1
-        if group_by != None and r not in res_names:
+        if r not in res_names:
             res_names.append(r)
             res_name2res[r] = gantt.Resource(r)
 
@@ -121,28 +120,23 @@ def gen_svg_for_group(group_by):
         else:
             suppress_text=False
             arr_task_opacity=0.85
-
-        if group_by == None:
-            res = None
-        else:
-            res = [res_name2res[r]]
         arr_task = gantt.Task(
             fullname=t,
             name=t,
             start=a,
             stop=s,
             depends_of=p,
-            resources=res,
+            resources=[res_name2res[r]],
             next_in_line=True,
             suppress_text=suppress_text,
-            opacity=arr_task_opacity
+            #opacity=arr_task_opacity
         )
         exe_task = gantt.Task(
             fullname=name,
             name=t,
             start=s,
             stop=e,
-            resources=res,
+            resources=[res_name2res[r]],
             color=server2col[server],
             suppress_text=suppress_text,
             is_last=is_last
@@ -153,11 +147,11 @@ def gen_svg_for_group(group_by):
         p1.add_task(exe_task)
         dag_task_id2task[t] = exe_task
 
-    # Draw    
-    print("[INFO] Doing the actual drawing call now...")
-    # if group_by == 'criticality':
-    #     p1.make_svg_for_resources(filename=trace_dir + '/' + group_by + '_group.svg', start=start_ts, end=end_ts, resources=res_names.sort())
-    if group_by == 'server_type':
+    # Draw
+    print("Saving .svg files in: " + trace_dir + "/")
+    if group_by == 'criticality':
+        p1.make_svg_for_resources(filename=trace_dir + '/' + group_by + '_group.svg', start=start_ts, end=end_ts, resources=res_names.sort())
+    elif group_by == 'server_type':
         p1.make_svg_for_resources(filename=trace_dir + '/' + group_by + '_group.svg', start=start_ts, end=end_ts, resources=res_names.sort())
     elif group_by == 'server_type_flat':
         p1.make_svg_for_resources(filename=trace_dir + '/' + group_by + '_group.svg', start=start_ts, end=end_ts, resources=res_names.sort(), one_line_for_tasks=True)
