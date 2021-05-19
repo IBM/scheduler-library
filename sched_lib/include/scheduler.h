@@ -185,14 +185,6 @@ typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
 typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
 typedef void (*output_task_type_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_task_type, unsigned total_accel_types);
 
-// This typedef defines a structure used to describe a task (for the register_task_type routine)
-typedef struct task_type_defn_info_struct {
-  print_metadata_block_contents_t print_metadata_block_contents;
-  output_task_type_run_stats_t    output_task_type_run_stats;
-  char                            name[MAX_TASK_NAME_LEN];
-  char                            description[MAX_TASK_DESC_LEN];
-} task_type_defn_info_t;
-
 // These are function pointer prototype declaration types, used for the regsiter_accelerator_type routine.
 typedef void (*do_accel_initialization_t)(struct scheduler_datastate_block_struct* sptr);
 typedef void (*do_accel_closeout_t)(struct scheduler_datastate_block_struct* sptr);
@@ -336,7 +328,12 @@ extern void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr,
 
 extern void cleanup_and_exit(scheduler_datastate_block_t* sptr, int rval);
 
-extern task_type_t register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t*);
+extern task_type_t register_task_type(scheduler_datastate_block_t* sptr,
+				      char*                           task_name,
+				      char*                           task_description,
+				      print_metadata_block_contents_t print_metadata_block_contents, // function pointer
+				      output_task_type_run_stats_t    output_task_type_run_stats);    // function pointer
+
 
 //extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
 //extern void set_num_accel_avail_of_type(scheduler_datastate_block_t* sptr, scheduler_accelerator_type aid, unsigned new_max_avail);

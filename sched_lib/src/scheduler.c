@@ -1840,19 +1840,23 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 
 
 task_type_t
-register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tinfo)
+register_task_type(scheduler_datastate_block_t*    sptr,
+		   char*                           task_name,
+		   char*                           task_description,
+		   print_metadata_block_contents_t print_metadata_block_contents, // function pointer
+		   output_task_type_run_stats_t    output_task_type_run_stats)    // function pointer
 {
   DEBUG(printf("In register_task_type with inputs:\n");
-	printf("  name  = %s\n", tinfo->name);
-	printf("  description  = %s\n", tinfo->description);
-	printf("  print_metadata_block_contents = %p\n", tinfo->print_metadata_block_contents);
-	/* printf("  do_task_type_initialization   = %p\n", tinfo->do_task_type_initialization); */
-	/* printf("  do_task_type_closeout_t       = %p\n", tinfo->do_task_type_closeout); */
-	printf("  output_task_type_run_stats_t  = %p\n", tinfo->output_task_type_run_stats));
+	printf("  name  = %s\n", task_name);
+	printf("  description  = %s\n", task_description);
+	printf("  print_metadata_block_contents = %p\n", print_metadata_block_contents);
+	/* printf("  do_task_type_initialization   = %p\n", do_task_type_initialization); */
+	/* printf("  do_task_type_closeout_t       = %p\n", do_task_type_closeout); */
+	printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats));
 
-  printf("Registering Task %s : %s\n", tinfo->name, tinfo->description);
+  printf("Registering Task %s : %s\n", task_name, task_description);
   
-  if (tinfo->print_metadata_block_contents == NULL) {
+  if (print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
     cleanup_and_exit(sptr, -30);
   }
@@ -1864,9 +1868,10 @@ register_task_type(scheduler_datastate_block_t* sptr, task_type_defn_info_t* tin
     printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding id %u\n", (sptr->inparms->max_task_types-1), tid);
     cleanup_and_exit(sptr, -31);
   }
-  snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", tinfo->name);
-  snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", tinfo->description);
-  sptr->output_task_run_stats_function[tid] =  tinfo->output_task_type_run_stats;
+  snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
+  snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
+  sptr->output_task_run_stats_function[tid] = output_task_type_run_stats;
+  sptr->print_metablock_contents_function[tid]  = print_metadata_block_contents;
   
   return tid;
 }
