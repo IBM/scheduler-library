@@ -85,6 +85,8 @@ typedef struct {
   int32_t     visualizer_task_stop_count;
   task_type_t visualizer_task_enable_type;
 
+  char sl_viz_fname[256];
+
   // Indicates the max number accelerators that should be made available for use for each possible accelerator pool
   //  Note: the default is '0' so one only needs to set those that are used.
   int max_accel_to_use_from_pool[SCHED_MAX_ACCEL_TYPES];
@@ -310,15 +312,11 @@ typedef struct scheduler_datastate_block_struct {
 
 } scheduler_datastate_block_t;
 
-//extern scheduler_datastate_block_t sched_state;
-
-//void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
 scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms();
-scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
+scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
 extern status_t set_up_scheduler();
 
-extern status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fname);
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);

@@ -92,7 +92,7 @@ scheduler_get_datastate_in_parms_t sched_state_default_parms = {
 void release_accelerator_for_task(task_metadata_block_t* task_metadata_block);
 
 void* schedule_executions_from_queue(void* void_parm_ptr);
-
+status_t initialize_scheduler(scheduler_datastate_block_t* sptr);
 
 void print_ready_tasks_queue(scheduler_datastate_block_t* sptr) {
   int ti = 0;
@@ -590,12 +590,13 @@ scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms()
   pptr->max_data_space_bytes      = sched_state_default_parms.max_data_space_bytes;
 
   pptr->scheduler_holdoff_usec    = sched_state_default_parms.scheduler_holdoff_usec;
+  pptr->policy[0] = '\0';
 
   pptr->visualizer_output_enabled  = sched_state_default_parms.visualizer_output_enabled;
-  pptr->policy[0] = '\0';
   pptr->visualizer_task_start_count = sched_state_default_parms.visualizer_task_start_count;
   pptr->visualizer_task_stop_count  = sched_state_default_parms.visualizer_task_stop_count;
   pptr->visualizer_task_enable_type = sched_state_default_parms.visualizer_task_enable_type;
+  pptr->sl_viz_fname[0] = '\0';
 
   // Note: the default here is '0' so one only needs to set those that are used.
   for (int i = 0; i < SCHED_MAX_ACCEL_TYPES; i++) {
@@ -604,7 +605,7 @@ scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms()
   return pptr;
 }
 
-scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
+scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t* inp)
 {
   scheduler_datastate_block_t* sptr = malloc(sizeof(scheduler_datastate_block_t));
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
@@ -921,6 +922,12 @@ scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_d
 
 
   printf("TOTAL Schedule DataState Size is %lu bytes\n", sched_state_size);
+  printf("Now calling initialize_scheduler...\n");
+  status_t init_status = initialize_scheduler(sptr);
+  if (init_status != success) {
+    printf("ERROR : Scheduiler initialization returned an error indication...\n");
+    cleanup_and_exit(sptr, -1);
+  }
   return sptr;
 }
 
@@ -1002,7 +1009,7 @@ status_t set_up_scheduler()
 }
 
 
-status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fname)
+status_t initialize_scheduler(scheduler_datastate_block_t* sptr) //, char* sl_viz_fname)
 {
   DEBUG(printf("In initialize...\n"));
   // Currently we set this to a fixed a-priori number...
@@ -1038,9 +1045,9 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr, char* sl_viz_fn
   //#ifdef SL_VIZ
   if (sptr->inparms->visualizer_output_enabled) {
     //sptr->sl_viz_fp = fopen("./sl_viz.trace", "w");
-    sptr->sl_viz_fp = fopen(sl_viz_fname, "w");
+    sptr->sl_viz_fp = fopen(sptr->inparms->sl_viz_fname, "w");
     if (sptr->sl_viz_fp == NULL) {
-      printf("ERROR: Cannot open the output vizualizer file '%s' - exiting\n", sl_viz_fname);
+      printf("ERROR: Cannot open the output vizualizer file '%s' - exiting\n", sptr->inparms->sl_viz_fname);
       cleanup_and_exit(sptr, -1);
     }
     fprintf(sptr->sl_viz_fp, "sim_time,task_dag_id,task_tid,task_name,task_crit,dag_dtime,id,type,task_parent_ids,task_arrival_time,curr_job_start_time,curr_job_end_time\n");

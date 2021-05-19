@@ -613,16 +613,7 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  // Get a scheduler_datastate_block (filled with the default values)
-  /*
-    scheduler_get_datastate_in_parms_t* sched_inparms = malloc(sizeof(scheduler_get_datastate_in_parms_t));
-    if( sched_inparms == NULL) {
-    printf("ERROR: Couldn't allocate the sched_inparms memory\n");
-    exit(-99);
-    }
-    // Copy the scheduler's default parms into the new sched_inparms values
-    copy_scheduler_datastate_defaults_into_parms(sched_inparms);
-  */
+  // Get a struct that identifies the Scheduler Set-Up input parameters (filled with the default values)
   scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
   DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets, sched_inparms->max_accel_of_any_type));
   // If we enabled the Test-Task type, add one to the maxTasks count
@@ -641,10 +632,14 @@ int main(int argc, char *argv[])
   snprintf(sched_inparms->policy, 255, "%s", policy);
   
   // Set up the Scheduler Visualizaer output controls
-  sched_inparms->visualizer_output_enabled   = enable_sl_viz_output;
-  sched_inparms->visualizer_task_start_count = viz_task_start_count;
-  sched_inparms->visualizer_task_stop_count  = viz_task_stop_count;
-  sched_inparms->visualizer_task_enable_type = viz_task_start_type;
+  if (enable_sl_viz_output) {
+    sched_inparms->visualizer_output_enabled   = enable_sl_viz_output;
+    sched_inparms->visualizer_task_start_count = viz_task_start_count;
+    sched_inparms->visualizer_task_stop_count  = viz_task_stop_count;
+    sched_inparms->visualizer_task_enable_type = viz_task_start_type;
+    printf(" my_sl_viz_fname = '%s'\n", my_sl_viz_fname);
+    snprintf(sched_inparms->sl_viz_fname, 255, "%s", my_sl_viz_fname);
+  }
   //printf("Using %u tasks\n", sched_inparms->max_task_types);
 
   // Now set the max number of each Accelerator Pool accelerators we want to use/have allocated
@@ -654,9 +649,9 @@ int main(int argc, char *argv[])
   sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
   sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
 
-  // Now get a new scheduler datastate space
+  // Now initialize the scheduler and return a datastate space pointer
   printf("Calling get_new_scheduler_datastate_pointer...\n");
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
+  scheduler_datastate_block_t* sptr = initialize_scheduler_and_return_datastate_pointer(sched_inparms);
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sptr->inparms->max_task_types, sptr->inparms->max_accel_types, sptr->inparms->max_metadata_pool_blocks, sptr->inparms->max_data_space_bytes, sptr->inparms->max_task_timing_sets, sptr->max_accel_of_any_type);
 
@@ -783,22 +778,6 @@ int main(int argc, char *argv[])
   if (additional_cv_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_cv_tasks_per_time_step;
   }
-  /* We plan to use three separate trace files to drive the three different kernels
-   * that are part of mini-ERA (CV, radar, Viterbi). All these three trace files
-   * are required to have the same base name, using the file extension to indicate
-   * which kernel the trace corresponds to (cv, rad, vit).
-   */
-  /* if (argc != 2) */
-  /* { */
-  /*   printf("Usage: %s <trace_basename>\n\n", argv[0]); */
-  /*   printf("Where <trace_basename> is the basename of the trace files to load:\n"); */
-  /*   printf("  <trace_basename>.cv  : trace to feed the computer vision kernel\n"); */
-  /*   printf("  <trace_basename>.rad : trace to feed the radar (FFT-1D) kernel\n"); */
-  /*   printf("  <trace_basename>.vit : trace to feed the Viterbi decoding kernel\n"); */
-
-  /*   return 1; */
-  /* } */
-
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
@@ -808,10 +787,10 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  printf("Doing initialization tasks...\n");
-  printf(" my_sl_viz_fname = '%s'\n", my_sl_viz_fname);
-  initialize_scheduler(sptr, my_sl_viz_fname);
-
+  /*  printf("Doing initialization tasks...\n");
+  initialize_scheduler(sptr);
+  */
+  
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
 
@@ -871,14 +850,7 @@ int main(int argc, char *argv[])
     print_usage(argv[0]);
     cleanup_and_exit(sptr, -1);
   }
-    
-//  if (global_scheduler_selection_policy > NUM_SELECTION_POLICIES) {
-//    printf("ERROR : Selected Scheduler Policy (%u) is larger than number of policies (%u)\n", global_scheduler_selection_policy, NUM_SELECTION_POLICIES);
-//    print_usage(argv[0]);
-//    cleanup_and_exit(sptr, -1);
-//  }
-//  printf("Scheduler is using Policy %u : %s\n", global_scheduler_selection_policy, scheduler_selection_policy_str[global_scheduler_selection_policy]);
-  
+      
   /* We assume the vehicle starts in the following state:
    *  - Lane: center
    *  - Speed: 50 mph
