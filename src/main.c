@@ -185,20 +185,22 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
 
 
 void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
-  printf("\nRegistering the ACCELERATOR Usage...\n");
-  printf("   Registering use of %d CPUs\n", input_accel_limit_cpu);
-  cpu_accel_id = register_using_accelerator_pool(sptr, SCHED_CPU_ACCEL_T, input_accel_limit_cpu);
-  printf("   For accel %u %s we have %u accelerators allocated\n", cpu_accel_id, sptr->accel_name_str[cpu_accel_id], sptr->num_accelerators_of_type[cpu_accel_id]);
-  printf("   Registering use of %d VITs\n", input_accel_limit_vit);
-  vit_hwr_accel_id = register_using_accelerator_pool(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, input_accel_limit_vit);
-  printf("   For accel %u %s we have %u accelerators allocated\n", vit_hwr_accel_id, sptr->accel_name_str[vit_hwr_accel_id], sptr->num_accelerators_of_type[vit_hwr_accel_id]);
-  printf("   Registering use of %d FFTs\n", input_accel_limit_fft);
-  fft_hwr_accel_id = register_using_accelerator_pool(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, input_accel_limit_fft);
-  printf("   For accel %u %s we have %u accelerators allocated\n", fft_hwr_accel_id, sptr->accel_name_str[fft_hwr_accel_id], sptr->num_accelerators_of_type[fft_hwr_accel_id]);
-  printf("   Registering use of %d CVs\n", input_accel_limit_cv);
-  cv_hwr_accel_id  = register_using_accelerator_pool(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, input_accel_limit_cv);
-  printf("   For accel %u %s we have %u accelerators allocated\n", cv_hwr_accel_id, sptr->accel_name_str[cv_hwr_accel_id], sptr->num_accelerators_of_type[cv_hwr_accel_id]);
-
+  /*
+    printf("\nRegistering the ACCELERATOR Usage...\n");
+    printf("   Registering use of %d CPUs\n", input_accel_limit_cpu);
+    cpu_accel_id = register_using_accelerator_pool(sptr, SCHED_CPU_ACCEL_T, input_accel_limit_cpu);
+    printf("   For accel %u %s we have %u accelerators allocated\n", cpu_accel_id, sptr->accel_name_str[cpu_accel_id], sptr->num_accelerators_of_type[cpu_accel_id]);
+    printf("   Registering use of %d VITs\n", input_accel_limit_vit);
+    vit_hwr_accel_id = register_using_accelerator_pool(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, input_accel_limit_vit);
+    printf("   For accel %u %s we have %u accelerators allocated\n", vit_hwr_accel_id, sptr->accel_name_str[vit_hwr_accel_id], sptr->num_accelerators_of_type[vit_hwr_accel_id]);
+    printf("   Registering use of %d FFTs\n", input_accel_limit_fft);
+    fft_hwr_accel_id = register_using_accelerator_pool(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, input_accel_limit_fft);
+    printf("   For accel %u %s we have %u accelerators allocated\n", fft_hwr_accel_id, sptr->accel_name_str[fft_hwr_accel_id], sptr->num_accelerators_of_type[fft_hwr_accel_id]);
+    printf("   Registering use of %d CVs\n", input_accel_limit_cv);
+    cv_hwr_accel_id  = register_using_accelerator_pool(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, input_accel_limit_cv);
+    printf("   For accel %u %s we have %u accelerators allocated\n", cv_hwr_accel_id, sptr->accel_name_str[cv_hwr_accel_id], sptr->num_accelerators_of_type[cv_hwr_accel_id]);
+  */
+  
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
   task_type_defn_info_t task_defn;
@@ -215,8 +217,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   task_defn.output_task_type_run_stats  = &output_vit_task_type_run_stats;
   vit_task_type = register_task_type(sptr, &task_defn);
   //printf("Setting up %s with task-type %u\n", task_defn.name, vit_task_type);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     vit_task_type, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(sptr, vit_hwr_accel_id, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
+  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, vit_task_type, &exec_vit_task_on_cpu_accel);
+  register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
   if (input_accel_limit_vit /*NUM_VIT_ACCEL*/ > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
     p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
@@ -229,8 +231,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   task_defn.output_task_type_run_stats  = &output_cv_task_type_run_stats;
   cv_task_type = register_task_type(sptr, &task_defn);
   printf("Setting up %s with task-type %u\n", task_defn.name, cv_task_type);
-  register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
+  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, cv_task_type, &execute_cpu_cv_accelerator);
+  register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, cv_task_type, &execute_hwr_cv_accelerator);
   if (input_accel_limit_cv > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
     p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
@@ -243,8 +245,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   task_defn.output_task_type_run_stats  = &output_fft_task_type_run_stats;
   fft_task_type = register_task_type(sptr, &task_defn);
   //printf("Setting up %s with task-type %u\n", task_defn.name, fft_task_type);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     fft_task_type, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(sptr, fft_hwr_accel_id, fft_task_type, &execute_hwr_fft_accelerator);
+  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, fft_task_type, &execute_cpu_fft_accelerator);
+  register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, fft_task_type, &execute_hwr_fft_accelerator);
   if (input_accel_limit_fft > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
     p0_hw_threshold[fft_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
@@ -257,7 +259,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   task_defn.output_task_type_run_stats  = &output_plan_ctrl_task_type_run_stats;
   plan_ctrl_task_type = register_task_type(sptr, &task_defn);
   //printf("Setting up %s with task-type %u\n", task_defn.name, plan_ctrl_task_type);
-  register_accel_can_exec_task(sptr, cpu_accel_id,     plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
+  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
   
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -267,21 +269,21 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
     task_defn.output_task_type_run_stats  = &output_test_task_type_run_stats;
     test_task_type = register_task_type(sptr, &task_defn);
     //printf("Setting up %s with task-type %u\n", task_defn.name, test_task_type);
-    register_accel_can_exec_task(sptr, cpu_accel_id,     test_task_type, &execute_on_cpu_test_accelerator);
+    register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, test_task_type, &execute_on_cpu_test_accelerator);
     if ((input_accel_limit_vit > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, vit_hwr_accel_id, test_task_type, &execute_on_hwr_vit_test_accelerator);
+      register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, test_task_type, &execute_on_hwr_vit_test_accelerator);
       p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
       //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, vit_hwr_accel_id, p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((input_accel_limit_fft > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, fft_hwr_accel_id, test_task_type, &execute_on_hwr_fft_test_accelerator);
+      register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, test_task_type, &execute_on_hwr_fft_test_accelerator);
       p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
       //printf("Set p0_hw_threshold[%u][%u] = %u\n", test_task_type, fft_hwr_accel_id, p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((input_accel_limit_cv > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, cv_hwr_accel_id, test_task_type, &execute_on_hwr_cv_test_accelerator);
+      register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, test_task_type, &execute_on_hwr_cv_test_accelerator);
       p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }
@@ -611,14 +613,18 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  // Get a scheduler_datastate_block
-  scheduler_get_datastate_in_parms_t* sched_inparms = malloc(sizeof(scheduler_get_datastate_in_parms_t));
-  if( sched_inparms == NULL) {
+  // Get a scheduler_datastate_block (filled with the default values)
+  /*
+    scheduler_get_datastate_in_parms_t* sched_inparms = malloc(sizeof(scheduler_get_datastate_in_parms_t));
+    if( sched_inparms == NULL) {
     printf("ERROR: Couldn't allocate the sched_inparms memory\n");
     exit(-99);
-  }
-  // Copy the scheduler's default parms into the new sched_inparms values
-  copy_scheduler_datastate_defaults_into_parms(sched_inparms);
+    }
+    // Copy the scheduler's default parms into the new sched_inparms values
+    copy_scheduler_datastate_defaults_into_parms(sched_inparms);
+  */
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
+  DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets, sched_inparms->max_accel_of_any_type));
   // If we enabled the Test-Task type, add one to the maxTasks count
   if (using_the_Test_Tasks) {
     num_maxTasks_to_use++;
@@ -627,22 +633,32 @@ int main(int argc, char *argv[])
   sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
   sched_inparms->max_task_types = num_maxTasks_to_use;
   sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
-  // keep the default sched_inparms->max_accel_of_any_type = 4;
   sched_inparms->max_data_space_bytes = (128*1024 + 64);
   
-  sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
-  //printf("Using %u tasks\n", sched_inparms->max_task_types);
-  
-  // Now get a new scheduler datastate space
-  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
-  // Set the scheduler state values we need to for this run
-  sptr->scheduler_holdoff_usec = sched_holdoff_usec;
-  snprintf(sptr->policy, 255, "%s", policy);
-  sptr->visualizer_task_start_count = viz_task_start_count;
-  sptr->visualizer_task_stop_count  = viz_task_stop_count;
-  sptr->visualizer_task_enable_type = viz_task_start_type;
+  sched_inparms->scheduler_holdoff_usec = sched_holdoff_usec;
 
-  printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_ty %u\n", sptr->limits.max_task_types, sptr->limits.max_accel_types, sptr->limits.max_metadata_pool_blocks, sptr->limits.max_data_space_bytes, sptr->limits.max_task_timing_sets, sptr->limits.max_accel_of_any_type);
+  // Set the scheduler state values we need to for this run
+  snprintf(sched_inparms->policy, 255, "%s", policy);
+  
+  // Set up the Scheduler Visualizaer output controls
+  sched_inparms->visualizer_output_enabled   = enable_sl_viz_output;
+  sched_inparms->visualizer_task_start_count = viz_task_start_count;
+  sched_inparms->visualizer_task_stop_count  = viz_task_stop_count;
+  sched_inparms->visualizer_task_enable_type = viz_task_start_type;
+  //printf("Using %u tasks\n", sched_inparms->max_task_types);
+
+  // Now set the max number of each Accelerator Pool accelerators we want to use/have allocated
+  //  Note that a value of -1 indicates "all available
+  sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T] = input_accel_limit_cpu;
+  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] = input_accel_limit_vit;
+  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
+  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
+
+  // Now get a new scheduler datastate space
+  printf("Calling get_new_scheduler_datastate_pointer...\n");
+  scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);
+
+  printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sptr->inparms->max_task_types, sptr->inparms->max_accel_types, sptr->inparms->max_metadata_pool_blocks, sptr->inparms->max_data_space_bytes, sptr->inparms->max_task_timing_sets, sptr->max_accel_of_any_type);
 
   // Set up the task_on_accel profiles...
   p0_hw_threshold = calloc(num_maxTasks_to_use, sizeof(unsigned*));
@@ -661,7 +677,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  printf("Run using scheduling policy %s with  hold-off %u\n", sptr->policy, sptr->scheduler_holdoff_usec);
+  printf("Run using scheduling policy %s with  hold-off %u\n", sptr->inparms->policy, sptr->inparms->scheduler_holdoff_usec);
 
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     printf("Added Test-Task with %u Crit and %u Base, Timings: CPU %u FFT %u VIT %u CV %u\n", num_Crit_test_tasks, num_Base_test_tasks, test_on_cpu_run_time_in_usec, test_on_hwr_fft_run_time_in_usec, test_on_hwr_vit_run_time_in_usec, test_on_hwr_cv_run_time_in_usec);
@@ -786,7 +802,7 @@ int main(int argc, char *argv[])
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
-  if (sptr->policy[0] == '\0') {
+  if (sptr->inparms->policy[0] == '\0') {
     printf("Error: a policy was not specified. Use -P to define the task scheduling policy to use.\n");
     print_usage(argv[0]);
     return 1;
@@ -1426,7 +1442,6 @@ int main(int argc, char *argv[])
   }
  #endif // TIME
   shutdown_scheduler(sptr);
-  free(sched_inparms);
   printf("\nDone.\n");
   return 0;
 }

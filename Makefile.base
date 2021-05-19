@@ -211,7 +211,8 @@ clean:
 clobber: clean
 	$(RM) $(TARGET)
 	$(RM) $(STARGET)
-	$(RM) -rf obj_t obj_s
+	$(RM) $(SCHED_LIB)
+	$(RM) -rf esp-build
 	(cd sched_lib; make clobber)
 
 

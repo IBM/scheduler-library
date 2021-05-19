@@ -74,9 +74,21 @@ typedef struct {
 
   unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
 
-  int      max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
+  //int      max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
 
-  bool     enable_sched_viz_trace;
+  unsigned scheduler_holdoff_usec;
+
+  char policy[256];
+
+  bool        visualizer_output_enabled;
+  int32_t     visualizer_task_start_count;
+  int32_t     visualizer_task_stop_count;
+  task_type_t visualizer_task_enable_type;
+
+  // Indicates the max number accelerators that should be made available for use for each possible accelerator pool
+  //  Note: the default is '0' so one only needs to set those that are used.
+  int max_accel_to_use_from_pool[SCHED_MAX_ACCEL_TYPES];
+    
 } scheduler_get_datastate_in_parms_t;
 
 
@@ -200,21 +212,23 @@ typedef struct bi_ll_struct { int clt_block_id;  struct bi_ll_struct* next; } bl
 
 typedef struct scheduler_datastate_block_struct {
   // These are limits (e.g. max-task-types) for this instantiation of the scheduler datasatate space
-  scheduler_get_datastate_in_parms_t limits;
+  scheduler_get_datastate_in_parms_t* inparms;
 
+  int max_accel_of_any_type; // The max number of accelerators allocated from any of the pools
+  
   task_type_t next_avail_task_type;
   accelerator_type_t next_avail_accel_id;
 
   int32_t     next_avail_DAG_id;
   
-  bool        visualizer_output_enabled;
-  int32_t     visualizer_task_start_count;
-  int32_t     visualizer_task_stop_count;
-  task_type_t visualizer_task_enable_type;
-  unsigned    visualizer_output_started;
+  // inparm: bool        visualizer_output_enabled;
+  // inparm: int32_t     visualizer_task_start_count;
+  // inparm: int32_t     visualizer_task_stop_count;
+  // inparm: task_type_t visualizer_task_enable_type;
+  bool        visualizer_output_started;
   uint64_t    visualizer_start_time_usec;
 
-  unsigned scheduler_holdoff_usec;
+  //unsigned scheduler_holdoff_usec;
 
   // Handle for the dynamically loaded policy
   void *policy_handle;
@@ -223,7 +237,7 @@ typedef struct scheduler_datastate_block_struct {
   // Function pointer for the policy's assign_task_to_pe() function
   ready_mb_task_queue_entry_t *
   (*assign_task_to_pe)(struct scheduler_datastate_block_struct* sptr, ready_mb_task_queue_entry_t* ready_task_entry);
-  char policy[256];
+  // inparm: char policy[256];
 
   // The pool of metadata blocks for use by the tasks, etc.
   unsigned total_metadata_pool_blocks;
@@ -282,6 +296,7 @@ typedef struct scheduler_datastate_block_struct {
   do_accel_closeout_t* do_accel_closeout_function; //[MAX_ACCEL_TYPES];
   output_accel_run_stats_t* output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
 
+  int map_sched_accel_type_to_local_accel_type[SCHED_MAX_ACCEL_TYPES];
   volatile int** accelerator_in_use_by; //[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
   int* num_accelerators_of_type; //[MAX_ACCEL_TYPES];
 
@@ -297,7 +312,8 @@ typedef struct scheduler_datastate_block_struct {
 
 //extern scheduler_datastate_block_t sched_state;
 
-void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
+//void copy_scheduler_datastate_defaults_into_parms(scheduler_get_datastate_in_parms_t* parms_ptr);
+scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms();
 scheduler_datastate_block_t* get_new_scheduler_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 
 extern status_t set_up_scheduler();
@@ -328,6 +344,6 @@ extern task_type_t register_task_type(scheduler_datastate_block_t* sptr, task_ty
 //extern void set_num_accel_avail_of_type(scheduler_datastate_block_t* sptr, scheduler_accelerator_type aid, unsigned new_max_avail);
 extern accelerator_type_t register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_accelerator_type acid, int desired_number_in_pool);
 
-extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, accelerator_type_t acid, task_type_t tid, sched_execute_task_function_t fptr);
+extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, scheduler_accelerator_type sl_acid, task_type_t tid, sched_execute_task_function_t fptr);
 
 #endif
