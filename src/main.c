@@ -193,8 +193,6 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 				     2,  // number of accelerator types taht can execute this task type
 				     SCHED_CPU_ACCEL_T, &exec_vit_task_on_cpu_accel,
 				     SCHED_EPOCHS_VITDEC_ACCEL_T, &exec_vit_task_on_vit_hwr_accel);
-  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, vit_task_type, &exec_vit_task_on_cpu_accel);
-  //register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
   if (input_accel_limit_vit /*NUM_VIT_ACCEL*/ > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
     p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
@@ -206,8 +204,6 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 				    2,
 				    SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
 				    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_cpu_cv_accelerator);
-  //register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
-  //register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
     p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
@@ -219,8 +215,6 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 				     2,
 				     SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
 				     SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
-  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, fft_task_type, &execute_cpu_fft_accelerator);
-  //register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, fft_task_type, &execute_hwr_fft_accelerator);
   if (input_accel_limit_fft > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
     p0_hw_threshold[fft_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
@@ -231,8 +225,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 					   &print_plan_ctrl_metadata_block_contents, &output_plan_ctrl_task_type_run_stats,
 					   1,
 					   SCHED_CPU_ACCEL_T, &execute_on_cpu_plan_ctrl_accelerator);
-  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
-  
+
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (test_on_hwr_vit_run_time_in_usec > 0) {
@@ -309,20 +302,15 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
 	}
       }
     }
-
-    //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, test_task_type, &execute_on_cpu_test_accelerator);
     if ((input_accel_limit_vit > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
-      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, test_task_type, &execute_on_hwr_vit_test_accelerator);
       p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((input_accel_limit_fft > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
-      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, test_task_type, &execute_on_hwr_fft_test_accelerator);
       p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((input_accel_limit_cv > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
-      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, test_task_type, &execute_on_hwr_cv_test_accelerator);
       p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }
@@ -683,7 +671,7 @@ int main(int argc, char *argv[])
 
   // Now set the max number of each Accelerator Pool accelerators we want to use/have allocated
   //  Note that a value of -1 indicates "all available
-  sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T] = input_accel_limit_cpu;
+  sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T]           = input_accel_limit_cpu;
   sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] = input_accel_limit_vit;
   sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
   sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
@@ -826,10 +814,6 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  /*  printf("Doing initialization tasks...\n");
-  initialize_scheduler(sptr);
-  */
-  
   // Call the policy initialization, with the HW_THRESHOLD set up (in case we've selected policy 0)
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
 

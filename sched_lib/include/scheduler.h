@@ -340,11 +340,4 @@ extern task_type_t register_task_type(scheduler_datastate_block_t* sptr,
 				      output_task_type_run_stats_t    output_task_type_run_stats,    // function pointer
 				      int  num_accel_task_exec_descriptions, ... );
 
-
-//extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);
-//extern void set_num_accel_avail_of_type(scheduler_datastate_block_t* sptr, scheduler_accelerator_type aid, unsigned new_max_avail);
-extern accelerator_type_t register_using_accelerator_pool(scheduler_datastate_block_t* sptr, scheduler_accelerator_type acid, int desired_number_in_pool);
-
-extern void register_accel_can_exec_task(scheduler_datastate_block_t* sptr, scheduler_accelerator_type sl_acid, task_type_t tid, sched_execute_task_function_t fptr);
-
 #endif
