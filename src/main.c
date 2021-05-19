@@ -189,9 +189,12 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   printf("\nSetting up/Registering the TASK TYPES...\n");
 
   vit_task_type = register_task_type(sptr, "VIT-Task", "A Viterbi Decoding task to execute",
-				     &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats);
-  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, vit_task_type, &exec_vit_task_on_cpu_accel);
-  register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
+				     &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats,
+				     2,  // number of accelerator types taht can execute this task type
+				     SCHED_CPU_ACCEL_T, &exec_vit_task_on_cpu_accel,
+				     SCHED_EPOCHS_VITDEC_ACCEL_T, &exec_vit_task_on_vit_hwr_accel);
+  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, vit_task_type, &exec_vit_task_on_cpu_accel);
+  //register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, vit_task_type, &exec_vit_task_on_vit_hwr_accel);
   if (input_accel_limit_vit /*NUM_VIT_ACCEL*/ > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
     p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
@@ -199,19 +202,25 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   }
   
   cv_task_type = register_task_type(sptr, "CV-Task", "A CV/CNN task to execute",
-				    &print_cv_metadata_block_contents, &output_cv_task_type_run_stats);
-  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, cv_task_type, &execute_cpu_cv_accelerator);
-  register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, cv_task_type, &execute_hwr_cv_accelerator);
-  if (input_accel_limit_cv > 0) {
+				    &print_cv_metadata_block_contents, &output_cv_task_type_run_stats,
+				    2,
+				    SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
+				    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_cpu_cv_accelerator);
+  //register_accel_can_exec_task(sptr, cpu_accel_id,    cv_task_type, &execute_cpu_cv_accelerator);
+  //register_accel_can_exec_task(sptr, cv_hwr_accel_id, cv_task_type, &execute_hwr_cv_accelerator);
+  if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
     p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
     printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
-  
+
   fft_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute",
-				     &print_fft_metadata_block_contents, &output_fft_task_type_run_stats);
-  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, fft_task_type, &execute_cpu_fft_accelerator);
-  register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, fft_task_type, &execute_hwr_fft_accelerator);
+				     &print_fft_metadata_block_contents, &output_fft_task_type_run_stats,
+				     2,
+				     SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
+				     SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
+  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, fft_task_type, &execute_cpu_fft_accelerator);
+  //register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, fft_task_type, &execute_hwr_fft_accelerator);
   if (input_accel_limit_fft > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
     p0_hw_threshold[fft_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
@@ -219,26 +228,101 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t* sptr) {
   }
   
   plan_ctrl_task_type = register_task_type(sptr, "PnC-Task", "The vehicle state Plan and Control task to execute",
-					   &print_plan_ctrl_metadata_block_contents, &output_plan_ctrl_task_type_run_stats);
-  register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
+					   &print_plan_ctrl_metadata_block_contents, &output_plan_ctrl_task_type_run_stats,
+					   1,
+					   SCHED_CPU_ACCEL_T, &execute_on_cpu_plan_ctrl_accelerator);
+  //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, plan_ctrl_task_type, &execute_on_cpu_plan_ctrl_accelerator);
   
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
-    test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					&print_test_metadata_block_contents, &output_test_task_type_run_stats);
-    register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, test_task_type, &execute_on_cpu_test_accelerator);
+    if (test_on_hwr_vit_run_time_in_usec > 0) {
+      if (test_on_hwr_fft_run_time_in_usec > 0) {
+	if (test_on_hwr_cv_run_time_in_usec > 0) {
+	  // Can run TEST on all 4 accelerators
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      4,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_VITDEC_ACCEL_T, &execute_on_hwr_vit_test_accelerator,
+					      SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_on_hwr_fft_test_accelerator,
+					      SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_on_hwr_cv_test_accelerator);
+	} else {
+	  // Can run TEST on all but CV
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      3,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_VITDEC_ACCEL_T, &execute_on_hwr_vit_test_accelerator,
+					      SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_on_hwr_fft_test_accelerator);
+	}
+      } else { // if (FFT > 0)
+	if (test_on_hwr_cv_run_time_in_usec > 0) {
+	  // Can run TEST on all but FFT
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      3,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_VITDEC_ACCEL_T, &execute_on_hwr_vit_test_accelerator,
+					      SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_on_hwr_cv_test_accelerator);
+	} else {
+	  // Can run TEST on all but FFT and CV
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      2,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_VITDEC_ACCEL_T, &execute_on_hwr_vit_test_accelerator);
+	}
+      }
+    } else {
+      // Cannot run on the VIT Accel
+      if (test_on_hwr_fft_run_time_in_usec > 0) {
+	if (test_on_hwr_cv_run_time_in_usec > 0) {
+	  // Can run TEST on all but VIT
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      3,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_on_hwr_fft_test_accelerator,
+					      SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_on_hwr_cv_test_accelerator);
+	} else {
+	  // Can run TEST on all but VIT and CV
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      2,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_on_hwr_fft_test_accelerator);
+	}
+      } else { // if (FFT > 0)
+	if (test_on_hwr_cv_run_time_in_usec > 0) {
+	  // Can run TEST on all but VIT and FFT
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      2,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator,
+					      SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_on_hwr_cv_test_accelerator);
+	} else {
+	  // Can run TEST only on CPU
+	  test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+					      &print_test_metadata_block_contents, &output_test_task_type_run_stats,
+					      1,
+					      SCHED_CPU_ACCEL_T, &execute_on_cpu_test_accelerator);
+	}
+      }
+    }
+
+    //register_accel_can_exec_task(sptr, SCHED_CPU_ACCEL_T, test_task_type, &execute_on_cpu_test_accelerator);
     if ((input_accel_limit_vit > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, test_task_type, &execute_on_hwr_vit_test_accelerator);
+      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_VITDEC_ACCEL_T, test_task_type, &execute_on_hwr_vit_test_accelerator);
       p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((input_accel_limit_fft > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, test_task_type, &execute_on_hwr_fft_test_accelerator);
+      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_1D_FFT_ACCEL_T, test_task_type, &execute_on_hwr_fft_test_accelerator);
       p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((input_accel_limit_cv > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
-      register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, test_task_type, &execute_on_hwr_cv_test_accelerator);
+      //register_accel_can_exec_task(sptr, SCHED_EPOCHS_CV_CNN_ACCEL_T, test_task_type, &execute_on_hwr_cv_test_accelerator);
       p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
       printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }

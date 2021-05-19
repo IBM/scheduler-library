@@ -64,6 +64,11 @@ typedef enum { TASK_FREE = 0,
 #define MAX_ACCEL_NAME_LEN   32
 #define MAX_ACCEL_DESC_LEN   256
 
+/* typedef struct { */
+/*   scheduler_accelerator_type    accel; */
+/*   task_type_t                   task; */
+/*   sched_execute_task_function_t fptr; */
+/* } exec_task_on_accel_tuple_t; */
 
 typedef struct {
   unsigned max_task_types;	// The max number of task types that might be used in this run/usage
@@ -332,7 +337,8 @@ extern task_type_t register_task_type(scheduler_datastate_block_t* sptr,
 				      char*                           task_name,
 				      char*                           task_description,
 				      print_metadata_block_contents_t print_metadata_block_contents, // function pointer
-				      output_task_type_run_stats_t    output_task_type_run_stats);    // function pointer
+				      output_task_type_run_stats_t    output_task_type_run_stats,    // function pointer
+				      int  num_accel_task_exec_descriptions, ... );
 
 
 //extern accelerator_type_t register_accelerator_pool(scheduler_datastate_block_t* sptr, accelerator_pool_defn_info_t*);

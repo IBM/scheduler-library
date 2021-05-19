@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -1844,15 +1845,15 @@ register_task_type(scheduler_datastate_block_t*    sptr,
 		   char*                           task_name,
 		   char*                           task_description,
 		   print_metadata_block_contents_t print_metadata_block_contents, // function pointer
-		   output_task_type_run_stats_t    output_task_type_run_stats)    // function pointer
+		   output_task_type_run_stats_t    output_task_type_run_stats,    // function pointer
+		   int  num_accel_task_exec_descriptions, ... )
 {
   DEBUG(printf("In register_task_type with inputs:\n");
 	printf("  name  = %s\n", task_name);
 	printf("  description  = %s\n", task_description);
 	printf("  print_metadata_block_contents = %p\n", print_metadata_block_contents);
-	/* printf("  do_task_type_initialization   = %p\n", do_task_type_initialization); */
-	/* printf("  do_task_type_closeout_t       = %p\n", do_task_type_closeout); */
-	printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats));
+	printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats);
+	printf(" and num_accel_task_exeC_descr  = %f\n", num_accel_task_exec_descriptions));
 
   printf("Registering Task %s : %s\n", task_name, task_description);
   
@@ -1872,7 +1873,16 @@ register_task_type(scheduler_datastate_block_t*    sptr,
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
   sptr->output_task_run_stats_function[tid] = output_task_type_run_stats;
   sptr->print_metablock_contents_function[tid]  = print_metadata_block_contents;
-  
+
+  printf("Starting the variable arguments processing for %d tuples\n", num_accel_task_exec_descriptions);
+  va_list var_list;
+  va_start(var_list, 2*num_accel_task_exec_descriptions);
+  for (int i = 0; i < num_accel_task_exec_descriptions; i++) {
+    scheduler_accelerator_type    sched_accel = va_arg(var_list, scheduler_accelerator_type);
+    sched_execute_task_function_t exec_fptr   = va_arg(var_list, sched_execute_task_function_t);
+    printf(" Call %d to Register Accel %u for task %u with fptr %p\n", i, sched_accel, tid, exec_fptr);
+    register_accel_can_exec_task(sptr, sched_accel, tid, exec_fptr);
+  }
   return tid;
 }
 
