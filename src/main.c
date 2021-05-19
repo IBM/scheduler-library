@@ -1277,9 +1277,14 @@ int main(int argc, char *argv[])
    #endif
 
     DEBUG(printf("MAIN: Calling wait_all_critical\n"));
-    wait_all_critical(sptr);
+    //wait_all_critical(sptr);
+    if (num_Crit_test_tasks > 0) {
+      wait_on_tasklist(sptr, 4, cv_mb_ptr->block_id, fft_mb_ptr->block_id, vit_mb_ptr->block_id, test_mb_ptr->block_id);
+    } else {
+      wait_on_tasklist(sptr, 3, cv_mb_ptr->block_id, fft_mb_ptr->block_id, vit_mb_ptr->block_id);
+    }
 
-   #ifdef TIME
+#ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
     wait_all_crit_sec  += stop_wait_all_crit.tv_sec  - start_wait_all_crit.tv_sec;
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
@@ -1357,7 +1362,8 @@ int main(int argc, char *argv[])
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
 
-    wait_all_critical(sptr);
+    //wait_all_critical(sptr);
+    wait_on_tasklist(sptr, 1, pnc_mb_ptr->block_id);
 
    #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
