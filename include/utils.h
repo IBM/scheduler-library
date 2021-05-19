@@ -2,7 +2,6 @@
 #define INCLUDED_UTILS_H
 
 #include <stdint.h>
-//#include <stdbool.h>
 #include <stdlib.h>
 
 #define MAX_PAYLOAD_SIZE    1500

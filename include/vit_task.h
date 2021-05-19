@@ -49,15 +49,12 @@ typedef struct {
   struct timeval dodec_start;
   struct timeval depunc_start;
   struct timeval depunc_stop;
-  struct timeval time_val[MAX_TASK_TIMING_SETS-3];
 
-  uint64_t dodec_sec[MAX_ACCEL_TYPES];
-  uint64_t depunc_sec[MAX_ACCEL_TYPES];
-  uint64_t time_sec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
+  uint64_t dodec_sec[MY_APP_ACCEL_TYPES];
+  uint64_t dodec_usec[MY_APP_ACCEL_TYPES];
 
-  uint64_t dodec_usec[MAX_ACCEL_TYPES];
-  uint64_t depunc_usec[MAX_ACCEL_TYPES];
-  uint64_t time_usec[(MAX_TASK_TIMING_SETS-2)*MAX_ACCEL_TYPES];
+  uint64_t depunc_sec[MY_APP_ACCEL_TYPES];
+  uint64_t depunc_usec[MY_APP_ACCEL_TYPES];
 } vit_timing_data_t;
 
 

@@ -41,13 +41,8 @@ typedef struct { // The "TEST" Task view of "data"
 
 typedef struct {
   struct timeval call_start;
-  struct timeval time_val[MAX_TASK_TIMING_SETS-1];
-
-  uint64_t call_sec[MAX_ACCEL_TYPES];
-  uint64_t time_sec[(MAX_TASK_TIMING_SETS-1)*MAX_ACCEL_TYPES];
-
-  uint64_t call_usec[MAX_ACCEL_TYPES];
-  uint64_t time_usec[(MAX_TASK_TIMING_SETS-1)*MAX_ACCEL_TYPES];
+  uint64_t call_sec[MY_APP_ACCEL_TYPES];
+  uint64_t call_usec[MY_APP_ACCEL_TYPES];
 } test_timing_data_t;
 
 // These are some "fake" times (models the execution of TEST timing)

@@ -20,11 +20,10 @@
 #include <stdbool.h>
 
 /* Types definitions */
-//typedef enum {false, true} bool;
-//typedef enum {error, success} status_t;
-
 // This is the type for distance measurements
 typedef float distance_t;
+
+#define MY_APP_ACCEL_TYPES  4
 
 /* Pre-defined labels used by the computer vision kernel */
 typedef enum {

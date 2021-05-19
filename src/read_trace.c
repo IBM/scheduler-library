@@ -37,11 +37,11 @@ extern unsigned time_step;
 
 status_t init_trace_reader(char* trace_filename)
 {
-  DEBUG(printf("In init_trace_reader...\n"));
+  //DEBUG(
+  printf("In init_trace_reader for file %s ...\n", trace_filename);//);
   /* Now open the mini-ERA trace */
   input_trace = fopen(trace_filename,"r");
-  if (!input_trace)
-  {
+  if (!input_trace) {
     printf("Error: unable to open trace file %s\n", trace_filename);
     return error;
   }
