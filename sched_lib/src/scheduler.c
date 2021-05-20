@@ -612,7 +612,7 @@ scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(s
     }
   }
   sptr->max_accel_of_any_type = max_of_any_type;
-  printf("max_of_any_type = %u\n", sptr->max_accel_of_any_type);
+  DEBUG(printf("max_of_any_type = %u\n", sptr->max_accel_of_any_type));
   
   // Allocate the scheduler_datastate_block_t dynamic (per-task-type) elements
   sptr->allocated_metadata_blocks = malloc(inp->max_task_types * sizeof(uint32_t));
@@ -904,6 +904,108 @@ scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(s
   return sptr;
 }
 
+// This function proviudes for a user to presenta  configuration file (of a particular format) which
+//  contains the desired scheduler datastate input parms (to be changed from default) and
+//  thus invoke the full initialization in a single call
+// Under the covers it uses the above routines and lower-level API interface...
+scheduler_datastate_block_t* initialize_scheduler_from_config_file(char* config_file_name)
+{
+  DEBUG(printf("In the initialize_scheduler_from_config_file routine...\n"));
+  FILE* cf = fopen(config_file_name, "r");
+  if (cf == NULL) {
+    printf("ERROR : Could not open the Configuration input file `%s`\n", config_file_name);
+    exit(-1);
+  }
+  
+  // This gets the scheduler datastate input parms set to default values
+  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
+  DEBUG(printf("  got the sched_inparms\n"));
+  
+  // Scan the file and apply the updates into the input parms
+  //  Note: this uses very rudimentary string parsing, etc.
+  char sched_accel_enum_names[SCHED_MAX_ACCEL_TYPES][64];
+  snprintf(sched_accel_enum_names[SCHED_CPU_ACCEL_T], 64, "SCHED_CPU_ACCEL_T");
+  snprintf(sched_accel_enum_names[SCHED_EPOCHS_1D_FFT_ACCEL_T], 64, "SCHED_EPOCHS_1D_FFT_ACCEL_T");
+  snprintf(sched_accel_enum_names[SCHED_EPOCHS_VITDEC_ACCEL_T], 64, "SCHED_EPOCHS_VITDEC_ACCEL_T");
+  snprintf(sched_accel_enum_names[SCHED_EPOCHS_CV_CNN_ACCEL_T], 64, "SCHED_EPOCHS_CV_CNN_ACCEL_T");
+
+  DEBUG(printf("  Scanning the configuration file `%s`\n", config_file_name));
+  char parm_id[256];
+  char setting[256];
+  while ((fscanf(cf, "%s = %s\n", parm_id, setting) == 2) || (!feof(cf))) {
+    if (strcmp(parm_id, "MAX_TASK_TYPES") == 0) {
+      sched_inparms->max_task_types = atoi(setting);
+      DEBUG(printf("  Set inparms->max_task_types = %d\n", sched_inparms->max_task_types));
+    }
+    else if (strcmp(parm_id, "MAX_ACCEL_TYPES") == 0) {
+      sched_inparms->max_accel_types = atoi(setting);
+      DEBUG(printf("  Set inparms->max_accel_types = %d\n", sched_inparms->max_accel_types));
+    }
+    else if (strcmp(parm_id, "MAX_METADATA_POOL_BLOCKS") == 0) {
+      sched_inparms->max_metadata_pool_blocks = atoi(setting);
+      DEBUG(printf("  Set inparms->max_metadata_pool_blocks = %d\n", sched_inparms->max_metadata_pool_blocks));
+    }
+    else if (strcmp(parm_id, "MAX_DATA_SPACE_BYTES") == 0) {
+      sched_inparms->max_data_space_bytes = atoi(setting);
+      DEBUG(printf("  Set inparms->max_data_space_bytes = %d\n", sched_inparms->max_data_space_bytes));
+    }
+    else if (strcmp(parm_id, "MAX_TASK_TIMING_SETS") == 0) {
+      sched_inparms->max_task_timing_sets = atoi(setting);
+      DEBUG(printf("  Set inparms-> = %d\n", sched_inparms->max_task_timing_sets));
+    }
+    else if (strcmp(parm_id, "SCHEDULER_HOLDOFF_USEC") == 0) {
+      sched_inparms->scheduler_holdoff_usec = atoi(setting);
+      DEBUG(printf("  Set inparms->scheduler_holdoff_usec = %d\n", sched_inparms->scheduler_holdoff_usec));
+    }
+    else if (strcmp(parm_id, "POLICY") == 0) {
+      snprintf(sched_inparms->policy, 255, "%s", setting);
+      DEBUG(printf("  Set inparms->policy = %s\n", sched_inparms->policy));
+    }
+    else if (strcmp(parm_id, "VISUALIZER_OUTPUT_ENABLED") == 0) {
+      sched_inparms->visualizer_output_enabled   = atoi(setting);
+      DEBUG(printf("  Set inparms->visualizer_output_enabled = %d\n", sched_inparms->visualizer_output_enabled));
+    }
+    else if (strcmp(parm_id, "VISUALIZER_TASK_START_COUNT") == 0) {
+      sched_inparms->visualizer_task_start_count = atoi(setting);
+      DEBUG(printf("  Set inparms->visualizer_task_start_count = %d\n", sched_inparms->visualizer_task_start_count));
+    }
+    else if (strcmp(parm_id, "VISUALIZER_TASK_STOP_COUNT") == 0) {
+      sched_inparms->visualizer_task_stop_count  = atoi(setting);
+      DEBUG(printf("  Set inparms->visualizer_task_stop_count = %d\n", sched_inparms->visualizer_task_stop_count));
+    }
+    else if (strcmp(parm_id, "VISUALIZER_TASK_ENABLE_TYPE") == 0) {
+      sched_inparms->visualizer_task_enable_type = atoi(setting);
+      DEBUG(printf("  Set inparms->visualizer_task_enable_type = %d\n", sched_inparms->visualizer_task_enable_type));
+    }
+    else if (strcmp(parm_id, "SL_VIZ_FNAME") == 0) {
+      snprintf(sched_inparms->sl_viz_fname, 255, "%s", setting);
+      DEBUG(printf("  Set inparms->sl_viz_fname = %s\n", sched_inparms->sl_viz_fname));
+    }
+    else {
+      char * search_str = "MAX_ACCEL_TO_USE_FROM_POOL_";
+      if (strncmp(parm_id, search_str, strlen(search_str)) == 0) {
+	for (int i = 0; i < SCHED_MAX_ACCEL_TYPES; i++) {
+	  if (strncmp(&(parm_id[strlen(search_str)]), sched_accel_enum_names[i], 64) == 0) {
+	    sched_inparms->max_accel_to_use_from_pool[i] = atoi(setting);
+	    DEBUG(printf("  Set inparms->max_accel_to_use_from_pool[%d] = %d\n", i, sched_inparms->max_accel_to_use_from_pool[i]));
+	    i = SCHED_MAX_ACCEL_TYPES;
+	  }
+	}
+      }
+      else {
+	printf("Scheduler ignoring parm `%s` with value `%s`\n", parm_id, setting);
+      }
+    }
+  } // while (scan through config file)
+	   
+  // Now initialize the scheduler and return a datastate space pointer
+  printf("Calling get_new_scheduler_datastate_pointer...\n");
+  scheduler_datastate_block_t* sptr = initialize_scheduler_and_return_datastate_pointer(sched_inparms);
+
+  return sptr;
+}
+
+
 
 // This function is really only executed once, at the very start of scheduler lifetime,
 //  to set up global scheduler state related to the hardware environment
@@ -914,6 +1016,7 @@ scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(s
 
 status_t set_up_scheduler()
 {
+  printf("Setting up the Global Scheduler Hardware State (System Accelerators)\n");
   // Set up the "CPU" (threada/accelerators)
   printf("Setting up the Accel %u CPU (thread) Accelerators...\n", SCHED_CPU_ACCEL_T);
   sprintf(global_hardware_state_block.accel_name_str[SCHED_CPU_ACCEL_T], "CPU-Acc");

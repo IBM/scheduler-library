@@ -104,6 +104,7 @@ void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
   printf("    -h          : print this helpful usage info\n");
+  printf("    -G <file>   : defines the Global-configuration-file <file> with scheduler set-up parms\n");
   printf("    -o          : print the Visualizer output traace information during the run\n");
   printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
   printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
@@ -436,6 +437,7 @@ int main(int argc, char *argv[])
  #else
   char trace_file[256] = "";
  #endif
+  char global_config_file[256] = "";
   int opt;
 
   rad_dict[0] = '\0';
@@ -467,7 +469,7 @@ int main(int argc, char *argv[])
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:")) != -1) {
+  while((opt = getopt(argc, argv, ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -553,6 +555,10 @@ int main(int argc, char *argv[])
       break;
     case 'D':
       cv_cpu_run_time_in_usec = atoi(optarg);
+      break;
+    case 'G':
+      snprintf(global_config_file, 255, "%s", optarg);
+      printf("Set global_config_file to `%s`\n", global_config_file);
       break;
 
     case 'B':
@@ -640,46 +646,53 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  // Get a struct that identifies the Scheduler Set-Up input parameters (filled with the default values)
-  scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
-  DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets, sched_inparms->max_accel_of_any_type));
-  // If we enabled the Test-Task type, add one to the maxTasks count
-  if (using_the_Test_Tasks) {
-    num_maxTasks_to_use++;
-  }
-  // Alter the default parms to those values we want for this run...
-  sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
-  sched_inparms->max_task_types = num_maxTasks_to_use;
-  sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
-  sched_inparms->max_data_space_bytes = (128*1024 + 64);
+  scheduler_datastate_block_t* sptr = NULL;
+  if (global_config_file[0] == '\0') {
+    // Get a struct that identifies the Scheduler Set-Up input parameters (filled with the default values)
+    scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
+    DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets, sched_inparms->max_accel_of_any_type));
+    // If we enabled the Test-Task type, add one to the maxTasks count
+    if (using_the_Test_Tasks) {
+      num_maxTasks_to_use++;
+    }
+    // Alter the default parms to those values we want for this run...
+    sched_inparms->max_metadata_pool_blocks = num_MBs_to_use;
+    sched_inparms->max_task_types = num_maxTasks_to_use;
+    sched_inparms->max_accel_types = MY_APP_ACCEL_TYPES;
+    sched_inparms->max_data_space_bytes = (128*1024 + 64);
   
-  sched_inparms->scheduler_holdoff_usec = sched_holdoff_usec;
+    sched_inparms->scheduler_holdoff_usec = sched_holdoff_usec;
 
-  // Set the scheduler state values we need to for this run
-  snprintf(sched_inparms->policy, 255, "%s", policy);
+    // Set the scheduler state values we need to for this run
+    snprintf(sched_inparms->policy, 255, "%s", policy);
   
-  // Set up the Scheduler Visualizaer output controls
-  if (enable_sl_viz_output) {
-    sched_inparms->visualizer_output_enabled   = enable_sl_viz_output;
-    sched_inparms->visualizer_task_start_count = viz_task_start_count;
-    sched_inparms->visualizer_task_stop_count  = viz_task_stop_count;
-    sched_inparms->visualizer_task_enable_type = viz_task_start_type;
-    printf(" my_sl_viz_fname = '%s'\n", my_sl_viz_fname);
-    snprintf(sched_inparms->sl_viz_fname, 255, "%s", my_sl_viz_fname);
+    // Set up the Scheduler Visualizaer output controls
+    if (enable_sl_viz_output) {
+      sched_inparms->visualizer_output_enabled   = enable_sl_viz_output;
+      sched_inparms->visualizer_task_start_count = viz_task_start_count;
+      sched_inparms->visualizer_task_stop_count  = viz_task_stop_count;
+      sched_inparms->visualizer_task_enable_type = viz_task_start_type;
+      printf(" my_sl_viz_fname = '%s'\n", my_sl_viz_fname);
+      snprintf(sched_inparms->sl_viz_fname, 255, "%s", my_sl_viz_fname);
+    }
+    //printf("Using %u tasks\n", sched_inparms->max_task_types);
+
+    // Now set the max number of each Accelerator Pool accelerators we want to use/have allocated
+    //  Note that a value of -1 indicates "all available
+    sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T]           = input_accel_limit_cpu;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] = input_accel_limit_vit;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
+
+    // Now initialize the scheduler and return a datastate space pointer
+    printf("Calling get_new_scheduler_datastate_pointer...\n");
+    sptr = initialize_scheduler_and_return_datastate_pointer(sched_inparms);
+  } else {
+    // Use the specified Global Configuration File to set up the Scheduler
+    printf("Using Config file `%s`\n", global_config_file);
+    sptr = initialize_scheduler_from_config_file(global_config_file);
   }
-  //printf("Using %u tasks\n", sched_inparms->max_task_types);
-
-  // Now set the max number of each Accelerator Pool accelerators we want to use/have allocated
-  //  Note that a value of -1 indicates "all available
-  sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T]           = input_accel_limit_cpu;
-  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] = input_accel_limit_vit;
-  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
-  sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
-
-  // Now initialize the scheduler and return a datastate space pointer
-  printf("Calling get_new_scheduler_datastate_pointer...\n");
-  scheduler_datastate_block_t* sptr = initialize_scheduler_and_return_datastate_pointer(sched_inparms);
-
+  
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sptr->inparms->max_task_types, sptr->inparms->max_accel_types, sptr->inparms->max_metadata_pool_blocks, sptr->inparms->max_data_space_bytes, sptr->inparms->max_task_timing_sets, sptr->max_accel_of_any_type);
 
   // Set up the task_on_accel profiles...

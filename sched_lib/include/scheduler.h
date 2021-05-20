@@ -79,8 +79,6 @@ typedef struct {
 
   unsigned max_task_timing_sets; // The max number of gettime timing sets the MBs can track per this run/usage (per MB) -- one per task accelerator target...
 
-  //int      max_accel_of_any_type; // The max number of accelerators of any type that might be used in this run/usage
-
   unsigned scheduler_holdoff_usec;
 
   char policy[256];
@@ -97,6 +95,7 @@ typedef struct {
   int max_accel_to_use_from_pool[SCHED_MAX_ACCEL_TYPES];
     
 } scheduler_get_datastate_in_parms_t;
+
 
 
 
@@ -309,8 +308,9 @@ typedef struct scheduler_datastate_block_struct {
 
 } scheduler_datastate_block_t;
 
-scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms();
-scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
+extern scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms();
+extern scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
+extern scheduler_datastate_block_t* initialize_scheduler_from_config_file(char* config_file_name);
 
 extern status_t set_up_scheduler();
 
