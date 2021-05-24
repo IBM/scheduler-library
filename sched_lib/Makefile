@@ -162,6 +162,7 @@ endif
 SRC = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
 HDR = $(wildcard include/*.h)
 OBJ = $(SRC:%.c=obj/%.o)
+LL_OBJ = $(SRC:%.c=obj/%.bc)
 
 VPATH = ./src
 
@@ -230,7 +231,12 @@ clobber: clean
 obj:
 	mkdir $@
 
+hpvm: $(LL_OBJ)
+	llvm-link $^ -o sched.bc
 
+obj/%.bc: %.c
+	clang -O3 -S $(CFLAGS) -emit-llvm $< -o $@
+	
 .PHONY: all clean
 
 
