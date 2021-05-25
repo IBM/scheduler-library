@@ -29,7 +29,7 @@ ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 -g
+CFLAGS ?= -O -g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP

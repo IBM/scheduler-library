@@ -21,7 +21,7 @@ ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 -g
+CFLAGS ?= -O -g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -53,6 +53,8 @@ endif
 ifdef CONFIG_NUM_CV
  CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
+
+CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 
 SW_STR = S
 FA_STR =
