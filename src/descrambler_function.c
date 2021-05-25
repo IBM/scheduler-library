@@ -18,8 +18,8 @@
 #include <math.h>
 #include <ctype.h>
 
-#include "base.h"
-#include "utils.h"
+#include "viterbi_base.h"
+#include "viterbi_utils.h"
 #include "viterbi_standalone.h"
 
 typedef unsigned char   uint8_t;

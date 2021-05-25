@@ -24,14 +24,6 @@
 
 #include "base_types.h"
 
-//#include "scheduler.h"
-
-// Some Profiling Data:
-//#define usecHwrVIT0   5950
-//#define usecHwrVIT1  67000
-//#define usecHwrVIT2 135000
-//#define usecHwrVIT3 191000
-
 // This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Viterbi" view of "data"
@@ -46,13 +38,16 @@ typedef struct { // The "Viterbi" view of "data"
 }  viterbi_data_struct_t;
 
 typedef struct {
+  struct timeval call_start;
   struct timeval dodec_start;
   struct timeval depunc_start;
   struct timeval depunc_stop;
 
+  uint64_t call_sec[MY_APP_ACCEL_TYPES];
   uint64_t dodec_sec[MY_APP_ACCEL_TYPES];
   uint64_t dodec_usec[MY_APP_ACCEL_TYPES];
 
+  uint64_t call_usec[MY_APP_ACCEL_TYPES];
   uint64_t depunc_sec[MY_APP_ACCEL_TYPES];
   uint64_t depunc_usec[MY_APP_ACCEL_TYPES];
 } vit_timing_data_t;
@@ -66,5 +61,14 @@ void output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned 
 
 void exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block);
 void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block);
+
+
+void start_viterbi_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			     task_type_t cv_task_type, task_criticality_t crit_level, uint64_t* cv_profile,
+			     task_finish_callback_t auto_finish_routine, int32_t dag_id,
+			     vit_dict_entry_t* trace_msg);
+
+void viterbi_auto_finish_routine(task_metadata_block_t* mb);
+void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, message_t* message_id, char* out_msg_txt);
 
 #endif

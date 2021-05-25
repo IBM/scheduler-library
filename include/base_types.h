@@ -87,6 +87,31 @@ typedef enum {
 
 #define VIT_CLEAR_THRESHOLD  THRESHOLD_1
 
+
+typedef struct {
+  unsigned int index;          // A global index (of all radar dictionary entries
+  unsigned int set;            // The set this entry is in
+  unsigned int index_in_set;   // The index in the set for this entry
+  unsigned int return_id;      // An entry-defined return ID 
+  unsigned int log_nsamples;
+  float distance;
+  float return_data[2 * (1<<MAX_RADAR_LOGN)];
+} radar_dict_entry_t;
+
+#include "viterbi_utils.h"
+typedef struct {
+  unsigned int msg_num;
+  unsigned int msg_id;
+  ofdm_param   ofdm_p;
+  frame_param  frame_p;
+  uint8_t      in_bits[MAX_ENCODED_BITS];
+} vit_dict_entry_t;
+
+typedef struct {
+  unsigned int id;
+} test_dict_entry_t;
+
+
 extern float IMPACT_DISTANCE; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
 
 extern char* lane_names[NUM_LANES];

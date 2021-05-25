@@ -24,7 +24,7 @@
 
 #include "base_types.h"
 
-//#include "scheduler.h"
+#include "scheduler.h"
 
 
 // This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)

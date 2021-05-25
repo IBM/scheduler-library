@@ -29,7 +29,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "utils.h"
+#include "viterbi_utils.h"
 //#define VERBOSE
 #include "verbose.h"
 
@@ -325,6 +325,93 @@ void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block)
   mark_task_done(task_metadata_block);
 }
 
+
+
+
+
+void start_cv_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			task_type_t cv_task_type, task_criticality_t crit_level, uint64_t* cv_profile, task_finish_callback_t auto_finish_routine,
+			int32_t dag_id, label_t in_label)
+{
+ #ifdef TIME
+  gettimeofday(&start_exec_cv, NULL);
+ #endif
+  // Request a MetadataBlock (for an CV task at Critical Level)
+  task_metadata_block_t* cv_mb_ptr = NULL;
+  DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
+  do {
+    cv_mb_ptr = get_task_metadata_block(sptr, dag_id, cv_task_type, crit_level, cv_profile);
+    //usleep(get_mb_holdoff);
+  } while (0); //(*mb_ptr == NULL);
+ #ifdef TIME
+  struct timeval got_time;
+  gettimeofday(&got_time, NULL);
+  exec_get_cv_sec  += got_time.tv_sec  - start_exec_cv.tv_sec;
+  exec_get_cv_usec += got_time.tv_usec - start_exec_cv.tv_usec;
+ #endif
+  //printf("CV Crit Profile: %e %e %e %e %e\n", cv_profile[crit_cv_samples_set][0], cv_profile[crit_cv_samples_set][1], cv_profile[crit_cv_samples_set][2], cv_profile[crit_cv_samples_set][3], cv_profile[crit_cv_samples_set][4]);
+  if (cv_mb_ptr == NULL) {
+    // We ran out of metadata blocks -- PANIC!
+    printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
+    dump_all_metadata_blocks_states(sptr);
+    exit (-4);
+  }
+  cv_mb_ptr->atFinish = auto_finish_routine;
+  *mb_ptr = cv_mb_ptr;
+  DEBUG(printf("MB%u In start_cv_execution\n", cv_mb_ptr->block_id));
+
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(cv_mb_ptr->task_timings[cv_mb_ptr->task_type]);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(cv_mb_ptr->data_space);
+  // Currently we don't send in any data this way (though we should include the input image here)
+  // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
+  cv_data_p->object_label = in_label;
+
+#ifdef INT_TIME
+  gettimeofday(&(cv_timings_p->call_start), NULL);
+ #endif
+  //  schedule_cv(data);
+  request_execution(cv_mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+
+// This is a default "finish" routine that can be included in the start_executiond call
+// for a task that is to be executed, but whose results are not used...
+// 
+void cv_auto_finish_routine(task_metadata_block_t* mb)
+{
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+  free_task_metadata_block(mb);
+}
+
+
+
+
+// NOTE: This routine DOES NOT copy out the data results -- a call to
+//   calculate_peak_distance_from_fmcw now results in alteration ONLY
+//   of the metadata task data; we could send in the data pointer and
+//   over-write the original input data with the CV results (As we used to)
+//   but this seems un-necessary since we only want the final "distance" really.
+void finish_cv_execution(task_metadata_block_t* cv_metadata_block, label_t* obj_label)
+{
+  int tidx = cv_metadata_block->accelerator_type;
+  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(cv_metadata_block->task_timings[cv_metadata_block->task_type]);
+  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(cv_metadata_block->data_space);
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  cv_timings_p->call_sec[tidx]  += stop_time.tv_sec  - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+ #endif // INT_TIME
+
+  *obj_label = cv_data_p->object_label;
+
+  // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
+  free_task_metadata_block(cv_metadata_block);
+}
 
 
 

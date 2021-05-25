@@ -28,7 +28,7 @@
 #include "vit_accel.h"
 #include "cv_accel.h"
 
-#include "fft_task.h"
+#include "radar_task.h"
 #include "vit_task.h"
 #include "cv_task.h"
 #include "test_task.h"
@@ -171,7 +171,7 @@ void base_release_metadata_block(task_metadata_block_t* mb)
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
 }
 
-void radar_release_metadata_block(task_metadata_block_t* mb)
+/*void radar_release_metadata_block(task_metadata_block_t* mb)
 {
   TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
 	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
@@ -181,7 +181,7 @@ void radar_release_metadata_block(task_metadata_block_t* mb)
   DEBUG(printf("  MB%u rad_atFin Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns from its starting function it should exit.
-}
+  }*/
 
 
 
@@ -650,7 +650,7 @@ int main(int argc, char *argv[])
   if (global_config_file[0] == '\0') {
     // Get a struct that identifies the Scheduler Set-Up input parameters (filled with the default values)
     scheduler_get_datastate_in_parms_t* sched_inparms = get_scheduler_datastate_input_parms();
-    DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u Num_Acc_of_Any_Ty %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets, sched_inparms->max_accel_of_any_type));
+    DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times %u\n", sched_inparms->max_task_types, sched_inparms->max_accel_types, sched_inparms->max_metadata_pool_blocks, sched_inparms->max_data_space_bytes, sched_inparms->max_task_timing_sets));
     // If we enabled the Test-Task type, add one to the maxTasks count
     if (using_the_Test_Tasks) {
       num_maxTasks_to_use++;
@@ -865,7 +865,7 @@ int main(int argc, char *argv[])
     return 1;
   }
   printf("Initializing the Radar kernel...\n");
-  if (init_rad_kernel(sptr, rad_dict) != success) {
+  if (init_radar_kernel(sptr, rad_dict) != success) {
     printf("Error: the radar kernel couldn't be initialized properly.\n");
     return 1;
   }
@@ -995,7 +995,7 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_iter_rad, NULL);
    #endif
-    radar_dict_entry_t* rdentry_p = iterate_rad_kernel(sptr, vehicle_state);
+    radar_dict_entry_t* rdentry_p = iterate_radar_kernel(sptr, vehicle_state);
    #ifdef TIME
     gettimeofday(&stop_iter_rad, NULL);
     iter_rad_sec  += stop_iter_rad.tv_sec  - start_iter_rad.tv_sec;
@@ -1041,108 +1041,32 @@ int main(int argc, char *argv[])
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t* cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
-      do {
-        cv_mb_ptr = get_task_metadata_block(sptr, time_step, cv_task_type, CRITICAL_TASK, cv_profile);
-	//usleep(get_mb_holdoff);
-     } while (0); // (cv_mb_ptr == NULL);
-     #ifdef TIME
-      struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_cv_sec  += got_time.tv_sec  - start_exec_cv.tv_sec;
-      exec_get_cv_usec += got_time.tv_usec - start_exec_cv.tv_usec;
-     #endif
-      if (cv_mb_ptr == NULL) {
-        // We ran out of metadata blocks -- PANIC!
-        printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states(sptr);
-        exit (-4);
-      }
-      cv_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-      start_execution_of_cv_kernel(cv_mb_ptr, cv_tr_label); // Critical RADAR task    label = execute_cv_kernel(cv_tr_label);
-    }
-    if (!no_crit_cnn_task) {
+      start_cv_execution(&cv_mb_ptr, sptr, cv_task_type, CRITICAL_TASK, cv_profile, NULL,
+			 time_step, cv_tr_label); // Critical CV task
+
       DEBUG(printf("CV/CNN task Block-ID = %u\n", cv_mb_ptr->block_id));
     }
-   #ifdef TIME
-    gettimeofday(&start_exec_rad, NULL);
-   #endif
-    // Request a MetadataBlock (for an FFT task at Critical Level)
-      task_metadata_block_t* fft_mb_ptr = NULL;
-      DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
-      do {
-        fft_mb_ptr = get_task_metadata_block(sptr, time_step, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set]);
-	//usleep(get_mb_holdoff);
-      } while (0); //(fft_mb_ptr == NULL);
-     #ifdef TIME
-      struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_rad_sec  += got_time.tv_sec  - start_exec_rad.tv_sec;
-      exec_get_rad_usec += got_time.tv_usec - start_exec_rad.tv_usec;
-     #endif
-    //printf("FFT Crit Profile: %e %e %e %e %e\n", fft_profile[crit_fft_samples_set][0], fft_profile[crit_fft_samples_set][1], fft_profile[crit_fft_samples_set][2], fft_profile[crit_fft_samples_set][3], fft_profile[crit_fft_samples_set][4]);
-    if (fft_mb_ptr == NULL) {
-      // We ran out of metadata blocks -- PANIC!
-      printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
-      dump_all_metadata_blocks_states(sptr);
-      exit (-4);
-    }
-    fft_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-    start_execution_of_rad_kernel(fft_mb_ptr, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
-    DEBUG(printf("FFT task Block-ID = %u\n", fft_mb_ptr->block_id));
+
+    task_metadata_block_t* radar_mb_ptr = NULL;
+    start_radar_execution(&radar_mb_ptr, sptr, fft_task_type, CRITICAL_TASK, fft_profile[crit_fft_samples_set], NULL,
+			  time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
+    DEBUG(printf("FFT task Block-ID = %u\n", radar_mb_ptr->block_id));
    #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
    #endif
     //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
     // Request a MetadataBlock for a Viterbi Task at Critical Level
-    task_metadata_block_t* vit_mb_ptr = NULL;
-    DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
-    do {
-      vit_mb_ptr = get_task_metadata_block(sptr, time_step, vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size]);
-      //usleep(get_mb_holdoff);
-    } while (0); //(vit_mb_ptr == NULL);
-   #ifdef TIME
-    //struct timeval got_time;
-    gettimeofday(&got_time, NULL);
-    exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
-    exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
-   #endif
-    if (vit_mb_ptr == NULL) {
-      // We ran out of metadata blocks -- PANIC!
-      printf("Out of metadata blocks for VITERBI -- PANIC Quit the run (for now)\n");
-      dump_all_metadata_blocks_states(sptr);
-      exit (-4);
-    }
-    vit_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-    start_execution_of_vit_kernel(vit_mb_ptr, vdentry_p); // Critical VITERBI task
-    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", vit_mb_ptr->block_id));
+    task_metadata_block_t* viterbi_mb_ptr = NULL;
+    start_viterbi_execution(&viterbi_mb_ptr, sptr,
+			    vit_task_type, CRITICAL_TASK, vit_profile[vit_msgs_size],
+			    NULL, time_step,
+			    vdentry_p); // Critical VITERBI task
+    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", viterbi_mb_ptr->block_id));
 
     task_metadata_block_t* test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-     #ifdef TIME
-      gettimeofday(&start_exec_test, NULL);
-     #endif
-      //NOTE Removed the num_messages stuff -- need to do this differently (separate invocations of this process per message)
-      // Request a MetadataBlock for a Testerbi Task at Critical Level
-      DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
-      do {
-	test_mb_ptr = get_task_metadata_block(sptr, time_step, test_task_type, CRITICAL_TASK, test_profile);
-	//usleep(get_mb_holdoff);
-      } while (0); //(test_mb_ptr == NULL);
-     #ifdef TIME
-      //struct timeval got_time;
-      gettimeofday(&got_time, NULL);
-      exec_get_test_sec  += got_time.tv_sec  - start_exec_test.tv_sec;
-      exec_get_test_usec += got_time.tv_usec - start_exec_test.tv_usec;
-     #endif
-      if (test_mb_ptr == NULL) {
-	// We ran out of metadata blocks -- PANIC!
-	printf("Out of metadata blocks for TESTERBI -- PANIC Quit the run (for now)\n");
-	dump_all_metadata_blocks_states(sptr);
-	exit (-4);
-      }
-      test_mb_ptr->atFinish = NULL; // Just to ensure it is NULL
-      start_execution_of_test_kernel(test_mb_ptr, tdentry_p); // Critical TESTERBI task
+      start_test_execution(&test_mb_ptr, sptr, test_task_type, CRITICAL_TASK, test_profile, NULL,
+			 time_step); // Critical TEST task
       DEBUG(printf("TEST_TASK_BLOCK: ID = %u\n", test_mb_ptr->block_id));
     }
     
@@ -1151,29 +1075,8 @@ int main(int argc, char *argv[])
       // Aditional CV Tasks
       //for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
-       #ifdef TIME
-        struct timeval get_time;
-        gettimeofday(&get_time, NULL);
-       #endif
-        task_metadata_block_t* cv_mb_ptr_2 = NULL;
-	DEBUG(printf("Calling get_task_metadata_block for Non-Crit CV-Task %u\n", cv_task_type));
-        do {
-          cv_mb_ptr_2 = get_task_metadata_block(sptr, time_step, cv_task_type, BASE_TASK, cv_profile);
-	  //usleep(get_mb_holdoff);
-        } while (0); //(cv_mb_ptr_2 == NULL);
-       #ifdef TIME
-        struct timeval got_time;
-        gettimeofday(&got_time, NULL);
-        exec_get_cv_sec  += got_time.tv_sec  - get_time.tv_sec;
-        exec_get_cv_usec += got_time.tv_usec - get_time.tv_usec;
-       #endif
-        if (cv_mb_ptr_2 == NULL) {
-  	  printf("Out of metadata blocks for Non-Critical CV -- PANIC Quit the run (for now)\n");
-  	  dump_all_metadata_blocks_states(sptr);
-	  exit (-5);
-        }
-        cv_mb_ptr_2->atFinish = base_release_metadata_block;
-        start_execution_of_cv_kernel(cv_mb_ptr_2, cv_tr_label); // NON-Critical RADAR task
+	start_cv_execution(&cv_mb_ptr, sptr, cv_task_type, BASE_TASK, cv_profile, &cv_auto_finish_routine,
+			   time_step, cv_tr_label); // NON-Critical CV task
       } // if (i < additional CV tasks)
       //for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
       if (i < additional_fft_tasks_per_time_step) {
@@ -1185,35 +1088,15 @@ int main(int argc, char *argv[])
 	  //printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set, rdentry_p2->set);
 	}
 	int base_fft_samples_set = rdentry_p2->set;
-	//printf("FFT Base Profile: %e %e %e %e %e\n", fft_profile[base_fft_samples_set][0], fft_profile[base_fft_samples_set][1], fft_profile[base_fft_samples_set][2], fft_profile[base_fft_samples_set][3], fft_profile[base_fft_samples_set][4]);
-       #ifdef TIME
-	struct timeval get_time;
-	gettimeofday(&get_time, NULL);
-       #endif
-	task_metadata_block_t* fft_mb_ptr_2 = NULL;
-	DEBUG(printf("Calling get_task_metadata_block for Non-Crit FFT-Task %u\n", fft_task_type));
-        do {
-	  fft_mb_ptr_2 = get_task_metadata_block(sptr, time_step, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set]);
-	  //usleep(get_mb_holdoff);
-        } while (0); //(fft_mb_ptr_2 == NULL);
-       #ifdef TIME
-        //struct timeval got_time;
-        gettimeofday(&got_time, NULL);
-	exec_get_rad_sec  += got_time.tv_sec  - get_time.tv_sec;
-	exec_get_rad_usec += got_time.tv_usec - get_time.tv_usec;
-       #endif
-        if (fft_mb_ptr_2 == NULL) {
-  	  printf("Out of metadata blocks for Non-Critical FFT -- PANIC Quit the run (for now)\n");
-	  dump_all_metadata_blocks_states(sptr);
-	  exit (-5);
-        }
-        fft_mb_ptr_2->atFinish = base_release_metadata_block;
 	float* addl_radar_inputs = rdentry_p2->return_data;
-	start_execution_of_rad_kernel(fft_mb_ptr_2, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
+	task_metadata_block_t* radar_mb_ptr_2 = NULL;
+	start_radar_execution(&radar_mb_ptr_2, sptr, fft_task_type, BASE_TASK, fft_profile[base_fft_samples_set], &radar_auto_finish_routine,
+			      time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
       } // if (i < additional FFT tasks)
 
       //for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       if (i < additional_vit_tasks_per_time_step) {
+	task_metadata_block_t* viterbi_mb_ptr2 = NULL;
         vit_dict_entry_t* vdentry2_p;
 	int base_msg_size;
         if (task_size_variability == 0) {
@@ -1231,56 +1114,17 @@ int main(int argc, char *argv[])
 	  vdentry2_p = select_random_vit_input();
 	  base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
         }
-       #ifdef TIME
-        struct timeval get_time;
-	gettimeofday(&get_time, NULL);
-       #endif
-        task_metadata_block_t* vit_mb_ptr_2 = NULL;
-	DEBUG(printf("Calling get_task_metadata_block for Non-Crit VIT-Task %u\n", vit_task_type));
-        do {
-          vit_mb_ptr_2 = get_task_metadata_block(sptr, time_step, vit_task_type, BASE_TASK, vit_profile[base_msg_size]);
-	  //usleep(get_mb_holdoff);
-        } while (0); // (vit_mb_ptr_2 == NULL);
-       #ifdef TIME
-        struct timeval got_time;
-	gettimeofday(&got_time, NULL);
-	exec_get_vit_sec  += got_time.tv_sec  - get_time.tv_sec;
-	exec_get_vit_usec += got_time.tv_usec - get_time.tv_usec;
-       #endif
-        if (vit_mb_ptr_2 == NULL) {
-  	  printf("Out of metadata blocks for Non-Critical VIT -- PANIC Quit the run (for now)\n");
-	  dump_all_metadata_blocks_states(sptr);
-	  exit (-5);
-        }
-        vit_mb_ptr_2->atFinish = base_release_metadata_block;
-        start_execution_of_vit_kernel(vit_mb_ptr_2, vdentry2_p); // Non-Critical VITERBI task
+	start_viterbi_execution(&viterbi_mb_ptr2, sptr,
+				vit_task_type, BASE_TASK, vit_profile[base_msg_size],
+				viterbi_auto_finish_routine, time_step,
+				vdentry2_p); // Critical VITERBI task
       } // if (i < Additional VIT tasks)
 
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) { 
-       #ifdef TIME
-        struct timeval get_time;
-	gettimeofday(&get_time, NULL);
-       #endif
         task_metadata_block_t* test_mb_ptr_2 = NULL;
-	DEBUG(printf("Calling get_task_metadata_block for Non-Crit TEST-Task %u\n", test_task_type));
-        do {
-          test_mb_ptr_2 = get_task_metadata_block(sptr, time_step, test_task_type, BASE_TASK, test_profile);
-	  //usleep(get_mb_holdoff);
-        } while (0); // (test_mb_ptr_2 == NULL);
-       #ifdef TIME
-        struct timeval got_time;
-	gettimeofday(&got_time, NULL);
-	exec_get_test_sec  += got_time.tv_sec  - get_time.tv_sec;
-	exec_get_test_usec += got_time.tv_usec - get_time.tv_usec;
-       #endif
-        if (test_mb_ptr_2 == NULL) {
-  	  printf("Out of metadata blocks for Non-Critical TEST -- PANIC Quit the run (for now)\n");
-	  dump_all_metadata_blocks_states(sptr);
-	  exit (-5);
-        }
-        test_mb_ptr_2->atFinish = base_release_metadata_block;
-        start_execution_of_test_kernel(test_mb_ptr_2, tdentry_p); // Non-Critical TESTERBI task
+	start_test_execution(&test_mb_ptr, sptr, test_task_type, CRITICAL_TASK, test_profile, &test_auto_finish_routine,
+			     time_step); // Critical TEST task
       } // if (i < Additional TEST tasks)
     } // for (i over MAX_additional_tasks)
 
@@ -1292,9 +1136,9 @@ int main(int argc, char *argv[])
     DEBUG(printf("MAIN: Calling wait_all_critical\n"));
     //wait_all_critical(sptr);
     if (num_Crit_test_tasks > 0) {
-      wait_on_tasklist(sptr, 4, cv_mb_ptr->block_id, fft_mb_ptr->block_id, vit_mb_ptr->block_id, test_mb_ptr->block_id);
+      wait_on_tasklist(sptr, 4, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr, test_mb_ptr);
     } else {
-      wait_on_tasklist(sptr, 3, cv_mb_ptr->block_id, fft_mb_ptr->block_id, vit_mb_ptr->block_id);
+      wait_on_tasklist(sptr, 3, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr);
     }
 
 #ifdef TIME
@@ -1303,10 +1147,12 @@ int main(int argc, char *argv[])
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
    #endif
     
-    distance = finish_execution_of_rad_kernel(fft_mb_ptr);
-    message = finish_execution_of_vit_kernel(vit_mb_ptr);
+    finish_radar_execution(radar_mb_ptr, &distance);
+    //message = finish_execution_of_vit_kernel(vit_mb_ptr);
+    char out_msg_text[1600]; // more than large enough to hold max-size message
+    finish_viterbi_execution(viterbi_mb_ptr, &message, out_msg_text);
     if (!no_crit_cnn_task) {
-      label = finish_execution_of_cv_kernel(cv_mb_ptr);
+      finish_cv_execution(cv_mb_ptr, &label);
     }
     if (num_Crit_test_tasks > 0) {
       test_res = finish_execution_of_test_kernel(test_mb_ptr);
@@ -1320,74 +1166,46 @@ int main(int argc, char *argv[])
     exec_cv_sec   += stop_exec_rad.tv_sec  - start_exec_cv.tv_sec;
     exec_cv_usec  += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
    #endif
-
+    
     /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
     DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    vehicle_state_t new_vehicle_state;
-
-   #ifdef TIME
-    gettimeofday(&start_exec_pandc, NULL);
-   #endif
-    task_metadata_block_t* pnc_mb_ptr = get_task_metadata_block(sptr, time_step, plan_ctrl_task_type, CRITICAL_TASK, plan_ctrl_profile);    
-    /* #ifdef TIME */
-    /*  struct timeval got_time; */
-    /*  gettimeofday(&got_time, NULL); */
-    /*  exec_get_pnc_sec  += got_time.tv_sec  - start_exec_pnc.tv_sec; */
-    /*  exec_get_pnc_usec += got_time.tv_usec - start_exec_pnc.tv_usec; */
-    /* #endif */
-
-    if (pnc_mb_ptr == NULL) {
-      // We ran out of metadata blocks -- PANIC!
-      printf("Out of metadata blocks for PNC -- PANIC Quit the run (for now)\n");
-      dump_all_metadata_blocks_states(sptr);
-      exit (-4);
-    }
-    DEBUG(printf(" PnC Task got a metablock : MB%u\n", pnc_mb_ptr->block_id));
-
-    // Set up parameters to the Plan-and-Control task
-    plan_ctrl_data_struct_t * pnc_dp = (plan_ctrl_data_struct_t*)(pnc_mb_ptr->data_space);
-    pnc_dp->time_step       = time_step;           // The current time-step of the simulation
-    pnc_dp->repeat_factor   = pandc_repeat_factor; // The current time-step of the simulation
-    pnc_dp->object_label    = label;               // The determined label of the object in the image
-    pnc_dp->object_distance = distance;            // The distance to the closest vehicle in our lane
-    pnc_dp->safe_lanes_msg  = message;             // The message indicating which lanes are safe to change into
-    pnc_dp->vehicle_state   = vehicle_state;       // The current (input) vehicle state
-    DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
-    DEBUG(printf("Calling start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
-    start_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
-    DEBUG(printf(" Back from start_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    task_metadata_block_t* pnc_mb_ptr = NULL;
+    DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
+    start_plan_ctrl_execution(&pnc_mb_ptr, sptr, plan_ctrl_task_type, CRITICAL_TASK, plan_ctrl_profile, NULL,
+			      time_step, time_step, pandc_repeat_factor, label, distance, message, vehicle_state);
+    DEBUG(printf(" MB%u Back from start_execution_of_plan_ctrl_kernel\n", pnc_mb_ptr->block_id));
     
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
-    post_execute_rad_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
+    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
     post_execute_vit_kernel(vdentry_p->msg_id, message);
     if (num_Crit_test_tasks > 0) {
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
     }
     
-    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
+    DEBUG(printf("MAIN: Calling wait for plan-and-control task\n"));
    #ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
 
     //wait_all_critical(sptr);
-    wait_on_tasklist(sptr, 1, pnc_mb_ptr->block_id);
+    wait_on_tasklist(sptr, 1, pnc_mb_ptr);
 
    #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
     wait_all_crit_sec  += stop_wait_all_crit.tv_sec  - start_wait_all_crit.tv_sec;
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
    #endif
-    DEBUG(printf("MAIN:  Back from wait_all_critical\n"));
+    DEBUG(printf("MAIN:  Back from wait for plan-and-control\n"));
     
     DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
-    vehicle_state = finish_execution_of_plan_ctrl_kernel(pnc_mb_ptr); // Critical Plan-and-Control Task
-    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, pnc_dp->time_step, pnc_dp->repeat_factor, pnc_dp->object_label, pnc_dp->object_distance, pnc_dp->safe_lanes_msg, pnc_dp->vehicle_state.active, pnc_dp->vehicle_state.lane, pnc_dp->vehicle_state.speed));
+    finish_plan_ctrl_execution(pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
+    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, time_step, pandc_repeat_factor, label, distance, message, vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
 
    #ifdef TIME
     gettimeofday(&stop_exec_pandc, NULL);
@@ -1398,9 +1216,6 @@ int main(int argc, char *argv[])
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 
     time_step++;
-
-    // TEST - trying this here.
-    //wait_all_tasks_finish();
 
     #ifndef USE_SIM_ENVIRON
     read_next_trace_record(sptr, vehicle_state);
@@ -1419,7 +1234,7 @@ int main(int argc, char *argv[])
   printf("\nRun completed %u time steps\n\n", time_step);
 
   closeout_cv_kernel();
-  closeout_rad_kernel();
+  closeout_radar_kernel();
   closeout_vit_kernel();
   closeout_test_kernel();
 

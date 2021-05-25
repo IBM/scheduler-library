@@ -29,7 +29,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "utils.h"
+#include "viterbi_utils.h"
+#include "viterbi_base.h"
 //#define VERBOSE
 #include "verbose.h"
 
@@ -42,9 +43,53 @@
 #include "vit_task.h"
 #include "vit_accel.h" // required for the execute_on_hwr functions
 
+// GLOBAL VARIABLES
+typedef union branchtab27_u {
+	unsigned char c[32];
+} t_branchtab27;
+
+#ifdef INT_TIME
+extern uint64_t call_sec;
+extern uint64_t dodec_sec;
+extern uint64_t dodec_usec;
+
+extern uint64_t call_usec;
+extern uint64_t depunc_sec;
+extern uint64_t depunc_usec;
+#endif
+
+
+extern ofdm_param ofdm;
+extern frame_param frame;
+
+
+t_branchtab27 d_branchtab27_generic[2];
+
+ofdm_param ofdm = {   0,   //  encoding   : 0 = BPSK_1_2
+		     13,   //  rate_field : rate field ofSIGNAL header
+		      1,   //  n_bpsc     : coded bits per subcarrier
+		     48,   //  n_cbps     : coded bits per OFDM symbol
+		     24 }; //  n_dbps     : data bits per OFDM symbol
+
+frame_param frame = {  1528,    // psdu_size      : PSDU size in bytes 
+		        511,    // n_sym          : number of OFDM symbols
+		         18,    // n_pad          : number of padding bits in DATA field
+		      24528,    // n_encoded_bits : number of encoded bits
+		      12264 };  // n_data_bits    : number of data bits, including service and padding
+
+
+// Metrics for each state
+unsigned char d_mmresult[64] __attribute__((aligned(16)));
+// Paths for each state
+unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
+
+
 
 // Forward Declarations:
 void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);
+void reset();
+void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
+uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);
 
 
 void print_viterbi_metadata_block_contents(task_metadata_block_t* mb)
@@ -81,6 +126,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The Viterbi Task Timing Info
   unsigned total_vit_comp_by[total_accel_types+1];
+  uint64_t total_call_usec[total_accel_types+1];
   uint64_t total_depunc_usec[total_accel_types+1];
   uint64_t total_dodec_usec[total_accel_types+1];
   for (int ai = 0; ai <= total_accel_types; ai++) {
@@ -95,26 +141,39 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
       vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(sptr->master_metadata_pool[bi].task_timings[my_task_type]);
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
+      uint64_t this_call_usec = (uint64_t)(vit_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->call_usec[ai]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
       uint64_t this_dodec_usec = (uint64_t)(vit_timings_p->dodec_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->dodec_usec[ai]);
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
+	printf("    Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu call %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec, this_call_usec);
       } else {
 	if ((this_comp_by + this_depunc_usec + this_dodec_usec) != 0) {
-	  printf("  ERROR: Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec);
+	  printf("  ERROR: Block %3u : AI %u %s : CmpBy %8u depunc %15lu dodecode %15lu call %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_depunc_usec, this_dodec_usec, this_call_usec);
 	}
       }
       // Per acceleration (CPU, HWR)
       total_vit_comp_by[ai] += this_comp_by;
+      total_call_usec[ai] += this_call_usec;
       total_depunc_usec[ai] += this_depunc_usec;
       total_dodec_usec[ai]  += this_dodec_usec;
       // Overall Total
       total_vit_comp_by[total_accel_types] += this_comp_by;
+      total_call_usec[total_accel_types] += this_call_usec;
       total_depunc_usec[total_accel_types] += this_depunc_usec;
       total_dodec_usec[total_accel_types]  += this_dodec_usec;
     } // for (bi = 1 .. numMetatdataBlocks)
   } // for (ai = 0 .. total_accel_types)
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type, sptr->task_name_str[my_task_type]);
+  printf("     Call  run time   ");
+  for (int ai = 0; ai < total_accel_types; ai++) {
+    double avg = (double)total_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_call_usec[ai], avg);
+  }
+  {
+    double avg = (double)total_call_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_call_usec[total_accel_types], avg);
+  }
+
   printf("     depuncture  run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_depunc_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -124,7 +183,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
     double avg = (double)total_depunc_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_depunc_usec[total_accel_types], avg);
   }
-  
+
   printf("     do-decoding run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_dodec_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
@@ -145,7 +204,7 @@ exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block)
   int vn = task_metadata_block->accelerator_id;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on FFT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
+  DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on VIT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
@@ -281,13 +340,6 @@ void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block)
  * Some modifications from original Karn code by Matt Ettus
  * Major modifications by adding SSE2 code by Bogdan Diaconescu
  */
-#include "viterbi_flat.h"
-#include "viterbi_standalone.h"
-
-
-#undef  GENERATE_CHECK_VALUES
-//#define  GENERATE_CHECK_VALUES
-
 
 /* This is the main "do_decoding" function; takes the necessary inputs
  * from the decode call (above) and does the decoding, outputing the decoded result.
@@ -640,4 +692,339 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 
 
 
+
+
+/*
+ * Copyright 1995 Phil Karn, KA9Q
+ * Copyright 2008 Free Software Foundation, Inc.
+ * 2014 Added SSE2 implementation Bogdan Diaconescu
+ *
+ * This file is part of GNU Radio
+ *
+ * GNU Radio is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * GNU Radio is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
+
+/*
+ * Viterbi decoder for K=7 rate=1/2 convolutional code
+ * Some modifications from original Karn code by Matt Ettus
+ * Major modifications by adding SSE2 code by Bogdan Diaconescu
+ */
+
+/* #undef DEBUG */
+/*  #define DEBUG(x) x */
+/* #undef DO_VERBOSE */
+/*  #define DO_VERBOSE(x) x */
+
+// This routine "depunctures" the input data stream according to the 
+//  relevant encoding parameters, etc. and returns the depunctured data.
+
+uint8_t* depuncture(uint8_t *in) {
+  int count;
+  int n_cbps = d_ofdm->n_cbps;
+  uint8_t *depunctured;
+  //printf("Depunture call...\n");
+  if (d_ntraceback == 5) {
+    count = d_frame->n_sym * n_cbps;
+    depunctured = in;
+  } else {
+    depunctured = d_depunctured;
+    count = 0;
+    for(int i = 0; i < d_frame->n_sym; i++) {
+      for(int k = 0; k < n_cbps; k++) {
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
+
+	// Insert received bits
+	depunctured[count] = in[i * n_cbps + k];
+	count++;
+
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
+      }
+    }
+  }
+  //printf("  depuncture count = %u\n", count);
+  return depunctured;
+}
+
+
+
+
+
+void reset() {
+  int i, j;
+
+  int polys[2] = { 0x6d, 0x4f };
+  for(i=0; i < 32; i++) {
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2*i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
+  }
+
+  switch(d_ofdm->encoding) {
+  case BPSK_1_2:
+  case QPSK_1_2:
+  case QAM16_1_2:
+    d_ntraceback = 5;
+    d_depuncture_pattern = PUNCTURE_1_2;
+    d_k = 1;
+    break;
+  case QAM64_2_3:
+    d_ntraceback = 9;
+    d_depuncture_pattern = PUNCTURE_2_3;
+    d_k = 2;
+    break;
+  case BPSK_3_4:
+  case QPSK_3_4:
+  case QAM16_3_4:
+  case QAM64_3_4:
+    d_ntraceback = 10;
+    d_depuncture_pattern = PUNCTURE_3_4;
+    d_k = 3;
+    break;
+  }
+}
+
+
+
+
+/* This is the main "decode" function; it prepares data and repeatedly
+ * calls the viterbi butterfly2 routine to do steps of decoding.
+ */
+// INPUTS/OUTPUTS:  
+//    ofdm   : INPUT  : Struct (see utils.h) [enum, char, int, int, int]
+//    frame  : INPUT  : Struct (see utils.h) [int, int, int, int]
+//    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
+//  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
+
+//uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
+void
+start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in)
+{
+  d_ofdm = ofdm;
+  d_frame = frame;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+  reset();
+
+ #ifdef INT_TIME
+  gettimeofday(&vit_timings_p->depunc_start, NULL);
+ #endif
+  uint8_t *depunctured = depuncture(in);
+ #ifdef INT_TIME
+  struct timeval depunc_stop;
+  gettimeofday(&vit_timings_p->depunc_stop, NULL);
+ #endif
+  DO_VERBOSE({
+      printf("VBS: depunctured = [\n");
+      for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+	if (ti > 0) { printf(", "); }
+	if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
+	if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+	printf("%02x", depunctured[ti]);
+      }
+      printf("\n");
+    });
+
+  // Set up the task_metadata scope block
+  vit_metadata_block->data_size = 43365; // MAX size?
+  // Copy over our task data to the MetaData Block
+  // Get a viterbi_data_struct_t "View" of the metablock data pointer.
+  // Copy inputs into the vdsptr data view of the metadata_block metadata data segment
+  viterbi_data_struct_t* vdsptr = (viterbi_data_struct_t*)(vit_metadata_block->data_space);
+  vdsptr->n_data_bits = frame->n_data_bits;
+  vdsptr->n_cbps      = ofdm->n_cbps;
+  vdsptr->n_traceback = d_ntraceback;
+  vdsptr->psdu_size   = frame->psdu_size;
+  vdsptr->inMem_size = 72; // fixed -- always (add the 2 padding bytes)
+  vdsptr->inData_size = MAX_ENCODED_BITS; // Using the max value here for now/safety
+  vdsptr->outData_size = (MAX_ENCODED_BITS * 3/4); //  Using the max value here for now/safety
+  uint8_t* in_Mem   = &(vdsptr->theData[0]);
+  uint8_t* in_Data  = &(vdsptr->theData[vdsptr->inMem_size]);
+  uint8_t* out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
+  // Copy some multi-block stuff into a single memory (cleaner transport)
+  DEBUG(printf("SET UP VITERBI TASK: \n");
+	print_viterbi_metadata_block_contents(vit_metadata_block);
+	printf("      in_Mem   @ %p\n",  in_Mem);
+	printf("      in_Data  @ %p\n",  in_Data);
+	printf("      out_Data @ %p\n",  out_Data));
+  { // scope block for definition of imi
+    int imi = 0;
+    for (int ti = 0; ti < 2; ti ++) {
+      for (int tj = 0; tj < 32; tj++) {
+	in_Mem[imi++]= d_branchtab27_generic[ti].c[tj];
+      }
+    }
+    if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
+    // imi = 64;
+    for (int ti = 0; ti < 6; ti ++) {
+      vdsptr->theData[imi++] = d_depuncture_pattern[ti];
+    }
+    if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
+  } // scope block for defn of imi
+    
+  for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) { // This is over-kill for messages that are not max size
+    in_Data[ti] = depunctured[ti];
+    //DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
+  }
+
+  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area
+    out_Data[ti] = 0;
+    //vdsptr->theData[imi++] = 0;
+  }
+  // Call the do_decoding routine
+  //  NOTE: We are sending addresses in our space -- the accelerator should xfer the data in this model.
+  DEBUG(printf("Calling schedule_task for viterbi_task with nDb %u nCb %u nTrb %u\n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
+  //schedule_viterbi(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, depunctured, d_decoded);
+  request_execution(vit_metadata_block);
+}
+
+
+//uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
+uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out)
+{
+  // Set up the Viterbit Data view of the metatdata block data
+  int aidx = vit_metadata_block->accelerator_type;
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+
+  viterbi_data_struct_t* vdsptr = (viterbi_data_struct_t*)(vit_metadata_block->data_space);
+  uint8_t* in_Mem   = &(vdsptr->theData[0]);
+  uint8_t* in_Data  = &(vdsptr->theData[vdsptr->inMem_size]);
+  uint8_t* out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
+
+  *psdu_size_out = vdsptr->psdu_size;
+
+  // We write this timing here, since we now know the Accelerator ID to which this is accounted.
+ #ifdef INT_TIME
+  vit_timings_p->depunc_sec[aidx]  += vit_timings_p->depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
+  vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
+  //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
+ #endif
+
+  DEBUG(printf("MB%u is in finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
+	  print_viterbi_metadata_block_contents(vit_metadata_block));
+  SDEBUG(printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
+  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
+    d_decoded[ti] = out_Data[ti];
+    //DEBUG(if (ti < 31) { printf("FIN_VIT_OUT %3u : %3u @ %p \n", ti, out_Data[ti], &(out_Data[ti]));});
+    SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
+  }
+  SDEBUG(printf("\n\n");
+	 for (int i = 0; i < 32; i++) {
+      printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
+    });
+
+  return d_decoded;
+}
+
+
+
+
+void start_viterbi_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			     task_type_t vit_task_type, task_criticality_t crit_level, uint64_t* vit_profile,
+			     task_finish_callback_t auto_finish_routine, int32_t dag_id,
+			     vit_dict_entry_t* trace_msg)
+{
+ #ifdef TIME
+  gettimeofday(&start_exec_vit, NULL);
+ #endif
+  // Request a MetadataBlock (for an VIT task at Critical Level)
+  task_metadata_block_t* vit_mb_ptr = NULL;
+  DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
+  do {
+    vit_mb_ptr = get_task_metadata_block(sptr, dag_id, vit_task_type, crit_level, vit_profile);
+    //usleep(get_mb_holdoff);
+  } while (0); //(*mb_ptr == NULL);
+ #ifdef TIME
+  struct timeval got_time;
+  gettimeofday(&got_time, NULL);
+  exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
+  exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
+ #endif
+  //printf("VIT Crit Profile: %e %e %e %e %e\n", vit_profile[crit_vit_samples_set][0], vit_profile[crit_vit_samples_set][1], vit_profile[crit_vit_samples_set][2], vit_profile[crit_vit_samples_set][3], vit_profile[crit_vit_samples_set][4]);
+  if (vit_mb_ptr == NULL) {
+    // We ran out of metadata blocks -- PANIC!
+    printf("Out of metadata blocks for VIT -- PANIC Quit the run (for now)\n");
+    dump_all_metadata_blocks_states(sptr);
+    exit (-4);
+  }
+  vit_mb_ptr->atFinish = auto_finish_routine;
+  *mb_ptr = vit_mb_ptr;
+
+  DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", vit_mb_ptr->block_id));
+  // Send each message (here they are all the same) through the viterbi decoder
+  //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
+  // NOTE: start_decode ends in the request_execution (for now)
+  start_decode(vit_mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
+
+  /* DEBUG(printf("MB%u In start_vit_execution\n", mb_ptr->block_id)); */
+
+  /* vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_mb_ptr->task_timings[vit_mb_ptr->task_type]); */
+  /* vit_data_struct_t * vit_data_p    = (vit_data_struct_t*)(vit_mb_ptr->data_space); */
+  /* // Set the input parameter values (into the Metadata Block) */
+  /* request_execution(vit_mb_ptr); */
+  // This now ends this block -- we've kicked off execution  
+}
+
+
+// This is a default "finish" routine that can be included in the start_executiond call
+// for a task that is to be executed, but whose results are not used...
+// 
+void viterbi_auto_finish_routine(task_metadata_block_t* mb)
+{
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+  free_task_metadata_block(mb);
+}
+
+extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
+
+// NOTE: This routine DOES NOT copy out the data results -- a call to
+//   calculate_peak_distance_from_fmcw now results in alteration ONLY
+//   of the metadata task data; we could send in the data pointer and
+//   over-write the original input data with the VIT results (As we used to)
+//   but this seems un-necessary since we only want the final "distance" really.
+void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, message_t* message_id, char* out_msg_text)
+{
+  message_t msg = num_message_t;
+  uint8_t *result;
+
+  int psdusize; // set by finish_decode call...
+  DEBUG(printf("  MB%u Calling the finish_decode routine\n", vit_metadata_block->block_id));
+  result = finish_decode(vit_metadata_block, &psdusize);
+  // descramble the output - put it in result
+  DEBUG(printf("  MB%u Calling the viterbi descrambler routine; psdusize = %u\n", vit_metadata_block->block_id, psdusize));
+  descrambler(result, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
+
+  // Here we look at the message string and select proper message_t
+  switch(out_msg_text[3]) {
+   case '0' : msg = safe_to_move_right_or_left; break;
+   case '1' : msg = safe_to_move_right_only; break;
+   case '2' : msg = safe_to_move_left_only; break;
+   case '3' : msg = unsafe_to_move_left_or_right; break;
+   default  : msg = num_message_t; break;
+  }
+  DEBUG(printf("MB%u The finish_viterbi_execution found message %u\n", vit_metadata_block->block_id, msg));
+  *message_id = msg;
+  // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u fin_vit Calling free_task_metadata_block\n", vit_metadata_block->block_id));
+  free_task_metadata_block(vit_metadata_block);
+  
+}
 

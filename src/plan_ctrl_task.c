@@ -29,7 +29,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "utils.h"
 //#define VERBOSE
 #include "verbose.h"
 
@@ -223,6 +222,98 @@ void execute_on_cpu_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_b
   mark_task_done(task_metadata_block);
 }
 
+
+
+
+void start_plan_ctrl_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			       task_type_t plan_ctrl_task_type, task_criticality_t crit_level, uint64_t* plan_ctrl_profile, task_finish_callback_t auto_finish_routine,
+			       int32_t dag_id, unsigned time_step, unsigned repeat_factor,
+			       label_t object_label, distance_t object_dist, message_t safe_lanes_msg, vehicle_state_t vehicle_state)
+{
+ #ifdef TIME
+  gettimeofday(&start_exec_pandc, NULL);
+ #endif
+  // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
+  task_metadata_block_t* plan_ctrl_mb_ptr = NULL;
+  DEBUG(printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", plan_ctrl_task_type));
+  do {
+    plan_ctrl_mb_ptr = get_task_metadata_block(sptr, dag_id, plan_ctrl_task_type, crit_level, plan_ctrl_profile);
+    //usleep(get_mb_holdoff);
+  } while (0); //(*mb_ptr == NULL);
+ #ifdef TIME
+  struct timeval got_time;
+  gettimeofday(&got_time, NULL);
+  exec_get_pandc_sec  += got_time.tv_sec  - start_exec_pandc.tv_sec;
+  exec_get_pandc_usec += got_time.tv_usec - start_exec_pandc.tv_usec;
+ #endif
+  //printf("PLAN_CTRL Crit Profile: %e %e %e %e %e\n", plan_ctrl_profile[crit_plan_ctrl_samples_set][0], plan_ctrl_profile[crit_plan_ctrl_samples_set][1], plan_ctrl_profile[crit_plan_ctrl_samples_set][2], plan_ctrl_profile[crit_plan_ctrl_samples_set][3], plan_ctrl_profile[crit_plan_ctrl_samples_set][4]);
+  if (plan_ctrl_mb_ptr == NULL) {
+    // We ran out of metadata blocks -- PANIC!
+    printf("Out of metadata blocks for PLAN_CTRL -- PANIC Quit the run (for now)\n");
+    dump_all_metadata_blocks_states(sptr);
+    exit (-4);
+  }
+  plan_ctrl_mb_ptr->atFinish = auto_finish_routine;
+  *mb_ptr = plan_ctrl_mb_ptr;
+  DEBUG(printf("MB%u In start_plan_ctrl_execution\n", plan_ctrl_mb_ptr->block_id));
+
+  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(plan_ctrl_mb_ptr->task_timings[plan_ctrl_mb_ptr->task_type]);
+  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(plan_ctrl_mb_ptr->data_space);
+  // Set the inputs for the plan-and-control task
+  plan_ctrl_data_p->time_step       = time_step;       // The current time-step of the simulation
+  plan_ctrl_data_p->repeat_factor   = repeat_factor;   // The current time-step of the simulation
+  plan_ctrl_data_p->object_label    = object_label;    // The determined label of the object in the image
+  plan_ctrl_data_p->object_distance = object_dist;     // The distance to the closest vehicle in our lane
+  plan_ctrl_data_p->safe_lanes_msg  = safe_lanes_msg;  // The message indicating which lanes are safe to change into
+  plan_ctrl_data_p->vehicle_state   = vehicle_state;   // The current (input) vehicle state
+  DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", plan_ctrl_mb_ptr->block_id, plan_ctrl_data_p->time_step, plan_ctrl_data_p->repeat_factor, plan_ctrl_data_p->object_label, plan_ctrl_data_p->object_distance, plan_ctrl_data_p->safe_lanes_msg, plan_ctrl_data_p->vehicle_state.active, plan_ctrl_data_p->vehicle_state.lane, plan_ctrl_data_p->vehicle_state.speed));
+
+ #ifdef INT_TIME
+  gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
+ #endif
+  //  schedule_plan_ctrl(data);
+  request_execution(plan_ctrl_mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+
+// This is a default "finish" routine that can be included in the start_executiond call
+// for a task that is to be executed, but whose results are not used...
+// 
+void plan_ctrl_auto_finish_routine(task_metadata_block_t* mb)
+{
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+  free_task_metadata_block(mb);
+}
+
+
+
+
+// NOTE: This routine DOES NOT copy out the data results -- a call to
+//   calculate_peak_distance_from_fmcw now results in alteration ONLY
+//   of the metadata task data; we could send in the data pointer and
+//   over-write the original input data with the PLAN_CTRL results (As we used to)
+//   but this seems un-necessary since we only want the final "distance" really.
+void finish_plan_ctrl_execution(task_metadata_block_t* plan_ctrl_metadata_block, vehicle_state_t* new_vehicle_state)
+{
+  int tidx = plan_ctrl_metadata_block->accelerator_type;
+  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(plan_ctrl_metadata_block->task_timings[plan_ctrl_metadata_block->task_type]);
+  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(plan_ctrl_metadata_block->data_space);
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  plan_ctrl_timings_p->call_sec[tidx]  += stop_time.tv_sec  - plan_ctrl_timings_p->call_start.tv_sec;
+  plan_ctrl_timings_p->call_usec[tidx] += stop_time.tv_usec - plan_ctrl_timings_p->call_start.tv_usec;
+ #endif // INT_TIME
+
+  *new_vehicle_state = plan_ctrl_data_p->new_vehicle_state;
+
+  // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", plan_ctrl_metadata_block->block_id));
+  free_task_metadata_block(plan_ctrl_metadata_block);
+}
 
 
 

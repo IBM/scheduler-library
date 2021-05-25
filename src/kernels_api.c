@@ -64,7 +64,7 @@ float IMPACT_DISTANCE = 50.0; // Minimum distance at which an obstacle "impacts"
 
 
 /* These are types, functions, etc. required for VITERBI */
-#include "viterbi_flat.h"
+//#include "viterbi_flat.h"
 
 
 
@@ -136,7 +136,6 @@ unsigned viterbi_messages_histogram[VITERBI_MSG_LENGTHS][NUM_MESSAGES];
 unsigned total_msgs = 0; // Total messages decoded during the full run
 unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the full run
 
-extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
 
 unsigned total_test_tasks = 0;  // Total test tasks executed during the full run
@@ -172,11 +171,11 @@ label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
   return d_object;
 }
 
-
+/*
 void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
 {
   DEBUG(printf("MB%u In start_execution_of_cv_kernel\n", mb_ptr->block_id));
-  /* 2) Set up to request object detection on an image frame */
+  // 2) Set up to request object detection on an image frame *
   int tidx = mb_ptr->accelerator_type;
   cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
   cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
@@ -191,7 +190,8 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
   request_execution(mb_ptr);
   // This now ends this block -- we've kicked off execution
 }
-
+*/
+/*
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 {
   DEBUG(printf("MB%u In finish_execution_of_cv_kernel\n", mb_ptr->block_id));
@@ -204,7 +204,7 @@ label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
 
   return the_label;
 }
-
+*/
 void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 {
   //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
@@ -220,9 +220,9 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 
 
 
-status_t init_rad_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
-  DEBUG(printf("In init_rad_kernel...\n"));
+  DEBUG(printf("In init_radar_kernel...\n"));
 
   // Read in the radar distances dictionary file
   FILE *dictF = fopen(dict_fn,"r");
@@ -348,26 +348,26 @@ radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
 
 
 
-radar_dict_entry_t* iterate_rad_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+radar_dict_entry_t* iterate_radar_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
 {
-  DEBUG(printf("In iterate_rad_kernel\n"));
+  DEBUG(printf("In iterate_radar_kernel\n"));
   unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
   radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
   return &(the_radar_return_dict[crit_fft_samples_set][tr_val]);
 }
 
 
-void start_execution_of_rad_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
+/*void start_execution_of_radar_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
 {
-  DEBUG(printf("MB%u In start_execution_of_rad_kernel\n", mb_ptr->block_id));
+  DEBUG(printf("MB%u In start_execution_of_radar_kernel\n", mb_ptr->block_id));
   //DEBUG(printf("  MB%u Calling start_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
   start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
-}
+  }*/
 
-
-distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
+ /*
+distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr)
 {
-  DEBUG(printf("MB%u In finish_execution_of_rad_kernel\n", mb_ptr->block_id));
+  DEBUG(printf("MB%u In finish_execution_of_radar_kernel\n", mb_ptr->block_id));
   DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
   distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
 
@@ -377,10 +377,10 @@ distance_t finish_execution_of_rad_kernel(task_metadata_block_t* mb_ptr)
 
   DEBUG(printf("  MB%u Returning distance = %.1f\n", mb_ptr->block_id, dist));
   return dist;
-}
+  }*/
 
 
-void post_execute_rad_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
+void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
 {
   // Get an error estimate (Root-Squared?)
   float error;
@@ -634,14 +634,18 @@ vit_dict_entry_t* select_random_vit_input()
   return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
 }
 
-void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
+extern void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
+extern uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);
+
+/*void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
 {
   DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", mb_ptr->block_id));
   // Send each message (here they are all the same) through the viterbi decoder
   //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
   start_decode(mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
-}
-
+  }
+*/
+/*
 message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
 {
   // Send each message (here they are all the same) through the viterbi decoder
@@ -654,7 +658,7 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   result = finish_decode(mb_ptr, &psdusize);
   // descramble the output - put it in result
   DEBUG(printf("  MB%u Calling the viterbi descrambler routine; psdusize = %u\n", mb_ptr->block_id, psdusize));
-  descrambler(result, psdusize, msg_text, NULL /*descram_ref*/, NULL /*msg*/);
+  descrambler(result, psdusize, msg_text, NULL /*descram_ref*, NULL /*msg*);
 
  #if(0)
   printf("MB%u PSDU %u : Msg : = `", mb_ptr->block_id, psdusize);
@@ -679,7 +683,7 @@ message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
   DEBUG(printf("MB%u The execute_vit_kernel is returning msg %u\n", mb_ptr->block_id, msg));
   return msg;
 }
-
+*/
 void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
 {
   total_msgs++;
@@ -876,7 +880,7 @@ void closeout_cv_kernel()
   }
 }
 
-void closeout_rad_kernel()
+void closeout_radar_kernel()
 {
   printf("\nHistogram of Radar Distances:\n");
   printf("    %3s | %3s | %8s | %9s \n", "Set", "Idx", "Distance", "Occurs");

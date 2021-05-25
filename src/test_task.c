@@ -29,7 +29,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "utils.h"
 //#define VERBOSE
 #include "verbose.h"
 
@@ -208,6 +207,88 @@ void execute_on_cpu_test_accelerator(task_metadata_block_t* task_metadata_block)
   mark_task_done(task_metadata_block);
 }
 
+
+
+
+void start_test_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			  task_type_t test_task_type, task_criticality_t crit_level, uint64_t* test_profile, task_finish_callback_t auto_finish_routine,
+			  int32_t dag_id)
+{
+ #ifdef TIME
+  gettimeofday(&start_exec_test, NULL);
+ #endif
+  // Request a MetadataBlock (for an TEST task at Critical Level)
+  task_metadata_block_t* test_mb_ptr = NULL;
+  DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
+  do {
+    test_mb_ptr = get_task_metadata_block(sptr, dag_id, test_task_type, crit_level, test_profile);
+    //usleep(get_mb_holdoff);
+  } while (0); //(*mb_ptr == NULL);
+ #ifdef TIME
+  struct timeval got_time;
+  gettimeofday(&got_time, NULL);
+  exec_get_test_sec  += got_time.tv_sec  - start_exec_test.tv_sec;
+  exec_get_test_usec += got_time.tv_usec - start_exec_test.tv_usec;
+ #endif
+  //printf("TEST Crit Profile: %e %e %e %e %e\n", test_profile[crit_test_samples_set][0], test_profile[crit_test_samples_set][1], test_profile[crit_test_samples_set][2], test_profile[crit_test_samples_set][3], test_profile[crit_test_samples_set][4]);
+  if (test_mb_ptr == NULL) {
+    // We ran out of metadata blocks -- PANIC!
+    printf("Out of metadata blocks for TEST -- PANIC Quit the run (for now)\n");
+    dump_all_metadata_blocks_states(sptr);
+    exit (-4);
+  }
+  test_mb_ptr->atFinish = auto_finish_routine;
+  *mb_ptr = test_mb_ptr;
+  DEBUG(printf("MB%u In start_test_execution\n", test_mb_ptr->block_id));
+
+  test_timing_data_t * test_timings_p = (test_timing_data_t*)&(test_mb_ptr->task_timings[test_mb_ptr->task_type]);
+  test_data_struct_t * test_data_p    = (test_data_struct_t*)(test_mb_ptr->data_space);
+  // Currently we don't send in any data this way (though we should include the input image here)
+
+#ifdef INT_TIME
+  gettimeofday(&(test_timings_p->call_start), NULL);
+ #endif
+  //  schedule_test(data);
+  request_execution(test_mb_ptr);
+  // This now ends this block -- we've kicked off execution
+}
+
+
+// This is a default "finish" routine that can be included in the start_executiond call
+// for a task that is to be executed, but whose results are not used...
+// 
+void test_auto_finish_routine(task_metadata_block_t* mb)
+{
+  TDEBUG(scheduler_datastate_block_t* sptr = mb->scheduler_datastate_pointer;
+	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+  free_task_metadata_block(mb);
+}
+
+
+
+
+// NOTE: This routine DOES NOT copy out the data results -- a call to
+//   calculate_peak_distance_from_fmcw now results in alteration ONLY
+//   of the metadata task data; we could send in the data pointer and
+//   over-write the original input data with the TEST results (As we used to)
+//   but this seems un-necessary since we only want the final "distance" really.
+void finish_test_execution(task_metadata_block_t* test_metadata_block)
+{
+  int tidx = test_metadata_block->accelerator_type;
+  test_timing_data_t * test_timings_p = (test_timing_data_t*)&(test_metadata_block->task_timings[test_metadata_block->task_type]);
+  test_data_struct_t * test_data_p    = (test_data_struct_t*)(test_metadata_block->data_space);
+ #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  test_timings_p->call_sec[tidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
+  test_timings_p->call_usec[tidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
+ #endif // INT_TIME
+
+  // We've finished the execution and lifetime for this task; free its metadata
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
+  free_task_metadata_block(test_metadata_block);
+}
 
 
 

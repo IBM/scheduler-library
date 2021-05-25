@@ -53,4 +53,12 @@ void execute_on_hwr_vit_plan_ctrl_accelerator(task_metadata_block_t* task_metada
 void execute_on_hwr_fft_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_on_hwr_cv_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
 
+void start_plan_ctrl_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			       task_type_t plan_ctrl_task_type, task_criticality_t crit_level, uint64_t* plan_ctrl_profile, task_finish_callback_t auto_finish_routine,
+			       int32_t dag_id, unsigned time_step, unsigned repeat_factor,
+			       label_t object_label, distance_t object_distance, message_t safe_lanes_msg, vehicle_state_t vehicle_state);
+
+void plan_ctrl_auto_finish_routine(task_metadata_block_t* mb);
+void finish_plan_ctrl_execution(task_metadata_block_t* plan_ctrl_metadata_block, vehicle_state_t* new_vehicle_state);
+
 #endif

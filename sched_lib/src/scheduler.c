@@ -1319,7 +1319,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr) //, char* sl_vi
       }
       if (desired_num > sptr->max_accel_of_any_type) {
 	printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num, sptr->max_accel_of_any_type);
-	cleanup_and_exit(sptr, -33);
+	cleanup_and_exit(sptr, -34);
       }
       unsigned alloc_num;
       if (desired_num < 0) {
@@ -1630,8 +1630,12 @@ void wait_on_tasklist(scheduler_datastate_block_t* sptr, int num_tasks, ...)
   va_list var_list;
   va_start(var_list, num_tasks);
   for (int i = 0; i < num_tasks; i++) {
-    int bid = va_arg(var_list, int);
-    task_block_ids[i] = bid;
+    task_metadata_block_t* mb_ptr = va_arg(var_list, task_metadata_block_t*);
+    if (mb_ptr == NULL) {
+      printf("ERROR: wait_on_tasklist provided a NULL task pointer\n");
+      cleanup_and_exit(sptr, -30);
+    }
+    task_block_ids[i] = mb_ptr->block_id;
   }
   int idx = 0;
   while (idx < num_tasks) {
@@ -1955,13 +1959,13 @@ register_task_type(scheduler_datastate_block_t*    sptr,
 	printf("  description  = %s\n", task_description);
 	printf("  print_metadata_block_contents = %p\n", print_metadata_block_contents);
 	printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats);
-	printf(" and num_accel_task_exeC_descr  = %f\n", num_accel_task_exec_descriptions));
+	printf(" and num_accel_task_exeC_descr  = %u\n", num_accel_task_exec_descriptions));
 
   printf("Registering Task %s : %s\n", task_name, task_description);
   
   if (print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
-    cleanup_and_exit(sptr, -30);
+    cleanup_and_exit(sptr, -31);
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information for this task
   task_type_t tid = sptr->next_avail_task_type;
@@ -1969,7 +1973,7 @@ register_task_type(scheduler_datastate_block_t*    sptr,
     sptr->next_avail_task_type++;
   } else {
     printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding id %u\n", (sptr->inparms->max_task_types-1), tid);
-    cleanup_and_exit(sptr, -31);
+    cleanup_and_exit(sptr, -35);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
@@ -2001,7 +2005,7 @@ register_accel_can_exec_task(scheduler_datastate_block_t* sptr, scheduler_accele
   int acid = sptr->map_sched_accel_type_to_local_accel_type[sl_acid];
   if (acid < 0) {    
     printf("In register_accel_can_exec_task specified an un-allocated accelerator id: %u %s\n", sl_acid, sptr->accel_name_str[sl_acid]);
-    cleanup_and_exit(sptr, -36);
+    cleanup_and_exit(sptr, -38);
   }
   if (tid >= sptr->next_avail_task_type) {
     printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n", tid, sptr->next_avail_task_type);
@@ -2009,7 +2013,7 @@ register_accel_can_exec_task(scheduler_datastate_block_t* sptr, scheduler_accele
   }
   if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {
     printf("In register_accel_can_exec_task for accel_type %u and task_type %u - Already have a registered execution (%p)\n", acid, tid, sptr->scheduler_execute_task_function[tid][acid]);
-    cleanup_and_exit(sptr, -38);
+    cleanup_and_exit(sptr, -39);
   }
   sptr->scheduler_execute_task_function[acid][tid] = fptr;
   DEBUG(printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr));

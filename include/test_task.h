@@ -59,4 +59,12 @@ void execute_on_hwr_vit_test_accelerator(task_metadata_block_t* task_metadata_bl
 void execute_on_hwr_fft_test_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_on_hwr_cv_test_accelerator(task_metadata_block_t* task_metadata_block);
 
+void start_test_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
+			  task_type_t test_task_type, task_criticality_t crit_level, uint64_t* test_profile, task_finish_callback_t auto_finish_routine,
+			  int32_t dag_id);
+
+void test_auto_finish_routine(task_metadata_block_t* mb);
+void finish_test_execution(task_metadata_block_t* test_metadata_block);
+
+
 #endif
