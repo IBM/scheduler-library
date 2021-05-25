@@ -174,6 +174,7 @@ LIB_P = $(SRC_P:lib%.c=-l%)
 VPATH = ./src ./src/policy_src
 
 TARGET=libscheduler.a
+HPVM_TARGET=libscheduler.bc
 
 #$(info $$TARGET is [${TARGET}])
 
@@ -241,11 +242,14 @@ clobber: clean
 obj:
 	mkdir $@
 
-hpvm: $(LL_OBJ)
-	llvm-link $^ -o sched.bc
-
 policies:
 	mkdir $@
+
+
+hpvm: obj $(HPVM_TARGET)
+
+$(HPVM_TARGET): $(LL_OBJ)
+	llvm-link $^ -o $@ 
 
 obj/%.bc: %.c
 	clang -O3 -S $(CFLAGS) -emit-llvm $< -o $@
