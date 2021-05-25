@@ -151,6 +151,37 @@ To actually execute a trace, one must point to the trace in the trace repository
 Note that the user must also specify a Scheduler Library policy to be used.
 The Scheduler policies are defined in the Scheduler Library code, but are produced as separate shared-object files (i.e. lib*.so) whcih are dynamically loaded at execution time.  These libraries reside in the top-level's ```library/policies``` directory.
 
+
+An example invocation:
+```
+ cd ~/scheduler-library/examples/mini-era
+ ./test-scheduler-S-P3V0F0N0 -t traces/tt02.new -o -G config_files/base_me_p2.config
+```
+
+The above uses a "configuration file" to provide thg Scheduler (Datastate) parameters.
+A "configuration file" is a simple ASCII file with the form as illustrated below:
+
+```
+> cat config_files/base_me_p2.config
+MAX_TASK_TYPES = 4
+MAX_ACCEL_TYPES = 4
+MAX_METADATA_POOL_BLOCKS = 32
+MAX_DATA_SPACE_BYTES = 131136
+MAX_TASK_TIMING_SETS = 16
+SCHEDULER_HOLDOFF_USEC = 1
+POLICY = ../../library/policies/libpolicy-v2.so
+VISUALIZER_OUTPUT_ENABLED = 0
+VISUALIZER_TASK_START_COUNT = -1 
+VISUALIZER_TASK_STOP_COUNT = 0
+VISUALIZER_TASK_ENABLE_TYPE = -1
+SL_VIZ_FNAME = ./sl_viz_me_p2.tr
+MAX_ACCEL_TO_USE_FROM_POOL_SCHED_CPU_ACCEL_T = -1
+MAX_ACCEL_TO_USE_FROM_POOL_SCHED_EPOCHS_1D_FFT_ACCEL_T = -1
+MAX_ACCEL_TO_USE_FROM_POOL_SCHED_EPOCHS_VITDEC_ACCEL_T = -1
+MAX_ACCEL_TO_USE_FROM_POOL_SCHED_EPOCHS_CV_CNN_ACCEL_T = -1
+>
+```
+
 #### Simulation-Driven Version: ```sim-test-scheduler*```
 ```
 ./sim-test-scheduler-S-P3V0F0N0 -h
