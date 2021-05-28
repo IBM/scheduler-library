@@ -22,7 +22,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include "base_types.h"
+#include "base_task_types.h"
 #include "scheduler.h"
 
 // Some Profiling Data:
@@ -37,12 +37,12 @@ typedef struct { // The "CV" Task view of "data"
 
 typedef struct {
   struct timeval call_start;
-  uint64_t call_sec[MY_APP_ACCEL_TYPES];
-  uint64_t call_usec[MY_APP_ACCEL_TYPES];
+  uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 
   struct timeval parse_start;
-  uint64_t parse_sec[MY_APP_ACCEL_TYPES];
-  uint64_t parse_usec[MY_APP_ACCEL_TYPES];
+  uint64_t parse_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t parse_usec[SCHED_MAX_ACCEL_TYPES];
 } cv_timing_data_t;
 
 // These are some "fake" times (models the execution of CV timing)
@@ -56,7 +56,11 @@ void output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned m
 void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
 
-void start_cv_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr, task_type_t cv_task_type, task_criticality_t crit_level, uint64_t* cv_profile, task_finish_callback_t auto_finish_routine, int32_t dag_id, label_t in_label);
+void set_up_cv_task_on_accel_profile_data();
+
+task_metadata_block_t* set_up_cv_task(scheduler_datastate_block_t* sptr, task_type_t cv_task_type, task_criticality_t crit_level,
+				      task_finish_callback_t auto_finish_routine, int32_t dag_id,
+				      label_t in_label);
 
 void cv_auto_finish_routine(task_metadata_block_t* mb);
 void finish_cv_execution(task_metadata_block_t* fft_metadata_block, label_t* out_label);

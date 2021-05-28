@@ -930,9 +930,9 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
 
 
 
-uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short,
+uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
 void set_up_vit_task_on_accel_profile_data() {
-  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     vit_profile[0][ai] = ACINFPROF;
     vit_profile[1][ai] = ACINFPROF;
     vit_profile[2][ai] = ACINFPROF;
@@ -959,35 +959,34 @@ void set_up_vit_task_on_accel_profile_data() {
       printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
              "FFT-HWR", "CV-HWR");
       printf("%15s :", "vit_profile[0]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
       printf("%15s :", "vit_profile[1]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
       printf("%15s :", "vit_profile[2]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
       printf("%15s :", "vit_profile[3]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
       printf("\n"));
 }
                                              // medium, long, or max
 
-task_metadata_block_t* set_up_vit_task(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
-			     task_type_t vit_task_type, task_criticality_t crit_level,
-			     task_finish_callback_t auto_finish_routine, int32_t dag_id,
-			     vit_dict_entry_t* trace_msg)
+task_metadata_block_t* set_up_vit_task(scheduler_datastate_block_t* sptr,
+				       task_type_t vit_task_type, task_criticality_t crit_level,
+				       task_finish_callback_t auto_finish_routine, int32_t dag_id,
+				       message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
 {
  #ifdef TIME
   gettimeofday(&start_exec_vit, NULL);
  #endif
-  set_up_vit_task_on_accel_profile_data();
   // Request a MetadataBlock (for an VIT task at Critical Level)
   task_metadata_block_t* vit_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
   do {
-    vit_mb_ptr = get_task_metadata_block(sptr, dag_id, vit_task_type, crit_level, vit_profile);
+    vit_mb_ptr = get_task_metadata_block(sptr, dag_id, vit_task_type, crit_level, vit_profile[msize]);
     //usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
  #ifdef TIME
@@ -1004,21 +1003,15 @@ task_metadata_block_t* set_up_vit_task(task_metadata_block_t** mb_ptr, scheduler
     exit (-4);
   }
   vit_mb_ptr->atFinish = auto_finish_routine;
-  *mb_ptr = vit_mb_ptr;
 
   DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", vit_mb_ptr->block_id));
   // Send each message (here they are all the same) through the viterbi decoder
   //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
   // NOTE: start_decode ends in the request_execution (for now)
-  start_decode(vit_mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
+  start_decode(vit_mb_ptr, ofdm_ptr, frame_ptr, in_bits);
 
-  /* DEBUG(printf("MB%u In start_vit_execution\n", mb_ptr->block_id)); */
-
-  /* vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_mb_ptr->task_timings[vit_mb_ptr->task_type]); */
-  /* vit_data_struct_t * vit_data_p    = (vit_data_struct_t*)(vit_mb_ptr->data_space); */
-  /* // Set the input parameter values (into the Metadata Block) */
-  /* request_execution(vit_mb_ptr); */
-  // This now ends this block -- we've kicked off execution  
+  // This now ends this block -- we've kicked off execution
+  return vit_mb_ptr;
 }
 
 
@@ -1042,7 +1035,7 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, message_t* message_id, char* out_msg_text)
 {
-  message_t msg = num_message_t;
+  message_t msg = NUM_MESSAGES;
   uint8_t *result;
 
   int psdusize; // set by finish_decode call...
@@ -1058,7 +1051,7 @@ void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, message
    case '1' : msg = safe_to_move_right_only; break;
    case '2' : msg = safe_to_move_left_only; break;
    case '3' : msg = unsafe_to_move_left_or_right; break;
-   default  : msg = num_message_t; break;
+   default  : msg = NUM_MESSAGES; break;
   }
   DEBUG(printf("MB%u The finish_viterbi_execution found message %u\n", vit_metadata_block->block_id, msg));
   *message_id = msg;

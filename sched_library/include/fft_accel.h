@@ -22,6 +22,8 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#include "scheduler.h"
+
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 #ifdef COMPILE_TO_ESP

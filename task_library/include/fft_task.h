@@ -22,8 +22,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include "base_types.h"
-
+#include "base_task_types.h"
 #include "scheduler.h"
 
 
@@ -48,26 +47,28 @@ typedef struct {
   struct timeval fft_cvtout_start;
   struct timeval cdfmcw_start;
 
-  uint64_t call_sec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_sec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_br_sec[MY_APP_ACCEL_TYPES];
-  uint64_t bitrev_sec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_cvtin_sec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_comp_sec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_cvtout_sec[MY_APP_ACCEL_TYPES];
-  uint64_t cdfmcw_sec[MY_APP_ACCEL_TYPES];
+  uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_br_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t bitrev_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_cvtin_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_comp_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_cvtout_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t cdfmcw_sec[SCHED_MAX_ACCEL_TYPES];
   
-  uint64_t call_usec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_usec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_br_usec[MY_APP_ACCEL_TYPES];
-  uint64_t bitrev_usec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_cvtin_usec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_comp_usec[MY_APP_ACCEL_TYPES];
-  uint64_t fft_cvtout_usec[MY_APP_ACCEL_TYPES];
-  uint64_t cdfmcw_usec[MY_APP_ACCEL_TYPES];
+  uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_br_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t bitrev_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_cvtin_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_comp_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t fft_cvtout_usec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
 void print_fft_metadata_block_contents(task_metadata_block_t* mb);
+
+void set_up_fft_task_on_accel_profile_data();
 
 void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 

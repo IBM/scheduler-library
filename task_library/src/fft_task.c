@@ -385,31 +385,31 @@ void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block)
   mark_task_done(task_metadata_block);
 }
 
-uint64_t fft_profile[2]
-                    [MY_APP_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+// We set up this data for all possible legal FFT log_nsamples sizes (though we only use 1k and 16k so far)
+uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
 void set_up_fft_task_on_accel_profile_data() {
-  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
-    fft_profile[0][ai] = ACINFPROF;
-    fft_profile[1][ai] = ACINFPROF;
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
+    fft_profile[10][ai] = ACINFPROF;
+    fft_profile[14][ai] = ACINFPROF;
   }
 #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
-  fft_profile[0][SCHED_CPU_ACCEL_T] = 23000;
-  fft_profile[0][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 6000;
-  fft_profile[1][SCHED_CPU_ACCEL_T] = 600000;
-  fft_profile[1][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 143000;
+  fft_profile[10][SCHED_CPU_ACCEL_T] = 23000;
+  fft_profile[10][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 6000;
+  fft_profile[14][SCHED_CPU_ACCEL_T] = 600000;
+  fft_profile[14][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 143000;
 #else
-  fft_profile[0][SCHED_CPU_ACCEL_T] = 50;
-  fft_profile[1][SCHED_CPU_ACCEL_T] = 1250;
+  fft_profile[10][SCHED_CPU_ACCEL_T] = 50;
+  fft_profile[14][SCHED_CPU_ACCEL_T] = 1250;
 #endif
   DEBUG(
       printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
              "FFT-HWR", "CV-HWR");
       printf("%15s :", "fft_profile[0]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", fft_profile[0][ai]); } printf("\n");
       printf("%15s :", "fft_profile[1]");
-      for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
            ai++) { printf(" 0x%016lx", fft_profile[1][ai]); } printf("\n");
       printf("\n"));
 }
@@ -426,7 +426,7 @@ task_metadata_block_t* set_up_fft_task(scheduler_datastate_block_t* sptr,
   task_metadata_block_t* fft_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
   do {
-    fft_mb_ptr = get_task_metadata_block(sptr, dag_id, fft_task_type, crit_level, fft_profile);
+    fft_mb_ptr = get_task_metadata_block(sptr, dag_id, fft_task_type, crit_level, fft_profile[log_nsamples]);
     //usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
  #ifdef TIME

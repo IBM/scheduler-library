@@ -1,4 +1,4 @@
-include hardware_config
+include ../sched_library/hardware_config
 
 CPU ?= ariane
 ARCH ?= riscv
@@ -30,6 +30,7 @@ ifdef COMPILE_TO_ESP
 endif
 
 CFLAGS ?= -O -g
+#CFLAGS += -DNUM_ACCEL_TYPES=$(CONFIG_NUM_ACCEL_TYPES)
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -167,8 +168,8 @@ LL_OBJ = $(SRC:%.c=obj/%.bc)
 
 VPATH = ./src
 
-TARGET=libtask.a
-HPVM_TARGET=libtask.bc
+TARGET=libtasks.a
+HPVM_TARGET=libtasks.bc
 
 #$(info $$TARGET is [${TARGET}])
 
@@ -239,7 +240,8 @@ $(HPVM_TARGET): $(LL_OBJ)
 
 obj/%.bc: %.c
 	clang -O3 -S $(CFLAGS) -emit-llvm $< -o $@
-	
+
+
 .PHONY: all clean
 
 

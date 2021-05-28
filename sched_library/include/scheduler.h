@@ -312,7 +312,7 @@ extern scheduler_get_datastate_in_parms_t* get_scheduler_datastate_input_parms()
 extern scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t* inp);
 extern scheduler_datastate_block_t* initialize_scheduler_from_config_file(char* config_file_name);
 
-extern status_t set_up_scheduler();
+extern void set_up_scheduler();
 
 
 extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);

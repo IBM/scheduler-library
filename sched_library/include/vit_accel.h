@@ -22,6 +22,8 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#include"scheduler.h"
+
 #ifdef COMPILE_TO_ESP
 #include "contig.h"
 #include "mini-era.h"

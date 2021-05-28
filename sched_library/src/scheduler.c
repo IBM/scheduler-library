@@ -1014,7 +1014,7 @@ scheduler_datastate_block_t* initialize_scheduler_from_config_file(char* config_
 #include "vit_accel.h"
 #include "cv_accel.h"
 
-status_t set_up_scheduler()
+void set_up_scheduler()
 {
   printf("Setting up the Global Scheduler Hardware State (System Accelerators)\n");
   // Set up the "CPU" (threada/accelerators)

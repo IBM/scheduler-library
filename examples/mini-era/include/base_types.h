@@ -18,6 +18,7 @@
 #ifndef H_BASE_TYPES_H
 #define H_BASE_TYPES_H
 #include <stdbool.h>
+#include "base_task_types.h"
 
 /* Types definitions */
 // This is the type for distance measurements
@@ -25,6 +26,7 @@ typedef float distance_t;
 
 #define MY_APP_ACCEL_TYPES  4
 
+#if(0) // These are defined in the TASKS now
 /* Pre-defined labels used by the computer vision kernel */
 typedef enum {
   myself = -1,
@@ -65,11 +67,11 @@ typedef enum {
   num_message_t
 } message_t;
 
-
 /* These are GLOBAL and affect the underlying world, etc. */
 #define NUM_LANES     5
 #define NUM_OBJECTS   5
 #define NUM_MESSAGES  4
+#endif
 
 #define MAX_OBJ_IN_LANE  16
 

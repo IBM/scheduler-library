@@ -15,6 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef H_READ_TRACE_H
+#define H_READ_TRACE_H
+
+#include "plan_ctrl_task.h"
+
 /* File pointer to the input trace */
 extern FILE *input_trace;
 
@@ -24,3 +29,4 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
 bool eof_trace_reader();
 void closeout_trace_reader();
 
+#endif

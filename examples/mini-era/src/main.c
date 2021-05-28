@@ -25,14 +25,15 @@
 
 #include "cv_accel.h"
 #include "fft_accel.h"
-#include "scheduler.h"
 #include "vit_accel.h"
+#include "scheduler.h"
 
+#include "task_lib.h"
 #include "cv_task.h"
-#include "plan_ctrl_task.h"
 #include "radar_task.h"
-#include "test_task.h"
 #include "vit_task.h"
+#include "plan_ctrl_task.h"
+#include "test_task.h"
 
 #include "getopt.h"
 #include "kernels_api.h"
@@ -68,7 +69,7 @@ accelerator_type_t cv_hwr_accel_id;
 // Storage to hold the task IDs (returned when we register taske) of the task
 // types we will need/use
 // task_type_t no_task_type;
-task_type_t fft_task_type;
+task_type_t radar_task_type;
 task_type_t vit_task_type;
 task_type_t cv_task_type;
 task_type_t plan_ctrl_task_type;
@@ -268,19 +269,18 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
            p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
 
-  fft_task_type = register_task_type(
-      sptr, "FFT-Task", "A 1-D FFT task to execute",
-      &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
-      SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
-      SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
+  radar_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute",
+				     &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
+				     SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
+				     SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
   if (input_accel_limit_fft > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
-    p0_hw_threshold[fft_task_type][fft_hwr_accel_id] =
+    p0_hw_threshold[radar_task_type][fft_hwr_accel_id] =
         25; // ~75% chance to use FFT HWR for FFT Tasks
     printf("Set p0_hw_threshold[%s][%s] = %u\n",
-           sptr->task_name_str[fft_task_type],
+           sptr->task_name_str[radar_task_type],
            sptr->accel_name_str[fft_hwr_accel_id],
-           p0_hw_threshold[fft_task_type][fft_hwr_accel_id]);
+           p0_hw_threshold[radar_task_type][fft_hwr_accel_id]);
   }
 
   plan_ctrl_task_type = register_task_type(
@@ -402,6 +402,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
 
+#if(0)
 void set_up_task_on_accel_profile_data() {
   for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
     fft_profile[0][ai] = ACINFPROF;
@@ -497,6 +498,7 @@ void set_up_task_on_accel_profile_data() {
            ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
       printf("\n"));
 }
+#endif
 
 int main(int argc, char *argv[]) {
   vehicle_state_t vehicle_state;
@@ -533,11 +535,9 @@ int main(int argc, char *argv[]) {
   int32_t viz_task_start_count = -1;
   int32_t viz_task_stop_count = -1;
 
-  if (set_up_scheduler() == error) {
-    printf("Failed to do initial, one-time Scheduler set-up!\n");
-    exit(-1);
-  }
-
+  set_up_scheduler();
+  initialize_task_lib();
+  
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
@@ -975,7 +975,7 @@ int main(int argc, char *argv[]) {
 
   // Set up the profiles we will be using... NOTE: This must be AFTER we've
   // added the accelerator and task definitions!
-  set_up_task_on_accel_profile_data();
+  //set_up_task_on_accel_profile_data();
 
   printf("Using %u CPU accel %u HWR FFT %u HWR VIT and %u HWR CV\n",
          sptr->num_accelerators_of_type[cpu_accel_id],
@@ -1186,19 +1186,20 @@ int main(int argc, char *argv[]) {
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t *cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      start_cv_execution(&cv_mb_ptr, sptr, cv_task_type, CRITICAL_TASK,
-                         cv_profile, NULL, time_step,
-                         cv_tr_label); // Critical CV task
-
+      cv_mb_ptr = set_up_cv_task(sptr, cv_task_type, CRITICAL_TASK,
+				 NULL, time_step,
+				 cv_tr_label); // Critical CV task
+      request_execution(cv_mb_ptr);
       DEBUG(printf("CV/CNN task Block-ID = %u\n", cv_mb_ptr->block_id));
     }
 
     task_metadata_block_t *radar_mb_ptr = NULL;
-    start_radar_execution(&radar_mb_ptr, sptr, fft_task_type, CRITICAL_TASK,
-                          fft_profile[crit_fft_samples_set], NULL, time_step,
-                          radar_log_nsamples_per_dict_set[crit_fft_samples_set],
-                          radar_inputs); // Critical RADAR task
+    radar_mb_ptr = set_up_radar_task(sptr, radar_task_type, CRITICAL_TASK,
+				     NULL, time_step,
+				     radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
     DEBUG(printf("FFT task Block-ID = %u\n", radar_mb_ptr->block_id));
+    request_execution(radar_mb_ptr);
+
 #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
 #endif
@@ -1206,17 +1207,18 @@ int main(int argc, char *argv[]) {
     // (separate invocations of this process per message)
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t *viterbi_mb_ptr = NULL;
-    start_viterbi_execution(&viterbi_mb_ptr, sptr, vit_task_type, CRITICAL_TASK,
-                            vit_profile[vit_msgs_size], NULL, time_step,
-                            vdentry_p); // Critical VITERBI task
+    viterbi_mb_ptr = set_up_vit_task(sptr, vit_task_type, CRITICAL_TASK,
+				     NULL, time_step,
+				     vit_msgs_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", viterbi_mb_ptr->block_id));
+    request_execution(viterbi_mb_ptr);
 
     task_metadata_block_t *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-      start_test_execution(&test_mb_ptr, sptr, test_task_type, CRITICAL_TASK,
-                           test_profile, NULL,
-                           time_step); // Critical TEST task
+      test_mb_ptr = set_up_test_task(sptr, test_task_type, CRITICAL_TASK,
+				     NULL, time_step); // Critical TEST task
       DEBUG(printf("TEST_TASK_BLOCK: ID = %u\n", test_mb_ptr->block_id));
+      request_execution(test_mb_ptr);
     }
 
     // Now we add in the additional non-critical tasks...
@@ -1224,10 +1226,12 @@ int main(int argc, char *argv[]) {
       // Aditional CV Tasks
       // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
-        start_cv_execution(&cv_mb_ptr, sptr, cv_task_type, BASE_TASK,
-                           cv_profile, &cv_auto_finish_routine, time_step,
-                           cv_tr_label); // NON-Critical CV task
-      }                                  // if (i < additional CV tasks)
+	task_metadata_block_t *cv_mb_ptr_2 = NULL;
+        cv_mb_ptr_2 = set_up_cv_task(sptr, cv_task_type, BASE_TASK,
+				     &cv_auto_finish_routine, time_step,
+				     cv_tr_label); // NON-Critical CV task
+	request_execution(cv_mb_ptr_2);
+      } // if (i < additional CV tasks)
       // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
       if (i < additional_fft_tasks_per_time_step) {
         radar_dict_entry_t *rdentry_p2;
@@ -1241,16 +1245,14 @@ int main(int argc, char *argv[]) {
         int base_fft_samples_set = rdentry_p2->set;
         float *addl_radar_inputs = rdentry_p2->return_data;
         task_metadata_block_t *radar_mb_ptr_2 = NULL;
-        start_radar_execution(
-            &radar_mb_ptr_2, sptr, fft_task_type, BASE_TASK,
-            fft_profile[base_fft_samples_set], &radar_auto_finish_routine,
-            time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set],
-            addl_radar_inputs); // NON-Critical RADAR task
-      }                         // if (i < additional FFT tasks)
+        radar_mb_ptr_2 = set_up_radar_task(sptr, radar_task_type, BASE_TASK,
+					   &radar_auto_finish_routine, time_step,
+					   radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
+	request_execution(radar_mb_ptr_2);
+      } // if (i < additional FFT tasks)
 
       // for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       if (i < additional_vit_tasks_per_time_step) {
-        task_metadata_block_t *viterbi_mb_ptr2 = NULL;
         vit_dict_entry_t *vdentry2_p;
         int base_msg_size;
         if (task_size_variability == 0) {
@@ -1270,20 +1272,21 @@ int main(int argc, char *argv[]) {
           vdentry2_p = select_random_vit_input();
           base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
         }
-        start_viterbi_execution(&viterbi_mb_ptr2, sptr, vit_task_type,
-                                BASE_TASK, vit_profile[base_msg_size],
-                                viterbi_auto_finish_routine, time_step,
-                                vdentry2_p); // Critical VITERBI task
-      }                                      // if (i < Additional VIT tasks)
+        task_metadata_block_t* viterbi_mb_ptr_2;
+	viterbi_mb_ptr_2 = set_up_vit_task(sptr, vit_task_type, BASE_TASK,
+					   viterbi_auto_finish_routine, time_step,
+					   base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p), vdentry2_p->in_bits); // NON-Critical VITERBI task
+	request_execution(viterbi_mb_ptr_2);
+      } // if (i < Additional VIT tasks)
 
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) {
         task_metadata_block_t *test_mb_ptr_2 = NULL;
-        start_test_execution(&test_mb_ptr, sptr, test_task_type, CRITICAL_TASK,
-                             test_profile, &test_auto_finish_routine,
-                             time_step); // Critical TEST task
-      }                                  // if (i < Additional TEST tasks)
-    }                                    // for (i over MAX_additional_tasks)
+        test_mb_ptr = set_up_test_task(sptr, test_task_type, CRITICAL_TASK,
+				       &test_auto_finish_routine, time_step); // Critical TEST task
+	request_execution(test_mb_ptr_2);
+      } // if (i < Additional TEST tasks)
+    } // for (i over MAX_additional_tasks)
 
     sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
 #ifdef TIME
@@ -1335,12 +1338,11 @@ int main(int argc, char *argv[]) {
                  time_step, pandc_repeat_factor, message, distance));
     task_metadata_block_t *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
-    start_plan_ctrl_execution(&pnc_mb_ptr, sptr, plan_ctrl_task_type,
-                              CRITICAL_TASK, plan_ctrl_profile, NULL, time_step,
-                              time_step, pandc_repeat_factor, label, distance,
-                              message, vehicle_state);
-    DEBUG(printf(" MB%u Back from start_execution_of_plan_ctrl_kernel\n",
-                 pnc_mb_ptr->block_id));
+    pnc_mb_ptr = set_up_plan_ctrl_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
+				       NULL, time_step,
+				       time_step, pandc_repeat_factor, label, distance, message, vehicle_state);
+    DEBUG(printf(" MB%u Back from set_up_plan_ctrl_task\n", pnc_mb_ptr->block_id));
+    request_execution(pnc_mb_ptr);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
@@ -1371,8 +1373,7 @@ int main(int argc, char *argv[]) {
 
     DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n",
                  pnc_mb_ptr->block_id));
-    finish_plan_ctrl_execution(
-        pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
+    finish_plan_ctrl_execution(pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
     DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg "
                  "%u VS : act %u lane %u Spd %.1f \n",
                  pnc_mb_ptr->block_id, time_step, pandc_repeat_factor, label,

@@ -367,28 +367,25 @@ void execute_cpu_cv_accelerator(task_metadata_block_t *task_metadata_block) {
   mark_task_done(task_metadata_block);
 }
 
-uint64_t cv_profile[MY_APP_ACCEL_TYPES];
+uint64_t cv_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_cv_task_on_accel_profile_data() {
-  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     cv_profile[ai] = ACINFPROF;
   }
-#ifdef COMPILE_TO_ESP
+ #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
 
-  cv_profile[SCHED_CPU_ACCEL_T] =
-      cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
-#ifdef FAKE_HW_CV
-  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-      cv_fake_hwr_run_time_in_usec; // Specified in the run
-#else
+  cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
+  #ifdef FAKE_HW_CV
+  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = cv_fake_hwr_run_time_in_usec; // Specified in the run
+  #else
   cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = 150000;
-#endif
-#else
-  cv_profile[SCHED_CPU_ACCEL_T] =
-      cv_cpu_run_time_in_usec; // Specified in the run - was 50
-#endif
+  #endif
+ #else
+  cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 50
+ #endif
   DEBUG(printf("%15s :", "cv_profile");
-        for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
              ai++) { printf(" 0x%016lx", cv_profile[ai]); } printf("\n");
         printf("\n"));
 }

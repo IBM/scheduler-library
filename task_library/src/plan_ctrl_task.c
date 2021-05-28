@@ -139,8 +139,8 @@ void execute_on_cpu_plan_ctrl_accelerator(
                "%.1f T2 %.1f T3 %.1f) message %u\n",
                plan_ctrl_data_p->object_label,
                object_names[plan_ctrl_data_p->object_label],
-               plan_ctrl_data_p->object_distance, THRESHOLD_1, THRESHOLD_2,
-               THRESHOLD_3, plan_ctrl_data_p->safe_lanes_msg));
+               plan_ctrl_data_p->object_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2,
+               PNC_THRESHOLD_3, plan_ctrl_data_p->safe_lanes_msg));
   DEBUG(printf(
       "Plan-Ctrl: current Vehicle-State : Active %u Lane %u Speed %.1f\n",
       plan_ctrl_data_p->vehicle_state.active,
@@ -158,10 +158,10 @@ void execute_on_cpu_plan_ctrl_accelerator(
     // do
   } else if ( //(plan_ctrl_data_p->object_label != no_object) && // For safety,
               //assume every return is from SOMETHING we should not hit!
-      ((plan_ctrl_data_p->object_distance <= THRESHOLD_1)
+      ((plan_ctrl_data_p->object_distance <= PNC_THRESHOLD_1)
 #ifdef USE_SIM_ENVIRON
        || ((plan_ctrl_data_p->vehicle_state.speed < car_goal_speed) &&
-           (plan_ctrl_data_p->object_distance <= THRESHOLD_2))
+           (plan_ctrl_data_p->object_distance <= PNC_THRESHOLD_2))
 #endif
            )) {
     // This covers all cases where we have an obstacle "too close" ahead of us
@@ -176,12 +176,10 @@ void execute_on_cpu_plan_ctrl_accelerator(
           false; // We should add visualizer stuff for this!
     } else {
       // Some object ahead of us that needs to be avoided.
-      DEBUG(printf("  In lane %s with %c (%u) at %.1f (trace: %.1f)\n",
+      DEBUG(printf("  In lane %s with object %u at %.1f\n",
                    lane_names[plan_ctrl_data_p->vehicle_state.lane],
-                   nearest_obj[plan_ctrl_data_p->vehicle_state.lane],
                    plan_ctrl_data_p->object_label,
-                   plan_ctrl_data_p->object_distance,
-                   nearest_dist[plan_ctrl_data_p->vehicle_state.lane]));
+                   plan_ctrl_data_p->object_distance));
       switch (plan_ctrl_data_p->safe_lanes_msg) {
       case safe_to_move_right_or_left:
         /* Bias is move right, UNLESS we are in the Right lane and would then
@@ -269,7 +267,7 @@ void execute_on_cpu_plan_ctrl_accelerator(
                             //NOTHING is at
                             //INF_PLAN_CTRL_DATA_P->OBJECT_DISTANCE
         (plan_ctrl_data_p->object_distance >=
-         THRESHOLD_2)) { // Any object is far enough away
+         PNC_THRESHOLD_2)) { // Any object is far enough away
       if (plan_ctrl_data_p->vehicle_state.speed <=
           (car_goal_speed - car_accel_rate)) {
         plan_ctrl_data_p->new_vehicle_state.speed += 15.0;
@@ -304,9 +302,9 @@ void execute_on_cpu_plan_ctrl_accelerator(
   mark_task_done(task_metadata_block);
 }
 
-uint64_t plan_ctrl_profile[MY_APP_ACCEL_TYPES];
+uint64_t plan_ctrl_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_plan_ctrl_task_on_accel_profile_data() {
-  for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     plan_ctrl_profile[ai] = ACINFPROF;
   }
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
@@ -315,17 +313,17 @@ void set_up_plan_ctrl_task_on_accel_profile_data() {
   DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
                "FFT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
-        for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
              ai++) { printf(" 0x%016lx", plan_ctrl_profile[ai]); } printf("\n");
         printf("\n"));
 }
 
-task_metadata_block_t *set_up_plan_ctrl_task(
-    scheduler_datastate_block_t *sptr, task_type_t plan_ctrl_task_type,
-    task_criticality_t crit_level, task_finish_callback_t auto_finish_routine,
-    int32_t dag_id, unsigned time_step, unsigned repeat_factor,
-    label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
-    vehicle_state_t vehicle_state) {
+task_metadata_block_t *set_up_plan_ctrl_task(scheduler_datastate_block_t *sptr,
+					     task_type_t plan_ctrl_task_type, task_criticality_t crit_level,
+					     task_finish_callback_t auto_finish_routine, int32_t dag_id,
+					     unsigned time_step, unsigned repeat_factor,
+					     label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
+					     vehicle_state_t vehicle_state) {
 #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
 #endif
@@ -368,19 +366,12 @@ task_metadata_block_t *set_up_plan_ctrl_task(
   plan_ctrl_data_struct_t *plan_ctrl_data_p =
       (plan_ctrl_data_struct_t *)(plan_ctrl_mb_ptr->data_space);
   // Set the inputs for the plan-and-control task
-  plan_ctrl_data_p->time_step =
-      time_step; // The current time-step of the simulation
-  plan_ctrl_data_p->repeat_factor =
-      repeat_factor; // The current time-step of the simulation
-  plan_ctrl_data_p->object_label =
-      object_label; // The determined label of the object in the image
-  plan_ctrl_data_p->object_distance =
-      object_dist; // The distance to the closest vehicle in our lane
-  plan_ctrl_data_p->safe_lanes_msg =
-      safe_lanes_msg; // The message indicating which lanes are safe to change
-                      // into
-  plan_ctrl_data_p->vehicle_state =
-      vehicle_state; // The current (input) vehicle state
+  plan_ctrl_data_p->time_step = time_step; // The current time-step of the simulation
+  plan_ctrl_data_p->repeat_factor = repeat_factor; // The current time-step of the simulation
+  plan_ctrl_data_p->object_label = object_label; // The determined label of the object in the image
+  plan_ctrl_data_p->object_distance = object_dist; // The distance to the closest vehicle in our lane
+  plan_ctrl_data_p->safe_lanes_msg = safe_lanes_msg; // The message indicating which lanes are safe to change into
+  plan_ctrl_data_p->vehicle_state = vehicle_state; // The current (input) vehicle state
   DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS "
                ": act %u lane %u Spd %.1f \n",
                plan_ctrl_mb_ptr->block_id, plan_ctrl_data_p->time_step,

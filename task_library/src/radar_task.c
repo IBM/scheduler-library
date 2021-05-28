@@ -40,7 +40,7 @@
 #define RADAR_threshold -100;
 
 // This now illustrates the use of the "task metadata" to transfer information
-// for an FFT operation.
+// for a radar (FFT) operation.
 //  NOTE: We request a metadata block form the scheduler -- if one is not
 //  currently available, then what?
 //     OPTIONS: 1. Wait for one to become available
@@ -55,22 +55,25 @@
 //      detailed behavior of the
 //        scheduler implementation (i.e. ranking, queue management, etc.)
 
-uint64_t
-    radar_profile[2][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+// We declare this for all possible legal RADAR log_nsamples inputs, but RADAR tasks can only be 1k or 16k samples
+uint64_t radar_profile[15][SCHED_MAX_ACCEL_TYPES];
 void set_up_radar_task_on_accel_profile_data() {
-  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
-    radar_profile[0][ai] = ACINFPROF;
-    radar_profile[1][ai] = ACINFPROF;
+  for (int li = 0; li < SCHED_MAX_ACCEL_TYPES; li++) {
+    for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
+      radar_profile[li][ai] = ACINFPROF;
+      radar_profile[li][ai] = ACINFPROF;
+    }
   }
 #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
-  radar_profile[0][SCHED_CPU_ACCEL_T] = 23000;
-  radar_profile[0][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 6000;
-  radar_profile[1][SCHED_CPU_ACCEL_T] = 600000;
-  radar_profile[1][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 143000;
+  radar_profile[10][SCHED_CPU_ACCEL_T] = 23000;
+  radar_profile[10][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 6000;
+  radar_profile[14][SCHED_CPU_ACCEL_T] = 600000;
+  radar_profile[14][SCHED_EPOCHS_1D_FFT_ACCEL_T] = 143000;
 #else
-  radar_profile[0][SCHED_CPU_ACCEL_T] = 50;
-  radar_profile[1][SCHED_CPU_ACCEL_T] = 1250;
+  // This is for out x86 all-software runs...
+  radar_profile[10][SCHED_CPU_ACCEL_T] = 50;
+  radar_profile[14][SCHED_CPU_ACCEL_T] = 1250;
 #endif
   DEBUG(
       printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
@@ -83,68 +86,61 @@ void set_up_radar_task_on_accel_profile_data() {
            ai++) { printf(" 0x%016lx", radar_profile[1][ai]); } printf("\n");
       printf("\n"));
 }
-void set_up_radar_task(task_metadata_block_t **mb_ptr,
-                       scheduler_datastate_block_t *sptr,
-                       task_type_t radar_task_type,
-                       task_criticality_t crit_level,
-                       task_finish_callback_t auto_finish_routine,
-                       int32_t dag_id, uint32_t log_nsamples, float *inputs) {
-#ifdef TIME
+
+
+task_metadata_block_t *
+set_up_radar_task(scheduler_datastate_block_t *sptr,
+		  task_type_t radar_task_type, task_criticality_t crit_level,
+		  task_finish_callback_t auto_finish_routine, int32_t dag_id,
+		  uint32_t log_nsamples, float *inputs)
+{
+ #ifdef TIME
   gettimeofday(&start_exec_rad, NULL);
-#endif
-  set_up_radar_task_on_accel_profile_data();
-  // Request a MetadataBlock (for an FFT task at Critical Level)
-  task_metadata_block_t *fft_mb_ptr = NULL;
-  DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n",
+ #endif
+  // Request a MetadataBlock (for an RADAR task at Critical Level)
+  task_metadata_block_t *radar_mb_ptr = NULL;
+  DEBUG(printf("Calling get_task_metadata_block for Critical RADAR-Task %u\n",
                radar_task_type));
   do {
-    fft_mb_ptr = get_task_metadata_block(sptr, dag_id, radar_task_type,
-                                         crit_level, radar_profile);
+    radar_mb_ptr = get_task_metadata_block(sptr, dag_id, radar_task_type,
+					   crit_level, radar_profile[log_nsamples]);
     // usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
-#ifdef TIME
+ #ifdef TIME
   struct timeval got_time;
   gettimeofday(&got_time, NULL);
   exec_get_rad_sec += got_time.tv_sec - start_exec_rad.tv_sec;
   exec_get_rad_usec += got_time.tv_usec - start_exec_rad.tv_usec;
-#endif
-  // printf("FFT Crit Profile: %e %e %e %e %e\n",
-  // radar_profile[crit_fft_samples_set][0],
-  // radar_profile[crit_fft_samples_set][1],
-  // radar_profile[crit_fft_samples_set][2],
-  // radar_profile[crit_fft_samples_set][3],
-  // radar_profile[crit_fft_samples_set][4]);
-  if (fft_mb_ptr == NULL) {
+ #endif
+  if (radar_mb_ptr == NULL) {
     // We ran out of metadata blocks -- PANIC!
     printf("Out of metadata blocks for FFT -- PANIC Quit the run (for now)\n");
     dump_all_metadata_blocks_states(sptr);
     exit(-4);
   }
-  fft_mb_ptr->atFinish = auto_finish_routine;
-  *mb_ptr = fft_mb_ptr;
-  DEBUG(printf("MB%u In start_radar_execution\n", fft_mb_ptr->block_id));
+  radar_mb_ptr->atFinish = auto_finish_routine;
 
-  fft_timing_data_t *fft_timings_p =
-      (fft_timing_data_t *)&(fft_mb_ptr->task_timings[fft_mb_ptr->task_type]);
-  fft_data_struct_t *fft_data_p = (fft_data_struct_t *)(fft_mb_ptr->data_space);
-  // fft_mb_ptr->data_view.fft_data.log_nsamples = log_nsamples;
-  fft_data_p->log_nsamples = log_nsamples;
-  fft_mb_ptr->data_size = 2 * (1 << log_nsamples) * sizeof(float);
+  DEBUG(printf("MB%u In start_radar_execution\n", radar_mb_ptr->block_id));
+
+  fft_timing_data_t *radar_timings_p =
+      (fft_timing_data_t *)&(radar_mb_ptr->task_timings[radar_mb_ptr->task_type]);
+  fft_data_struct_t *radar_data_p = (fft_data_struct_t *)(radar_mb_ptr->data_space);
+  radar_data_p->log_nsamples = log_nsamples;
+  radar_mb_ptr->data_size = 2 * (1 << log_nsamples) * sizeof(float);
   // Copy over our task data to the MetaData Block
-  // fft_mb_ptr->data = (uint8_t*)data;
-  float *mdataptr = (float *)fft_data_p->theData;
+  // radar_mb_ptr->data = (uint8_t*)data;
+  float *mdataptr = (float *)radar_data_p->theData;
   DEBUG(printf("scpdff: log_n = %u data_size = %u mdatp = %p\n",
-               fft_data_p->log_nsamples, fft_mb_ptr->data_size, mdataptr));
+               radar_data_p->log_nsamples, radar_mb_ptr->data_size, mdataptr));
   for (int i = 0; i < 2 * (1 << log_nsamples); i++) {
     mdataptr[i] = inputs[i];
   }
 
 #ifdef INT_TIME
-  gettimeofday(&(fft_timings_p->call_start), NULL);
+  gettimeofday(&(radar_timings_p->call_start), NULL);
 #endif
-  //  schedule_fft(data);
-  request_execution(fft_mb_ptr);
   // This now ends this block -- we've kicked off execution
+  return radar_mb_ptr;
 }
 
 // This is a default "finish" routine that can be included in the
@@ -168,24 +164,24 @@ void radar_auto_finish_routine(task_metadata_block_t *mb) {
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the FFT results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_radar_execution(task_metadata_block_t *fft_metadata_block,
+void finish_radar_execution(task_metadata_block_t *radar_metadata_block,
                             float *obj_dist) {
-  int tidx = fft_metadata_block->accelerator_type;
-  fft_timing_data_t *fft_timings_p = (fft_timing_data_t *)&(
-      fft_metadata_block->task_timings[fft_metadata_block->task_type]);
-  fft_data_struct_t *fft_data_p =
-      (fft_data_struct_t *)(fft_metadata_block->data_space);
-  uint32_t fft_log_nsamples = fft_data_p->log_nsamples;
-  float *data = (float *)fft_data_p->theData;
+  int tidx = radar_metadata_block->accelerator_type;
+  fft_timing_data_t *radar_timings_p = (fft_timing_data_t *)&(
+      radar_metadata_block->task_timings[radar_metadata_block->task_type]);
+  fft_data_struct_t *radar_data_p =
+      (fft_data_struct_t *)(radar_metadata_block->data_space);
+  uint32_t fft_log_nsamples = radar_data_p->log_nsamples;
+  float *data = (float *)radar_data_p->theData;
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_timings_p->call_sec[tidx] +=
-      stop_time.tv_sec - fft_timings_p->call_start.tv_sec;
-  fft_timings_p->call_usec[tidx] +=
-      stop_time.tv_usec - fft_timings_p->call_start.tv_usec;
+  radar_timings_p->call_sec[tidx] +=
+      stop_time.tv_sec - radar_timings_p->call_start.tv_sec;
+  radar_timings_p->call_usec[tidx] +=
+      stop_time.tv_usec - radar_timings_p->call_start.tv_usec;
 
-  gettimeofday(&(fft_timings_p->cdfmcw_start), NULL);
+  gettimeofday(&(radar_timings_p->cdfmcw_start), NULL);
 #endif // INT_TIME
 
   unsigned RADAR_N = 0;    // The number of samples (2^LOGN)
@@ -233,10 +229,10 @@ void finish_radar_execution(task_metadata_block_t *fft_metadata_block,
 #ifdef INT_TIME
   struct timeval cdfmcw_stop;
   gettimeofday(&cdfmcw_stop, NULL);
-  fft_timings_p->cdfmcw_sec[tidx] +=
-      cdfmcw_stop.tv_sec - fft_timings_p->cdfmcw_start.tv_sec;
-  fft_timings_p->cdfmcw_usec[tidx] +=
-      cdfmcw_stop.tv_usec - fft_timings_p->cdfmcw_start.tv_usec;
+  radar_timings_p->cdfmcw_sec[tidx] +=
+      cdfmcw_stop.tv_sec - radar_timings_p->cdfmcw_start.tv_sec;
+  radar_timings_p->cdfmcw_usec[tidx] +=
+      cdfmcw_stop.tv_usec - radar_timings_p->cdfmcw_start.tv_usec;
 #endif // INT_TIME
   // printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd > RADAR_psd_threshold) {
@@ -247,6 +243,6 @@ void finish_radar_execution(task_metadata_block_t *fft_metadata_block,
 
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
-               fft_metadata_block->block_id));
-  free_task_metadata_block(fft_metadata_block);
+               radar_metadata_block->block_id));
+  free_task_metadata_block(radar_metadata_block);
 }

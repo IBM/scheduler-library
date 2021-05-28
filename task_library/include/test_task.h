@@ -22,7 +22,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include "base_types.h"
+#include "base_task_types.h"
 
 extern unsigned num_Crit_test_tasks;
 extern unsigned num_Base_test_tasks;
@@ -41,8 +41,8 @@ typedef struct { // The "TEST" Task view of "data"
 
 typedef struct {
   struct timeval call_start;
-  uint64_t call_sec[MY_APP_ACCEL_TYPES];
-  uint64_t call_usec[MY_APP_ACCEL_TYPES];
+  uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 } test_timing_data_t;
 
 // These are some "fake" times (models the execution of TEST timing)
@@ -59,9 +59,11 @@ void execute_on_hwr_vit_test_accelerator(task_metadata_block_t* task_metadata_bl
 void execute_on_hwr_fft_test_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_on_hwr_cv_test_accelerator(task_metadata_block_t* task_metadata_block);
 
-void start_test_execution(task_metadata_block_t** mb_ptr, scheduler_datastate_block_t* sptr,
-			  task_type_t test_task_type, task_criticality_t crit_level, uint64_t* test_profile, task_finish_callback_t auto_finish_routine,
-			  int32_t dag_id);
+void set_up_test_task_on_accel_profile_data();
+
+task_metadata_block_t* set_up_test_task(scheduler_datastate_block_t* sptr,
+					task_type_t test_task_type, task_criticality_t crit_level,
+					task_finish_callback_t auto_finish_routine, int32_t dag_id);
 
 void test_auto_finish_routine(task_metadata_block_t* mb);
 void finish_test_execution(task_metadata_block_t* test_metadata_block);
