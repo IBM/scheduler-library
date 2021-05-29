@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <limits.h>
 
 #include <fcntl.h>
@@ -219,18 +220,16 @@ void set_up_test_task_on_accel_profile_data() {
   test_profile[SCHED_EPOCHS_1D_FFT_ACCEL_T] = test_on_hwr_fft_run_time_in_usec;
   test_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
   
-  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
-               "FFT-HWR", "CV-HWR");
+  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
-        for (int ai = 0; ai < MY_APP_ACCEL_TYPES;
-             ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
         printf("\n"));
 }
 
 task_metadata_block_t*
 set_up_test_task(scheduler_datastate_block_t* sptr,
 		 task_type_t test_task_type, task_criticality_t crit_level,
-		 task_finish_callback_t auto_finish_routine, int32_t dag_id)
+		 bool use_auto_finish, int32_t dag_id, va_list var_list)
 {
  #ifdef TIME
   gettimeofday(&start_exec_test, NULL);
@@ -255,7 +254,11 @@ set_up_test_task(scheduler_datastate_block_t* sptr,
     dump_all_metadata_blocks_states(sptr);
     exit (-4);
   }
-  test_mb_ptr->atFinish = auto_finish_routine;
+  if (use_auto_finish) {
+    test_mb_ptr->atFinish = sptr->auto_finish_task_function[test_task_type]; // get_auto_finish_routine(sptr, test_task_type);
+  } else {
+    test_mb_ptr->atFinish = NULL;
+  }
   DEBUG(printf("MB%u In start_test_execution\n", test_mb_ptr->block_id));
 
   test_timing_data_t * test_timings_p = (test_timing_data_t*)&(test_mb_ptr->task_timings[test_mb_ptr->task_type]);
@@ -289,7 +292,7 @@ void test_auto_finish_routine(task_metadata_block_t* mb)
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the TEST results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_test_execution(task_metadata_block_t* test_metadata_block)
+void finish_test_execution(task_metadata_block_t* test_metadata_block, va_list var_list)
 {
   int tidx = test_metadata_block->accelerator_type;
   test_timing_data_t * test_timings_p = (test_timing_data_t*)&(test_metadata_block->task_timings[test_metadata_block->task_type]);

@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -320,14 +321,22 @@ void set_up_plan_ctrl_task_on_accel_profile_data() {
 
 task_metadata_block_t *set_up_plan_ctrl_task(scheduler_datastate_block_t *sptr,
 					     task_type_t plan_ctrl_task_type, task_criticality_t crit_level,
-					     task_finish_callback_t auto_finish_routine, int32_t dag_id,
-					     unsigned time_step, unsigned repeat_factor,
-					     label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
-					     vehicle_state_t vehicle_state) {
-#ifdef TIME
+					     bool use_auto_finish, int32_t dag_id, va_list var_list)
+{
+//unsigned time_step, unsigned repeat_factor,
+//  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
+//  vehicle_state_t vehicle_state) {
+ #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
-#endif
-  set_up_plan_ctrl_task_on_accel_profile_data();
+ #endif
+  unsigned time_step = va_arg(var_list, unsigned);
+  unsigned repeat_factor = va_arg(var_list, unsigned);
+  label_t object_label = va_arg(var_list, label_t);
+  double xfer_object_dist = va_arg(var_list, double);
+  distance_t object_dist = xfer_object_dist;
+  message_t safe_lanes_msg = va_arg(var_list, message_t);
+  vehicle_state_t vehicle_state = va_arg(var_list, vehicle_state_t);
+
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *plan_ctrl_mb_ptr = NULL;
   DEBUG(
@@ -357,7 +366,11 @@ task_metadata_block_t *set_up_plan_ctrl_task(scheduler_datastate_block_t *sptr,
     dump_all_metadata_blocks_states(sptr);
     exit(-4);
   }
-  plan_ctrl_mb_ptr->atFinish = auto_finish_routine;
+  if (use_auto_finish) {
+    plan_ctrl_mb_ptr->atFinish = sptr->auto_finish_task_function[plan_ctrl_task_type]; // get_auto_finish_routine(sptr, plan_ctrl_task_type);
+  } else {
+    plan_ctrl_mb_ptr->atFinish = NULL;
+  }
   DEBUG(printf("MB%u In start_plan_ctrl_execution\n",
                plan_ctrl_mb_ptr->block_id));
 
@@ -409,27 +422,24 @@ void plan_ctrl_auto_finish_routine(task_metadata_block_t *mb) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_plan_ctrl_execution(task_metadata_block_t *plan_ctrl_metadata_block,
-                                vehicle_state_t *new_vehicle_state) {
+void finish_plan_ctrl_execution(task_metadata_block_t *plan_ctrl_metadata_block, va_list var_list)
+{
+  // vehicle_state_t *new_vehicle_state)
+  vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
+
   int tidx = plan_ctrl_metadata_block->accelerator_type;
-  plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *)&(
-      plan_ctrl_metadata_block
-          ->task_timings[plan_ctrl_metadata_block->task_type]);
-  plan_ctrl_data_struct_t *plan_ctrl_data_p =
-      (plan_ctrl_data_struct_t *)(plan_ctrl_metadata_block->data_space);
+  plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *)&(plan_ctrl_metadata_block->task_timings[plan_ctrl_metadata_block->task_type]);
+  plan_ctrl_data_struct_t *plan_ctrl_data_p = (plan_ctrl_data_struct_t *)(plan_ctrl_metadata_block->data_space);
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  plan_ctrl_timings_p->call_sec[tidx] +=
-      stop_time.tv_sec - plan_ctrl_timings_p->call_start.tv_sec;
-  plan_ctrl_timings_p->call_usec[tidx] +=
-      stop_time.tv_usec - plan_ctrl_timings_p->call_start.tv_usec;
+  plan_ctrl_timings_p->call_sec[tidx] += stop_time.tv_sec - plan_ctrl_timings_p->call_start.tv_sec;
+  plan_ctrl_timings_p->call_usec[tidx] += stop_time.tv_usec - plan_ctrl_timings_p->call_start.tv_usec;
 #endif // INT_TIME
 
   *new_vehicle_state = plan_ctrl_data_p->new_vehicle_state;
 
   // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
-               plan_ctrl_metadata_block->block_id));
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", plan_ctrl_metadata_block->block_id));
   free_task_metadata_block(plan_ctrl_metadata_block);
 }

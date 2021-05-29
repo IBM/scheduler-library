@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <limits.h>
 
 #include <fcntl.h>
@@ -131,6 +132,7 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
   uint64_t total_dodec_usec[total_accel_types+1];
   for (int ai = 0; ai <= total_accel_types; ai++) {
     total_vit_comp_by[ai] = 0;
+    total_call_usec[ai] = 0;
     total_depunc_usec[ai] = 0;
     total_dodec_usec[ai] = 0;
   }  
@@ -161,10 +163,11 @@ output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_ta
       total_call_usec[total_accel_types] += this_call_usec;
       total_depunc_usec[total_accel_types] += this_depunc_usec;
       total_dodec_usec[total_accel_types]  += this_dodec_usec;
+      //printf("VIT: call_usec %lu : total %u = %lu : TOTAL = %lu\n", this_call_usec, ai, total_call_usec[ai], total_call_usec[total_accel_types]);
     } // for (bi = 1 .. numMetatdataBlocks)
   } // for (ai = 0 .. total_accel_types)
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type, sptr->task_name_str[my_task_type]);
-  printf("     Call  run time   ");
+  printf("     Call        run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_call_usec[ai], avg);
@@ -882,12 +885,14 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
     in_Data[ti] = depunctured[ti];
     //DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti, in_Data[ti]); });
   }
-
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area
     out_Data[ti] = 0;
     //vdsptr->theData[imi++] = 0;
   }
   // Call the do_decoding routine
+ #ifdef INT_TIME
+  gettimeofday(&(vit_timings_p->call_start), NULL);
+ #endif
 }
 
 
@@ -907,6 +912,12 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
 
   // We write this timing here, since we now know the Accelerator ID to which this is accounted.
  #ifdef INT_TIME
+  struct timeval stop_time;
+  gettimeofday(&stop_time, NULL);
+  vit_timings_p->call_sec[aidx]  += stop_time.tv_sec  - vit_timings_p->call_start.tv_sec;
+  vit_timings_p->call_usec[aidx] += stop_time.tv_usec - vit_timings_p->call_start.tv_usec;
+  //printf("VIT: call_start_usec = %lu  call_stop_usec = %lu\n", vit_timings_p->call_start.tv_usec, stop_time.tv_usec);
+  
   vit_timings_p->depunc_sec[aidx]  += vit_timings_p->depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
   vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
   //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
@@ -972,16 +983,21 @@ void set_up_vit_task_on_accel_profile_data() {
            ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
       printf("\n"));
 }
-                                             // medium, long, or max
+
 
 task_metadata_block_t* set_up_vit_task(scheduler_datastate_block_t* sptr,
 				       task_type_t vit_task_type, task_criticality_t crit_level,
-				       task_finish_callback_t auto_finish_routine, int32_t dag_id,
-				       message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
+				       bool use_auto_finish, int32_t dag_id, va_list var_list)
 {
  #ifdef TIME
   gettimeofday(&start_exec_vit, NULL);
  #endif
+  // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
+  message_size_t msize = va_arg(var_list, message_size_t);
+  ofdm_param* ofdm_ptr = va_arg(var_list, ofdm_param*);
+  frame_param* frame_ptr = va_arg(var_list, frame_param*);
+  uint8_t* in_bits =  va_arg(var_list, uint8_t*);
+
   // Request a MetadataBlock (for an VIT task at Critical Level)
   task_metadata_block_t* vit_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
@@ -1002,7 +1018,11 @@ task_metadata_block_t* set_up_vit_task(scheduler_datastate_block_t* sptr,
     dump_all_metadata_blocks_states(sptr);
     exit (-4);
   }
-  vit_mb_ptr->atFinish = auto_finish_routine;
+  if (use_auto_finish) {
+    vit_mb_ptr->atFinish = sptr->auto_finish_task_function[vit_task_type]; // get_auto_finish_routine(vit_task_type);
+  } else {
+    vit_mb_ptr->atFinish = NULL;
+  }
 
   DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", vit_mb_ptr->block_id));
   // Send each message (here they are all the same) through the viterbi decoder
@@ -1033,8 +1053,12 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the VIT results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, message_t* message_id, char* out_msg_text)
+void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, va_list var_list) // message_t* message_id, char* out_msg_text)
 {
+  // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
+  message_t* message_id = va_arg(var_list, message_t*);
+  char* out_msg_text = va_arg(var_list, char*);
+
   message_t msg = NUM_MESSAGES;
   uint8_t *result;
 

@@ -253,7 +253,8 @@ $(HPVM_TARGET): $(LL_OBJ)
 
 obj/%.bc: %.c
 	clang -O3 -S $(CFLAGS) -emit-llvm $< -o $@
-	
+
+
 .PHONY: all clean
 
 

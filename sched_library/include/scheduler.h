@@ -19,6 +19,7 @@
 #define H_SCHEDULER_INTERFACE_H
 
 #include <stdint.h>
+#include <stdarg.h>
 #include <pthread.h>
 #include <sys/time.h>
 #include<stdbool.h>
@@ -189,6 +190,12 @@ typedef void (*sched_execute_task_function_t)(task_metadata_block_t*);
 typedef void (*print_metadata_block_contents_t)(task_metadata_block_t*);
 typedef void (*output_task_type_run_stats_t)(struct scheduler_datastate_block_struct* sptr, unsigned my_task_type, unsigned total_accel_types);
 
+typedef task_metadata_block_t* (*set_up_task_function_t)(struct scheduler_datastate_block_struct* sptr,
+							 task_type_t the_task_type, task_criticality_t crit_level,
+							 bool auto_finish, int32_t dag_id, va_list var_list);
+typedef void (*finish_task_execution_function_t)(task_metadata_block_t* the_metadata_block, va_list var_list);
+typedef void (*auto_finish_task_function_t)(task_metadata_block_t* mb);
+
 // These are function pointer prototype declaration types, used for the regsiter_accelerator_type routine.
 typedef void (*do_accel_initialization_t)(struct scheduler_datastate_block_struct* sptr);
 typedef void (*do_accel_closeout_t)(struct scheduler_datastate_block_struct* sptr);
@@ -289,7 +296,10 @@ typedef struct scheduler_datastate_block_struct {
 
   print_metadata_block_contents_t* print_metablock_contents_function; // array over TASK_TYPES
   output_task_type_run_stats_t* output_task_run_stats_function;       // array over TASK_TYPES
-
+  set_up_task_function_t* set_up_task_function;                       // array over TASK_TYPES
+  finish_task_execution_function_t* finish_task_execution_function;   // array over TASK_TYPES
+  auto_finish_task_function_t* auto_finish_task_function;             // array over TASK_TYPES
+  
   do_accel_initialization_t* do_accel_init_function; //[MAX_ACCEL_TYPES];
   do_accel_closeout_t* do_accel_closeout_function; //[MAX_ACCEL_TYPES];
   output_accel_run_stats_t* output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
@@ -318,6 +328,8 @@ extern void set_up_scheduler();
 extern task_metadata_block_t* get_task_metadata_block(scheduler_datastate_block_t* sptr, int32_t dag_id, task_type_t of_task_type, task_criticality_t crit_level, uint64_t * task_profile);
 extern void free_task_metadata_block(task_metadata_block_t* mb);
 
+extern auto_finish_task_function_t get_auto_finish_routine(scheduler_datastate_block_t* sptr, task_type_t the_task_type);
+
 extern void request_execution(task_metadata_block_t* task_metadata_block);
 //extern int get_task_status(scheduler_datastate_block_t* sptr, int task_id);
 extern void wait_all_critical(scheduler_datastate_block_t* sptr);
@@ -334,11 +346,20 @@ extern void init_accelerators_in_use_interval(scheduler_datastate_block_t* sptr,
 
 extern void cleanup_and_exit(scheduler_datastate_block_t* sptr, int rval);
 
-extern task_type_t register_task_type(scheduler_datastate_block_t* sptr,
-				      char*                           task_name,
-				      char*                           task_description,
-				      print_metadata_block_contents_t print_metadata_block_contents, // function pointer
-				      output_task_type_run_stats_t    output_task_type_run_stats,    // function pointer
-				      int  num_accel_task_exec_descriptions, ... );
+task_type_t register_task_type(scheduler_datastate_block_t*     sptr,
+			       char*                            task_name,
+			       char*                            task_description,
+			       set_up_task_function_t           set_up_task_func,
+			       finish_task_execution_function_t finish_task_func,
+			       auto_finish_task_function_t      auto_finish_func,
+			       print_metadata_block_contents_t  print_metadata_block_contents, // function pointer
+			       output_task_type_run_stats_t     output_task_type_run_stats,    // function pointer		   
+			       int  num_accel_task_exec_descriptions, ... );
+
+extern task_metadata_block_t* set_up_task(scheduler_datastate_block_t* sptr,
+					  task_type_t the_task_type, task_criticality_t crit_level,
+					  int use_auto_finish, int32_t dag_id, ...);
+
+extern void finish_task_execution(task_metadata_block_t* the_metadata_block, ...);
 
 #endif

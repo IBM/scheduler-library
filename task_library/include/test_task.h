@@ -63,10 +63,10 @@ void set_up_test_task_on_accel_profile_data();
 
 task_metadata_block_t* set_up_test_task(scheduler_datastate_block_t* sptr,
 					task_type_t test_task_type, task_criticality_t crit_level,
-					task_finish_callback_t auto_finish_routine, int32_t dag_id);
+					bool use_auto_finish, int32_t dag_id, va_list var_list);
 
 void test_auto_finish_routine(task_metadata_block_t* mb);
-void finish_test_execution(task_metadata_block_t* test_metadata_block);
+void finish_test_execution(task_metadata_block_t* test_metadata_block, va_list var_list);
 
 
 #endif

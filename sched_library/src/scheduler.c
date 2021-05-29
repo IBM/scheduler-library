@@ -750,6 +750,24 @@ scheduler_datastate_block_t* initialize_scheduler_and_return_datastate_pointer(s
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->output_task_run_stats_function\n");
     exit(-99);
   }
+  sptr->set_up_task_function = malloc(inp->max_task_types * sizeof(set_up_task_function_t));
+  sched_state_size += inp->max_task_types * sizeof(set_up_task_function_t);
+  if (sptr->set_up_task_function == NULL) {
+    printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->set_up_task_function\n");
+    exit(-99);
+  }
+  sptr->finish_task_execution_function = malloc(inp->max_task_types * sizeof(finish_task_execution_function_t));
+  sched_state_size += inp->max_task_types * sizeof(finish_task_execution_function_t);
+  if (sptr->finish_task_execution_function == NULL) {
+    printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->finish_task_execution_function\n");
+    exit(-99);
+  }
+  sptr->auto_finish_task_function = malloc(inp->max_task_types * sizeof(auto_finish_task_function_t));
+  sched_state_size += inp->max_task_types * sizeof(auto_finish_task_function_t);
+  if (sptr->auto_finish_task_function == NULL) {
+    printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->auto_finish_task_function\n");
+    exit(-99);
+  }
 
   //sptr->accelerator_in_use_by = malloc(MAX_ACCEL_TYPES /*inp->max_accel_types*/ * sizeof(volatile int*));
   sptr->accelerator_in_use_by = malloc(inp->max_accel_types * sizeof(volatile int *));
@@ -1637,6 +1655,7 @@ void wait_on_tasklist(scheduler_datastate_block_t* sptr, int num_tasks, ...)
     }
     task_block_ids[i] = mb_ptr->block_id;
   }
+  va_end(var_list);
   int idx = 0;
   while (idx < num_tasks) {
     int bid = task_block_ids[idx];
@@ -1947,11 +1966,14 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t* sptr)
 
 
 task_type_t
-register_task_type(scheduler_datastate_block_t*    sptr,
-		   char*                           task_name,
-		   char*                           task_description,
-		   print_metadata_block_contents_t print_metadata_block_contents, // function pointer
-		   output_task_type_run_stats_t    output_task_type_run_stats,    // function pointer
+register_task_type(scheduler_datastate_block_t*     sptr,
+		   char*                            task_name,
+		   char*                            task_description,
+		   set_up_task_function_t           set_up_task_func,
+		   finish_task_execution_function_t finish_task_func,
+		   auto_finish_task_function_t      auto_finish_func,
+		   print_metadata_block_contents_t  print_metadata_block_contents, // function pointer
+		   output_task_type_run_stats_t     output_task_type_run_stats,    // function pointer		   
 		   int  num_accel_task_exec_descriptions, ... )
 {
   DEBUG(printf("In register_task_type with inputs:\n");
@@ -1963,6 +1985,18 @@ register_task_type(scheduler_datastate_block_t*    sptr,
 
   printf("Registering Task %s : %s\n", task_name, task_description);
   
+  if (set_up_task_func == NULL) {
+    printf("ERROR: Must set set_up_task_func function -- can use base routine\n");
+    cleanup_and_exit(sptr, -31);
+  }
+  if (finish_task_func == NULL) {
+    printf("ERROR: Must set finish_task_func function -- can use base routine\n");
+    cleanup_and_exit(sptr, -31);
+  }
+  if (auto_finish_func == NULL) {
+    printf("ERROR: Must set auto_finish_func function -- can use base routine\n");
+    cleanup_and_exit(sptr, -31);
+  }
   if (print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
     cleanup_and_exit(sptr, -31);
@@ -1978,6 +2012,10 @@ register_task_type(scheduler_datastate_block_t*    sptr,
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
   sptr->output_task_run_stats_function[tid] = output_task_type_run_stats;
+  sptr->set_up_task_function[tid]  = set_up_task_func;
+  sptr->finish_task_execution_function[tid]  = finish_task_func;
+  sptr->auto_finish_task_function[tid]  = auto_finish_func;
+
   sptr->print_metablock_contents_function[tid]  = print_metadata_block_contents;
 
   printf("Starting the variable arguments processing for %d tuples\n", num_accel_task_exec_descriptions);
@@ -1989,6 +2027,7 @@ register_task_type(scheduler_datastate_block_t*    sptr,
     printf(" Call %d to Register Accel %u for task %u with fptr %p\n", i, sched_accel, tid, exec_fptr);
     register_accel_can_exec_task(sptr, sched_accel, tid, exec_fptr);
   }
+  va_end(var_list);
   return tid;
 }
 
@@ -2019,3 +2058,39 @@ register_accel_can_exec_task(scheduler_datastate_block_t* sptr, scheduler_accele
   DEBUG(printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr));
   printf("Set scheduler_execute_task_function for Task %s on Accelerator Type %s\n", sptr->task_name_str[tid], sptr->accel_name_str[acid]);
 }
+
+
+
+
+task_metadata_block_t* set_up_task(scheduler_datastate_block_t* sptr,
+				   task_type_t the_task_type, task_criticality_t crit_level,
+				   int use_auto_finish, int32_t dag_id, ...)
+{
+  va_list args;
+  va_start(args, dag_id);
+  
+  sptr->set_up_task_function[the_task_type](sptr, the_task_type, crit_level, use_auto_finish, dag_id, args);
+  
+  va_end(args);
+}
+
+
+void finish_task_execution(task_metadata_block_t* the_metadata_block, ...)
+{
+  scheduler_datastate_block_t* sptr = the_metadata_block->scheduler_datastate_pointer;
+  task_type_t task_type = the_metadata_block->task_type;
+
+  va_list args;
+  va_start(args, the_metadata_block);
+  
+  sptr->finish_task_execution_function[task_type](the_metadata_block, args);
+
+  va_end(args);
+}
+
+
+auto_finish_task_function_t get_auto_finish_routine(scheduler_datastate_block_t* sptr, task_type_t the_task_type)
+{
+  return sptr->auto_finish_task_function[the_task_type];
+}
+

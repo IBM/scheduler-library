@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <limits.h>
 
 #include <fcntl.h>
@@ -415,13 +416,16 @@ void set_up_fft_task_on_accel_profile_data() {
 }
 
 task_metadata_block_t* set_up_fft_task(scheduler_datastate_block_t* sptr,
-			 task_type_t fft_task_type, task_criticality_t crit_level, task_finish_callback_t auto_finish_routine,
-			 int32_t dag_id, uint32_t log_nsamples, float * inputs)
+				       task_type_t fft_task_type, task_criticality_t crit_level,
+				       bool use_auto_finish, int32_t dag_id, va_list var_list)
 {
  #ifdef TIME
   gettimeofday(&start_exec_fft, NULL);
  #endif
-  set_up_fft_task_on_accel_profile_data();
+  //uint32_t log_nsamples, float * inputs
+  uint32_t log_nsamples = va_arg(var_list, uint32_t);
+  float * inputs = va_arg(var_list, float*);
+
   // Request a MetadataBlock (for an FFT task at Critical Level)
   task_metadata_block_t* fft_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
@@ -442,7 +446,11 @@ task_metadata_block_t* set_up_fft_task(scheduler_datastate_block_t* sptr,
     dump_all_metadata_blocks_states(sptr);
     exit (-4);
   }
-  fft_mb_ptr->atFinish = auto_finish_routine;
+  if (use_auto_finish) {
+    fft_mb_ptr->atFinish = sptr->auto_finish_task_function[fft_task_type]; // get_auto_finish_routine(sptr, fft_task_type);
+  } else {
+    fft_mb_ptr->atFinish = NULL;
+  }
 
   DEBUG(printf("MB%u Setting up to call request_execution\n", fft_mb_ptr->block_id));
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_mb_ptr->task_timings[fft_mb_ptr->task_type]);
@@ -480,8 +488,11 @@ void fft_auto_finish_routine(task_metadata_block_t* mb)
 // NOTE: This routine simply copies out the results to a provided memory space ("results")
 
 void
-finish_fft_execution(task_metadata_block_t* fft_metadata_block, float* results)
+finish_fft_execution(task_metadata_block_t* fft_metadata_block, va_list var_list) // float* results)
 {
+  // float* results)
+  float* results = va_arg(var_list, float*);
+
   int tidx = fft_metadata_block->accelerator_type;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(fft_metadata_block->task_timings[fft_metadata_block->task_type]);
   fft_data_struct_t * fft_data_p    = (fft_data_struct_t*)(fft_metadata_block->data_space);

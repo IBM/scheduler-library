@@ -42,6 +42,7 @@ void initialize_task_lib()
 {
   set_up_vit_task_on_accel_profile_data();
   set_up_fft_task_on_accel_profile_data();
+  set_up_radar_task_on_accel_profile_data();
   set_up_cv_task_on_accel_profile_data();
   set_up_test_task_on_accel_profile_data();
   set_up_plan_ctrl_task_on_accel_profile_data();

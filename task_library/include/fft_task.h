@@ -77,4 +77,12 @@ void output_fft_task_type_run_stats();
 void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
 void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
 
+
+task_metadata_block_t* set_up_fft_task(scheduler_datastate_block_t* sptr,
+				       task_type_t fft_task_type, task_criticality_t crit_level,
+				       bool use_auto_finish, int32_t dag_id, va_list var_list);
+
+void finish_fft_execution(task_metadata_block_t* fft_metadata_block, va_list var_list); //float* results);
+
+
 #endif

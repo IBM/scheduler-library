@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <stdarg.h>
 
 #include "base_task_types.h"
 
@@ -34,10 +35,9 @@ void set_up_radar_task_on_accel_profile_data();
 
 task_metadata_block_t* set_up_radar_task(scheduler_datastate_block_t* sptr,
 					 task_type_t radar_task_type, task_criticality_t crit_level,
-					 task_finish_callback_t auto_finish_routine, int32_t dag_id,
-					 uint32_t log_nsamples, float * inputs);
+					 bool use_auto_finish, int32_t dag_id, va_list var_list);
 
 void radar_auto_finish_routine(task_metadata_block_t* mb);
-void finish_radar_execution(task_metadata_block_t* fft_metadata_block, float* obj_dist);
+void finish_radar_execution(task_metadata_block_t* fft_metadata_block, va_list var_list); //float* obj_dist);
 
 #endif
