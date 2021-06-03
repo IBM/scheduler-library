@@ -33,11 +33,11 @@
 
 void set_up_radar_task_on_accel_profile_data();
 
-task_metadata_block_t* set_up_radar_task(scheduler_datastate_block_t* sptr,
+void* set_up_radar_task(void* sptr,
 					 task_type_t radar_task_type, task_criticality_t crit_level,
-					 bool use_auto_finish, int32_t dag_id, va_list var_list);
+					 bool use_auto_finish, int32_t dag_id, ...);
 
-void radar_auto_finish_routine(task_metadata_block_t* mb);
-void finish_radar_execution(task_metadata_block_t* fft_metadata_block, va_list var_list); //float* obj_dist);
+void radar_auto_finish_routine(void* mb);
+void finish_radar_execution(void* fft_metadata_block, ...); //float* obj_dist);
 
 #endif

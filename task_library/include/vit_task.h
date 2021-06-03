@@ -55,22 +55,22 @@ typedef struct {
 } vit_timing_data_t;
 
 
-void print_viterbi_metadata_block_contents(task_metadata_block_t* mb);
+void print_viterbi_metadata_block_contents(void* mb);
 
 void init_vit_parameters(int vn);
 
-void output_vit_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_vit_task_type_run_stats(void* sptr, unsigned my_task_type, unsigned total_accel_types);
 
-void exec_vit_task_on_vit_hwr_accel(task_metadata_block_t* task_metadata_block);
-void exec_vit_task_on_cpu_accel(task_metadata_block_t* task_metadata_block);
+void exec_vit_task_on_vit_hwr_accel(void* task_metadata_block);
+void exec_vit_task_on_cpu_accel(void* task_metadata_block);
 
 void set_up_vit_task_on_accel_profile_data();
 
-task_metadata_block_t* set_up_vit_task(scheduler_datastate_block_t* sptr,
+void* set_up_vit_task(void* sptr,
 				       task_type_t vit_task_type, task_criticality_t crit_level,
-				       bool use_auto_finish, int32_t dag_id, va_list var_list);
+				       bool use_auto_finish, int32_t dag_id, ...);
 
-void viterbi_auto_finish_routine(task_metadata_block_t* mb);
-void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block, va_list var_list); //message_t* message_id, char* out_msg_txt);
+void viterbi_auto_finish_routine(void* mb);
+void finish_viterbi_execution(void* vit_metadata_block, ...); //message_t* message_id, char* out_msg_txt);
 
 #endif

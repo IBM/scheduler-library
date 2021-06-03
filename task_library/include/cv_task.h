@@ -49,20 +49,20 @@ typedef struct {
 extern unsigned cv_cpu_run_time_in_usec;
 extern unsigned cv_fake_hwr_run_time_in_usec;
 
-void print_cv_metadata_block_contents(task_metadata_block_t* mb);
+void print_cv_metadata_block_contents(void* mb);
 
-void output_cv_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_cv_task_type_run_stats(void* sptr, unsigned my_task_type, unsigned total_accel_types);
 
-void execute_hwr_cv_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_cpu_cv_accelerator(task_metadata_block_t* task_metadata_block);
+void execute_hwr_cv_accelerator(void* task_metadata_block);
+void execute_cpu_cv_accelerator(void* task_metadata_block);
 
 void set_up_cv_task_on_accel_profile_data();
 
-task_metadata_block_t* set_up_cv_task(scheduler_datastate_block_t* sptr,
+void* set_up_cv_task(void* sptr,
 				      task_type_t cv_task_type, task_criticality_t crit_level,
-				      bool use_auto_finish, int32_t dag_id, va_list var_list); // label_t in_label);
+				      bool use_auto_finish, int32_t dag_id, ...); // label_t in_label);
 
-void cv_auto_finish_routine(task_metadata_block_t* mb);
-void finish_cv_execution(task_metadata_block_t* fft_metadata_block, va_list var_list); //label_t* out_label);
+void cv_auto_finish_routine(void* mb);
+void finish_cv_execution(void* fft_metadata_block, ...); //label_t* out_label);
 
 #endif

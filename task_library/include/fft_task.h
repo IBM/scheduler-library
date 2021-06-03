@@ -66,7 +66,7 @@ typedef struct {
   uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
-void print_fft_metadata_block_contents(task_metadata_block_t* mb);
+void print_fft_metadata_block_contents(void* mb);
 
 void set_up_fft_task_on_accel_profile_data();
 
@@ -74,15 +74,15 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
 void output_fft_task_type_run_stats();
 
-void execute_hwr_fft_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_cpu_fft_accelerator(task_metadata_block_t* task_metadata_block);
+void execute_hwr_fft_accelerator(void* task_metadata_block);
+void execute_cpu_fft_accelerator(void* task_metadata_block);
 
 
-task_metadata_block_t* set_up_fft_task(scheduler_datastate_block_t* sptr,
+void* set_up_fft_task(void* sptr,
 				       task_type_t fft_task_type, task_criticality_t crit_level,
-				       bool use_auto_finish, int32_t dag_id, va_list var_list);
+				       bool use_auto_finish, int32_t dag_id, ...);
 
-void finish_fft_execution(task_metadata_block_t* fft_metadata_block, va_list var_list); //float* results);
+void finish_fft_execution(void* fft_metadata_block, ...); //float* results);
 
 
 #endif
