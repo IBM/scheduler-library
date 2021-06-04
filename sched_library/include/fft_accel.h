@@ -24,7 +24,8 @@
 
 #include "scheduler.h"
 
-#define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
+#define MAX_RADAR_LOGN  14                  // Max we allow is 2^14 = 16k samples
+#define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 2^14 = 16k samples
 
 #ifdef COMPILE_TO_ESP
  #include "contig.h"
