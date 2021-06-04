@@ -1,2 +1,2 @@
-include ./build_epochs0.config
+include ../../sched_library/build_epochs0.config
 include Makefile.base

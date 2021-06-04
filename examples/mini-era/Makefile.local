@@ -1,2 +1,2 @@
-include ./build_local.config
+include ../../sched_library/build_local.config
 include Makefile.base

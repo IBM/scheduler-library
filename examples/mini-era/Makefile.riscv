@@ -1,2 +1,2 @@
-include ./build_riscv.config
+include ../../sched_library/build_riscv.config
 include Makefile.base
