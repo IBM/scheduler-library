@@ -816,9 +816,173 @@ void pnc_leaf(
       new_vehicle_state->lane,
       new_vehicle_state->speed));
 
+  __hpvm__return(1, new_vehicle_state);
+
 }
 
 
+void MiniERARootWrapper(
+        message_size_t msg_size,
+        ofdm_param* ofdm_ptr, size_t ofdm_size,
+        frame_param* frame_ptr, size_t frame_ptr_size,
+        uint8_t* in_bits, size_t in_bit_size,
+        message_t* message_id, size_t msg_id_size,
+        char* out_msg_text, size_t out_msg_text_size,
+        label_t in_label,
+        label_t* obj_label, size_t obj_label_size,
+        distance_t* distance_ptr, size_t distance_ptr_size,
+        float* inputs_ptr, size_t inputs_ptr_size,
+        uint32_t log_nsamples,
+        vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
+        vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
+        unsigned time_step, unsigned repeat_factor 
+        int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
+        ) {
+
+        __hpvm__hint(hpvm::CPU_TARGET);
+        __hpvm__attributes(10, ofdmptr, frame_ptr, in_bits,
+                message_id, out_msg_text, obj_label, distance_ptr,
+                inputs_ptr, vehicle_state_ptr, new_vehicle_state,
+                // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,
+                1, new_vehicle_state
+                );
+
+
+        void* ViterbiNode = __hpvm__createNodeND(0, vit_leaf, /* Node Criticality */  VitCrit);
+
+        __hpvm__bindIn(ViterbiNode, 0, 0, 0);
+        __hpvm__bindIn(ViterbiNode, 1, 1, 0);
+        __hpvm__bindIn(ViterbiNode, 2, 2, 0);
+        __hpvm__bindIn(ViterbiNode, 3, 3, 0);
+        __hpvm__bindIn(ViterbiNode, 4, 4, 0);
+        __hpvm__bindIn(ViterbiNode, 5, 5, 0);
+        __hpvm__bindIn(ViterbiNode, 6, 6, 0);
+        __hpvm__bindIn(ViterbiNode, 7, 7, 0);
+        __hpvm__bindIn(ViterbiNode, 8, 8, 0);
+        __hpvm__bindIn(ViterbiNode, 9, 9, 0);
+        __hpvm__bindIn(ViterbiNode, 10, 10, 0);
+
+
+
+
+        void* CVNode = __hpvm__createNodeND(0, cv_leaf, /* Node Criticality */ CVCrit);
+
+        __hpvm__bindIn(CVNode, 11, 0, 0);
+        __hpvm__bindIn(CVNode, 12, 1, 0);
+        __hpvm__bindIn(CVNode, 13, 2, 0);
+
+
+
+        void* RadarNode = __hpvm__createNodeND(0, radar_leeaf, /* Node Criticality */ RadarCrit );
+
+        __hpvm__bindIn(RadarNode, 14, 0, 0);
+        __hpvm__bindIn(RadarNode, 15, 1, 0);
+        __hpvm__bindIn(RadarNode, 16, 2, 0);
+        __hpvm__bindIn(RadarNode, 17, 3, 0);
+        __hpvm__bindIn(RadarNode, 18, 4, 0);
+
+
+        void* PNCNode = __hpvm__createNodeND(0, pnc_leaf, /* Node Criticality */ PNCCrrit);
+
+        __hpvm__bindIn(PNCNode, 19, 0, 0);
+        __hpvm__bindIn(PNCNode, 20, 1, 0);
+        __hpvm__bindIn(PNCNode, 21, 2, 0);
+        __hpvm__bindIn(PNCNode, 22, 3, 0);
+
+        // Radar Outputs
+        __hpvm__edge(RadarNode, PNCNode, /* replType */ 1, 0, 4, /* isStream */ 0);
+        __hpvm__bindIn(PNCNode, 15, 5, 0);
+
+        // CV Outputs
+        __hpvm__edge(CVNode, PNCNode, /* replType */ 1, 0, 6, /* isStream */ 0);
+        __hpvm__bindIn(PNCNode, 13, 7, 0);
+
+        // Viterbi Outputs
+        __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 0, 8, /* isStream */ 0);
+        __hpvm__bindIn(PNCNode, 8, 9, 0);
+
+        __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 1, 10, /* isStream */ 0);
+        __hpvm__bindIn(PNCNode, 10, 11, 0);
+
+
+
+        // Remaining PNC inputs
+        __hpvm__bindIn(PNCNode, 23, 12, 0);
+        __hpvm__bindIn(PNCNode, 24, 13, 0);
+
+
+
+        __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
+
+}
+
+void MiniERARoot(
+        message_size_t msg_size,
+        ofdm_param* ofdm_ptr, size_t ofdm_size,
+        frame_param* frame_ptr, size_t frame_ptr_size,
+        uint8_t* in_bits, size_t in_bit_size,
+        message_t* message_id, size_t msg_id_size,
+        char* out_msg_text, size_t out_msg_text_size,
+        label_t in_label,
+        label_t* obj_label, size_t obj_label_size,
+        distance_t* distance_ptr, size_t distance_ptr_size,
+        float* inputs_ptr, size_t inputs_ptr_size,
+        uint32_t log_nsamples,
+        vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
+        vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
+        unsigned time_step, unsigned repeat_factor 
+        int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
+        ) {
+
+        __hpvm__hint(hpvm::CPU_TARGET);
+        __hpvm__attributes(10, ofdmptr, frame_ptr, in_bits,
+                message_id, out_msg_text, obj_label, distance_ptr,
+                inputs_ptr, vehicle_state_ptr, new_vehicle_state,
+                // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,
+                1, new_vehicle_state
+                );
+
+
+        void* WrapperNode = __hpvm__createNodeND(0, MiniERARootWrapper);
+
+        // 29 arguments
+        __hpvm__bindIn(WrapperNode, 0, 0, 0);
+        __hpvm__bindIn(WrapperNode, 1, 1, 0);
+        __hpvm__bindIn(WrapperNode, 2, 2, 0);
+        __hpvm__bindIn(WrapperNode, 3, 3, 0);
+        __hpvm__bindIn(WrapperNode, 4, 4, 0);
+        __hpvm__bindIn(WrapperNode, 5, 5, 0);
+        __hpvm__bindIn(WrapperNode, 6, 6, 0);
+        __hpvm__bindIn(WrapperNode, 7, 7, 0);
+        __hpvm__bindIn(WrapperNode, 8, 8, 0);
+        __hpvm__bindIn(WrapperNode, 9, 9, 0);
+        __hpvm__bindIn(WrapperNode, 10, 10, 0);
+        __hpvm__bindIn(WrapperNode, 11, 11, 0);
+        __hpvm__bindIn(WrapperNode, 12, 12, 0);
+        __hpvm__bindIn(WrapperNode, 13, 13, 0);
+        __hpvm__bindIn(WrapperNode, 14, 14, 0);
+        __hpvm__bindIn(WrapperNode, 15, 15, 0);
+        __hpvm__bindIn(WrapperNode, 16, 16, 0);
+        __hpvm__bindIn(WrapperNode, 17, 17, 0);
+        __hpvm__bindIn(WrapperNode, 18, 18, 0);
+        __hpvm__bindIn(WrapperNode, 19, 19, 0);
+        __hpvm__bindIn(WrapperNode, 20, 20, 0);
+        __hpvm__bindIn(WrapperNode, 21, 21, 0);
+        __hpvm__bindIn(WrapperNode, 22, 22, 0);
+        __hpvm__bindIn(WrapperNode, 23, 23, 0);
+        __hpvm__bindIn(WrapperNode, 24, 24, 0);
+        __hpvm__bindIn(WrapperNode, 25, 25, 0);
+        __hpvm__bindIn(WrapperNode, 26, 26, 0);
+        __hpvm__bindIn(WrapperNode, 27, 27, 0);
+        __hpvm__bindIn(WrapperNode, 28, 28, 0);
+        
+        __hpvm__bindOut(WrapperNode, 0, 0, 0);
+
+
+}
+
+
+        
 
 
 #endif
