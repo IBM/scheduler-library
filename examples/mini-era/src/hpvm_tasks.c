@@ -1,10 +1,173 @@
 #ifdef HPVM
+#define MAX_ENCODED_BITS    ((16 + 8 * MAX_PSDU_SIZE + 6) * 2 + 288)
+#define TRACEBACK_MAX 24
 
 #include "hpvm_tasks.h"
 
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
+static const unsigned char PUNCTURE_1_2[2] = {1, 1};
+static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
+static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
 
+static const unsigned char *d_depuncture_pattern;
+
+static uint8_t d_depunctured[MAX_ENCODED_BITS];
+static uint8_t d_decoded[MAX_ENCODED_BITS * 3 / 4];
+
+#ifdef FAKE_HW_CV
+unsigned cv_cpu_run_time_in_usec = 10000;
+unsigned cv_fake_hwr_run_time_in_usec = 1000;
+#else
+#ifdef COMPILE_TO_ESP
+unsigned cv_cpu_run_time_in_usec = 10000;
+// unsigned cv_fake_hwr_run_time_in_usec =  1000;
+#else
+unsigned cv_cpu_run_time_in_usec = 50;
+// unsigned cv_fake_hwr_run_time_in_usec =     1;
+#endif
+#endif
+
+#ifndef M_PI
+ #define M_PI 3.14159265358979323846
+#endif
+
+#define RADAR_c 300000000.0 // Speed of Light in Meters/Sec
+
+
+static unsigned int
+_rev (unsigned int v)
+{
+  unsigned int r = v;
+  int s = sizeof(v) * CHAR_BIT - 1;
+
+  for (v >>= 1; v; v >>= 1)
+  {
+    r <<= 1;
+    r |= v & 1;
+    s--;
+  }
+  r <<= s;
+
+  return r;
+}
+
+
+int d_k;
+
+static const unsigned char PARTAB[256] = {
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         0, 1, 1, 0, 1, 0, 0, 1,
+         1, 0, 0, 1, 0, 1, 1, 0,
+}; 
+
+
+
+int32_t d_ntraceback;
+
+typedef union branchtab27_u {
+	unsigned char c[32];
+} t_branchtab27;
+
+t_branchtab27 d_branchtab27_generic[2];
+
+
+void reset(ofdm_param* d_ofdm) {
+  int i, j;
+
+  int polys[2] = { 0x6d, 0x4f };
+  for(i=0; i < 32; i++) {
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2*i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
+  }
+
+  switch(d_ofdm->encoding) {
+  case BPSK_1_2:
+  case QPSK_1_2:
+  case QAM16_1_2:
+    d_ntraceback = 5;
+    d_depuncture_pattern = PUNCTURE_1_2;
+    d_k = 1;
+    break;
+  case QAM64_2_3:
+    d_ntraceback = 9;
+    d_depuncture_pattern = PUNCTURE_2_3;
+    d_k = 2;
+    break;
+  case BPSK_3_4:
+  case QPSK_3_4:
+  case QAM16_3_4:
+  case QAM64_3_4:
+    d_ntraceback = 10;
+    d_depuncture_pattern = PUNCTURE_3_4;
+    d_k = 3;
+    break;
+  }
+}
+
+
+
+uint8_t* depuncture(uint8_t *in, ofdm_param* d_ofdm, frame_param* d_frame) {
+  int count;
+  int n_cbps = d_ofdm->n_cbps;
+  uint8_t *depunctured;
+  //printf("Depunture call...\n");
+  if (d_ntraceback == 5) {
+    count = d_frame->n_sym * n_cbps;
+    depunctured = in;
+  } else {
+    depunctured = d_depunctured;
+    count = 0;
+    for(int i = 0; i < d_frame->n_sym; i++) {
+      for(int k = 0; k < n_cbps; k++) {
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
+
+	// Insert received bits
+	depunctured[count] = in[i * n_cbps + k];
+	count++;
+
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
+      }
+    }
+  }
+  //printf("  depuncture count = %u\n", count);
+  return depunctured;
+}
 
 void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
         frame_param* frame_ptr, size_t frame_ptr_size,
@@ -12,20 +175,19 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
         message_t* message_id, size_t msg_id_size,
         char* out_msg_text, size_t out_msg_text_size){
 
-    __hpvm__hint(hpvm::EPOCHS_TARGET);
+    __hpvm__hint(EPOCHS_TARGET);
     __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits,
             message_id, out_msg_text,
             2, message_id, out_msg_text);
-    __hpvm__task(hpvm::VIT_TASK);
+    __hpvm__task(VIT_TASK);
 
 
 
-    d_ofdm = ofdm_ptr;
-    d_frame = frame_ptr;
-    reset();
+    reset(ofdm_ptr);
 
 
-    uint8_t *depunctured = depuncture(in_bits);
+    uint8_t *depunctured = depuncture(in_bits, ofdm_ptr, frame_ptr);
+    /*
     DO_VERBOSE({
             printf("VBS: depunctured = [\n");
             for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
@@ -35,7 +197,8 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
             printf("%02x", depunctured[ti]);
             }
             printf("\n");
-            });
+            });*/
+
 
     int32_t n_data_bits = frame_ptr->n_data_bits;
     int32_t n_cbps      = ofdm_ptr->n_cbps;
@@ -76,7 +239,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
     // Call the do_decoding routine
     // START OF EXEC_VIT_ON_CPU
     //
-  DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
+  // DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
   int32_t  in_cbps = n_cbps;
   int32_t  in_ntraceback = n_traceback;
   int32_t  in_data_bits = n_data_bits;
@@ -99,6 +262,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
   uint8_t* depd_data                     = &(in_Data[   0]);
   uint8_t* l_decoded                     = &(out_Data[   0]);
 
+  /*
   DO_VERBOSE({
       printf("\nVBS: in_cbps        = %u\n", in_cbps);
       printf("VBS: in_ntraceback  = %u\n", in_ntraceback);
@@ -137,7 +301,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
       }
       printf("\n");
       printf("\n\n");
-    });
+    });*/
 
   uint8_t  l_metric0_generic[64];
   uint8_t  l_metric1_generic[64];
@@ -398,7 +562,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
 	if (out_count >= in_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
 	    l_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
-	    SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i, l_decoded[(out_count - in_ntraceback) * 8 + i]));
+	    //SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i, l_decoded[(out_count - in_ntraceback) * 8 + i]));
 	    n_decoded++;
 	  }
 	}
@@ -409,10 +573,11 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
   }
 
 
+  /*
   SDEBUG(for (int i = 0; i < 20; i++) {
       printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i])); // cpuOutMem[i]);
     });
-
+    */
 
 
 
@@ -433,12 +598,13 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
     d_decoded[ti] = out_Data[ti];
     //DEBUG(if (ti < 31) { printf("FIN_VIT_OUT %3u : %3u @ %p \n", ti, out_Data[ti], &(out_Data[ti]));});
-    SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
+    // SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
   }
+  /*
   SDEBUG(printf("\n\n");
 	 for (int i = 0; i < 32; i++) {
       printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
-    });
+    });*/
 
 
   // descramble the output - put it in result
@@ -465,9 +631,9 @@ void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
 void cv_leaf(label_t in_label,
         label_t* obj_label, size_t obj_label_size){
 
-    __hpvm__hint(hpvm::EPOCHS_TARGET);
+    __hpvm__hint(EPOCHS_TARGET);
     __hpvm__attributes(1, obj_label, 1, obj_label);
-    __hpvm__task(hpvm::CV_TASK);
+    __hpvm__task(CV_TASK);
 
     // CPU CV sleeps for a particular time
     usleep(cv_cpu_run_time_in_usec);
@@ -511,10 +677,10 @@ void radar_leaf(distance_t* distance_ptr, size_t distance_ptr_size,
             uint32_t log_nsamples){
 
 
-    __hpvm__hint(hpvm::EPOCHS_TARGET);
+    __hpvm__hint(EPOCHS_TARGET);
     __hpvm__attributes(2, distance_ptr, inputs_ptr,
             2, distance_ptr, inputs_ptr);
-    __hpvm__task(hpvm::RADAR_TASK);
+    __hpvm__task(RADAR_TASK);
 
 
 
@@ -527,6 +693,7 @@ void radar_leaf(distance_t* distance_ptr, size_t distance_ptr_size,
 
 
 
+   int sign = -1; 
 
     // execute_cpu_fft_accelerator
 
@@ -543,10 +710,10 @@ void radar_leaf(distance_t* distance_ptr, size_t distance_ptr_size,
   transform_length = 1;
 
   /* bit reversal */
-  bit_reverse (data, N, fft_logn_samples);
+  bit_reverse (data, N, fft_log_nsamples);
 
   /* calculation */
-  for (bit = 0; bit < fft_logn_samples; bit++) {
+  for (bit = 0; bit < fft_log_nsamples; bit++) {
     w_real = 1.0;
     w_imag = 0.0;
 
@@ -625,13 +792,13 @@ void radar_leaf(distance_t* distance_ptr, size_t distance_ptr_size,
 
   float max_psd = 0;
   unsigned int max_index = 0;
-  unsigned int i;
+  unsigned int _i;
   float temp;
-  for (i = 0; i < RADAR_N; i++) {
-    temp = (pow(data[2 * i], 2) + pow(data[2 * i + 1], 2)) / 100.0;
+  for (_i = 0; _i < RADAR_N; _i++) {
+    temp = (pow(data[2 * _i], 2) + pow(data[2 * _i + 1], 2)) / 100.0;
     if (temp > max_psd) {
       max_psd = temp;
-      max_index = i;
+      max_index = _i;
     }
   }
   float distance =
@@ -662,14 +829,14 @@ void pnc_leaf(
         ){
 
 
-    __hpvm__hint(hpvm::EPOCHS_TARGET);
+    __hpvm__hint(EPOCHS_TARGET);
     __hpvm__attributes(6, new_vehicle_state, vehicle_state_ptr, distance_ptr, obj_label,
             message_id, out_msg_text, 1, new_vehicle_state); 
-    __hpvm__task(hpvm::PNC_TASK);
+    __hpvm__task(PNC_TASK);
 
     
 
-    vehicle_state_t vehicle_state = vehicle_state_ptr;
+    vehicle_state_t* vehicle_state = vehicle_state_ptr;
 
     message_t safe_lanes_msg = *message_id;
 
@@ -754,7 +921,6 @@ void pnc_leaf(
         new_vehicle_state->speed = 0.0;
 #endif
         break; /* Stop!!! */
-      default:
         // printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
         //       lane_names[plan_ctrl_data_p->vehicle_state.lane],
         //       plan_ctrl_data_p->safe_lanes_msg);
@@ -810,11 +976,13 @@ void pnc_leaf(
   } // end of plan-and-control logic functions...
 
 
+  /*
   DEBUG(printf(
       "Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n",
       new_vehicle_state->active,
       new_vehicle_state->lane,
       new_vehicle_state->speed));
+      */
 
   __hpvm__return(1, new_vehicle_state);
 
@@ -835,12 +1003,12 @@ void MiniERARootWrapper(
         uint32_t log_nsamples,
         vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
         vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
-        unsigned time_step, unsigned repeat_factor 
+        unsigned time_step, unsigned repeat_factor ,
         int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
         ) {
 
-        __hpvm__hint(hpvm::CPU_TARGET);
-        __hpvm__attributes(10, ofdmptr, frame_ptr, in_bits,
+        __hpvm__hint(CPU_TARGET);
+        __hpvm__attributes(10, ofdm_ptr, frame_ptr, in_bits,
                 message_id, out_msg_text, obj_label, distance_ptr,
                 inputs_ptr, vehicle_state_ptr, new_vehicle_state,
                 // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,
@@ -873,7 +1041,7 @@ void MiniERARootWrapper(
 
 
 
-        void* RadarNode = __hpvm__createNodeND(0, radar_leeaf, /* Node Criticality */ RadarCrit );
+        void* RadarNode = __hpvm__createNodeND(0, radar_leaf, /* Node Criticality */ RadarCrit);
 
         __hpvm__bindIn(RadarNode, 14, 0, 0);
         __hpvm__bindIn(RadarNode, 15, 1, 0);
@@ -882,7 +1050,7 @@ void MiniERARootWrapper(
         __hpvm__bindIn(RadarNode, 18, 4, 0);
 
 
-        void* PNCNode = __hpvm__createNodeND(0, pnc_leaf, /* Node Criticality */ PNCCrrit);
+        void* PNCNode = __hpvm__createNodeND(0, pnc_leaf, /* Node Criticality */ PNCCrit);
 
         __hpvm__bindIn(PNCNode, 19, 0, 0);
         __hpvm__bindIn(PNCNode, 20, 1, 0);
@@ -930,12 +1098,12 @@ void MiniERARoot(
         uint32_t log_nsamples,
         vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
         vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
-        unsigned time_step, unsigned repeat_factor 
+        unsigned time_step, unsigned repeat_factor ,
         int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
         ) {
 
-        __hpvm__hint(hpvm::CPU_TARGET);
-        __hpvm__attributes(10, ofdmptr, frame_ptr, in_bits,
+        __hpvm__hint(CPU_TARGET);
+        __hpvm__attributes(10, ofdm_ptr, frame_ptr, in_bits,
                 message_id, out_msg_text, obj_label, distance_ptr,
                 inputs_ptr, vehicle_state_ptr, new_vehicle_state,
                 // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,

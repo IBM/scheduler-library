@@ -31,6 +31,9 @@ endif
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
 
+ifdef COMPILE_TO_HPVM
+	CFLAGS += -DHPVM
+endif
 # This sets the maximum number of any Acceleartor type in this build
 #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
 #  But it could be a larger value as well
@@ -258,3 +261,4 @@ src/kernels_api.o: ./include/verbose.h ./include/base_types.h
 src/kernels_api.o: ./include/calc_fmcw_dist.h
 src/kernels_api.o: ./include/utils.h ./include/read_trace.h
 src/kernels_api.o: ./include/viterbi_flat.h ./include/base.h
+src/hpvm_tasks.o: ./include/hpvm_tasks.h ./include/base_types.h

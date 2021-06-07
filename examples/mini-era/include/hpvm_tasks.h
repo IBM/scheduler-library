@@ -1,7 +1,10 @@
 #ifdef HPVM
 
+#include <stdio.h>
+#include <math.h>
+#include <limits.h>
 #include "hpvm.h"
-
+#include "base_types.h"
 
 void vit_leaf(message_size_t msg_size, ofdm_param* ofdm_ptr, size_t ofdm_size,
         frame_param* frame_ptr, size_t frame_ptr_size,
@@ -41,7 +44,7 @@ void MiniERARootWrapper(
         uint32_t log_nsamples,
         vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
         vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
-        unsigned time_step, unsigned repeat_factor 
+        unsigned time_step, unsigned repeat_factor ,
         int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
         );
 
@@ -60,7 +63,7 @@ void MiniERARoot(
         uint32_t log_nsamples,
         vehicle_state_t* vehicle_state_ptr, size_t vehicle_state_size,
         vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size,
-        unsigned time_step, unsigned repeat_factor 
+        unsigned time_step, unsigned repeat_factor ,
         int RadarCrit, int VitCrit, int CVCrit, int PNCCrit
         );
 #endif
