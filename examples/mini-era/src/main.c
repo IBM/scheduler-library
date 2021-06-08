@@ -59,6 +59,8 @@ char vit_dict[256];
 #include "fft_accel.h"
 #include "vit_accel.h"
 
+#include "hpvm_tasks.h"
+
 // Storage to hold the accelerator IDs (returned when we register accelerators)
 // of the accelerator types we will need/use
 accelerator_type_t cpu_accel_id;
@@ -199,6 +201,28 @@ void print_usage(char *pname) {
   printf("                :   This parameter is mandatory to keep control of "
          "the trace file size\n");
 }
+
+
+#ifdef HPVM
+typedef struct __attribute__((__packed__)) {
+        message_size_t msg_size;
+        ofdm_param* ofdm_ptr; size_t ofdm_size;
+        frame_param* frame_ptr; size_t frame_ptr_size;
+        uint8_t* in_bits; size_t in_bit_size;
+        message_t* message_id; size_t msg_id_size;
+        char* out_msg_text; size_t out_msg_text_size;
+        label_t in_label;
+        label_t* obj_label; size_t obj_label_size;
+        distance_t* distance_ptr; size_t distance_ptr_size;
+        float* inputs_ptr; size_t inputs_ptr_size;
+        uint32_t log_nsamples;
+        vehicle_state_t* vehicle_state_ptr; size_t vehicle_state_size;
+        vehicle_state_t* new_vehicle_state; size_t new_vehicle_state_size;
+        unsigned time_step; unsigned repeat_factor ;
+        int RadarCrit; int VitCrit; int CVCrit; int PNCCrit;
+} RootIn;
+
+#endif
 
 // This is just a call-through to the scheduler routine, but we can also print a
 // message here...
@@ -1000,6 +1024,14 @@ int main(int argc, char *argv[]) {
   uint64_t wait_all_crit_usec = 0LL;
 #endif // TIME
 
+
+
+#ifdef HPVM
+  __hpvm__init();
+  RootIn* DFGArgs = (RootIn*) malloc(sizeof(DFGArgs));
+
+#endif
+
   printf("Starting the main loop...\n");
   /* The input trace contains the per-epoch (time-step) input data */
 #ifdef TIME
@@ -1083,6 +1115,9 @@ int main(int argc, char *argv[]) {
 #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
 #endif
+
+#ifndef HPVM
+
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t *cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
@@ -1100,9 +1135,29 @@ int main(int argc, char *argv[]) {
     DEBUG(printf("FFT task Block-ID = %u\n", radar_mb_ptr->block_id));
     request_execution(radar_mb_ptr);
 
+#else
+    DFGArgs->in_label = cv_tr_label;
+    DFGArgs->obj_label = &cv_tr_label;
+    DFGArgs->obj_label_size = sizeof(label_t);
+    DFGArgs->CVCrit = CRITICAL_TASK;
+
+
+    DFGArgs->time_step = time_step;
+    DFGArgs->log_nsamples = radar_log_nsamples_per_dict_set[crit_fft_samples_set];
+    DFGArgs->inputs_ptr = radar_inputs;
+    // described in base_types.h
+    DFGArgs->inputs_ptr_size = 2 * (1<<MAX_RADAR_LOGN); 
+    DFGArgs->distance_ptr = &distance;
+    DFGArgs->distance_ptr_size = sizeof(distance_t);
+    DFGArgs->RadarCrit = CRITICAL_TASK;
+
+#endif
+
 #ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
 #endif
+
+#ifndef HPVM
     // NOTE Removed the num_messages stuff -- need to do this differently
     // (separate invocations of this process per message)
     // Request a MetadataBlock for a Viterbi Task at Critical Level
@@ -1120,6 +1175,31 @@ int main(int argc, char *argv[]) {
       DEBUG(printf("TEST_TASK_BLOCK: ID = %u\n", test_mb_ptr->block_id));
       request_execution(test_mb_ptr);
     }
+
+#else
+
+    /* -- HPVM -- Fill in Viterbi Task Args */
+    char out_msg_text[1600]; // more than large enough to hold max-size message
+
+    DFGArgs->msg_size = vit_msgs_size;
+    DFGArgs->ofdm_ptr = &vdentry_p->ofdm_p ;
+    DFGArgs->ofdm_size = sizeof(ofdm_param);
+    DFGArgs->frame_ptr = &vdentry_p->frame_p;
+    DFGArgs->frame_ptr_size = sizeof(frame_param);
+    DFGArgs->in_bits = &vdentry_p->in_bits;
+    DFGArgs->in_bit_size = sizeof(uint8_t);
+    DFGArgs->message_id = &message;
+    DFGArgs->msg_id_size = sizeof(message_t);
+    DFGArgs->out_msg_text = out_msg_text;
+    DFGArgs->out_msg_text_size = 1600;
+
+    DFGArgs->VitCrit = CRITICAL_TASK;
+
+
+#endif
+
+
+#ifndef HPVM
 
     // Now we add in the additional non-critical tasks...
     for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
@@ -1202,12 +1282,16 @@ int main(int argc, char *argv[]) {
       wait_on_tasklist(sptr, 3, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr);
     }
 
+#endif
+
 #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
     wait_all_crit_sec += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;
     wait_all_crit_usec +=
         stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
 #endif
+
+#ifndef HPVM
 
     finish_task_execution(radar_mb_ptr, &distance);
     char out_msg_text[1600]; // more than large enough to hold max-size message
@@ -1218,6 +1302,8 @@ int main(int argc, char *argv[]) {
     if (num_Crit_test_tasks > 0) {
       finish_task_execution(test_mb_ptr);
     }
+#endif
+
 #ifdef TIME
     gettimeofday(&stop_exec_rad, NULL);
     exec_rad_sec += stop_exec_rad.tv_sec - start_exec_rad.tv_sec;
@@ -1228,6 +1314,18 @@ int main(int argc, char *argv[]) {
     exec_cv_usec += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
 #endif
 
+#ifdef HPVM
+    vehicle_state_t new_vehicle_state;
+    DFGArgs->vehicle_state_ptr = &vehicle_state;
+    DFGArgs->vehicle_state_ptr = sizeof(vehicle_state);
+    DFGArgs->new_vehicle_state = &new_vehicle_state;
+    DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
+    DFGArgs->time_step = time_step;
+    DFGArgs->repeat_factor = pandc_repeat_factor;
+    DFGArgs->PNCCrit = CRITICAL_TASK;
+
+
+#else
     /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
@@ -1261,6 +1359,7 @@ int main(int argc, char *argv[]) {
 
     // wait_all_critical(sptr);
     wait_on_tasklist(sptr, 1, pnc_mb_ptr);
+#endif
 
 #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
@@ -1268,6 +1367,8 @@ int main(int argc, char *argv[]) {
     wait_all_crit_usec +=
         stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
 #endif
+
+#ifndef HPVM
     DEBUG(printf("MAIN:  Back from wait for plan-and-control\n"));
 
     DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n",
@@ -1278,6 +1379,55 @@ int main(int argc, char *argv[]) {
                  pnc_mb_ptr->block_id, time_step, pandc_repeat_factor, label,
                  distance, message, vehicle_state.active, vehicle_state.lane,
                  vehicle_state.speed));
+
+#else
+    
+    /* -- HPVM Host Code -- */
+
+    // Add relavent memory to memory tracker
+    llvm_hpvm_track_mem(&cv_tr_label, sizeof(label_t));
+    llvm_hpvm_track_mem(radar_inputs, 2 * (1<<MAX_RADAR_LOGN));
+    llvm_hpvm_track_mem(&distance, sizeof(distance));
+    llvm_hpvm_track_mem(&vdentry_p->ofdm_p, sizeof(ofdm_param));
+    llvm_hpvm_track_mem(&vdentry_p->frame_p, sizeof(frame_param));
+    llvm_hpvm_track_mem(&vdentry_p->in_bits, sizeof(uint8_t));
+    llvm_hpvm_track_mem(&message, sizeof(message_t));
+    llvm_hpvm_track_mem(out_msg_text, 1600);
+    llvm_hpvm_track_mem(&vehicle_state, sizeof(vehicle_state));
+    llvm_hpvm_track_mem(&new_vehicle_state, sizeof(new_vehicle_state));
+
+    printf("\n\nLaunching ERA pipeline!\n");
+
+    void* ERADFG = __hpvm__launch(0, MiniERARoot, (void*) DFGArgs);
+    __hpvm__wait(ERADFG);
+
+    printf("\n\nFinished executing ERA pipeline!\n");
+    printf("\n\nRequesting Memory!\n");
+
+    // Requesting memory back from DFG
+    llvm_hpvm_request_mem(&new_vehicle_state, sizeof(vehicle_state_t));
+
+
+    // Remove relavent memory from memory tracker
+    llvm_hpvm_untrack_mem(&cv_tr_label);
+    llvm_hpvm_untrack_mem(radar_inputs);
+    llvm_hpvm_untrack_mem(&distance);
+    llvm_hpvm_untrack_mem(&vdentry_p->ofdm_p);
+    llvm_hpvm_untrack_mem(&vdentry_p->frame_p);
+    llvm_hpvm_untrack_mem(&vdentry_p->in_bits);
+    llvm_hpvm_untrack_mem(&message);
+    llvm_hpvm_untrack_mem(out_msg_text);
+    llvm_hpvm_untrack_mem(&vehicle_state);
+    llvm_hpvm_untrack_mem(&new_vehicle_state);
+
+
+
+
+
+
+    // Overwrite the current vehicle state with the new state
+    vehicle_state = new_vehicle_state;
+#endif
 
 #ifdef TIME
     gettimeofday(&stop_exec_pandc, NULL);
@@ -1359,5 +1509,9 @@ int main(int argc, char *argv[]) {
 #endif // TIME
   shutdown_scheduler(sptr);
   printf("\nDone.\n");
+
+#ifdef HPVM
+  __hpvm__cleanup();
+#endif
   return 0;
 }
