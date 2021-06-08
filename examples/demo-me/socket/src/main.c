@@ -173,7 +173,7 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
     message_ptr = message_ptr + valread;
     total_recvd += valread;
     DEBUG(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
-    if (valread == 0) {
+    if (valread < 1) {
       DEBUG(printf("  read_all got ZERO bytes -- END of TRANSFER?\n"));
       return total_recvd;
     }
@@ -198,11 +198,14 @@ void* handle_messages(void* parm_ptr)
     char r_buffer[10];
     int valread = read_all(recv_sock, r_buffer, 8);
     DEBUG(printf("  RECV got %d bytes :'%s'\n", valread, r_buffer));
-    DEBUG(for (int bi = 0; bi < valread; bi++) {
-	printf("  Byte %4u : 0x%02x  = %c\n", bi, r_buffer[bi], r_buffer[bi]);
-      });
-    DEBUG2(printf("  RECV msg psn %s\n", "01234567890"));
-    if (valread == 8) {
+    if (valread < 1) {
+      printf("Closing out the run...\n");
+      break;
+    } else if (valread == 8) {
+      DEBUG(for (int bi = 0; bi < valread; bi++) {
+	  printf("  Byte %4u : 0x%02x  = %c\n", bi, r_buffer[bi], r_buffer[bi]);
+	});
+      DEBUG2(printf("  RECV msg psn %s\n", "01234567890"));
       if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
 	printf("ERROR: Unexpected message from WiFi...\n");
 	//closeout_and_exit("Unexpected WiFi message...", -3);
@@ -389,6 +392,7 @@ void* handle_messages(void* parm_ptr)
    #endif
     }
   } // while(1);
+  printf("Dropped out f while loop -- done!\n");
 } // handle_messages
 
 
