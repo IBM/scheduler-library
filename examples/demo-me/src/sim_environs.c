@@ -488,9 +488,9 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
   // Now set up the global objects-in-lane, etc. indications.
   if (output_viz_trace) {
     if (!vehicle_state.active) {
-      printf("  VizTrace: %d,", -vehicle_state.lane);
+      printf("%4u  VizTrace: %d,", time_steps, -vehicle_state.lane);
     } else {
-      printf("  VizTrace: %d,", vehicle_state.lane);
+      printf("%4u  VizTrace: %d,", time_steps, vehicle_state.lane);
     }      
   }
   for (int in_lane = min_obst_lane; in_lane < max_obst_lane; in_lane++) {

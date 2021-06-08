@@ -32,7 +32,7 @@
 #include "cv_task.h"
 #include "radar_task.h"
 #include "vit_task.h"
-#include "plan_ctrl_task.h"
+#include "plan_ctrl2_task.h"
 #include "test_task.h"
 
 #include "getopt.h"
@@ -75,7 +75,7 @@ accelerator_type_t cv_hwr_accel_id;
 task_type_t radar_task_type;
 task_type_t vit_task_type;
 task_type_t cv_task_type;
-task_type_t plan_ctrl_task_type;
+task_type_t plan_ctrl2_task_type;
 task_type_t test_task_type;
 
 #define my_num_task_types 4
@@ -93,7 +93,7 @@ uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short,
                                              // medium, long, or max
 uint64_t cv_profile[MY_APP_ACCEL_TYPES];
 uint64_t test_profile[MY_APP_ACCEL_TYPES];
-uint64_t plan_ctrl_profile[MY_APP_ACCEL_TYPES];
+uint64_t plan_ctrl2_profile[MY_APP_ACCEL_TYPES];
 
 bool all_obstacle_lanes_mode = false;
 bool no_crit_cnn_task = false;
@@ -239,11 +239,11 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
            p0_hw_threshold[radar_task_type][fft_hwr_accel_id]);
   }
 
-  plan_ctrl_task_type = register_task_type(sptr, "PnC-Task", "The vehicle state Plan and Control task to execute",
-					   &set_up_plan_ctrl_task, &finish_plan_ctrl_execution, &plan_ctrl_auto_finish_routine,
-					   &print_plan_ctrl_metadata_block_contents,
-					   &output_plan_ctrl_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
-					   &execute_on_cpu_plan_ctrl_accelerator);
+  plan_ctrl2_task_type = register_task_type(sptr, "PnC2-Task", "The vehicle state Plan and Control task to execute",
+					   &set_up_plan_ctrl2_task, &finish_plan_ctrl2_execution, &plan_ctrl2_auto_finish_routine,
+					   &print_plan_ctrl2_metadata_block_contents,
+					   &output_plan_ctrl2_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
+					   &execute_on_cpu_plan_ctrl2_accelerator);
 
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -447,16 +447,6 @@ int main(int argc, char *argv[]) {
 #ifndef USE_SIM_ENVIRON
       snprintf(trace_file, 255, "%s", optarg);
 #endif
-      break;
-    case 'v':
-      vit_msgs_size = atoi(optarg);
-      if (vit_msgs_size >= VITERBI_MSG_LENGTHS) {
-        printf("ERROR: Specified viterbi message size (%u) is larger than max "
-               "(%u) : from the -v option\n",
-               vit_msgs_size, VITERBI_MSG_LENGTHS);
-        print_usage(argv[0]);
-        exit(-1);
-      }
       break;
     case 'S':
       task_size_variability = atoi(optarg);
@@ -741,7 +731,6 @@ int main(int argc, char *argv[]) {
 
   printf("Using Plan-And-Control repeat factor %u\n", pandc_repeat_factor);
   printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
-  printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
   printf("Using task-size variability behavior %u\n", task_size_variability);
   printf("Using %u maximum time steps (simulation)\n", max_time_steps);
  #ifdef USE_SIM_ENVIRON
@@ -1012,35 +1001,36 @@ int main(int argc, char *argv[]) {
      * road construction warnings). For simplicity, we define a fix set
      * of message classes (e.g. car on the right, car on the left, etc.)
      */
-    printf("Calling iterate_vit_kernel...\n");
+    DEBUG(printf("Calling iterate_vit_kernel...\n"));
 #ifdef TIME
     gettimeofday(&start_iter_vit, NULL);
 #endif
-    vit_dict_entry_t *vdentry_p = iterate_vit_kernel(sptr, vehicle_state);
+    vit_dict_entry_t *vdentry_p = iterate_vit_kernel(sptr, vehicle_state, &message);
 #ifdef TIME
     gettimeofday(&stop_iter_vit, NULL);
     iter_vit_sec += stop_iter_vit.tv_sec - start_iter_vit.tv_sec;
     iter_vit_usec += stop_iter_vit.tv_usec - start_iter_vit.tv_usec;
 #endif
-    printf(" Back from iterate_vit_kernel: vdentry_p:\n");
-    printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
-    printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
-    printf("   OFDM    :\n");
-    printf("     ENCODING   : %u\n", vdentry_p->ofdm_p.encoding);
-    printf("     RATE_FIELD : %u\n", vdentry_p->ofdm_p.rate_field);
-    printf("     N_BPSC     : %u\n", vdentry_p->ofdm_p.n_bpsc);
-    printf("     N_CBPS     : %u\n", vdentry_p->ofdm_p.n_cbps);
-    printf("     N_DBPS     : %u\n", vdentry_p->ofdm_p.n_dbps);
-    printf("   FRAME   :\n");
-    printf("     psdu_size      : %u\n", vdentry_p->frame_p.psdu_size);
-    printf("     n_sym          : %u\n", vdentry_p->frame_p.n_sym);
-    printf("     n_pad          : %u\n", vdentry_p->frame_p.n_pad);
-    printf("     n_encoded_bits : %u\n", vdentry_p->frame_p.n_encoded_bits);
-    printf("     n_data_bits    : %u\n", vdentry_p->frame_p.n_data_bits);
-    printf("   IN_BITS :         ");
-    for (int i = 0; i < 16; i++) {
-      printf("0x%02x ", vdentry_p->in_bits[i]);
-    }
+    DEBUG(printf(" Back from iterate_vit_kernel: vdentry_p:\n");
+	  printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
+	  printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
+	  printf("   OFDM    :\n");
+	  printf("     ENCODING   : %u\n", vdentry_p->ofdm_p.encoding);
+	  printf("     RATE_FIELD : %u\n", vdentry_p->ofdm_p.rate_field);
+	  printf("     N_BPSC     : %u\n", vdentry_p->ofdm_p.n_bpsc);
+	  printf("     N_CBPS     : %u\n", vdentry_p->ofdm_p.n_cbps);
+	  printf("     N_DBPS     : %u\n", vdentry_p->ofdm_p.n_dbps);
+	  printf("   FRAME   :\n");
+	  printf("     psdu_size      : %u\n", vdentry_p->frame_p.psdu_size);
+	  printf("     n_sym          : %u\n", vdentry_p->frame_p.n_sym);
+	  printf("     n_pad          : %u\n", vdentry_p->frame_p.n_pad);
+	  printf("     n_encoded_bits : %u\n", vdentry_p->frame_p.n_encoded_bits);
+	  printf("     n_data_bits    : %u\n", vdentry_p->frame_p.n_data_bits);
+	  printf("   IN_BITS :         ");
+	  for (int i = 0; i < 16; i++) {
+	    printf("0x%02x ", vdentry_p->in_bits[i]);
+	  });
+
     test_dict_entry_t *tdentry_p;
     if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
 #ifdef TIME
@@ -1083,7 +1073,7 @@ int main(int argc, char *argv[]) {
     task_metadata_block_t *viterbi_mb_ptr = NULL;
     viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
-				 vit_msgs_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits); // Critical VITERBI task
+				 1 /*vit_msgs_size*/, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
@@ -1185,7 +1175,8 @@ int main(int argc, char *argv[]) {
 
     finish_task_execution(radar_mb_ptr, &distance);
     char out_msg_text[1600]; // more than large enough to hold max-size message
-    finish_task_execution(viterbi_mb_ptr, &message, out_msg_text);
+    message_t dummy_msg;
+    finish_task_execution(viterbi_mb_ptr, &dummy_msg, out_msg_text);
     if (!no_crit_cnn_task) {
       finish_task_execution(cv_mb_ptr, &label);
     }
@@ -1210,11 +1201,11 @@ int main(int argc, char *argv[]) {
                  "message %u and distance %.1f\n",
                  time_step, pandc_repeat_factor, message, distance));
     task_metadata_block_t *pnc_mb_ptr = NULL;
-    DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
-    pnc_mb_ptr = set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
+    DEBUG(printf("Calling start_plan_ctrl2_execution...\n"));
+    pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
 			     false, time_step,
 			     time_step, pandc_repeat_factor, label, distance, message, vehicle_state);
-    DEBUG(printf(" MB%u Back from set_up_plan_ctrl_task\n", pnc_mb_ptr->block_id));
+    DEBUG(printf(" MB%u Back from set_up_plan_ctrl2_task\n", pnc_mb_ptr->block_id));
     request_execution(pnc_mb_ptr);
 
     // POST-EXECUTE other tasks to gather stats, etc.
@@ -1244,7 +1235,7 @@ int main(int argc, char *argv[]) {
 #endif
     DEBUG(printf("MAIN:  Back from wait for plan-and-control\n"));
 
-    DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
+    DEBUG(printf("Calling finish_execution_of_plan_ctrl2_kernel for MB%u\n", pnc_mb_ptr->block_id));
     finish_task_execution(pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
     DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg "
                  "%u VS : act %u lane %u Spd %.1f \n",

@@ -117,7 +117,7 @@ radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p);
 void       post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist);
 
 status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
-vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
+vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message );
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num);
 vit_dict_entry_t* select_random_vit_input();
 void start_execution_of_vit_kernel(task_metadata_block_t* mb_ptr, vit_dict_entry_t* trace_msg);
