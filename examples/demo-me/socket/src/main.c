@@ -185,6 +185,7 @@ void* handle_messages(void* parm_ptr)
 {
   // Now we take in a received transmission with the other AV's map
   // If we receive a transmission, the process to turn it back into the gridMap is:
+  unsigned num_unexpected_messages = 0;
   int     n_recvd_in;
   uint8_t recvd_in[MAX_XMIT_OUTPUTS];
   while (1) {
@@ -207,7 +208,8 @@ void* handle_messages(void* parm_ptr)
 	});
       DEBUG2(printf("  RECV msg psn %s\n", "01234567890"));
       if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
-	printf("ERROR: Unexpected message from WiFi...\n");
+	printf("ERROR: Unexpected message %u from WiFi...\n", num_unexpected_messages);
+	num_unexpected_messages++;
 	//closeout_and_exit("Unexpected WiFi message...", -3);
       } else {
 	
