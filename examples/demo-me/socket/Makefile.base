@@ -185,10 +185,10 @@ obj_xmit/%.o: %.c
 
 
 obj_twifi1/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DASCII_FN='"asciimap_wifi1_"' -DIMAGE_FN='"gridimage_wifi1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -DCAR_PORT=5562 -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5558 -DXMIT_PORT=5561 -c $< -o $@
 
 obj_twifi2/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DASCII_FN='"asciimap_wifi2_"' -DIMAGE_FN='"gridimage_wifi2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -DCAR_PORT=5563 -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5560 -DXMIT_PORT=5559 -c $< -o $@
 
 
 
