@@ -880,9 +880,8 @@ int main(int argc, char *argv[]) {
   vehicle_state.active = true;
   vehicle_state.lane = center;
   vehicle_state.speed = 50;
-  DEBUG(printf("\nVehicle starts with the following state: active: %u lane %u "
-               "speed %.1f\n",
-               vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+  //DEBUG(
+  printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed);//);
 
 #ifdef USE_SIM_ENVIRON
   // In simulation mode, we could start the main car is a different state (lane,

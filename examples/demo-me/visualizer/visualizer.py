@@ -22,8 +22,8 @@ bike_color = (1, 20, 59) # navy
 # Define screen info
 screen_width = 500
 screen_height = 500
-lane_width = screen_width / 7 # 3 lanes + 2 grass sides
-road_width = lane_width * 5 # 3 lanes
+lane_width = screen_width / 7 # 5 lanes + 2 grass sides
+road_width = lane_width * 5 # 5 lanes
 size = (screen_width, screen_height)
 screen = pygame.display.set_mode(size)
 bgY = 0 # for scrolling grass

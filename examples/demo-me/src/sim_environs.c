@@ -25,7 +25,7 @@
 // This is the master list of all currently live objects in the world.
 //  This is a sorted list (by distance) of objects per lane
 unsigned global_object_id = 0;
-object_state_t* the_objects[5];
+object_state_t* the_objects[NUM_LANES];
 
 // This represents my car.
 object_state_t my_car;		

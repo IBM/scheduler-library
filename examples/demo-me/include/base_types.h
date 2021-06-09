@@ -26,53 +26,6 @@ typedef float distance_t;
 
 #define MY_APP_ACCEL_TYPES  4
 
-#if(0) // These are defined in the TASKS now
-/* Pre-defined labels used by the computer vision kernel */
-typedef enum {
-  myself = -1,
-  no_label = 0,
-  car,
-  truck,
-  pedestrian,
-  bicycle
-} label_t;
-
-
-/* The potential (horizontal) positions of any object (i.e. lane indications) */
-typedef enum {
-  lhazard = 0, 
-  left, 
-  center, 
-  right,
-  rhazard,
-} lane_t;
-
-/* These are some global type defines, etc. */
-typedef struct
-{
-  bool active;
-  lane_t lane;
-  float speed;
-} vehicle_state_t;
-
-
-
-/* Pre-defined messages used by the Viterbi decoding kernel */
-/*  These now conform to version 0.4 of the specification   */
-typedef enum {
-  safe_to_move_right_or_left   = 0,
-  safe_to_move_right_only      = 1,
-  safe_to_move_left_only       = 2,
-  unsafe_to_move_left_or_right = 3,
-  num_message_t
-} message_t;
-
-/* These are GLOBAL and affect the underlying world, etc. */
-#define NUM_LANES     5
-#define NUM_OBJECTS   5
-#define NUM_MESSAGES  4
-#endif
-
 #define MAX_OBJ_IN_LANE  16
 
 #define MAX_DISTANCE     500.0  // Max resolution distance of radar is < 500.0m

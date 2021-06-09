@@ -43,7 +43,7 @@
 extern unsigned time_step;
 extern unsigned task_size_variability;
 
-char* lane_names[NUM_LANES] = {"LHazard", "Left", "Center", "Right", "RHazard" };
+char* lane_names[NUM_LANES] = {"LHazard", "Left", "LeftCntr", "Center", "RtCntr", "Right", "RHazard" };
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
 
@@ -809,7 +809,9 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     }
     break;
   case left:
+  case l_center:
   case center:
+  case r_center:
   case right:
     {
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -845,30 +847,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   }
   DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], tr_val));
   *tr_message = tr_val;
-  /**
-     vit_dict_entry_t* trace_msg; // Will hold msg input data for decode, based on trace input
 
-     // Here we determine short or long messages, based on global vit_msgs_size; offset is into the Dictionary
-     int msg_offset = vit_msgs_size * NUM_MESSAGES; // 0 = short messages, 4 = long messages
-
-     viterbi_messages_histogram[vit_msgs_size][tr_val]++;
-     switch(tr_val) {
-     case 0: // safe_to_move_right_or_left
-     trace_msg = &(the_viterbi_trace_dict[0 + msg_offset]);
-     break;
-     case 1: // safe_to_move_right
-     trace_msg = &(the_viterbi_trace_dict[1 + msg_offset]);
-     break;
-     case 2: // safe_to_move_left
-     trace_msg = &(the_viterbi_trace_dict[2 + msg_offset]);
-     break;
-     case 3: // unsafe_to_move_left_or_right
-     trace_msg = &(the_viterbi_trace_dict[3 + msg_offset]);
-     break;
-     }
-     DEBUG(printf(" VIT: Using msg %u Id %u : %s \n", trace_msg->msg_num, trace_msg->msg_id, message_names[trace_msg->msg_id]));
-     return trace_msg;
-  **/
   return &temp_vit_dict_entry;
 }
 

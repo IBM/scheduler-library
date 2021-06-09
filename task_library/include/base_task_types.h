@@ -39,7 +39,9 @@ typedef enum {
 typedef enum {
   lhazard = 0, 
   left, 
+  l_center, 
   center, 
+  r_center, 
   right,
   rhazard,
   NUM_LANES
