@@ -1,2 +1,0 @@
-include ./build_local.config
-include Makefile.base
