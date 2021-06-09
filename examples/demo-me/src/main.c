@@ -1263,6 +1263,8 @@ int main(int argc, char *argv[]) {
   // Adding this results in never completing...  not sure why.
   // wait_all_tasks_finish();
 
+  sleep(1);
+  
 #ifdef TIME
   gettimeofday(&stop_prog, NULL);
 #endif
