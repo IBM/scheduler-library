@@ -1005,6 +1005,7 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef HPVM
+  DEBUG(printf("Using HPVM!\n");)
   RootIn* DFGArgs = hpvm_initialize();
 
 #endif
@@ -1321,6 +1322,7 @@ int main(int argc, char *argv[]) {
 
 #else
     
+    printf("Launching HPVM graph!\n");
 
     hpvm_launch(DFArgs, cv_tr_label, time_step, radar_log_nsamples_pre_dict_set, radar_inputs, distance, vit_msgs_size, vdentry_p, message, out_msg_text, vehicle_state, new_vehicle_state, pandc_repeast_factor);
 
