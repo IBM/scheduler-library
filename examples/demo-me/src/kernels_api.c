@@ -494,6 +494,21 @@ struct timeval stop_recv_pipe, start_recv_pipe;
 uint64_t recv_pipe_sec  = 0LL;
 uint64_t recv_pipe_usec = 0LL;
 
+uint8_t recvd_in[sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
+vit_dict_entry_t temp_vit_dict_entry;
+
+
+unsigned MAX_GRID_DIST_FAR_IDX = 3;
+unsigned GRID_DIST_STEP_SIZE = 5;
+
+unsigned OCC_GRID_X_DIM = NUM_LANES;
+unsigned OCC_GRID_Y_DIM = 100;    // MAX_DISTANCE / GRID_DIST_STEP_SIZE;
+
+unsigned OCC_NEXT_LANE_CLOSE  = 75;
+unsigned OCC_NEXT_LANE_FAR[3] = {200, 300, 450};
+
+uint8_t my_occ_grid[NUM_LANES][100]; // [OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+
 status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
@@ -688,15 +703,107 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 }
 
 
-uint8_t recvd_in[sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
-vit_dict_entry_t temp_vit_dict_entry;
 
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   // Form my local occupancy grid map
-  
+  //  We go through the lanes around the one I occupy, using a "fan" of vision such that I see the first bstacle straight ahead,
+  //   and I see any obstacle in the neighboring lane that is either wihtin N distance or at greater than M distance,
+  //   and I see into the 3rd lane at 2M distance or greater, etc.
+  // I plan to start with N = ~
+  {
+    for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+      for (int iy = 0; iy < OCC_GRID_Y_DIM; iy++) {
+	my_occ_grid[ix][iy] = 0;
+      }
+    }
 
+    printf("OBJ_IN_LANE : ");
+    for (int i = 0; i < NUM_LANES; i++) {
+      printf("(%u %u) ", i, obj_in_lane[i]);
+    } printf("\n");
+
+    int my_lane = vs.lane;
+    int nobj = obj_in_lane[my_lane];
+    printf("CHECK_MINE LANE %u : nobj = %u\n", my_lane, nobj);
+    {
+      int i = nobj-1;
+      if ((nobj > 0) && (lane_obj[my_lane][i] != 'N') && (lane_dist[my_lane][i] < MAX_DISTANCE)) {
+	unsigned dist = lane_dist[my_lane][i];
+	unsigned grid_dist = (unsigned)(lane_dist[my_lane][i] / GRID_DIST_STEP_SIZE);
+	printf("MY Lane %u NEAREST : dist %u gd %u\n", my_lane, dist, grid_dist);
+	my_occ_grid[my_lane][grid_dist] = 255;
+      }
+    }
+    for (int lanes_over = 1; lanes_over < 3; lanes_over++) {
+      int check_lane = my_lane - lanes_over;
+      if (check_lane >= 0) { // check lanes_over lanes to the left
+	int i = obj_in_lane[check_lane]-1;
+	int fi = (lanes_over - 1);
+	printf("CHECK_LEFT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]);
+	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
+	  printf(" LEFT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u\n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]);
+	  if (lane_obj[check_lane][i] != 'N') {
+	    unsigned dist = lane_dist[check_lane][i];
+	    printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]);
+	    if ((lanes_over == 1) &&(dist <= OCC_NEXT_LANE_CLOSE)) {
+	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
+	      printf("  ==> FOUND %c LEFT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist);
+	      my_occ_grid[check_lane][grid_dist] = 255;
+	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist < MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
+	      printf("  ==> FOUND %c LEFT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist);
+	      my_occ_grid[check_lane][grid_dist] = 255;
+	      fi++;
+	    }
+	  }
+	  i--;
+	}
+      }
+      check_lane = my_lane +1;
+      if (check_lane < NUM_LANES) { // check one lane right
+	int i = obj_in_lane[check_lane]-1;
+	int fi = (lanes_over - 1);
+	printf("CHECK_RIGHT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]);
+	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
+	  printf(" RIGHT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u \n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]);	
+	  if (lane_obj[check_lane][i] != 'N') {
+	    unsigned dist = lane_dist[check_lane][i];
+	    printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]);
+	    if ((lanes_over == 1) && (dist <= OCC_NEXT_LANE_CLOSE)) {
+	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
+	      printf("  ==> FOUND %c RIGHT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist);
+	      my_occ_grid[check_lane][grid_dist] = 255;
+	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist < MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
+	      printf("  ==> FOUND %c RIGHT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist);
+	      my_occ_grid[check_lane][grid_dist] = 255;
+	      fi++;
+	    }
+	  }
+	  i--;
+	}
+      }
+    }
+    //DEBUG(
+    printf("\nTime-Step %u occupancy-grid\n", time_step);
+    printf("|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|\n");
+    printf("|----|---|---|---|---|---|---|---|\n");
+    for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
+      printf("|%4u|", GRID_DIST_STEP_SIZE * iy);
+      for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+	if (my_occ_grid[ix][iy] == 0) {
+	  printf("---|");
+	} else {
+	  printf("XXX|");
+	}
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+  
   // Send the base-line (my local) Occupancy Map type information fir XMIT socket.
   // Connect to the Wifi-Socket and send the n_xmit_out
   char w_buffer[10];

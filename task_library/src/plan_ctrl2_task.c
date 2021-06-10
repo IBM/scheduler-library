@@ -159,7 +159,7 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
        || ((plan_ctrl2_data_p->vehicle_state.speed < car_goal_speed) &&
            (plan_ctrl2_data_p->object_distance <= PNC_THRESHOLD_2))
 #endif
-           )) {
+       )) {
     // This covers all cases where we have an obstacle "too close" ahead of us
     if (plan_ctrl2_data_p->object_distance <= IMPACT_DISTANCE) {
       // We've crashed into an obstacle...
@@ -256,24 +256,18 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
       break;
     }
 #ifdef USE_SIM_ENVIRON
-    if ((plan_ctrl2_data_p->vehicle_state.speed <
-         car_goal_speed) && // We are going slower than we want to, and
-                            //((plan_ctrl2_data_p->object_label == no_object) ||
-                            //// There is no object ahead of us -- don't need;
-                            //NOTHING is at
-                            //INF_PLAN_CTRL2_DATA_P->OBJECT_DISTANCE
-        (plan_ctrl2_data_p->object_distance >=
-         PNC_THRESHOLD_2)) { // Any object is far enough away
-      if (plan_ctrl2_data_p->vehicle_state.speed <=
-          (car_goal_speed - car_accel_rate)) {
+    if ((plan_ctrl2_data_p->vehicle_state.speed < car_goal_speed) && // We are going slower than we want to, and
+	//((plan_ctrl2_data_p->object_label == no_object) ||
+	//// There is no object ahead of us -- don't need;
+	//NOTHING is at
+	//INF_PLAN_CTRL2_DATA_P->OBJECT_DISTANCE
+        (plan_ctrl2_data_p->object_distance >= PNC_THRESHOLD_2)) { // Any object is far enough away
+      if (plan_ctrl2_data_p->vehicle_state.speed <= (car_goal_speed - car_accel_rate)) {
         plan_ctrl2_data_p->new_vehicle_state.speed += 15.0;
       } else {
         plan_ctrl2_data_p->new_vehicle_state.speed = car_goal_speed;
       }
-      DEBUG(printf("  Going %.2f : slower than target speed %.2f : Speeding up "
-                   "to %.2f\n",
-                   plan_ctrl2_data_p->vehicle_state.speed, 50.0,
-                   plan_ctrl2_data_p->new_vehicle_state.speed));
+      DEBUG(printf("  Going %.2f : slower than target speed %.2f : Speeding up to %.2f\n", plan_ctrl2_data_p->vehicle_state.speed, 50.0, plan_ctrl2_data_p->new_vehicle_state.speed));
     }
 #endif
   } // end of plan-and-control logic functions...
@@ -281,20 +275,13 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  plan_ctrl2_timings_p->call_sec[aidx] +=
-      stop_time.tv_sec - plan_ctrl2_timings_p->call_start.tv_sec;
-  plan_ctrl2_timings_p->call_usec[aidx] +=
-      stop_time.tv_usec - plan_ctrl2_timings_p->call_start.tv_usec;
+  plan_ctrl2_timings_p->call_sec[aidx] += stop_time.tv_sec - plan_ctrl2_timings_p->call_start.tv_sec;
+  plan_ctrl2_timings_p->call_usec[aidx] += stop_time.tv_usec - plan_ctrl2_timings_p->call_start.tv_usec;
 #endif
 
-  DEBUG(printf(
-      "Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n",
-      plan_ctrl2_data_p->new_vehicle_state.active,
-      plan_ctrl2_data_p->new_vehicle_state.lane,
-      plan_ctrl2_data_p->new_vehicle_state.speed));
+  DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", plan_ctrl2_data_p->new_vehicle_state.active, plan_ctrl2_data_p->new_vehicle_state.lane, plan_ctrl2_data_p->new_vehicle_state.speed));
 
-  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n",
-                task_metadata_block->block_id));
+  TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -306,17 +293,17 @@ void set_up_plan_ctrl2_task_on_accel_profile_data() {
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   plan_ctrl2_profile[SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
 
-  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
-               "FFT-HWR", "CV-HWR");
+  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-             ai++) { printf(" 0x%016lx", plan_ctrl2_profile[ai]); } printf("\n");
+             ai++) { printf(" 0x%016lx", plan_ctrl2_profile[ai]);
+	}
         printf("\n"));
 }
 
 task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
-					     task_type_t plan_ctrl2_task_type, task_criticality_t crit_level,
-					     bool use_auto_finish, int32_t dag_id, va_list var_list)
+					      task_type_t plan_ctrl2_task_type, task_criticality_t crit_level,
+					      bool use_auto_finish, int32_t dag_id, va_list var_list)
 {
 //unsigned time_step, unsigned repeat_factor,
 //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
@@ -335,11 +322,9 @@ task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *plan_ctrl2_mb_ptr = NULL;
   DEBUG(
-      printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n",
-             plan_ctrl2_task_type));
+      printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", plan_ctrl2_task_type));
   do {
-    plan_ctrl2_mb_ptr = get_task_metadata_block(
-        sptr, dag_id, plan_ctrl2_task_type, crit_level, plan_ctrl2_profile);
+    plan_ctrl2_mb_ptr = get_task_metadata_block(sptr, dag_id, plan_ctrl2_task_type, crit_level, plan_ctrl2_profile);
     // usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
 #ifdef TIME
@@ -356,8 +341,7 @@ task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
   // plan_ctrl2_profile[crit_plan_ctrl2_samples_set][4]);
   if (plan_ctrl2_mb_ptr == NULL) {
     // We ran out of metadata blocks -- PANIC!
-    printf("Out of metadata blocks for PLAN_CTRL -- PANIC Quit the run (for "
-           "now)\n");
+    printf("Out of metadata blocks for PLAN_CTRL -- PANIC Quit the run (for now)\n");
     dump_all_metadata_blocks_states(sptr);
     exit(-4);
   }
@@ -366,13 +350,10 @@ task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
   } else {
     plan_ctrl2_mb_ptr->atFinish = NULL;
   }
-  DEBUG(printf("MB%u In start_plan_ctrl2_execution\n",
-               plan_ctrl2_mb_ptr->block_id));
+  DEBUG(printf("MB%u In start_plan_ctrl2_execution\n", plan_ctrl2_mb_ptr->block_id));
 
-  plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *)&(
-      plan_ctrl2_mb_ptr->task_timings[plan_ctrl2_mb_ptr->task_type]);
-  plan_ctrl2_data_struct_t *plan_ctrl2_data_p =
-      (plan_ctrl2_data_struct_t *)(plan_ctrl2_mb_ptr->data_space);
+  plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *)&(plan_ctrl2_mb_ptr->task_timings[plan_ctrl2_mb_ptr->task_type]);
+  plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(plan_ctrl2_mb_ptr->data_space);
   // Set the inputs for the plan-and-control task
   plan_ctrl2_data_p->time_step = time_step; // The current time-step of the simulation
   plan_ctrl2_data_p->repeat_factor = repeat_factor; // The current time-step of the simulation
@@ -380,8 +361,7 @@ task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
   plan_ctrl2_data_p->object_distance = object_dist; // The distance to the closest vehicle in our lane
   plan_ctrl2_data_p->safe_lanes_msg = safe_lanes_msg; // The message indicating which lanes are safe to change into
   plan_ctrl2_data_p->vehicle_state = vehicle_state; // The current (input) vehicle state
-  DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS "
-               ": act %u lane %u Spd %.1f \n",
+  DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n",
                plan_ctrl2_mb_ptr->block_id, plan_ctrl2_data_p->time_step,
                plan_ctrl2_data_p->repeat_factor, plan_ctrl2_data_p->object_label,
                plan_ctrl2_data_p->object_distance,
