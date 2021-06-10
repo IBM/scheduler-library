@@ -18,25 +18,27 @@
 #ifndef H_PLAN_CTRL_TASK_INCLUDE_H
 #define H_PLAN_CTRL_TASK_INCLUDE_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 #include "base_task_types.h"
 #include "scheduler.h"
 
-// This is a structure that defines the "PLAN_CTRL" task's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "Plan-and-Control" Task view of "data"
-  unsigned        time_step;         // The current time-step of the simulation
-  unsigned        repeat_factor;     // The number of repeated computations to do
-  label_t         object_label;      // The determined label of the object in the image
-  distance_t      object_distance;   // The distance to the closest vehicle in our lane
-  message_t       safe_lanes_msg;    // The message indicating which lanes are safe to change into
+// This is a structure that defines the "PLAN_CTRL" task's "view" of the data
+// (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting
+//  the data space.
+typedef struct {              // The "Plan-and-Control" Task view of "data"
+  unsigned time_step;         // The current time-step of the simulation
+  unsigned repeat_factor;     // The number of repeated computations to do
+  label_t object_label;       // The determined label of the object in the image
+  distance_t object_distance; // The distance to the closest vehicle in our lane
+  message_t safe_lanes_msg;   // The message indicating which lanes are safe to
+                              // change into
   vehicle_state_t vehicle_state;     // The current (input) vehicle state
   vehicle_state_t new_vehicle_state; // The new (oputput) vehicle state
-}  plan_ctrl_data_struct_t;
-
+} plan_ctrl_data_struct_t;
 
 typedef struct {
   struct timeval call_start;
@@ -44,23 +46,25 @@ typedef struct {
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 } plan_ctrl_timing_data_t;
 
+void print_plan_ctrl_metadata_block_contents(void *mb);
 
-void print_plan_ctrl_metadata_block_contents(task_metadata_block_t* mb);
+void output_plan_ctrl_task_type_run_stats(void *sptr, unsigned my_task_type,
+                                          unsigned total_accel_types);
 
-void output_plan_ctrl_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
-
-void execute_on_cpu_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_vit_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_fft_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_cv_plan_ctrl_accelerator(task_metadata_block_t* task_metadata_block);
+void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block);
+void execute_on_hwr_vit_plan_ctrl_accelerator(void *task_metadata_block);
+void execute_on_hwr_fft_plan_ctrl_accelerator(void *task_metadata_block);
+void execute_on_hwr_cv_plan_ctrl_accelerator(void *task_metadata_block);
 
 void set_up_plan_ctrl_task_on_accel_profile_data();
 
-task_metadata_block_t* set_up_plan_ctrl_task(scheduler_datastate_block_t* sptr,
-					     task_type_t plan_ctrl_task_type, task_criticality_t crit_level,
-					     bool use_auto_finish, int32_t dag_id, va_list var_list);
+void *set_up_plan_ctrl_task(void *sptr, task_type_t plan_ctrl_task_type,
+                            task_criticality_t crit_level, bool use_auto_finish,
+                            int32_t dag_id, void *var_list);
 
-void plan_ctrl_auto_finish_routine(task_metadata_block_t* mb);
-void finish_plan_ctrl_execution(task_metadata_block_t* plan_ctrl_metadata_block, va_list var_list); //vehicle_state_t* new_vehicle_state);
+void plan_ctrl_auto_finish_routine(void *mb);
+void finish_plan_ctrl_execution(
+    void *plan_ctrl_metadata_block,
+    void *var_list); // vehicle_state_t* new_vehicle_state);
 
 #endif

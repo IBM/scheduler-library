@@ -18,23 +18,26 @@
 #ifndef H_FFT_TASK_INCLUDE_H
 #define H_FFT_TASK_INCLUDE_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 #include "base_task_types.h"
 #include "scheduler.h"
 
-
-// This is the number of fft samples (the log of the samples, e.g. 10 = 1024 samples, 14 = 16k-samples)
+// This is the number of fft samples (the log of the samples, e.g. 10 = 1024
+// samples, 14 = 16k-samples)
 extern unsigned crit_fft_samples_set;
 
-// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "FFT" Task view of "data"
-  int32_t log_nsamples;       // The Log2 of the number of samples in this FFT
-  float   theData[2* (1<<14)]; // MAx supported samples (2^14) * 2 float per complex input/output
-}  fft_data_struct_t;
+// This is a structure that defines the "FFT" job's "view" of the data (in the
+// metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting
+//  the data space.
+typedef struct {                // The "FFT" Task view of "data"
+  int32_t log_nsamples;         // The Log2 of the number of samples in this FFT
+  float theData[2 * (1 << 14)]; // MAx supported samples (2^14) * 2 float per
+                                // complex input/output
+} fft_data_struct_t;
 
 // The following structures are for timing analysis (per job type)
 typedef struct {
@@ -55,7 +58,7 @@ typedef struct {
   uint64_t fft_comp_sec[SCHED_MAX_ACCEL_TYPES];
   uint64_t fft_cvtout_sec[SCHED_MAX_ACCEL_TYPES];
   uint64_t cdfmcw_sec[SCHED_MAX_ACCEL_TYPES];
-  
+
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
   uint64_t fft_usec[SCHED_MAX_ACCEL_TYPES];
   uint64_t fft_br_usec[SCHED_MAX_ACCEL_TYPES];
@@ -66,7 +69,7 @@ typedef struct {
   uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
-void print_fft_metadata_block_contents(void* mb);
+void print_fft_metadata_block_contents(void *mb);
 
 void set_up_fft_task_on_accel_profile_data();
 
@@ -74,15 +77,13 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
 void output_fft_task_type_run_stats();
 
-void execute_hwr_fft_accelerator(void* task_metadata_block);
-void execute_cpu_fft_accelerator(void* task_metadata_block);
+void execute_hwr_fft_accelerator(void *task_metadata_block);
+void execute_cpu_fft_accelerator(void *task_metadata_block);
 
+void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
+                      task_criticality_t crit_level, bool use_auto_finish,
+                      int32_t dag_id, void *);
 
-void* set_up_fft_task(void* sptr,
-				       task_type_t fft_task_type, task_criticality_t crit_level,
-				       bool use_auto_finish, int32_t dag_id, ...);
-
-void finish_fft_execution(void* fft_metadata_block, ...); //float* results);
-
+void finish_fft_execution(void *fft_metadata_block, void *); // float* results);
 
 #endif

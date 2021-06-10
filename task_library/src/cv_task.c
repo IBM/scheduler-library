@@ -16,9 +16,9 @@
  */
 
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -69,15 +69,15 @@ unsigned cv_cpu_run_time_in_usec = 50;
 #endif
 #endif
 
-void print_cv_metadata_block_contents(/*task_metadata_block_t*/void *mb_ptr) {
-  task_metadata_block_t* mb = (task_metadata_block_t*) mb_ptr;
+void print_cv_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
+  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   print_base_metadata_block_contents(mb);
 }
 
-void output_cv_task_type_run_stats(/*scheduler_datastate_block_t*/void *sptr_ptr,
-                                   unsigned my_task_type,
-                                   unsigned total_accel_types) {
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*) sptr_ptr;
+void output_cv_task_type_run_stats(
+    /*scheduler_datastate_block_t*/ void *sptr_ptr, unsigned my_task_type,
+    unsigned total_accel_types) {
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u "
          "accelerators\n",
@@ -190,8 +190,10 @@ static inline label_t parse_output_dimg() {
   return (label_t)max_idx;
 }
 
-void execute_hwr_cv_accelerator(/*task_metadata_block_t*/void *task_metadata_block_ptr) {
-  task_metadata_block_t* task_metadata_block = (task_metadata_block_t*) task_metadata_block_ptr;
+void execute_hwr_cv_accelerator(
+    /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+  task_metadata_block_t *task_metadata_block =
+      (task_metadata_block_t *)task_metadata_block_ptr;
   int fn = task_metadata_block->accelerator_id;
   int aidx = task_metadata_block->accelerator_type;
   cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(
@@ -343,8 +345,10 @@ label_t run_object_classification(unsigned tr_val) {
   return object;
 }
 
-void execute_cpu_cv_accelerator(/*task_metadata_block_t*/void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t*) task_metadata_block_ptr;
+void execute_cpu_cv_accelerator(
+    /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+  task_metadata_block_t *task_metadata_block =
+      (task_metadata_block_t *)task_metadata_block_ptr;
   DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n",
                task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
@@ -377,33 +381,37 @@ void set_up_cv_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     cv_profile[ai] = ACINFPROF;
   }
- #ifdef COMPILE_TO_ESP
+#ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
 
-  cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
-  #ifdef FAKE_HW_CV
-  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = cv_fake_hwr_run_time_in_usec; // Specified in the run
-  #else
+  cv_profile[SCHED_CPU_ACCEL_T] =
+      cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
+#ifdef FAKE_HW_CV
+  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
+      cv_fake_hwr_run_time_in_usec; // Specified in the run
+#else
   cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = 150000;
-  #endif
- #else
-  cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 50
- #endif
+#endif
+#else
+  cv_profile[SCHED_CPU_ACCEL_T] =
+      cv_cpu_run_time_in_usec; // Specified in the run - was 50
+#endif
   DEBUG(printf("%15s :", "cv_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
              ai++) { printf(" 0x%016lx", cv_profile[ai]); } printf("\n");
         printf("\n"));
 }
 
-/*task_metadata_block_t*/void *
-set_up_cv_task(/*scheduler_datastate_block_t*/void *sptr_ptr, task_type_t cv_task_type,
-               task_criticality_t crit_level,
-               bool use_auto_finish, int32_t dag_id, ...) // label_t in_label) {
+/*task_metadata_block_t*/ void *
+set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
+               task_type_t cv_task_type, task_criticality_t crit_level,
+               bool use_auto_finish, int32_t dag_id,
+               void *args) // label_t in_label) {
 {
   va_list var_list;
-  va_start(var_list, dag_id);
-  
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*) sptr_ptr;
+  va_copy(var_list, *(va_list *)args);
+
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 
 #ifdef TIME
   gettimeofday(&start_exec_cv, NULL);
@@ -412,9 +420,11 @@ set_up_cv_task(/*scheduler_datastate_block_t*/void *sptr_ptr, task_type_t cv_tas
 
   // Request a MetadataBlock (for an CV task at Critical Level)
   task_metadata_block_t *cv_mb_ptr = NULL;
-  DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
+  DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n",
+               cv_task_type));
   do {
-    cv_mb_ptr = get_task_metadata_block(sptr, dag_id, cv_task_type, crit_level, cv_profile);
+    cv_mb_ptr = get_task_metadata_block(sptr, dag_id, cv_task_type, crit_level,
+                                        cv_profile);
     // usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
 #ifdef TIME
@@ -436,12 +446,15 @@ set_up_cv_task(/*scheduler_datastate_block_t*/void *sptr_ptr, task_type_t cv_tas
   DEBUG(printf("MB%u In set_up_cv_task\n", cv_mb_ptr->block_id));
 
   if (use_auto_finish) {
-    cv_mb_ptr->atFinish = sptr->auto_finish_task_function[cv_task_type]; // get_auto_finish_routine(sptr, cv_task_type);
+    cv_mb_ptr->atFinish = sptr->auto_finish_task_function
+                              [cv_task_type]; // get_auto_finish_routine(sptr,
+                                              // cv_task_type);
   } else {
     cv_mb_ptr->atFinish = NULL;
   }
 
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(cv_mb_ptr->task_timings[cv_mb_ptr->task_type]);
+  cv_timing_data_t *cv_timings_p =
+      (cv_timing_data_t *)&(cv_mb_ptr->task_timings[cv_mb_ptr->task_type]);
   cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(cv_mb_ptr->data_space);
   // Handle the input data to the task
   cv_data_p->object_label = in_label;
@@ -449,6 +462,7 @@ set_up_cv_task(/*scheduler_datastate_block_t*/void *sptr_ptr, task_type_t cv_tas
 #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
 #endif
+  va_end(var_list);
   return cv_mb_ptr;
   //  schedule_cv(data);
 }
@@ -457,11 +471,14 @@ set_up_cv_task(/*scheduler_datastate_block_t*/void *sptr_ptr, task_type_t cv_tas
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void cv_auto_finish_routine(/*task_metadata_block_t*/void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t*) mb_ptr;
+void cv_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
+  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
-         printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",mb->block_id, sptr->task_name_str[mb->task_type],
-                sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
+         printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
+                mb->block_id, sptr->task_name_str[mb->task_type],
+                sptr->task_criticality_str[mb->crit_level],
+                sptr->accel_name_str[mb->accelerator_type],
+                mb->accelerator_id));
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
@@ -471,27 +488,33 @@ void cv_auto_finish_routine(/*task_metadata_block_t*/void *mb_ptr) {
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the CV results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_cv_execution(/*task_metadata_block_t*/void *cv_metadata_block_ptr, ...)
-{
+void finish_cv_execution(/*task_metadata_block_t*/ void *cv_metadata_block_ptr, void *args) {
   va_list var_list;
-  va_start(var_list, cv_metadata_block_ptr);
-  task_metadata_block_t* cv_metadata_block = (task_metadata_block_t*) cv_metadata_block_ptr;
+  va_copy(var_list, *(va_list*)args);
+  task_metadata_block_t *cv_metadata_block =
+      (task_metadata_block_t *)cv_metadata_block_ptr;
   // label_t *obj_label)
-  label_t* obj_label = va_arg(var_list, label_t*);
+  label_t *obj_label = va_arg(var_list, label_t *);
 
   int tidx = cv_metadata_block->accelerator_type;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(cv_metadata_block->task_timings[cv_metadata_block->task_type]);
-  cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(cv_metadata_block->data_space);
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(
+      cv_metadata_block->task_timings[cv_metadata_block->task_type]);
+  cv_data_struct_t *cv_data_p =
+      (cv_data_struct_t *)(cv_metadata_block->data_space);
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  cv_timings_p->call_sec[tidx] += stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+  cv_timings_p->call_sec[tidx] +=
+      stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[tidx] +=
+      stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
 #endif // INT_TIME
 
   *obj_label = cv_data_p->object_label;
 
   // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
+               cv_metadata_block->block_id));
   free_task_metadata_block(cv_metadata_block);
+  va_end(var_list);
 }

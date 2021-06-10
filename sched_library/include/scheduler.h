@@ -226,7 +226,7 @@ typedef void (*output_task_type_run_stats_t)(
 typedef /*task_metadata_block_t*/ void *(*set_up_task_function_t)(
     /*struct scheduler_datastate_block_struct*/ void *sptr,
     task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
-    int32_t dag_id, ...);
+    int32_t dag_id, void* args);
 typedef void (*finish_task_execution_function_t)(
     /*task_metadata_block_t*/ void *the_metadata_block, ...);
 typedef void (*auto_finish_task_function_t)(/*task_metadata_block_t*/ void *mb);

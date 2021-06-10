@@ -93,10 +93,10 @@ void set_up_radar_task_on_accel_profile_data() {
 /*task_metadata_block_t*/ void *
 set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
                   task_type_t radar_task_type, task_criticality_t crit_level,
-                  bool use_auto_finish, int32_t dag_id, ...) {
+                  bool use_auto_finish, int32_t dag_id, void *args) {
 
   va_list var_list;
-  va_start(var_list, dag_id);
+  va_copy(var_list, *(va_list*)args);
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_rad, NULL);
@@ -154,6 +154,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 #ifdef INT_TIME
   gettimeofday(&(radar_timings_p->call_start), NULL);
 #endif
+  va_end(var_list);
   // This now ends this block -- we've kicked off execution
   return radar_mb_ptr;
 }
@@ -261,10 +262,9 @@ void radar_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
-void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_ptr,
-                            ...) {
+void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_ptr, void *args) {
   va_list var_list;
-  va_start(var_list, radar_metadata_block_ptr);
+  va_copy(var_list,*(va_list*)args);
   task_metadata_block_t *radar_metadata_block = (task_metadata_block_t*) radar_metadata_block_ptr;
   // float* obj_dist)
   float *obj_dist = va_arg(var_list, float *);
@@ -276,4 +276,5 @@ void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
                radar_metadata_block->block_id));
   free_task_metadata_block(radar_metadata_block);
+  va_end(var_list);
 }

@@ -235,10 +235,10 @@ void set_up_test_task_on_accel_profile_data() {
 /*task_metadata_block_t*/void*
 set_up_test_task(/*scheduler_datastate_block_t*/void* sptr_ptr,
 		 task_type_t test_task_type, task_criticality_t crit_level,
-		 bool use_auto_finish, int32_t dag_id, ...)
+		 bool use_auto_finish, int32_t dag_id, void *args)
 {
   va_list var_list;
-  va_start(var_list, dag_id);
+  va_copy(var_list, *(va_list*)args);
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*)sptr_ptr;
  #ifdef TIME
   gettimeofday(&start_exec_test, NULL);
@@ -277,6 +277,7 @@ set_up_test_task(/*scheduler_datastate_block_t*/void* sptr_ptr,
 #ifdef INT_TIME
   gettimeofday(&(test_timings_p->call_start), NULL);
  #endif
+  va_end(var_list);
   // This now ends this block -- we've kicked off execution
   return test_mb_ptr;
 }
@@ -302,10 +303,10 @@ void test_auto_finish_routine(/*task_metadata_block_t*/void* mb_ptr)
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the TEST results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_test_execution(/*task_metadata_block_t*/void* test_metadata_block_ptr, ...)
+void finish_test_execution(/*task_metadata_block_t*/void* test_metadata_block_ptr, void *args)
 {
   va_list var_list;
-  va_start(var_list, test_metadata_block_ptr);
+  va_copy(var_list, *(va_list*)args);
   task_metadata_block_t *test_metadata_block = (task_metadata_block_t*)test_metadata_block_ptr;
   int tidx = test_metadata_block->accelerator_type;
   test_timing_data_t * test_timings_p = (test_timing_data_t*)&(test_metadata_block->task_timings[test_metadata_block->task_type]);
@@ -320,6 +321,7 @@ void finish_test_execution(/*task_metadata_block_t*/void* test_metadata_block_pt
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
   free_task_metadata_block(test_metadata_block);
+  va_end(var_list);
 }
 
 

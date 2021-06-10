@@ -2601,10 +2601,11 @@ set_up_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   va_list args;
   va_start(args, dag_id);
 
-  sptr->set_up_task_function[the_task_type](sptr, the_task_type, crit_level,
-                                            use_auto_finish, dag_id, args);
+  task_metadata_block_t * task_mb = sptr->set_up_task_function[the_task_type](sptr, the_task_type, crit_level,
+                                            use_auto_finish, dag_id, &args);
 
   va_end(args);
+  return task_mb;
 }
 
 void finish_task_execution(
@@ -2618,7 +2619,7 @@ void finish_task_execution(
   va_list args;
   va_start(args, the_metadata_block);
 
-  sptr->finish_task_execution_function[task_type](the_metadata_block, args);
+  sptr->finish_task_execution_function[task_type](the_metadata_block, &args);
 
   va_end(args);
 }

@@ -18,26 +18,32 @@
 #ifndef H_VIT_TASK_INCLUDE_H
 #define H_VIT_TASK_INCLUDE_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 #include "base_task_types.h"
-#include "viterbi_base.h"
 #include "scheduler.h"
+#include "viterbi_base.h"
 
-// This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+// This is a structure that defines the "Viterbi" job's "view" of the data (in
+// the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting
+//  the data space.
 typedef struct { // The "Viterbi" view of "data"
   int32_t n_data_bits;
   int32_t n_cbps;
   int32_t n_traceback;
   int32_t psdu_size;
-  int32_t inMem_size;    // The first inMem_size bytes of theData are the inMem (input memories)
-  int32_t inData_size;   // The next inData_size bytes of theData are the inData (input data)
-  int32_t outData_size;  // The next outData_size bytes of theData are the outData (output data)
-  uint8_t theData[64*1024]; // This is larger than needed (~24780 + 18585) but less than FFT requires (so okay)
-}  viterbi_data_struct_t;
+  int32_t inMem_size;   // The first inMem_size bytes of theData are the inMem
+                        // (input memories)
+  int32_t inData_size;  // The next inData_size bytes of theData are the inData
+                        // (input data)
+  int32_t outData_size; // The next outData_size bytes of theData are the
+                        // outData (output data)
+  uint8_t theData[64 * 1024]; // This is larger than needed (~24780 + 18585) but
+                              // less than FFT requires (so okay)
+} viterbi_data_struct_t;
 
 typedef struct {
   struct timeval call_start;
@@ -54,23 +60,25 @@ typedef struct {
   uint64_t depunc_usec[SCHED_MAX_ACCEL_TYPES];
 } vit_timing_data_t;
 
-
-void print_viterbi_metadata_block_contents(void* mb);
+void print_viterbi_metadata_block_contents(void *mb);
 
 void init_vit_parameters(int vn);
 
-void output_vit_task_type_run_stats(void* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_vit_task_type_run_stats(void *sptr, unsigned my_task_type,
+                                    unsigned total_accel_types);
 
-void exec_vit_task_on_vit_hwr_accel(void* task_metadata_block);
-void exec_vit_task_on_cpu_accel(void* task_metadata_block);
+void exec_vit_task_on_vit_hwr_accel(void *task_metadata_block);
+void exec_vit_task_on_cpu_accel(void *task_metadata_block);
 
 void set_up_vit_task_on_accel_profile_data();
 
-void* set_up_vit_task(void* sptr,
-				       task_type_t vit_task_type, task_criticality_t crit_level,
-				       bool use_auto_finish, int32_t dag_id, ...);
+void *set_up_vit_task(void *sptr, task_type_t vit_task_type,
+                      task_criticality_t crit_level, bool use_auto_finish,
+                      int32_t dag_id, void *);
 
-void viterbi_auto_finish_routine(void* mb);
-void finish_viterbi_execution(void* vit_metadata_block, ...); //message_t* message_id, char* out_msg_txt);
+void viterbi_auto_finish_routine(void *mb);
+void finish_viterbi_execution(
+    void *vit_metadata_block,
+    void *); // message_t* message_id, char* out_msg_txt);
 
 #endif
