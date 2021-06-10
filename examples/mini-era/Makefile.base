@@ -129,7 +129,7 @@ CFLAGS += -g
 endif
 
 SCHED_LIB = ../../sched_library/libscheduler.a
-SCHED_LIB = ../../task_library/libtasks.a
+TASK_LIB = ../../task_library/libtasks.a
 
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
