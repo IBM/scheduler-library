@@ -53,6 +53,8 @@ bool output_viz_trace = true;
 #else
 bool output_viz_trace = false;
 #endif
+bool output_source_trace = false;
+
 
 unsigned total_obj; // Total non-'N' obstacle objects across all lanes this time step
 unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this time step (at least one, 'n')
@@ -692,6 +694,9 @@ vit_dict_entry_t temp_vit_dict_entry;
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
+  // Form my local occupancy grid map
+  
+
   // Send the base-line (my local) Occupancy Map type information fir XMIT socket.
   // Connect to the Wifi-Socket and send the n_xmit_out
   char w_buffer[10];

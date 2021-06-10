@@ -15,10 +15,10 @@ libscheduler.a:
 libtasks.a:
 	(cd task_library; $(MAKE))
 
-mini-era: $(TARGET)
+mini-era: $(STARGET) $(TTARGET)
 	(cd examples ; make mini-era-build)
 
-demo-me: $(TARGET)
+demo-me: $(STARGET) $(TTARGET)
 	(cd examples ; make demo-me-build)
 
 clean:

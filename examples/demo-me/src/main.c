@@ -37,7 +37,6 @@
 
 #include "getopt.h"
 #include "kernels_api.h"
-#include "sim_environs.h"
 
 /* Input Trace Functions */
 #ifndef USE_SIM_ENVIRON
@@ -47,6 +46,8 @@
 #endif
 
 #define TIME
+
+
 
 extern char wifi_inet_addr_str[20];
 
@@ -373,6 +374,8 @@ int main(int argc, char *argv[]) {
   char global_config_file[256] = "";
   int opt;
 
+  unsigned max_time_steps = 5000; // The max time steps to simulate (default to 5000)
+
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0] = '\0';
@@ -400,10 +403,7 @@ int main(int argc, char *argv[]) {
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while ((opt = getopt(
-              argc, argv,
-              ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) !=
-         -1) {
+  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) != -1) {
     switch (opt) {
     case 'h':
       print_usage(argv[0]);
@@ -1282,31 +1282,18 @@ int main(int argc, char *argv[]) {
 
 #ifdef TIME
   {
-    uint64_t total_exec =
-        (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 +
-        (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
-    uint64_t iter_rad =
-        (uint64_t)(iter_rad_sec)*1000000 + (uint64_t)(iter_rad_usec);
-    uint64_t iter_vit =
-        (uint64_t)(iter_vit_sec)*1000000 + (uint64_t)(iter_vit_usec);
-    uint64_t iter_cv =
-        (uint64_t)(iter_cv_sec)*1000000 + (uint64_t)(iter_cv_usec);
-    uint64_t exec_rad =
-        (uint64_t)(exec_rad_sec)*1000000 + (uint64_t)(exec_rad_usec);
-    uint64_t exec_vit =
-        (uint64_t)(exec_vit_sec)*1000000 + (uint64_t)(exec_vit_usec);
-    uint64_t exec_cv =
-        (uint64_t)(exec_cv_sec)*1000000 + (uint64_t)(exec_cv_usec);
-    uint64_t exec_get_rad =
-        (uint64_t)(exec_get_rad_sec)*1000000 + (uint64_t)(exec_get_rad_usec);
-    uint64_t exec_get_vit =
-        (uint64_t)(exec_get_vit_sec)*1000000 + (uint64_t)(exec_get_vit_usec);
-    uint64_t exec_get_cv =
-        (uint64_t)(exec_get_cv_sec)*1000000 + (uint64_t)(exec_get_cv_usec);
-    uint64_t exec_pandc =
-        (uint64_t)(exec_pandc_sec)*1000000 + (uint64_t)(exec_pandc_usec);
-    uint64_t wait_all_crit =
-        (uint64_t)(wait_all_crit_sec)*1000000 + (uint64_t)(wait_all_crit_usec);
+    uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
+    uint64_t iter_rad = (uint64_t)(iter_rad_sec)*1000000 + (uint64_t)(iter_rad_usec);
+    uint64_t iter_vit = (uint64_t)(iter_vit_sec)*1000000 + (uint64_t)(iter_vit_usec);
+    uint64_t iter_cv = (uint64_t)(iter_cv_sec)*1000000 + (uint64_t)(iter_cv_usec);
+    uint64_t exec_rad = (uint64_t)(exec_rad_sec)*1000000 + (uint64_t)(exec_rad_usec);
+    uint64_t exec_vit = (uint64_t)(exec_vit_sec)*1000000 + (uint64_t)(exec_vit_usec);
+    uint64_t exec_cv = (uint64_t)(exec_cv_sec)*1000000 + (uint64_t)(exec_cv_usec);
+    uint64_t exec_get_rad = (uint64_t)(exec_get_rad_sec)*1000000 + (uint64_t)(exec_get_rad_usec);
+    uint64_t exec_get_vit = (uint64_t)(exec_get_vit_sec)*1000000 + (uint64_t)(exec_get_vit_usec);
+    uint64_t exec_get_cv = (uint64_t)(exec_get_cv_sec)*1000000 + (uint64_t)(exec_get_cv_usec);
+    uint64_t exec_pandc = (uint64_t)(exec_pandc_sec)*1000000 + (uint64_t)(exec_pandc_usec);
+    uint64_t wait_all_crit = (uint64_t)(wait_all_crit_sec)*1000000 + (uint64_t)(wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
     printf("  iterate_rad_kernel run time       %lu usec\n", iter_rad);
     printf("  iterate_vit_kernel run time       %lu usec\n", iter_vit);

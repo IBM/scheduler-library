@@ -23,6 +23,7 @@
 /* File pointer to the input trace */
 extern FILE *input_trace;
 
+extern bool all_obstacle_lanes_mode;
 
 status_t init_trace_reader(char* trace_filename);
 bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs);

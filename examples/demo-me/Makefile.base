@@ -159,15 +159,19 @@ ifndef CONFIG_KERAS_CV_BYPASS
  LDFLAGS += -lpython2.7
 endif
 
-SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_B = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_T = $(SRC_B) read_trace.c
+SRC_S = $(SRC_B) sim_environs.c
+SRC_U = sim_environs.c gen_trace.c
 SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
 OBJ_T1 = $(SRC_T:%.c=obj_t1/%.o)
-OBJ_S1 = $(SRC_T:%.c=obj_s1/%.o)
+OBJ_S1 = $(SRC_S:%.c=obj_s1/%.o)
 OBJ_T2 = $(SRC_T:%.c=obj_t2/%.o)
-OBJ_S2 = $(SRC_T:%.c=obj_s2/%.o)
+OBJ_S2 = $(SRC_S:%.c=obj_s2/%.o)
+OBJ_U = $(SRC_U:%.c=obj_u/%.o)
 
-VPATH = ./src
+VPATH = ./src ./src/readers ./src/utils
 
 TARGET1=car1-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 STARGET1=sim-car1-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
@@ -180,7 +184,7 @@ STARGET2=sim-car2-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)
 #$(info $$STARGET1 is [${STARGET1}])
 
 
-all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) sockets
+all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) sockets tracegen
 
 
 $(OBJ_T1): $(HDR_T)
@@ -209,16 +213,24 @@ $(TASK_LIB):
 sockets:
 	(cd socket; $(MAKE))
 
+
+tracegen: obj_u $(OBJ_U)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U) -o $@ $(LDFLAGS)
+
+
 clean:
 	$(RM) $(OBJ_T1) $(OBJ_S1)
 	$(RM) $(OBJ_T2) $(OBJ_S2)
+	$(RM) $(OBJ_U)
 	(cd socket; make clean)
 
 clobber: clean
 	$(RM) -r obj_t1 obj_s1
 	$(RM) -r obj_t2 obj_s2
+	$(RM) -r obj_u
 	$(RM) $(TARGET1) $(TARGET2)
 	$(RM) $(STARGET1) $(STARGET2)
+	$(RM) tracegen
 	(cd socket; make clobber)
 
 
@@ -235,6 +247,9 @@ obj_t2/%.o: %.c
 obj_s2/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DUSE_SIM_ENVIRON -c $< -o $@
 
+obj_u/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
+
 
 obj_t1:
 	mkdir $@
@@ -247,6 +262,9 @@ obj_t2:
 	mkdir $@
 
 obj_s2:
+	mkdir $@
+
+obj_u:
 	mkdir $@
 
 

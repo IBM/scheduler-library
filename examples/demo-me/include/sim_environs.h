@@ -19,6 +19,8 @@
 #define _sim_environs_h
 
 #include "verbose.h"
+#include "base_types.h"
+#include "base_task_types.h"
 
 /* Types definitions */
 
@@ -36,21 +38,26 @@ typedef struct obj_struct {
 } object_state_t;
 
 
-/* The "world" consists of the (5) lanes (horizontal) and N vertical distances *
- *       "x"     0         1         2         3       4
- *   "y"   | LHazard |   Left  |  Middle |  Right  | RHazard |
- *         |---------|---------|---------|---------|---------|
- *    N    |         |         |         | Truck   |         |
- *  N-1    |         |         |         |         |         |
- *  N-2    |         |  Car    |         |         |         |
- *  N-3    |         |         |         |         |         |
+/* The "world" consists of the (7) lanes (horizontal) and N vertical distances *
+ *       "x"     0         1         2         3        4          5        6
+ *   "y"   | LHazard |   Left  |  L-Mid  |  Middle |  R-Mid  |  Right  | RHazard |
+ *         |---------|---------|---------|---------|---------|---------|---------|
+ *    N    |         |         |         | Truck   |         |         |         |
+ *  N-1    |         |         |         |         |         |         |         |
+ *  N-2    |         |  Car    |         |         |         |         |         |
+ *  N-3    |         |         |         |         |         |         |         |
  *  ...
- *    4    |         |         |         |         |         |
- *    3    |         |         |  Myself |         |         |
- *    2    |         |         |         |         |         |
- *    1    |         |  Pedest |         |         |         |
- *    0    |         |         |         |         |         |
+ *    4    |         |         |         |         |         |         |         |
+ *    3    |         |         |         |         |         |         |         |
+ *    2    |         |         |         |         |         |         |         |
+ *    1    |         |  Pedest |         |         |         |         |         |
+ *    0    |         |         |  Myself |         |         |         |         |
  */
+
+// This is the master list of all currently live objects in the world.
+//  This is a sorted list (by distance) of objects per lane
+extern unsigned global_object_id;
+extern object_state_t* the_objects[NUM_LANES];
 
 // External variables
 extern float MAX_OBJECT_SIZE; // Max size of an object
