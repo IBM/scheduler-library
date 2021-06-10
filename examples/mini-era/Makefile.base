@@ -3,6 +3,7 @@ ARCH ?= riscv
 ifdef DO_CROSS_COMPILATION
  CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
  EXE_EXTENSION=-RV
+ CROSS_COMPILE_FLAGS = --target=riscv64 -march=rv64g -mabi=lp64d
 endif
 
 ifdef COMPILE_TO_ESP
@@ -13,6 +14,11 @@ endif
 
 CC = gcc -std=c99
 
+HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
+OPT = $(HPVM_BIN_PATH)/opt
+LLVM_LINK = $(HPVM_BIN_PATH)/llvm-link
+HPVMCC = $(HPVM_BIN_PATH)/clang
+
 
 INCDIR ?=
 INCDIR += -I./include -I../../sched_library/include -I../../task_library/include
@@ -21,7 +27,7 @@ ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 -g
+CFLAGS ?= -O2 #-g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -31,9 +37,6 @@ endif
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
 
-ifdef COMPILE_TO_HPVM
-	CFLAGS += -DHPVM
-endif
 # This sets the maximum number of any Acceleartor type in this build
 #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
 #  But it could be a larger value as well
@@ -131,8 +134,11 @@ ifdef CONFIG_GDB
 CFLAGS += -g
 endif
 
-SCHED_LIB = ../../sched_library/libscheduler.a
-SCHED_LIB = ../../task_library/libtasks.a
+SCHED_LIB = $(SCHED_LIB_DIR)/libscheduler.a
+TASK_LIB = $(TASK_LIB_DIR)/libtasks.a
+
+SCHED_MODULE = $(SCHED_LIB_DIR)/libscheduler.bc
+TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
@@ -166,18 +172,39 @@ SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
 OBJ_T = $(SRC_T:%.c=obj_t/%.o)
 OBJ_S = $(SRC_T:%.c=obj_s/%.o)
+#OBJ_LL = $(SRC_T:%.c=obj_hpvm/%.ll)
+OBJ_LL = $(filter-out obj_hpvm/hpvm_tasks.ll, $(SRC_T:%.c=obj_hpvm/%.ll))
+OBJ_H = obj_hpvm/hpvm_tasks.host.ll 
+OBJ_LINKED = obj_hpvm/hpvm_tasks.linked.ll
 
 VPATH = ./src
 
 TARGET=test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 STARGET=sim-test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
+HPVMTARGET=hpvm-test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 
 $(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
 $(info $$TARGET is [${TARGET}])
 $(info $$STARGET is [${STARGET}])
 
+$(info $$OBJ_LL is [${OBJ_LL}])
+$(info $$OBJ_H is [${OBJ_H}])
+$(info $$OBJ_LINKED is [${OBJ_LINKED}])
 
 all: $(TARGET) $(STARGET)
+
+hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
+hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
+hpvm-epochs: BACKEND_LOAD = -load DFG2LLVM_EPOCHS
+hpvm-epochs: BACKEND_FLAG = -dfg2llvm-epochs -sched-lib-path=$(SCHED_MODULE) -sched-config=$(CONFIG_FILE) -task_config=$(TASK_LIB_DIR)/task_lib.config -task-lib-path=$(TASK_MODULE)
+hpvm-epochs: HPVM = hpvm
+
+hpvm-cpu: CFLAGS += -DHPVM -DDEVICE=CPU_TARGET
+hpvm-cpu: BACKEND_LOAD = -load DFG2LLVM_CPU
+hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu
+
+hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(HPVMTARGET)
+hpvm-cpu: check_env obj_hpvm $(HPVMTARGET)
 
 
 obj_t/%.o: %.c
@@ -195,20 +222,9 @@ $(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T)
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
-$(SCHED_LIB):
-	(cd ../../sched_library; $(MAKE))
-
-$(TASK_LIB):
-	(cd ../../sched_library; $(MAKE))
-
-clean:
-	$(RM) $(OBJ_T) $(OBJ_S)
-	$(RM) -r obj_t obj_s
-
-clobber: clean
-	$(RM) $(TARGET)
-	$(RM) $(STARGET)
-
+$(HPVMTARGET): $(TASK_LIB) $(SCHED_LIB) $(OBJ_LINKED)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) $< -c -o test.o
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
 
 obj_t:
 	mkdir $@
@@ -216,8 +232,57 @@ obj_t:
 obj_s:
 	mkdir $@
 
+obj_hpvm:
+	mkdir $@
 
-.PHONY: all clean
+obj_hpvm/hpvm_tasks.ll : src/hpvm_tasks.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.ll
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@
+
+$(OBJ_H) : obj_hpvm/hpvm_tasks.hpvm.ll
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@
+
+$(OBJ_LL):obj_hpvm/%.ll : src/%.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+$(OBJ_LINKED) : $(OBJ_H) $(OBJ_LL)
+	$(LLVM_LINK) $^ -S -o $@
+
+$(SCHED_LIB) $(SCHED_MODULE):
+	@echo "***********************************"
+	@echo "*** Compiling Scheduler Library ***"
+	@echo "***********************************"
+	(cd ../../sched_library; $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+$(TASK_LIB) $(TASK_MODULE):
+	@echo "***********************************"
+	@echo "****** Compiling Task Library *****"
+	@echo "***********************************"
+	(cd ../../task_library; $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+clean:
+	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_LL) $(OBJ_H) $(OBJ_LINKED)
+	$(RM) -r obj_t obj_s obj_hpvm
+
+clobber: clean
+	$(RM) $(TARGET)
+	$(RM) $(STARGET)
+	$(RM) $(HPVMTARGET)
+
+check_env:
+ifndef HPVM_DIR
+	$(error HPVM_DIR is undefined! setup_paths.sh needs to be sourced before running make!)
+endif
+
+.PHONY: all clean clobber hpvm-epochs hpvm-cpu check_env 
 
 
 #depend:;	makedepend -fMakefile -- $(CFLAGS) -- $(SRC_D)

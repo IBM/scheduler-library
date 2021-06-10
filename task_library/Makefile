@@ -226,20 +226,20 @@ clean:
 	$(RM) -rf obj
 
 clobber: clean
-	$(RM) $(TARGET) 
+	$(RM) $(TARGET)  $(HPVM_TARGET)
 	$(RM) -rf esp-build
 
 
 obj:
 	mkdir $@
 
-hpvm: obj $(HPVM_TARGET)
+hpvm: obj $(HPVM_TARGET) esp-libs $(TARGET)
 
 $(HPVM_TARGET): $(LL_OBJ)
-	llvm-link $^ -o $@ 
+	$(LLVM_LINK) $^ -o $@ 
 
 obj/%.bc: %.c
-	clang -O3 -S $(CFLAGS) -emit-llvm $< -o $@
+	$(HPVMCC) -O3 -S $(CFLAGS) -emit-llvm $< -o $@
 
 
 .PHONY: all clean

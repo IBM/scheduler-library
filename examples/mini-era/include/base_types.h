@@ -129,4 +129,26 @@ extern float car_decel_rate;
 extern char  nearest_obj[NUM_LANES];
 extern float nearest_dist[NUM_LANES];
 
+
+
+#ifdef HPVM
+typedef struct __attribute__((__packed__)) {
+        message_size_t msg_size;
+        ofdm_param* ofdm_ptr; size_t ofdm_size;
+        frame_param* frame_ptr; size_t frame_ptr_size;
+        uint8_t* in_bits; size_t in_bit_size;
+        message_t* message_id; size_t msg_id_size;
+        char* out_msg_text; size_t out_msg_text_size;
+        label_t in_label;
+        label_t* obj_label; size_t obj_label_size;
+        distance_t* distance_ptr; size_t distance_ptr_size;
+        float* inputs_ptr; size_t inputs_ptr_size;
+        uint32_t log_nsamples;
+        vehicle_state_t* vehicle_state_ptr; size_t vehicle_state_size;
+        vehicle_state_t* new_vehicle_state; size_t new_vehicle_state_size;
+        unsigned time_step; unsigned repeat_factor ;
+        int RadarCrit; int VitCrit; int CVCrit; int PNCCrit;
+} RootIn;
+
+#endif
 #endif

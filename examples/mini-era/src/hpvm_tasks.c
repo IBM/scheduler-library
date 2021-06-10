@@ -3,6 +3,7 @@
 #define TRACEBACK_MAX 24
 
 #include "hpvm_tasks.h"
+#include "base_types.h"
 
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
@@ -1149,7 +1150,95 @@ void MiniERARoot(
 
 }
 
+void hpvm_launch(RootIn *DFGArgs, label_t &cv_tr_label, unsigned time_step, unsigned *radar_log_nsamples_pre_dict_set, float *radar_inputs, distance_t *distance, message_size_t vit_msgs_size, vit_dict_entry_t* vdentry_p, message_t *message, char* out_msg_text, vehicle_state_t* vehicle_state, vehicle_state_t* new_vehicle_state, unsigned pandc_repeat_factor) {
 
+    /* -- HPVM Host Code -- */
+    DFGArgs->in_label = cv_tr_label;
+    DFGArgs->obj_label = &cv_tr_label;
+    DFGArgs->obj_label_size = sizeof(label_t);
+    DFGArgs->CVCrit = CRITICAL_TASK;
+
+
+    DFGArgs->time_step = time_step;
+    DFGArgs->log_nsamples = radar_log_nsamples_per_dict_set[crit_fft_samples_set];
+    DFGArgs->inputs_ptr = radar_inputs;
+    // described in base_types.h
+    DFGArgs->inputs_ptr_size = 2 * (1<<MAX_RADAR_LOGN); 
+    DFGArgs->distance_ptr = &distance;
+    DFGArgs->distance_ptr_size = sizeof(distance_t);
+    DFGArgs->RadarCrit = CRITICAL_TASK;
+
+    DFGArgs->msg_size = vit_msgs_size;
+    DFGArgs->ofdm_ptr = &vdentry_p->ofdm_p ;
+    DFGArgs->ofdm_size = sizeof(ofdm_param);
+    DFGArgs->frame_ptr = &vdentry_p->frame_p;
+    DFGArgs->frame_ptr_size = sizeof(frame_param);
+    DFGArgs->in_bits = &vdentry_p->in_bits;
+    DFGArgs->in_bit_size = sizeof(uint8_t);
+    DFGArgs->message_id = &message;
+    DFGArgs->msg_id_size = sizeof(message_t);
+    DFGArgs->out_msg_text = out_msg_text;
+    DFGArgs->out_msg_text_size = 1600;
+
+    DFGArgs->VitCrit = CRITICAL_TASK;
+
+    DFGArgs->vehicle_state_ptr = &vehicle_state;
+    DFGArgs->vehicle_state_ptr = sizeof(vehicle_state);
+    DFGArgs->new_vehicle_state = &new_vehicle_state;
+    DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
+    DFGArgs->time_step = time_step;
+    DFGArgs->repeat_factor = pandc_repeat_factor;
+    DFGArgs->PNCCrit = CRITICAL_TASK;
+
+
+
+    // Add relavent memory to memory tracker
+    llvm_hpvm_track_mem(&cv_tr_label, sizeof(label_t));
+    llvm_hpvm_track_mem(radar_inputs, 2 * (1<<MAX_RADAR_LOGN));
+    llvm_hpvm_track_mem(&distance, sizeof(distance));
+    llvm_hpvm_track_mem(&vdentry_p->ofdm_p, sizeof(ofdm_param));
+    llvm_hpvm_track_mem(&vdentry_p->frame_p, sizeof(frame_param));
+    llvm_hpvm_track_mem(&vdentry_p->in_bits, sizeof(uint8_t));
+    llvm_hpvm_track_mem(&message, sizeof(message_t));
+    llvm_hpvm_track_mem(out_msg_text, 1600);
+    llvm_hpvm_track_mem(&vehicle_state, sizeof(vehicle_state));
+    llvm_hpvm_track_mem(&new_vehicle_state, sizeof(new_vehicle_state));
+
+    printf("\n\nLaunching ERA pipeline!\n");
+
+    void* ERADFG = __hpvm__launch(0, MiniERARoot, (void*) DFGArgs);
+    __hpvm__wait(ERADFG);
+
+    printf("\n\nFinished executing ERA pipeline!\n");
+    printf("\n\nRequesting Memory!\n");
+
+    // Requesting memory back from DFG
+    llvm_hpvm_request_mem(&new_vehicle_state, sizeof(vehicle_state_t));
+
+
+    // Remove relavent memory from memory tracker
+    llvm_hpvm_untrack_mem(&cv_tr_label);
+    llvm_hpvm_untrack_mem(radar_inputs);
+    llvm_hpvm_untrack_mem(&distance);
+    llvm_hpvm_untrack_mem(&vdentry_p->ofdm_p);
+    llvm_hpvm_untrack_mem(&vdentry_p->frame_p);
+    llvm_hpvm_untrack_mem(&vdentry_p->in_bits);
+    llvm_hpvm_untrack_mem(&message);
+    llvm_hpvm_untrack_mem(out_msg_text);
+    llvm_hpvm_untrack_mem(&vehicle_state);
+    llvm_hpvm_untrack_mem(&new_vehicle_state);
+
+}
+
+RootIn *hpvm_initialize() {
+  __hpvm__init();
+  RootIn* DFGArgs = (RootIn*) malloc(sizeof(DFGArgs));
+  return DFArgs;
+}
+
+void hpvm_cleanup() {
+  __hpvm__cleanup();
+}
         
 
 
