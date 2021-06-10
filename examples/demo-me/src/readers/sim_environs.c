@@ -30,8 +30,9 @@ object_state_t* the_objects[NUM_LANES];
 // This represents my car.
 object_state_t my_car;		
 
-unsigned time_steps;            // The number of elapsed time steps
-unsigned max_time_steps = 5000; // The max time steps to simulate (default to 5000)
+extern bool output_source_trace;
+
+unsigned time_step;            // The number of elapsed time steps
 
 // This controls whether we can have multiple obstacles in a lane at a time
 bool   one_obstacle_per_lane = false; // false = unlimited
@@ -329,7 +330,7 @@ init_sim_environs(char* wdesc_fn, vehicle_state_t* vehicle_state)
     the_objects[i] = NULL;
   }
 
-  time_steps = 0;
+  time_step = 0;
 
   srand(rand_seed);
   printf("Using rand seed: %u\n", rand_seed);
@@ -358,10 +359,7 @@ init_sim_environs(char* wdesc_fn, vehicle_state_t* vehicle_state)
 bool
 iterate_sim_environs(vehicle_state_t vehicle_state) 
 {
-  DEBUG(printf("In iterate_sim_environments with %u time_steps vs %u max\n", time_steps, max_time_steps));
-  if (time_steps == max_time_steps) {
-    return false;
-  }
+  DEBUG(printf("In iterate_sim_environments with %u time_step\n", time_step));
   // Clear the global object-in-lane information state
   total_obj = 0;
   for (int i = 0; i < NUM_LANES; i++) {
@@ -488,15 +486,20 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
   // Now set up the global objects-in-lane, etc. indications.
   if (output_viz_trace) {
     if (!vehicle_state.active) {
-      printf("%4u  VizTrace: %d,", time_steps, -vehicle_state.lane);
+      printf("%4u  VizTrace: %d,", time_step, -vehicle_state.lane);
     } else {
-      printf("%4u  VizTrace: %d,", time_steps, vehicle_state.lane);
+      printf("%4u  VizTrace: %d,", time_step, vehicle_state.lane);
     }      
   }
+  if (output_source_trace) {
+    printf("Trace: ");
+  }
+  bool output_trace = output_source_trace | output_viz_trace;
+  
   for (int in_lane = min_obst_lane; in_lane < max_obst_lane; in_lane++) {
     object_state_t* obj = the_objects[in_lane];
     int outputs_in_lane = 0;
-    if (output_viz_trace && (in_lane > min_obst_lane)) {
+    if (output_trace && (in_lane > min_obst_lane)) {
       printf(",");
     }
     if (obj != NULL) {
@@ -507,7 +510,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	nearest_obj[in_lane]  = vis_obj_ids[obj->object];
 	nearest_dist[in_lane] = obj->distance;
 	obj_in_lane[in_lane]++;
-	if (output_viz_trace) {
+	if (output_trace) {
 	  if (outputs_in_lane > 0) { printf(" "); }
 	  printf("%c:%u", vis_obj_ids[obj->object], (int)obj->distance);
 	  outputs_in_lane++;       
@@ -516,14 +519,14 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	obj = obj->next; // move to the next object
       }
     } else {
-      if (output_viz_trace) {
+      if (output_trace) {
 	printf("N:%u", (int)INF_DISTANCE);
       }
     }
   }
-  if (output_viz_trace) { printf("\n"); }
+  if (output_trace) { printf("\n"); }
   DEBUG(visualize_world());
-  time_steps++; // Iterate the count of time_steps so far
+  time_step++; // Iterate the count of time_step so far
   return true;
 }
 
