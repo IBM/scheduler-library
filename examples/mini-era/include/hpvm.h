@@ -50,6 +50,12 @@ enum EPOCHS_TASKS {
   NUM_TAKS
 };
 
+enum NODE_CRITICALITY {
+  HPVM_BASE = 1,
+  HPVM_ELEVATED,
+  HPVM_CRITICAL
+};
+
 #ifdef __cplusplus
 }
 #endif

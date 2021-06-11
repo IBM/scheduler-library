@@ -117,6 +117,7 @@ endif
 
 ifdef CONFIG_VERBOSE
 CFLAGS += -DVERBOSE
+OPTFLAGS += -debug
 endif
 
 ifdef CONFIG_DBG_THREADS
@@ -239,10 +240,10 @@ obj_hpvm/hpvm_tasks.ll : src/hpvm_tasks.c
 	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
 
 obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.ll
-	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
 $(OBJ_H) : obj_hpvm/hpvm_tasks.hpvm.ll
-	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL):obj_hpvm/%.ll : src/%.c
 	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<

@@ -1324,7 +1324,7 @@ int main(int argc, char *argv[]) {
     
     printf("Launching HPVM graph!\n");
 
-    hpvm_launch(DFArgs, cv_tr_label, time_step, radar_log_nsamples_pre_dict_set, radar_inputs, distance, vit_msgs_size, vdentry_p, message, out_msg_text, vehicle_state, new_vehicle_state, pandc_repeast_factor);
+    hpvm_launch(DFArgs, &cv_tr_label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, distance, vit_msgs_size, vdentry_p, message, out_msg_text, vehicle_state, new_vehicle_state, pandc_repeast_factor);
 
 
 
@@ -1414,7 +1414,7 @@ int main(int argc, char *argv[]) {
   printf("\nDone.\n");
 
 #ifdef HPVM
-  hpvm_cleanup();
+  hpvm_cleanup(DFGArgs);
 #endif
   return 0;
 }
