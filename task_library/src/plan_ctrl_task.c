@@ -235,7 +235,7 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
         printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
                lane_names[plan_ctrl_data_p->vehicle_state.lane],
                plan_ctrl_data_p->safe_lanes_msg);
-        // cleanup_and_exit(sptr, -6);
+        // exit( -6);
       }
     } // end of "we have some obstacle too close ahead of us"
   } else {

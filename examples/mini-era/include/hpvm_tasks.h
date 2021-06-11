@@ -1,4 +1,4 @@
-#ifndef H_HPBM_TASKS_H
+#ifndef H_HPVM_TASKS_H
 #define H_HPVM_TASKS_H
 
 #ifdef HPVM

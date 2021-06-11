@@ -317,7 +317,7 @@ void exec_vit_task_on_vit_hwr_accel(
 #else // HW_VIT
   printf(
       "ERROR : This executable DOES NOT support Viterbi Hardware execution!\n");
-  cleanup_and_exit(sptr, -3);
+  exit( -3);
 #endif // HW_VIT
 }
 

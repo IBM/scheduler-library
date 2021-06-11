@@ -16,6 +16,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "scheduler.h"
 #include "verbose.h"
 
@@ -47,7 +48,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
-    cleanup_and_exit(sptr, -19);
+    exit( -19);
   }
   DEBUG(printf("SCHED_FF: In fastest_to_slowest_first_available policy for MB%u : task %u %s \n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type]));
 
@@ -101,7 +102,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     } // for (int check_accel = ...
   } else {
     printf("ERROR : fastest_to_slowest_first_available called for unknown task type: %u\n", task_metadata_block->task_type);
-    cleanup_and_exit(sptr, -15);
+    exit( -15);
   }
 
  #ifdef INT_TIME

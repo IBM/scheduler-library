@@ -276,7 +276,7 @@ get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t in_dag_id,
       printf("  free_metadata_pool[%2u] = %d\n", i,
              sptr->free_metadata_pool[i]);
     }
-    cleanup_and_exit(sptr, -16);
+    exit( -16);
   }
   sptr->free_metadata_pool[sptr->free_metadata_blocks - 1] = -1;
   sptr->free_metadata_blocks -= 1;
@@ -370,7 +370,7 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
       if (cli == NULL) {
         printf("ERROR: Critical task NOT on the critical_live_task_list :\n");
         print_base_metadata_block_contents(mb);
-        cleanup_and_exit(sptr, -6);
+        exit( -6);
       }
       // We've found the critical task in critical_live_tasks_list - cli points
       // to it
@@ -418,7 +418,7 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
     }
     DEBUG(printf("    THE Being-Freed Meta-Data Block:\n");
           print_base_metadata_block_contents(mb));
-    cleanup_and_exit(sptr, -5);
+    exit( -5);
   }
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
          for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
@@ -663,13 +663,13 @@ void execute_task_on_accelerator(task_metadata_block_t *task_metadata_block) {
              "%u\n",
              task_metadata_block->task_type);
       print_base_metadata_block_contents(task_metadata_block);
-      cleanup_and_exit(sptr, -13);
+      exit( -13);
     }
   } else {
     printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR "
            "with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    cleanup_and_exit(sptr, -11);
+    exit( -11);
   }
   TDEBUG(
       printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
@@ -743,6 +743,7 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(
     scheduler_get_datastate_in_parms_t *inp) {
   scheduler_datastate_block_t *sptr =
       malloc(sizeof(scheduler_datastate_block_t));
+  on_exit(cleanup_and_exit, sptr);
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
   if (sptr == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory "
@@ -1183,7 +1184,7 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(
   if (init_status != success) {
     printf(
         "ERROR : Scheduiler initialization returned an error indication...\n");
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
   return sptr;
 }
@@ -1466,7 +1467,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     if (sptr->sl_viz_fp == NULL) {
       printf("ERROR: Cannot open the output vizualizer file '%s' - exiting\n",
              sptr->inparms->sl_viz_fname);
-      cleanup_and_exit(sptr, -1);
+      exit( -1);
     }
     fprintf(sptr->sl_viz_fp,
             "sim_time,task_dag_id,task_tid,task_name,task_crit,dag_dtime,id,"
@@ -1479,14 +1480,14 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   snprintf(policy_filename, 270, "%s", sptr->inparms->policy);
   if ((sptr->policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
     printf("Could not open plug-in scheduling policy: %s\n", dlerror());
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_policy() not found in scheduling policy %s\n",
            policy_filename);
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   sptr->initialize_assign_task_to_pe =
@@ -1496,7 +1497,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     printf("Function initialize_assign_task_to_pe() not found in scheduling "
            "policy %s\n",
            policy_filename);
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   sptr->assign_task_to_pe = dlsym(sptr->policy_handle, "assign_task_to_pe");
@@ -1504,7 +1505,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     dlclose(sptr->policy_handle);
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n",
            policy_filename);
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   pthread_mutex_init(&(sptr->free_metadata_mutex), NULL);
@@ -1604,7 +1605,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
       printf(
           "ERROR: Scheduler failed to create thread for metadata block: %d\n",
           i);
-      cleanup_and_exit(sptr, -10);
+      exit( -10);
     }
     sptr->master_metadata_pool[i].thread_id = sptr->metadata_threads[i];
   }
@@ -1658,7 +1659,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n",
            pt_ret);
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   // Now set up the pool of accelerators that this applicaiton will use (from
@@ -1686,7 +1687,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
         printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are "
                "adding id %u\n",
                sptr->inparms->max_accel_types, acid);
-        cleanup_and_exit(sptr, -32);
+        exit( -32);
       }
       sptr->map_sched_accel_type_to_local_accel_type[i] = acid;
       printf("map_sched_accel_type_to_local_accel_type[%u] = %u\n", i, acid);
@@ -1698,13 +1699,13 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
                "than available in the hardware ( %u )\n",
                desired_num,
                global_hardware_state_block.num_accelerators_of_type[i]);
-        cleanup_and_exit(sptr, -33);
+        exit( -33);
       }
       if (desired_num > sptr->max_accel_of_any_type) {
         printf("ERROR: Specified desired number of accelerators ( %u ) is more "
                "than specified max_accel_of_any_type ( %u )\n",
                desired_num, sptr->max_accel_of_any_type);
-        cleanup_and_exit(sptr, -34);
+        exit( -34);
       }
       unsigned alloc_num;
       if (desired_num < 0) {
@@ -1833,7 +1834,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
         // pthread_mutex_unlock(&schedule_from_queue_mutex);
         print_base_metadata_block_contents(task_metadata_block);
-        cleanup_and_exit(sptr, -19);
+        exit( -19);
       } else {
         // Mark the requested accelerator as "In-USE" by this metadata block
         if (sptr->accelerator_in_use_by[accel_type][accel_id] != -1) {
@@ -1841,7 +1842,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
                  "ACCEL %s %u which is already allocated to Block %u\n",
                  sptr->accel_name_str[accel_type], accel_id,
                  sptr->accelerator_in_use_by[accel_type][accel_id]);
-          cleanup_and_exit(sptr, -14);
+          exit( -14);
         }
         account_accelerators_in_use_interval(sptr);
         int bi = task_metadata_block->block_id; // short name for the block_id
@@ -2092,7 +2093,7 @@ void wait_on_tasklist(scheduler_datastate_block_t *sptr, int num_tasks, ...) {
     task_metadata_block_t *mb_ptr = va_arg(var_list, task_metadata_block_t *);
     if (mb_ptr == NULL) {
       printf("ERROR: wait_on_tasklist provided a NULL task pointer\n");
-      cleanup_and_exit(sptr, -30);
+      exit( -30);
     }
     task_block_ids[i] = mb_ptr->block_id;
   }
@@ -2416,8 +2417,11 @@ void shutdown_scheduler(scheduler_datastate_block_t *sptr) {
   free(sptr);
 }
 
-void cleanup_and_exit(scheduler_datastate_block_t *sptr, int rval) {
-  cleanup_state(sptr);
+void cleanup_and_exit(int rval, void *sptr_ptr) {
+  if (sptr_ptr != NULL) {
+    scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *) sptr_ptr;
+    cleanup_state(sptr);
+  }
   exit(rval);
 }
 
@@ -2498,22 +2502,22 @@ task_type_t register_task_type(
   if (set_up_task_func == NULL) {
     printf(
         "ERROR: Must set set_up_task_func function -- can use base routine\n");
-    cleanup_and_exit(sptr, -31);
+    exit( -31);
   }
   if (finish_task_func == NULL) {
     printf(
         "ERROR: Must set finish_task_func function -- can use base routine\n");
-    cleanup_and_exit(sptr, -31);
+    exit( -31);
   }
   if (auto_finish_func == NULL) {
     printf(
         "ERROR: Must set auto_finish_func function -- can use base routine\n");
-    cleanup_and_exit(sptr, -31);
+    exit( -31);
   }
   if (print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use "
            "base routine\n");
-    cleanup_and_exit(sptr, -31);
+    exit( -31);
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information
   // for this task
@@ -2524,7 +2528,7 @@ task_type_t register_task_type(
     printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding "
            "id %u\n",
            (sptr->inparms->max_task_types - 1), tid);
-    cleanup_and_exit(sptr, -35);
+    exit( -35);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
@@ -2538,7 +2542,7 @@ task_type_t register_task_type(
   printf("Starting the variable arguments processing for %d tuples\n",
          num_accel_task_exec_descriptions);
   va_list var_list;
-  va_start(var_list, 2 * num_accel_task_exec_descriptions);
+  va_start(var_list, /*2 **/ num_accel_task_exec_descriptions);
   for (int i = 0; i < num_accel_task_exec_descriptions; i++) {
     scheduler_accelerator_type sched_accel =
         va_arg(var_list, scheduler_accelerator_type);
@@ -2560,7 +2564,7 @@ void register_accel_can_exec_task(scheduler_datastate_block_t *sptr,
     printf("In register_accel_can_exec_task specified an illegal accelerator "
            "id: %u vs %u (MAX)\n",
            sl_acid, (SCHED_MAX_ACCEL_TYPES - 1));
-    cleanup_and_exit(sptr, -36);
+    exit( -36);
   }
   DEBUG(printf("In register_accel_can_exec_task for accel %u %s and task %u "
                "with fptr %p\n",
@@ -2570,19 +2574,19 @@ void register_accel_can_exec_task(scheduler_datastate_block_t *sptr,
     printf("In register_accel_can_exec_task specified an un-allocated "
            "accelerator id: %u %s\n",
            sl_acid, sptr->accel_name_str[sl_acid]);
-    cleanup_and_exit(sptr, -38);
+    exit( -38);
   }
   if (tid >= sptr->next_avail_task_type) {
     printf("In register_task_can_exec_task specified an illegal taskerator id: "
            "%u vs %u currently defined\n",
            tid, sptr->next_avail_task_type);
-    cleanup_and_exit(sptr, -37);
+    exit( -37);
   }
   if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {
     printf("In register_accel_can_exec_task for accel_type %u and task_type %u "
            "- Already have a registered execution (%p)\n",
            acid, tid, sptr->scheduler_execute_task_function[tid][acid]);
-    cleanup_and_exit(sptr, -39);
+    exit( -39);
   }
   sptr->scheduler_execute_task_function[acid][tid] = fptr;
   DEBUG(printf(
@@ -2601,8 +2605,8 @@ set_up_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   va_list args;
   va_start(args, dag_id);
 
-  task_metadata_block_t * task_mb = sptr->set_up_task_function[the_task_type](sptr, the_task_type, crit_level,
-                                            use_auto_finish, dag_id, &args);
+  task_metadata_block_t *task_mb = sptr->set_up_task_function[the_task_type](
+      sptr, the_task_type, crit_level, use_auto_finish, dag_id, &args);
 
   va_end(args);
   return task_mb;
@@ -2617,7 +2621,7 @@ void finish_task_execution(
   task_type_t task_type = the_metadata_block->task_type;
 
   va_list args;
-  va_start(args, the_metadata_block);
+  va_start(args, the_metadata_block_ptr);
 
   sptr->finish_task_execution_function[task_type](the_metadata_block, &args);
 

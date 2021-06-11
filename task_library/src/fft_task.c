@@ -57,7 +57,6 @@ void print_fft_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
 #define MAX_fft_log_nsamples 14 // Maximum FFT samples per invocation size
 // unsigned crit_fft_log_nsamples = MAX_fft_log_nsamples; // Log2 of num FFT
 // samples in Critical FFT tasks
-unsigned crit_fft_samples_set = 0; // The sample set used for Critical Task FFT
 
 #ifdef COMPILE_TO_ESP
 #include "fixed_point.h"
@@ -460,7 +459,7 @@ void execute_hwr_fft_accelerator(
 
 #else
   printf("ERROR : This executable DOES NOT support Hardware-FFT execution!\n");
-  cleanup_and_exit(sptr, -2);
+  exit( -2);
 #endif
 }
 

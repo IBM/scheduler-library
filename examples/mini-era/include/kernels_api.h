@@ -23,13 +23,11 @@
 #define TIME
 
 #include "base_types.h"
-
-#include "scheduler.h"
-
 /* These are some top-level defines for the dictionaries */
-
+#ifndef HPVM
 #include "fft_accel.h"
 #include "calc_fmcw_dist.h"
+#endif
 /*
 typedef struct {
   unsigned int index;          // A global index (of all radar dictionary entries
@@ -54,7 +52,7 @@ typedef struct {
 #define VITERBI_MSG_LENGTHS     4
 #define VITERBI_MSGS_PER_STEP   3
 
-
+static unsigned crit_fft_samples_set = 0; // The sample set used for Critical Task FFT
 extern bool  output_viz_trace;
 
 extern char* lane_names[NUM_LANES];
@@ -101,39 +99,29 @@ typedef struct {
 #endif
 
 /* Kernels initialization */
-status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn);
+status_t init_cv_kernel(char* py_file, char* dict_fn);
 label_t run_object_classification(unsigned tr_val);
-label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
-void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val);
-label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr);
+label_t iterate_cv_kernel(vehicle_state_t vs);
 void    post_execute_cv_kernel(label_t tr_val, label_t d_object);
 
-status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
-radar_dict_entry_t* iterate_radar_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
+status_t init_radar_kernel(char* dict_fn);
+radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs);
 radar_dict_entry_t* select_random_radar_input();
 radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p);
-//void start_execution_of_radar_kernel(task_metadata_block_t* mb_ptr, uint32_t fft_log_nsamples, float * inputs);
-//distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr);
 void       post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist);
 
-status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
-vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
+status_t init_vit_kernel(char* dict_fn);
+vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs);
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num);
 vit_dict_entry_t* select_random_vit_input();
-void start_execution_of_vit_kernel(task_metadata_block_t* mb_ptr, vit_dict_entry_t* trace_msg);
-message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr);
 void      post_execute_vit_kernel(message_t tr_msg, message_t dec_msg);
 
-status_t   init_test_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
-test_dict_entry_t* iterate_test_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
-void       start_execution_of_test_kernel(task_metadata_block_t* mb_ptr, test_dict_entry_t* tde);
-test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr);
+status_t   init_test_kernel(char* dict_fn);
+test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs);
 void       post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res);
 
 
 
-void            start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
-vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
 //vehicle_state_t plan_and_control(label_t, distance_t, message_t, vehicle_state_t);
 
 // These routines are used for any finalk, end-of-run operations/output

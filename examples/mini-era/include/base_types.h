@@ -19,6 +19,9 @@
 #define H_BASE_TYPES_H
 #include <stdbool.h>
 #include "base_task_types.h"
+#ifdef HPVM
+typedef enum { success, error } status_t;
+#endif
 
 /* Types definitions */
 // This is the type for distance measurements

@@ -16,6 +16,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "scheduler.h"
 #include "verbose.h"
 
@@ -54,12 +55,12 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     if (task_metadata_block == NULL) {
       printf("SCHED-FFFQ: ERROR: Ready Task Queue entry %u is NULL even though num_tasks_in_ready_queue = %d depicts otherwise?\n", i, sptr->num_tasks_in_ready_queue);
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
-      cleanup_and_exit(sptr, -19);
+      exit( -19);
     }
     if (task_metadata_block->task_type == NO_Task) {
       printf("SCHED-FFFQ: ERROR: Ready Task Queue entry %u Task Type is NO_Task?\n", i);
       //pthread_mutex_unlock(&schedule_from_queue_mutex);
-      cleanup_and_exit(sptr, -20);
+      exit( -20);
     }
 
     DEBUG(printf("SCHED-FFFQ: In fastest_finish_time_first_queued for Entry %u : MB%d Task %u = %s\n", i, task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type]));
@@ -116,7 +117,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
       if ((accel_type == NO_Accelerator) || (accel_id == -1)) {
         printf("SCHED-FFFQ: ERROR: Ready Task Queue entry %u Task Type %u %s couldn't find an accelerator: acc_ty %u id %d\n", i, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], accel_type, accel_id);
         //pthread_mutex_unlock(&schedule_from_queue_mutex);
-        cleanup_and_exit(sptr, -21);
+        exit( -21);
       }
       //task_metadata_block->accelerator_type = accel_type;
       //task_metadata_block->accelerator_id   = accel_id;

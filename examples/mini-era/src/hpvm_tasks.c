@@ -6,17 +6,9 @@
 #include "base_types.h"
 #include "verbose.h"
 
-extern void descrambler(uint8_t *in, int psdusize, char *out_msg, uint8_t *ref,
-                        uint8_t *msg);
-
-static const unsigned char PUNCTURE_1_2[2] = {1, 1};
-static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
-static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
-
-static const unsigned char *d_depuncture_pattern;
-
-static uint8_t d_depunctured[MAX_ENCODED_BITS];
-static uint8_t d_decoded[MAX_ENCODED_BITS * 3 / 4];
+#include "viterbi_base.h"
+#include "viterbi_utils.h"
+#include "viterbi_standalone.h"
 
 #ifdef FAKE_HW_CV
 unsigned cv_cpu_run_time_in_usec = 10000;
@@ -50,24 +42,6 @@ static unsigned int _rev(unsigned int v) {
 
   return r;
 }
-
-int d_k;
-
-static const unsigned char PARTAB[256] = {
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-};
-
-int32_t d_ntraceback;
 
 typedef union branchtab27_u {
   unsigned char c[32];
@@ -143,12 +117,108 @@ uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame) {
   return depunctured;
 }
 
+void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg) //definition
+{
+	uint32_t output_length = (psdusize)+2; //output is 2 more bytes than psdu_size
+	uint32_t msg_length = (psdusize)-28;
+	uint8_t out[output_length];
+	int state = 0; //start
+	int verbose = ((ref != NULL) && (msg != NULL));
+	// find the initial state of LFSR (linear feedback shift register: 7 bits) from first 7 input bits
+	for(int i = 0; i < 7; i++)
+	{
+		if(*(in+i))
+		{
+			state |= 1 << (6 - i);
+		}
+	}
+	//init o/p array to zeros
+	for (int i=0; i<output_length; i++ )
+	{
+		out[i] = 0;
+	}
+
+	out[0] = state; //initial value
+	int feedback;
+	int bit;
+	int index = 0;
+	int mod = 0;
+	for(int i = 7; i < (psdusize*8)+16; i++) // 2 bytes more than psdu_size -> convert to bits
+	{
+		feedback = ((!!(state & 64))) ^ (!!(state & 8));
+		bit = feedback ^ (*(in+i) & 0x1);
+		index = i/8;
+		mod =  i%8;
+		int comp1, comp2, val, comp3;
+		comp1 = (bit << mod);
+		val = out[index];
+		comp2 = val | comp1;
+		out[index] =  comp2;
+		comp3 = out[index];
+		state = ((state << 1) & 0x7e) | feedback;
+	}
+
+	for (int i = 0; i< msg_length; i++)
+	  {
+	    out_msg[i] = out[i+26];
+	  }
+	out_msg[msg_length] = '\0';
+
+	if (verbose) {
+	  printf("\n");
+	  printf(">>>>>> Descrambler output is here: >>>>>> \n");
+	  int  des_error_count = 0;
+	  for (int i = 0; i < output_length ; i++)
+	    {
+	      if (out[i] != *(ref+i))
+		{
+		  printf(">>>>>> Miscompare: descrambler[%d] = %u vs %u = EXPECTED_VALUE[%d]\n", i, out[i], *(ref+i), i);
+		  des_error_count++;
+		}
+	    }
+	  if (des_error_count !=0)
+	    {
+	      printf(">>>>>> Mismatch in the descrambler block, please check the inputs and algorithm one last time. >>>>>> \n");
+	    }
+	  else
+	    {
+	      printf("!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! \n");
+	    }
+	  printf("\n");
+	  printf(">>>>>> Decoded text message is here: >>>>>> \n");
+
+	  for (int i = 0; i< msg_length; i++)
+	    {
+	      printf("%c", out_msg[i]);	
+	    }
+	  printf("\n");
+
+	  int  msg_error_count = 0;
+	  for (int i = 0; i < msg_length ; i++)
+	    {
+	      if (out_msg[i] != *(msg+i))
+		{
+		  printf(">>>>>> Miscompare: text_msg[%c] = %c vs %c = EXPECTED_VALUE[%c]\n", i, out_msg[i], *(msg+i), i);
+		  msg_error_count++;
+		}
+	    }
+	  if (msg_error_count !=0)
+	    {
+	      printf(">>>>>> Mismatch in the text message, please check the inputs and algorithm one last time. >>>>>> \n");
+	    }
+	  else
+	    {
+	      printf("!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! \n");
+	    } 
+	  printf("\n");
+	}
+}
 void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
               frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
               size_t in_bit_size, message_t *message_id, size_t msg_id_size,
               char *out_msg_text, size_t out_msg_text_size) {
 
-  __hpvm__hint(EPOCHS_TARGET);
+  __hpvm__hint(DEVICE);
   __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text,
                      2, message_id, out_msg_text);
   __hpvm__task(VIT_TASK);
@@ -624,7 +694,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 
 void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
 
-  __hpvm__hint(EPOCHS_TARGET);
+  __hpvm__hint(DEVICE);
   __hpvm__attributes(1, obj_label, 1, obj_label);
   __hpvm__task(CV_TASK);
 
@@ -664,7 +734,7 @@ void radar_leaf(distance_t *distance_ptr, size_t distance_ptr_size,
                 float *inputs_ptr, size_t inputs_ptr_size,
                 uint32_t log_nsamples) {
 
-  __hpvm__hint(EPOCHS_TARGET);
+  __hpvm__hint(DEVICE);
   __hpvm__attributes(2, distance_ptr, inputs_ptr, 2, distance_ptr, inputs_ptr);
   __hpvm__task(RADAR_TASK);
 
@@ -801,7 +871,7 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
               size_t msg_id_size, char *out_msg_text, size_t out_msg_text_size,
               unsigned time_step, unsigned repeat_factor) {
 
-  __hpvm__hint(EPOCHS_TARGET);
+  __hpvm__hint(DEVICE);
   __hpvm__attributes(6, new_vehicle_state, vehicle_state_ptr, distance_ptr,
                      obj_label, message_id, out_msg_text, 1, new_vehicle_state);
   __hpvm__task(PNC_TASK);

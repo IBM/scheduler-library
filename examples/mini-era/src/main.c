@@ -23,7 +23,9 @@
 
 #include "verbose.h"
 
+#ifndef HPVM
 #include "cv_accel.h"
+#include "cpu_accel.h"
 #include "fft_accel.h"
 #include "vit_accel.h"
 #include "scheduler.h"
@@ -34,6 +36,7 @@
 #include "vit_task.h"
 #include "plan_ctrl_task.h"
 #include "test_task.h"
+#endif
 
 #include "getopt.h"
 #include "kernels_api.h"
@@ -54,13 +57,16 @@ char cv_dict[256];
 char rad_dict[256];
 char vit_dict[256];
 
-#include "cpu_accel.h"
-#include "cv_accel.h"
-#include "fft_accel.h"
-#include "vit_accel.h"
+//#include "cpu_accel.h"
+//#include "cv_accel.h"
+//#include "fft_accel.h"
+//#include "vit_accel.h"
 
+#ifdef HPVM
 #include "hpvm_tasks.h"
+#endif
 
+#ifndef HPVM
 // Storage to hold the accelerator IDs (returned when we register accelerators)
 // of the accelerator types we will need/use
 accelerator_type_t cpu_accel_id;
@@ -93,11 +99,13 @@ uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short,
 uint64_t cv_profile[MY_APP_ACCEL_TYPES];
 uint64_t test_profile[MY_APP_ACCEL_TYPES];
 uint64_t plan_ctrl_profile[MY_APP_ACCEL_TYPES];
+#endif
 
 bool all_obstacle_lanes_mode = false;
 bool no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
+#ifndef HPVM
 unsigned task_size_variability;
 
 bool enable_sl_viz_output = false;
@@ -107,6 +115,7 @@ int input_accel_limit_cpu = -1;
 int input_accel_limit_fft = -1;
 int input_accel_limit_vit = -1;
 int input_accel_limit_cv = -1;
+#endif
 
 void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -206,6 +215,7 @@ void print_usage(char *pname) {
 // message here...
 //  This SHOULD be a routine that "does the right work" for a given task, and
 //  then releases the MetaData Block
+#ifndef HPVM
 void base_release_metadata_block(task_metadata_block_t *mb) {
   TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
@@ -219,6 +229,7 @@ void base_release_metadata_block(task_metadata_block_t *mb) {
   // Thread is done -- We shouldn't need to do anything else -- when it returns
   // from its starting function it should exit.
 }
+#endif
 
 /*void radar_release_metadata_block(task_metadata_block_t* mb)
 {
@@ -235,7 +246,7 @@ mb->block_id)); free_task_metadata_block(mb);
   // Thread is done -- We shouldn't need to do anything else -- when it returns
 from its starting function it should exit.
   }*/
-
+#ifndef HPVM
 void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
@@ -404,6 +415,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
 
   printf("Done Setting up/Registering Accelerators and Task Types...\n\n");
 }
+#endif
 
 
 int main(int argc, char *argv[]) {
@@ -423,7 +435,7 @@ int main(int argc, char *argv[]) {
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0] = '\0';
-
+#ifndef HPVM
   unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
@@ -432,7 +444,6 @@ int main(int argc, char *argv[]) {
   unsigned sched_holdoff_usec = 0;
   char policy[256];
   unsigned num_MBs_to_use = 32; // pick a value ...
-
   unsigned num_maxTasks_to_use = my_num_task_types;
   unsigned using_the_Test_Tasks = false;
 
@@ -443,6 +454,7 @@ int main(int argc, char *argv[]) {
 
   set_up_scheduler();
   initialize_task_lib();
+#endif
   
   // put ':' in the starting of the
   // string so that program can
@@ -474,7 +486,9 @@ int main(int argc, char *argv[]) {
       snprintf(vit_dict, 255, "%s", optarg);
       break;
     case 'u':
+#ifndef HPVM
       sched_holdoff_usec = atoi(optarg);
+#endif
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -506,7 +520,9 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'S':
+#ifndef HPVM
       task_size_variability = atoi(optarg);
+#endif
       break;
     case 'W':
 #ifdef USE_SIM_ENVIRON
@@ -514,21 +530,30 @@ int main(int argc, char *argv[]) {
 #endif
       break;
     case 'F':
+#ifndef HPVM
       additional_fft_tasks_per_time_step = atoi(optarg);
+#endif
       break;
     case 'M':
+#ifndef HPVM
       additional_vit_tasks_per_time_step = atoi(optarg);
+#endif
       break;
     case 'N':
+#ifndef HPVM
       additional_cv_tasks_per_time_step = atoi(optarg);
+#endif
       break;
     case 'P':
+#ifndef HPVM
       snprintf(policy, 255, "%s", optarg);
+#endif
       // printf("Set policy to '%s'\n", policy);
       // global_scheduler_selection_policy = atoi(optarg);
       break;
 
     case 'd':
+#ifndef HPVM
 #ifdef FAKE_HW_CV
       cv_fake_hwr_run_time_in_usec = atoi(optarg);
 #else
@@ -536,21 +561,29 @@ int main(int argc, char *argv[]) {
       print_usage(argv[0]);
       exit(-1);
 #endif
+#endif
       break;
     case 'D':
+#ifndef HPVM
       cv_cpu_run_time_in_usec = atoi(optarg);
+#endif
       break;
     case 'G':
+#ifndef HPVM
       snprintf(global_config_file, 255, "%s", optarg);
       printf("Set global_config_file to `%s`\n", global_config_file);
+#endif
       break;
 
     case 'B':
+#ifndef HPVM
       num_MBs_to_use = atoi(optarg);
+#endif
       break;
 
     case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
     {
+#ifndef HPVM
       unsigned in_cpu = 0;
       unsigned in_cv = 0;
       unsigned in_fft = 0;
@@ -565,10 +598,12 @@ int main(int argc, char *argv[]) {
       input_accel_limit_fft = in_fft;
       input_accel_limit_vit = in_vit;
       input_accel_limit_cv = in_cv;
+#endif
     } break;
 
     case 'X': // Add an X-tra task type (with "fake" execution usec times
     {
+#ifndef HPVM
       unsigned nCrit = 0;
       unsigned nBase = 0;
       unsigned on_cpu = 0;
@@ -596,23 +631,32 @@ int main(int argc, char *argv[]) {
             test_on_cpu_run_time_in_usec, test_on_hwr_fft_run_time_in_usec,
             test_on_hwr_vit_run_time_in_usec, test_on_hwr_cv_run_time_in_usec));
       }
+#endif
     } break;
 
     case 'O':
+#ifndef HPVM
       enable_sl_viz_output = true;
       snprintf(my_sl_viz_fname, 255, "%s", optarg);
+#endif
       break;
 
     case 'i':
+#ifndef HPVM
       viz_task_start_count = atol(optarg);
+#endif
       break;
 
     case 'I':
+#ifndef HPVM
       viz_task_start_type = atol(optarg);
+#endif
       break;
 
     case 'e':
+#ifndef HPVM
       viz_task_stop_count = atol(optarg);
+#endif
       break;
 
     case ':':
@@ -637,6 +681,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
+#ifndef HPVM
   scheduler_datastate_block_t *sptr = NULL;
   if (global_config_file[0] == '\0') {
     // Get a struct that identifies the Scheduler Set-Up input parameters
@@ -781,13 +826,15 @@ int main(int argc, char *argv[]) {
   printf("  and cv_fake_hwr_run_time_in_usec set to %u\n",
          cv_fake_hwr_run_time_in_usec);
 #endif
-
+#endif
   printf("Using Plan-And-Control repeat factor %u\n", pandc_repeat_factor);
   printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n",
          crit_fft_samples_set);
   printf("Using viterbi message size %u = %s\n", vit_msgs_size,
          vit_msgs_size_str[vit_msgs_size]);
+#ifndef HPVM
   printf("Using task-size variability behavior %u\n", task_size_variability);
+#endif
   printf("Using %u maximum time steps (simulation)\n", max_time_steps);
 #ifdef USE_SIM_ENVIRON
   printf("Using world description file: %s\n", world_desc_file_name);
@@ -806,6 +853,7 @@ int main(int argc, char *argv[]) {
     sprintf(cv_dict, "traces/objects_dictionary.dfn");
   }
 
+#ifndef HPVM
   if (enable_sl_viz_output) {
     if (viz_task_start_type == NO_Task) {
       if (viz_task_start_count < 0) {
@@ -836,12 +884,14 @@ int main(int argc, char *argv[]) {
   } else {
     printf("No Scheduler-Viz tracing output\n");
   }
+#endif
 
   printf("\nDictionaries:\n");
   printf("   CV/CNN : %s\n", cv_dict);
   printf("   Radar  : %s\n", rad_dict);
   printf("   Viterbi: %s\n", vit_dict);
 
+#ifndef HPVM
   printf("\n There are %u additional FFT, %u addtional Viterbi and %u "
          "Additional CV/CNN tasks per time step\n",
          additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step,
@@ -853,9 +903,11 @@ int main(int argc, char *argv[]) {
   if (additional_cv_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_cv_tasks_per_time_step;
   }
+#endif
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
+#ifndef HPVM
   if (sptr->inparms->policy[0] == '\0') {
     printf("Error: a policy was not specified. Use -P to define the task "
            "scheduling policy to use.\n");
@@ -884,7 +936,7 @@ int main(int argc, char *argv[]) {
          sptr->num_accelerators_of_type[fft_hwr_accel_id],
          sptr->num_accelerators_of_type[vit_hwr_accel_id],
          sptr->num_accelerators_of_type[cv_hwr_accel_id]);
-
+#endif
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
   if (init_trace_reader(trace_file) != success) {
@@ -897,36 +949,38 @@ int main(int argc, char *argv[]) {
 
   /* Kernels initialization */
   printf("Initializing the CV kernel...\n");
-  if (init_cv_kernel(sptr, cv_py_file, cv_dict) != success) {
+  if (init_cv_kernel(cv_py_file, cv_dict) != success) {
     printf("Error: the computer vision kernel couldn't be initialized "
            "properly.\n");
     return 1;
   }
   printf("Initializing the Radar kernel...\n");
-  if (init_radar_kernel(sptr, rad_dict) != success) {
+  if (init_radar_kernel(rad_dict) != success) {
     printf("Error: the radar kernel couldn't be initialized properly.\n");
     return 1;
   }
   printf("Initializing the Viterbi kernel...\n");
-  if (init_vit_kernel(sptr, vit_dict) != success) {
+  if (init_vit_kernel(vit_dict) != success) {
     printf("Error: the Viterbi decoding kernel couldn't be initialized "
            "properly.\n");
     return 1;
   }
+#ifndef HPVM
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
-    if (init_test_kernel(sptr, "") != success) {
+    if (init_test_kernel("") != success) {
       printf(
           "Error: the testing-task kernel couldn't be initialized properly.\n");
       return 1;
     }
   }
+#endif
 
   if (crit_fft_samples_set >= num_radar_samples_sets) {
     printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there "
            "are only %u sets in the dictionary %s\n",
            crit_fft_samples_set, num_radar_samples_sets, rad_dict);
     print_usage(argv[0]);
-    cleanup_and_exit(sptr, -1);
+    exit(-1);
   }
 
   /* We assume the vehicle starts in the following state:
@@ -944,7 +998,7 @@ int main(int argc, char *argv[]) {
   // In simulation mode, we could start the main car is a different state (lane,
   // speed)
   if (init_sim_environs(world_desc_file_name, &vehicle_state) == error) {
-    cleanup_and_exit(sptr, -1);
+    exit(-1);
   }
 #endif
 
@@ -1021,7 +1075,7 @@ int main(int argc, char *argv[]) {
   DEBUG(printf("\n\nTime Step %d\n", time_step));
   while (iterate_sim_environs(vehicle_state))
 #else // TRACE DRIVEN MODE
-  read_next_trace_record(sptr, vehicle_state);
+  read_next_trace_record(vehicle_state);
   DEBUG(
       printf("Starting main while loop : max_stim_steps %u\n", max_time_steps));
   while ((time_step < max_time_steps) && (!eof_trace_reader()))
@@ -1037,7 +1091,7 @@ int main(int argc, char *argv[]) {
 #ifdef TIME
     gettimeofday(&start_iter_cv, NULL);
 #endif
-    label_t cv_tr_label = iterate_cv_kernel(sptr, vehicle_state);
+    label_t cv_tr_label = iterate_cv_kernel(vehicle_state);
 #ifdef TIME
     gettimeofday(&stop_iter_cv, NULL);
     iter_cv_sec += stop_iter_cv.tv_sec - start_iter_cv.tv_sec;
@@ -1050,7 +1104,7 @@ int main(int argc, char *argv[]) {
 #ifdef TIME
     gettimeofday(&start_iter_rad, NULL);
 #endif
-    radar_dict_entry_t *rdentry_p = iterate_radar_kernel(sptr, vehicle_state);
+    radar_dict_entry_t *rdentry_p = iterate_radar_kernel(vehicle_state);
 #ifdef TIME
     gettimeofday(&stop_iter_rad, NULL);
     iter_rad_sec += stop_iter_rad.tv_sec - start_iter_rad.tv_sec;
@@ -1069,25 +1123,27 @@ int main(int argc, char *argv[]) {
 #ifdef TIME
     gettimeofday(&start_iter_vit, NULL);
 #endif
-    vit_dict_entry_t *vdentry_p = iterate_vit_kernel(sptr, vehicle_state);
+    vit_dict_entry_t *vdentry_p = iterate_vit_kernel(vehicle_state);
 #ifdef TIME
     gettimeofday(&stop_iter_vit, NULL);
     iter_vit_sec += stop_iter_vit.tv_sec - start_iter_vit.tv_sec;
     iter_vit_usec += stop_iter_vit.tv_usec - start_iter_vit.tv_usec;
 #endif
 
+#ifndef HPVM
     test_dict_entry_t *tdentry_p;
     if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
 #ifdef TIME
       gettimeofday(&start_iter_test, NULL);
 #endif
-      tdentry_p = iterate_test_kernel(sptr, vehicle_state);
+      tdentry_p = iterate_test_kernel(vehicle_state);
 #ifdef TIME
       gettimeofday(&stop_iter_test, NULL);
       iter_test_sec += stop_iter_test.tv_sec - start_iter_test.tv_sec;
       iter_test_usec += stop_iter_test.tv_usec - start_iter_test.tv_usec;
 #endif
     }
+#endif
 
     // EXECUTE the kernels using the now known inputs
 #ifdef TIME
@@ -1324,7 +1380,7 @@ int main(int argc, char *argv[]) {
     
     printf("Launching HPVM graph!\n");
 
-    hpvm_launch(DFArgs, &cv_tr_label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, distance, vit_msgs_size, vdentry_p, message, out_msg_text, vehicle_state, new_vehicle_state, pandc_repeast_factor);
+    hpvm_launch(DFGArgs, &cv_tr_label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
 
 
 
@@ -1344,7 +1400,7 @@ int main(int argc, char *argv[]) {
     time_step++;
 
 #ifndef USE_SIM_ENVIRON
-    read_next_trace_record(sptr, vehicle_state);
+    read_next_trace_record(vehicle_state);
 #endif
   }
 
@@ -1410,11 +1466,12 @@ int main(int argc, char *argv[]) {
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
 #endif // TIME
-  shutdown_scheduler(sptr);
-  printf("\nDone.\n");
 
 #ifdef HPVM
   hpvm_cleanup(DFGArgs);
+#else
+  shutdown_scheduler(sptr);
 #endif
+  printf("\nDone.\n");
   return 0;
 }

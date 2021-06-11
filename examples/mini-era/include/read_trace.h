@@ -17,15 +17,19 @@
 
 #ifndef H_READ_TRACE_H
 #define H_READ_TRACE_H
-
+#ifndef HPVM
 #include "plan_ctrl_task.h"
+#else
+#include "base_types.h"
+#endif
+
 
 /* File pointer to the input trace */
 extern FILE *input_trace;
 
 
 status_t init_trace_reader(char* trace_filename);
-bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
+bool read_next_trace_record(vehicle_state_t vs);
 bool eof_trace_reader();
 void closeout_trace_reader();
 

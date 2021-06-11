@@ -24,10 +24,11 @@
 
 #include "base_task_types.h"
 #include "scheduler.h"
+//#include "kernels_api.h"
 
-// This is the number of fft samples (the log of the samples, e.g. 10 = 1024
-// samples, 14 = 16k-samples)
-extern unsigned crit_fft_samples_set;
+//// This is the number of fft samples (the log of the samples, e.g. 10 = 1024
+//// samples, 14 = 16k-samples)
+//extern unsigned crit_fft_samples_set;
 
 // This is a structure that defines the "FFT" job's "view" of the data (in the
 // metadata structure)

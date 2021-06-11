@@ -19,13 +19,13 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "scheduler.h" // for cleanup_and_exit
+#ifndef HPVM
 #include "fft_task.h"
 #include "vit_task.h"
 #include "cv_task.h"
 #include "test_task.h"
 #include "plan_ctrl_task.h"
-
+#endif
 #include "kernels_api.h"
 
 #ifdef USE_SIM_ENVIRON
@@ -144,16 +144,14 @@ unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full
 
 
 
-
-status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn)
+status_t init_cv_kernel(char* py_file, char* dict_fn)
 {
   DEBUG(printf("In the init_cv_kernel routine\n"));
   /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
   // Initialization to run Keras CNN code
   return success;
 }
-
-label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+label_t iterate_cv_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_cv_kernel\n"));
 
@@ -164,7 +162,8 @@ label_t iterate_cv_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
     case 'C' : tr_val = car; break;
     case 'P' : tr_val = pedestrian; break;
     case 'T' : tr_val = truck; break;
-  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); cleanup_and_exit(sptr, -2);
+  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); 
+           exit(-2);
   }
   label_t d_object = (label_t)tr_val;
 
@@ -219,8 +218,7 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 }
 
 
-
-status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+status_t init_radar_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_radar_kernel...\n"));
 
@@ -235,7 +233,7 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   // Read the number of definitions
   if (fscanf(dictF, "%u %u\n", &num_radar_samples_sets, &radar_dict_items_per_set) != 2) {
     printf("ERROR reading the number of Radar Dictionary sets and items per set\n");
-    cleanup_and_exit(sptr, -2);
+    exit(-2);
   }
   DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, radar_dict_items_per_set));
   the_radar_return_dict = (radar_dict_entry_t**)calloc(num_radar_samples_sets, sizeof(radar_dict_entry_t*));
@@ -257,7 +255,7 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   for (int si = 0; si < num_radar_samples_sets; si++) {
     if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
-      cleanup_and_exit(sptr, -2);
+    exit(-2);
     }
     DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
     for (int di = 0; di < radar_dict_items_per_set; di++) {
@@ -267,11 +265,11 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
       unsigned entry_dict_values = 0;
       if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
-	cleanup_and_exit(sptr, -2);
+    exit(-2);
       }
       if (radar_log_nsamples_per_dict_set[si] != entry_log_nsamples) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
-	cleanup_and_exit(sptr, -2);
+    exit(-2);
       }
 
       DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
@@ -285,7 +283,7 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 	float fin;
 	if (fscanf(dictF, "%f", &fin) != 1) {
 	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
-	  cleanup_and_exit(sptr, -2);
+    exit(-2);
 	}
 	the_radar_return_dict[si][di].return_data[i] = fin;
 	tot_dict_values++;
@@ -348,7 +346,7 @@ radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
 
 
 
-radar_dict_entry_t* iterate_radar_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_radar_kernel\n"));
   unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
@@ -427,13 +425,12 @@ void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist,
  *  m1 m2 m3 m4 m5 : FRAME parms:
  *  x1 x2 x3 ...   : The message bits (input to decode routine)
  */
-
-status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+status_t init_vit_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
   if (vit_msgs_size >= VITERBI_LENGTHS) {
     printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
-    cleanup_and_exit(sptr, -1);
+    exit(-1);
   }
   // Read in the object images dictionary file
   FILE *dictF = fopen(dict_fn,"r");
@@ -447,7 +444,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   // Read the number of messages
   if (fscanf(dictF, "%u\n", &num_viterbi_dictionary_items) != 1) {
     printf("ERROR reading the number of Viterbi Dictionary items\n");
-    cleanup_and_exit(sptr, -2);
+    exit(-2);
   }
   DEBUG(printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items));
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
@@ -466,12 +463,12 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     int mnum, mid;
     if (fscanf(dictF, "%d %d\n", &mnum, &mid) != 2) {
       printf("Error reading viterbi kernel dictionary enry %u header: Message_number and Message_id\n", i);
-      cleanup_and_exit(sptr, -2);
+      exit(-2);
     }
     DEBUG(printf(" V_MSG: num %d Id %d\n", mnum, mid));
     if (mnum != i) {
       printf("ERROR : Check Viterbi Dictionary : i = %d but Mnum = %d  (Mid = %d)\n", i, mnum, mid);
-      cleanup_and_exit(sptr, -5);
+      exit(-5);
     }
     the_viterbi_trace_dict[i].msg_num = mnum;
     the_viterbi_trace_dict[i].msg_id = mid;
@@ -479,7 +476,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     int in_bpsc, in_cbps, in_dbps, in_encoding, in_rate; // OFDM PARMS
     if (fscanf(dictF, "%d %d %d %d %d\n", &in_bpsc, &in_cbps, &in_dbps, &in_encoding, &in_rate) != 5) {
       printf("Error reading viterbi kernel dictionary entry %u bpsc, cbps, dbps, encoding and rate info\n", i);
-      cleanup_and_exit(sptr, -2);
+      exit(-2);
     }
 
     DEBUG(printf("  OFDM: %d %d %d %d %d\n", in_bpsc, in_cbps, in_dbps, in_encoding, in_rate));
@@ -492,7 +489,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     int in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits;
     if (fscanf(dictF, "%d %d %d %d %d\n", &in_pdsu_size, &in_sym, &in_pad, &in_encoded_bits, &in_data_bits) != 5) {
       printf("Error reading viterbi kernel dictionary entry %u psdu num_sym, pad, n_encoded_bits and n_data_bits\n", i);
-      cleanup_and_exit(sptr, -2);
+      exit(-2);
     }
     DEBUG(printf("  FRAME: %d %d %d %d %d\n", in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits));
     the_viterbi_trace_dict[i].frame_p.psdu_size      = in_pdsu_size;
@@ -507,7 +504,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
       unsigned c;
       if (fscanf(dictF, "%u ", &c) != 1) {
 	printf("Error reading viterbi kernel dictionary entry %u data\n", i);
-	cleanup_and_exit(sptr, -6);
+  exit(-6);
       }
       #ifdef SUPER_VERBOSE
       printf("%u ", c);
@@ -538,7 +535,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
  * (i.e. which message if the autonomous car is in the
  *  left, middle or right lane).
  */
-vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   hist_total_objs[total_obj]++;
@@ -634,8 +631,8 @@ vit_dict_entry_t* select_random_vit_input()
   return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
 }
 
-extern void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
-extern uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);
+/*extern void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);*/
+/*extern uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);*/
 
 /*void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
 {
@@ -692,11 +689,11 @@ void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
   }
 }
 
-
+#ifndef HPVM
 // The Test Task is just a dummy task we can apply to any accelerator
 //  during a run, with a fixed execution time...
 
-status_t init_test_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+status_t init_test_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_test_kernel...\n"));
   /* Read in the object images dictionary file
@@ -714,7 +711,7 @@ status_t init_test_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   return success;
 }
 
-test_dict_entry_t* iterate_test_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_test_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   test_dict_entry_t* tde = NULL; // Currently we don't have a test-dictionary
@@ -722,22 +719,22 @@ test_dict_entry_t* iterate_test_kernel(scheduler_datastate_block_t* sptr, vehicl
   return tde;
 }
 
-void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)
-{
-  DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));
-  request_execution(mb_ptr);
-}
+/*void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)*/
+/*{*/
+  /*DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));*/
+  /*request_execution(mb_ptr);*/
+/*}*/
 
-test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)
-{
-  test_res_t tres = TEST_TASK_DONE;
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u fin_test Calling free_task_metadata_block\n", mb_ptr->block_id));
-  free_task_metadata_block(mb_ptr);
+/*test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)*/
+/*{*/
+  /*test_res_t tres = TEST_TASK_DONE;*/
+  /*// We've finished the execution and lifetime for this task; free its metadata*/
+  /*DEBUG(printf("  MB%u fin_test Calling free_task_metadata_block\n", mb_ptr->block_id));*/
+  /*free_task_metadata_block(mb_ptr);*/
   
-  DEBUG(printf("MB%u The finish_execution_of_test_kernel is returning tres %u\n", mb_ptr->block_id, tres));
-  return tres;
-}
+  /*DEBUG(printf("MB%u The finish_execution_of_test_kernel is returning tres %u\n", mb_ptr->block_id, tres));*/
+  /*return tres;*/
+/*}*/
 
 void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
 {
@@ -746,7 +743,7 @@ void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
     bad_test_task_res++;
   }
 }
-
+#endif
 /* #undef DEBUG */
 /* #define DEBUG(x) x */
 
@@ -812,7 +809,6 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 	break; /* Stop!!! */
     default:
       printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state.lane], message);
-      //cleanup_and_exit(sptr, -6);
     }
   } else {
     // No obstacle-inspired lane change, so try now to occupy the center lane
@@ -962,28 +958,28 @@ void closeout_test_kernel()
 
 
 
-void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
-{
-  int tidx = mb_ptr->accelerator_type;
-  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
-  // Data is set up prior to call here...
-  //plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
- #ifdef INT_TIME
-  gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
- #endif
-  request_execution(mb_ptr);
-  // This now ends this block -- we've kicked off execution
-}
+/*void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
+/*{*/
+  /*int tidx = mb_ptr->accelerator_type;*/
+  /*plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);*/
+  /*// Data is set up prior to call here...*/
+  /*//plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
+ /*#ifdef INT_TIME*/
+  /*gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);*/
+ /*#endif*/
+  /*request_execution(mb_ptr);*/
+  /*// This now ends this block -- we've kicked off execution*/
+/*}*/
 
-vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));
-  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
-  vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;
-  DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
-  // We've finished the execution and lifetime for this task; free its metadata
-  free_task_metadata_block(mb_ptr);
+/*vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
+/*{*/
+  /*DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));*/
+  /*plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
+  /*vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;*/
+  /*DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));*/
+  /*// We've finished the execution and lifetime for this task; free its metadata*/
+  /*free_task_metadata_block(mb_ptr);*/
 
-  return vehicle_state;
-}
+  /*return vehicle_state;*/
+/*}*/
 

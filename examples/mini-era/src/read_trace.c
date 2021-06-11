@@ -50,14 +50,14 @@ status_t init_trace_reader(char* trace_filename)
 }
 
 void
-get_object_token(scheduler_datastate_block_t* sptr, char c)
+get_object_token(char c)
 {
   //DEBUG(printf("  get_object_token TK %u c %c last_i %u for %s\n", in_tok, c, last_i, &in_line_buf[last_i]));
   if (in_tok == 0) { // 0 => the object character
     char objc; 
     if (sscanf(&in_line_buf[last_i], "%c", &objc) != 1) {
       printf("Error reading input trace object token\n");
-      cleanup_and_exit(sptr, -7);
+      exit( -7);
     }
     lane_obj[in_lane][obj_in_lane[in_lane]] = objc;
     //if (obj_in_lane[in_lane] == 0) { // LAST is nearest -- but should be safer than that!
@@ -69,20 +69,20 @@ get_object_token(scheduler_datastate_block_t* sptr, char c)
     printf("ERROR : trace syntax is weird!\n");
     printf(" LINE : %s\n", in_line_buf);
     printf(" TOKN : %u hit %c from %s\n", last_i, c, &in_line_buf[last_i]);
-    cleanup_and_exit(sptr, -3);
+    exit( -3);
   }
   in_tok = 1 - in_tok; // Flip to expect distance token
 }
 
 void
-get_distance_token(scheduler_datastate_block_t* sptr, char c)
+get_distance_token(char c)
 {
   //DEBUG(printf("  get_distance_token TK %u c %c last_i %u for %s\n", in_tok, c, last_i, &in_line_buf[last_i]));
   if (in_tok == 1) { // 0 => the distance value
     unsigned distv;
     if (sscanf(&in_line_buf[last_i], "%u", &distv) != 1) {
       printf("Error reading input trace distance token\n");
-      cleanup_and_exit(sptr, -7);
+      exit( -7);
     }
     lane_dist[in_lane][obj_in_lane[in_lane]] = distv;
     //if (obj_in_lane[in_lane] == 0) {
@@ -92,18 +92,18 @@ get_distance_token(scheduler_datastate_block_t* sptr, char c)
     printf("ERROR : trace syntax is weird!\n");
     printf(" LINE : %s\n", in_line_buf);
     printf(" TOKN : %u hit %c from %s\n", last_i, c, &in_line_buf[last_i]);
-    cleanup_and_exit(sptr, -4);
+    exit( -4);
   }
   in_tok = 1 - in_tok; // Flip to expect object char token
 }
 
 
-bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t vs)
+bool read_next_trace_record(vehicle_state_t vs)
 {
   DEBUG(printf("In read_next_trace_record\n"));
   if (feof(input_trace)) { 
     printf("ERROR : invocation of read_next_trace_record indicates feof\n");
-    cleanup_and_exit(sptr, -1);
+    exit( -1);
   }
 
   total_obj = 0;
@@ -144,24 +144,24 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
     switch(c) {
     case ':':
       in_line_buf[i] = '\0';
-      get_object_token(sptr, c);
+      get_object_token(c);
       last_i = i+1;
       break;
     case ',':
       in_line_buf[i] = '\0';
-      get_distance_token(sptr, c);
+      get_distance_token(c);
       last_i = i+1;
       in_lane++;
       break;
     case ' ':
       in_line_buf[i] = '\0';
-      get_distance_token(sptr, c);
+      get_distance_token(c);
       last_i = i+1;
       break;
     case '\0':
     case '\n':
       in_line_buf[i] = '\0';
-      get_distance_token(sptr, c);
+      get_distance_token(c);
       last_i = i+1;
       i = 256;
       break;

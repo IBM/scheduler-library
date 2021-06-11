@@ -417,7 +417,7 @@ extern void shutdown_scheduler(scheduler_datastate_block_t *sptr);
 extern void init_accelerators_in_use_interval(scheduler_datastate_block_t *sptr,
                                               struct timeval start_prog);
 
-extern void cleanup_and_exit(scheduler_datastate_block_t *sptr, int rval);
+extern void cleanup_and_exit(int rval, void *sptr);
 
 task_type_t register_task_type(
     void *sptr, char *task_name, char *task_description,

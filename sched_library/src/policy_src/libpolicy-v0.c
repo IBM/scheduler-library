@@ -48,7 +48,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");
     //pthread_mutex_unlock(&schedule_from_queue_mutex);
-    cleanup_and_exit(sptr, -19);
+    exit( -19);
   }
 
   DEBUG(printf("SCHED-PnWT: In pick_accel_and_wait_for_available policy for MB%u : TID %u = %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type]));
@@ -73,7 +73,7 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     }
   } else {
     printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
-    cleanup_and_exit(sptr, -15);
+    exit( -15);
   }
 
   DEBUG(printf(" We've got proposed_accel %u with %u of that type\n", proposed_accel, sptr->num_accelerators_of_type[proposed_accel]));
