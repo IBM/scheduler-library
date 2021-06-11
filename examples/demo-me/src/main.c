@@ -37,6 +37,7 @@
 
 #include "getopt.h"
 #include "kernels_api.h"
+#include "occ_grid.h"
 
 /* Input Trace Functions */
 #ifndef USE_SIM_ENVIRON
@@ -159,6 +160,11 @@ void print_usage(char *pname) {
   printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
   printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
   printf("                :              per each accelerator type\n");
+  printf("    -g <str>    : Indicates which Occ-Grids should be displayed in ASCII to stdout:\n");
+  printf("                :   <str> can include ay combination of the following characters (e.g. cFr , Cr, etc.):\n");
+  printf("                :       c or C : display the locally-created occupancy grid-map\n");
+  printf("                :       r or R : display the remote-created occupancy grid-map (as it was received)\n");
+  printf("                :       f or F : display the fused local+remote occupancy grid-map\n");
   printf("\n");
   printf(" Options for the Scheduler-Visualizer tool (enable tracing to be visualized):\n");
   printf("    -O <fn>     : Output scheduler visualization trace information to file <fn>\n");
@@ -403,7 +409,7 @@ int main(int argc, char *argv[]) {
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) != -1) {
+  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:g:")) != -1) {
     switch (opt) {
     case 'h':
       print_usage(argv[0]);
@@ -489,6 +495,25 @@ int main(int argc, char *argv[]) {
     case 'G':
       snprintf(global_config_file, 255, "%s", optarg);
       printf("Set global_config_file to `%s`\n", global_config_file);
+      break;
+
+    case 'g':
+      for (int ci = 0; ci < strlen(optarg); ci++) {
+	switch (optarg[ci]) {
+	case 'c' :
+	case 'C' : show_my_created_occ_grid = true;
+	  break;
+	case 'r' :
+	case 'R' : show_remote_occ_grid = true;
+	  break;
+  	case 'f' :
+	case 'F' : show_my_fused_occ_grid = true;
+	  break;
+	default :
+	  printf("Don't recognize show-grid option '%c'\n", optarg[ci]);
+	  break;
+	}
+      }
       break;
 
     case 'B':
@@ -642,6 +667,12 @@ int main(int argc, char *argv[]) {
     sptr = initialize_scheduler_from_config_file(global_config_file);
   }
 
+  printf("RUN Settings: %u Lanes, Occ-Grid X %u and Y %u with %u Dist-Step\n", NUM_LANES, OCC_GRID_X_DIM, OCC_GRID_Y_DIM, GRID_DIST_STEP_SIZE);
+  printf("  OCC_GR has %u NEAR and %u FAR of ", OCC_NEXT_LANE_CLOSE, MAX_GRID_DIST_FAR_IDX);
+  for (int ti = 0; ti < MAX_GRID_DIST_FAR_IDX; ti++) {
+    printf("%u ", OCC_NEXT_LANE_FAR[ti]);
+  }
+  printf("\n");
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times "
          "%u Num_Acc_of_Any_Ty %u\n",
          sptr->inparms->max_task_types, sptr->inparms->max_accel_types,

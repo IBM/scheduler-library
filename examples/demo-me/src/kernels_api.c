@@ -497,17 +497,39 @@ uint64_t recv_pipe_usec = 0LL;
 uint8_t recvd_in[sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
 vit_dict_entry_t temp_vit_dict_entry;
 
+#include "occ_grid.h"
+
+bool show_my_created_occ_grid = false;
+bool show_remote_occ_grid = false;
+bool show_my_fused_occ_grid = false;
+
+#define OCC_GRID_UNKNOWN_VAL     0
+#define OCC_GRID_NO_OBSTACLE_VAL 1
+#define OCC_GRID_OBSTACLE_VAL    2
+#define OCC_GRID_MY_CAR_VAL      3
+
+char* occ_grid_from_value_str[4] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
+				     "---",   // OCC_GRID_NO_OBSTACLE_VAL 1
+				     "XXX",   // OCC_GRID_OBSTACLE_VAL    2
+				     "***" }; // OCC_GRID_MY_CAR_VAL      3
+
 
 unsigned MAX_GRID_DIST_FAR_IDX = 3;
-unsigned GRID_DIST_STEP_SIZE = 5;
+//unsigned GRID_DIST_STEP_SIZE = 5;
 
-unsigned OCC_GRID_X_DIM = NUM_LANES;
-unsigned OCC_GRID_Y_DIM = 100;    // MAX_DISTANCE / GRID_DIST_STEP_SIZE;
+//unsigned OCC_GRID_X_DIM = NUM_LANES;
+//unsigned OCC_GRID_Y_DIM = 101;    // MAX_DISTANCE / GRID_DIST_STEP_SIZE;
+// - THESE ARE IN occ_grid.h : #define OCC_GRID_X_DIM  NUM_LANES
+// - THESE ARE IN occ_grid.h : #define OCC_GRID_Y_DIM  101
 
 unsigned OCC_NEXT_LANE_CLOSE  = 75;
-unsigned OCC_NEXT_LANE_FAR[3] = {200, 300, 450};
+unsigned OCC_NEXT_LANE_CLOSE_GRID  = 75 / GRID_DIST_STEP_SIZE;
+unsigned OCC_NEXT_LANE_FAR[3] = {150, 300, 450};
 
-uint8_t my_occ_grid[NUM_LANES][100]; // [OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+unsigned MY_CAR_OCC_GRID_SIZE = 5; // 25 / GRID_DIST_STEP_SIZE;
+
+//uint8_t my_occ_grid[NUM_LANES][100]; // [OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+uint8_t my_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
 
 status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
@@ -575,101 +597,6 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
     cleanup_and_exit(sptr, -1);
   }
-  /***
-   // Read in the object images dictionary file
-   FILE *dictF = fopen(dict_fn,"r");
-   if (!dictF)
-   {
-   printf("Error: unable to open viterbi dictionary definition file %s\n", dict_fn);
-   return error;
-   }
-
-   // Read in the trace message dictionary from the trace file
-   // Read the number of messages
-   if (fscanf(dictF, "%u\n", &num_viterbi_dictionary_items) != 1) {
-   printf("ERROR reading the number of Viterbi Dictionary items\n");
-   cleanup_and_exit(sptr, -2);
-   }
-   DEBUG(printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items));
-   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
-   if (the_viterbi_trace_dict == NULL)
-   {
-   printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space\n");
-   fclose(dictF);
-   return error;
-   }
-
-   // Read in each dictionary item
-   for (int i = 0; i < num_viterbi_dictionary_items; i++)
-   {
-   DEBUG(printf("  Reading vit dictionary entry %u\n", i)); //the_viterbi_trace_dict[i].msg_id));
-
-   int mnum, mid;
-   if (fscanf(dictF, "%d %d\n", &mnum, &mid) != 2) {
-   printf("Error reading viterbi kernel dictionary enry %u header: Message_number and Message_id\n", i);
-   cleanup_and_exit(sptr, -2);
-   }
-   DEBUG(printf(" V_MSG: num %d Id %d\n", mnum, mid));
-   if (mnum != i) {
-   printf("ERROR : Check Viterbi Dictionary : i = %d but Mnum = %d  (Mid = %d)\n", i, mnum, mid);
-   cleanup_and_exit(sptr, -5);
-   }
-   the_viterbi_trace_dict[i].msg_num = mnum;
-   the_viterbi_trace_dict[i].msg_id = mid;
-
-   int in_bpsc, in_cbps, in_dbps, in_encoding, in_rate; // OFDM PARMS
-   if (fscanf(dictF, "%d %d %d %d %d\n", &in_bpsc, &in_cbps, &in_dbps, &in_encoding, &in_rate) != 5) {
-   printf("Error reading viterbi kernel dictionary entry %u bpsc, cbps, dbps, encoding and rate info\n", i);
-   cleanup_and_exit(sptr, -2);
-   }
-
-   DEBUG(printf("  OFDM: %d %d %d %d %d\n", in_bpsc, in_cbps, in_dbps, in_encoding, in_rate));
-   the_viterbi_trace_dict[i].ofdm_p.encoding   = in_encoding;
-   the_viterbi_trace_dict[i].ofdm_p.n_bpsc     = in_bpsc;
-   the_viterbi_trace_dict[i].ofdm_p.n_cbps     = in_cbps;
-   the_viterbi_trace_dict[i].ofdm_p.n_dbps     = in_dbps;
-   the_viterbi_trace_dict[i].ofdm_p.rate_field = in_rate;
-
-   int in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits;
-   if (fscanf(dictF, "%d %d %d %d %d\n", &in_pdsu_size, &in_sym, &in_pad, &in_encoded_bits, &in_data_bits) != 5) {
-   printf("Error reading viterbi kernel dictionary entry %u psdu num_sym, pad, n_encoded_bits and n_data_bits\n", i);
-   cleanup_and_exit(sptr, -2);
-   }
-   DEBUG(printf("  FRAME: %d %d %d %d %d\n", in_pdsu_size, in_sym, in_pad, in_encoded_bits, in_data_bits));
-   the_viterbi_trace_dict[i].frame_p.psdu_size      = in_pdsu_size;
-   the_viterbi_trace_dict[i].frame_p.n_sym          = in_sym;
-   the_viterbi_trace_dict[i].frame_p.n_pad          = in_pad;
-   the_viterbi_trace_dict[i].frame_p.n_encoded_bits = in_encoded_bits;
-   the_viterbi_trace_dict[i].frame_p.n_data_bits    = in_data_bits;
-
-   int num_in_bits = in_encoded_bits + 10; // strlen(str3)+10; //additional 10 values
-   DEBUG(printf("  Reading %u in_bits\n", num_in_bits));
-   for (int ci = 0; ci < num_in_bits; ci++) {
-   unsigned c;
-   if (fscanf(dictF, "%u ", &c) != 1) {
-   printf("Error reading viterbi kernel dictionary entry %u data\n", i);
-   cleanup_and_exit(sptr, -6);
-   }
-   #ifdef SUPER_VERBOSE
-   printf("%u ", c);
-   #endif
-   the_viterbi_trace_dict[i].in_bits[ci] = (uint8_t)c;
-   }
-   DEBUG(printf("\n"));
-   }
-   fclose(dictF);
-  
-  //Clear the messages (injected) histogram
-  for (int i = 0; i < VITERBI_LENGTHS; i++) {
-    for (int j = 0; j < NUM_MESSAGES; j++) {
-      viterbi_messages_histogram[i][j] = 0;
-    }
-  }
-
-  for (int i = 0; i < NUM_LANES * MAX_OBJ_IN_LANE; i++) {
-    hist_total_objs[i] = 0;
-  }
-  **/
 
   DEBUG(printf("DONE with init_vit_kernel -- returning success\n"));
   return success;
@@ -708,32 +635,41 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   // Form my local occupancy grid map
-  //  We go through the lanes around the one I occupy, using a "fan" of vision such that I see the first bstacle straight ahead,
-  //   and I see any obstacle in the neighboring lane that is either wihtin N distance or at greater than M distance,
-  //   and I see into the 3rd lane at 2M distance or greater, etc.
-  // I plan to start with N = ~
+  //  We go through the lanes around the one I occupy, using a "fan" of vision such that
+  //   I "see" the first bstacle straight ahead,
+  //   and I "see" any obstacle in the neighboring lane that is either wihtin N distance or at greater than M distance,
+  //   and I "see" into the 3rd lane at 2M distance or greater, etc.
   {
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
       for (int iy = 0; iy < OCC_GRID_Y_DIM; iy++) {
-	my_occ_grid[ix][iy] = 0;
+	my_occ_grid[ix][iy] = OCC_GRID_UNKNOWN_VAL;
       }
     }
 
-    printf("OBJ_IN_LANE : ");
-    for (int i = 0; i < NUM_LANES; i++) {
-      printf("(%u %u) ", i, obj_in_lane[i]);
-    } printf("\n");
-
+    DEBUG(printf("OBJ_IN_LANE : ");
+	  for (int i = 0; i < NUM_LANES; i++) {
+	    printf("(%u %u) ", i, obj_in_lane[i]);
+	  } printf("\n"));
+	  
     int my_lane = vs.lane;
     int nobj = obj_in_lane[my_lane];
-    printf("CHECK_MINE LANE %u : nobj = %u\n", my_lane, nobj);
+    DEBUG(printf("CHECK_MINE LANE %u : nobj = %u\n", my_lane, nobj));
     {
       int i = nobj-1;
-      if ((nobj > 0) && (lane_obj[my_lane][i] != 'N') && (lane_dist[my_lane][i] < MAX_DISTANCE)) {
+      if ((nobj > 0) && (lane_obj[my_lane][i] != 'N') && (lane_dist[my_lane][i] <= MAX_DISTANCE)) {
 	unsigned dist = lane_dist[my_lane][i];
 	unsigned grid_dist = (unsigned)(lane_dist[my_lane][i] / GRID_DIST_STEP_SIZE);
-	printf("MY Lane %u NEAREST : dist %u gd %u\n", my_lane, dist, grid_dist);
-	my_occ_grid[my_lane][grid_dist] = 255;
+	DEBUG(printf("MY Lane %u NEAREST : dist %u gd %u\n", my_lane, dist, grid_dist));
+	//printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", my_lane, 0, grid_dist-1);
+	for (int yi = 0; yi < grid_dist; yi++) {
+	  my_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	}
+	my_occ_grid[my_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+      } else {
+	//printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", my_lane, 0, OCC_GRID_Y_DIM-1);
+	for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
+	  my_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	}
       }
     }
     for (int lanes_over = 1; lanes_over < 3; lanes_over++) {
@@ -741,44 +677,96 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
       if (check_lane >= 0) { // check lanes_over lanes to the left
 	int i = obj_in_lane[check_lane]-1;
 	int fi = (lanes_over - 1);
-	printf("CHECK_LEFT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]);
+	DEBUG(printf("CHECK_LEFT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]));
 	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
-	  printf(" LEFT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u\n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]);
-	  if (lane_obj[check_lane][i] != 'N') {
+	  DEBUG(printf(" LEFT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u\n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]));
+	  if (lane_obj[check_lane][i] == 'N') {
+	    if (lanes_over == 1) {
+	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	    }		
+	    unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
+	    //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1);
+	    for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
+	      my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	    }
+	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, my_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
+	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
-	    printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]);
-	    if ((lanes_over == 1) &&(dist <= OCC_NEXT_LANE_CLOSE)) {
+	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
+	    if ((lanes_over == 1) && (dist <= OCC_NEXT_LANE_CLOSE)) {
 	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
-	      printf("  ==> FOUND %c LEFT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist);
-	      my_occ_grid[check_lane][grid_dist] = 255;
-	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist < MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      DEBUG(printf("  ==> FOUND %c LEFT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
+	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
+	      for (int yi = 0; yi < grid_dist; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      if (lanes_over == 1) {
+		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+		  my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		}
+	      }		
 	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
-	      printf("  ==> FOUND %c LEFT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist);
-	      my_occ_grid[check_lane][grid_dist] = 255;
+	      DEBUG(printf("  ==> FOUND %c LEFT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist));
+	      unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
+	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, grid_dist-1);
+	      for (int yi = grid_min; yi < grid_dist; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	      fi++;
 	    }
 	  }
 	  i--;
 	}
       }
-      check_lane = my_lane +1;
+      check_lane = my_lane + lanes_over;
       if (check_lane < NUM_LANES) { // check one lane right
 	int i = obj_in_lane[check_lane]-1;
 	int fi = (lanes_over - 1);
-	printf("CHECK_RIGHT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]);
+	DEBUG(printf("CHECK_RIGHT lo %u LANE %u : nobj = %u : fi = %u FAR = %u\n", lanes_over, check_lane, i+1, fi, OCC_NEXT_LANE_FAR[fi]));
 	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
-	  printf(" RIGHT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u \n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]);	
-	  if (lane_obj[check_lane][i] != 'N') {
+	  DEBUG(printf(" RIGHT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u \n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]));	
+	  if (lane_obj[check_lane][i] == 'N') {
+	    if (lanes_over == 1) {
+	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	    }		
+	    unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
+	    DEBUG(printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1));
+	    for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
+	      my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	    }
+	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, my_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
+	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
-	    printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]);
+	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
 	    if ((lanes_over == 1) && (dist <= OCC_NEXT_LANE_CLOSE)) {
 	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
-	      printf("  ==> FOUND %c RIGHT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist);
-	      my_occ_grid[check_lane][grid_dist] = 255;
-	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist < MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      DEBUG(printf("  ==> FOUND %c RIGHT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
+	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
+	      for (int yi = 0; yi < grid_dist; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
+	      if (lanes_over == 1) {
+		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+		  my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		}
+	      }		
 	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
-	      printf("  ==> FOUND %c RIGHT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist);
-	      my_occ_grid[check_lane][grid_dist] = 255;
+	      DEBUG(printf("  ==> FOUND %c RIGHT lo %u Lane %u FAR fi %u : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, fi, dist, grid_dist));
+	      unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
+	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, grid_dist-1);
+	      for (int yi = grid_min; yi < grid_dist; yi++) {
+		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      }
+	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	      fi++;
 	    }
 	  }
@@ -786,22 +774,28 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	}
       }
     }
-    //DEBUG(
-    printf("\nTime-Step %u occupancy-grid\n", time_step);
-    printf("|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|\n");
-    printf("|----|---|---|---|---|---|---|---|\n");
-    for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
-      printf("|%4u|", GRID_DIST_STEP_SIZE * iy);
-      for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-	if (my_occ_grid[ix][iy] == 0) {
-	  printf("---|");
-	} else {
-	  printf("XXX|");
-	}
-      }
-      printf("\n");
+    for (int i = 0; i < MY_CAR_OCC_GRID_SIZE; i++) {
+      my_occ_grid[my_lane][i] = OCC_GRID_MY_CAR_VAL;
     }
-    printf("\n");
+    if (show_my_created_occ_grid) {
+      printf("\nTime-Step %u occupancy-grid\n", time_step);
+      printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|\n");
+      printf("|---|----|---|---|---|---|---|---|---|\n");
+      for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
+	printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
+	for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+	  /*	switch (my_occ_grid[ix][iy]) {
+		case OCC_GRID_UNKNOWN_VAL :     printf("???|"); break;
+		case OCC_GRID_NO_OBSTACLE_VAL : printf("---|"); break;
+		case OCC_GRID_OBSTACLE_VAL :    printf("XXX|"); break;
+		case OCC_GRID_MY_CAR_VAL :      printf("MMM|"); break;
+		default :                       printf("***|"); break;
+		}*/
+	  printf("%s|", occ_grid_from_value_str[my_occ_grid[ix][iy]]);
+	}
+	printf("\n");
+      }
+    }
   }
   
   // Send the base-line (my local) Occupancy Map type information fir XMIT socket.
