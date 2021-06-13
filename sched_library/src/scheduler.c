@@ -1727,6 +1727,8 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
           global_hardware_state_block.do_accel_closeout_function[i];
       sptr->output_accel_run_stats_function[acid] =
           global_hardware_state_block.output_accel_run_stats_function[i];
+      sprintf(sptr->accel_name_str[acid], "%s", global_hardware_state_block.accel_name_str[i]);
+      sprintf(sptr->accel_desc_str[acid], "%s", global_hardware_state_block.accel_desc_str[i]);
     } // if (desired_num != 0)
   }   // for (itn i = 0 .. SCHED_MAX_ACCEL_TYPES)
   if (total_accelerators_allocated == 0) {
