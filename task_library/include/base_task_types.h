@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_BASE_TASK_TYPES_H
-#define H_BASE_TASK_TYPES_H
+#ifndef INCLUDED_BASE_TASK_TYPES_H
+#define INCLUDED_BASE_TASK_TYPES_H
 #include <stdbool.h>
 
 /* Types definitions */

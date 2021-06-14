@@ -1136,6 +1136,7 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr) //, char* sl_vi
   sptr->scheduler_decisions          = 0;
   sptr->scheduler_decision_checks    = 0;
 
+  sptr->sl_viz_fp = NULL;
   if (sptr->inparms->visualizer_output_enabled) {
     //sptr->sl_viz_fp = fopen("./sl_viz.trace", "w");
     sptr->sl_viz_fp = fopen(sptr->inparms->sl_viz_fname, "w");
@@ -1353,6 +1354,8 @@ status_t initialize_scheduler(scheduler_datastate_block_t* sptr) //, char* sl_vi
       sptr->do_accel_init_function[acid]          = global_hardware_state_block.do_accel_init_function[i];
       sptr->do_accel_closeout_function[acid]      = global_hardware_state_block.do_accel_closeout_function[i];
       sptr->output_accel_run_stats_function[acid] = global_hardware_state_block.output_accel_run_stats_function[i];
+      sprintf(sptr->accel_name_str[acid], "%s", global_hardware_state_block.accel_name_str[i]);
+      sprintf(sptr->accel_desc_str[acid], "%s", global_hardware_state_block.accel_desc_str[i]);
     } // if (desired_num != 0)
   } // for (itn i = 0 .. SCHED_MAX_ACCEL_TYPES)
   if (total_accelerators_allocated == 0) {
@@ -2020,7 +2023,7 @@ register_task_type(scheduler_datastate_block_t*     sptr,
 
   printf("Starting the variable arguments processing for %d tuples\n", num_accel_task_exec_descriptions);
   va_list var_list;
-  va_start(var_list, 2*num_accel_task_exec_descriptions);
+  va_start(var_list, num_accel_task_exec_descriptions);
   for (int i = 0; i < num_accel_task_exec_descriptions; i++) {
     scheduler_accelerator_type    sched_accel = va_arg(var_list, scheduler_accelerator_type);
     sched_execute_task_function_t exec_fptr   = va_arg(var_list, sched_execute_task_function_t);

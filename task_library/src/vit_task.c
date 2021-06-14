@@ -30,7 +30,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "viterbi_utils.h"
 #include "viterbi_base.h"
 //#define VERBOSE
 #include "verbose.h"

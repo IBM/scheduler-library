@@ -30,7 +30,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 //#define VERBOSE
 #include "verbose.h"
 

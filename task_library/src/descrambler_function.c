@@ -19,7 +19,7 @@
 #include <ctype.h>
 
 #include "viterbi_base.h"
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 #include "viterbi_standalone.h"
 
 typedef unsigned char   uint8_t;
