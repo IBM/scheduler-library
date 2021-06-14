@@ -1173,7 +1173,7 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DFGArgs->inputs_ptr = radar_inputs;
   // described in base_types.h
   DFGArgs->inputs_ptr_size = 2 * (1 << MAX_RADAR_LOGN);
-  DFGArgs->distance_ptr = &distance;
+  DFGArgs->distance_ptr = distance;
   DFGArgs->distance_ptr_size = sizeof(distance_t);
 
   DFGArgs->msg_size = vit_msgs_size;
@@ -1181,16 +1181,16 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DFGArgs->ofdm_size = sizeof(ofdm_param);
   DFGArgs->frame_ptr = &vdentry_p->frame_p;
   DFGArgs->frame_ptr_size = sizeof(frame_param);
-  DFGArgs->in_bits = &vdentry_p->in_bits;
+  DFGArgs->in_bits = vdentry_p->in_bits;
   DFGArgs->in_bit_size = sizeof(uint8_t);
-  DFGArgs->message_id = &message;
+  DFGArgs->message_id = message;
   DFGArgs->msg_id_size = sizeof(message_t);
   DFGArgs->out_msg_text = out_msg_text;
   DFGArgs->out_msg_text_size = 1600;
 
-  DFGArgs->vehicle_state_ptr = &vehicle_state;
-  DFGArgs->vehicle_state_ptr = sizeof(vehicle_state);
-  DFGArgs->new_vehicle_state = &new_vehicle_state;
+  DFGArgs->vehicle_state_ptr = vehicle_state;
+  DFGArgs->vehicle_state_size = sizeof(vehicle_state);
+  DFGArgs->new_vehicle_state = new_vehicle_state;
   DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
   DFGArgs->repeat_factor = pandc_repeat_factor;
 
@@ -1199,21 +1199,21 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   printf("Here!\n");
   llvm_hpvm_track_mem(cv_tr_label, sizeof(label_t));
   printf("Here!\n");
-  llvm_hpvm_track_mem(&distance, sizeof(distance));
+  llvm_hpvm_track_mem(distance, sizeof(distance));
   printf("Here!\n");
   llvm_hpvm_track_mem(&vdentry_p->ofdm_p, sizeof(ofdm_param));
   printf("Here!\n");
   llvm_hpvm_track_mem(&vdentry_p->frame_p, sizeof(frame_param));
   printf("Here!\n");
-  llvm_hpvm_track_mem(&vdentry_p->in_bits, sizeof(uint8_t));
+  llvm_hpvm_track_mem(vdentry_p->in_bits, sizeof(uint8_t));
   printf("Here!\n");
-  llvm_hpvm_track_mem(&message, sizeof(message_t));
+  llvm_hpvm_track_mem(message, sizeof(message_t));
   printf("Here!\n");
   llvm_hpvm_track_mem(out_msg_text, 1600);
   printf("Here!\n");
-  llvm_hpvm_track_mem(&vehicle_state, sizeof(vehicle_state));
+  llvm_hpvm_track_mem(vehicle_state, sizeof(vehicle_state));
   printf("Here!\n");
-  llvm_hpvm_track_mem(&new_vehicle_state, sizeof(new_vehicle_state));
+  llvm_hpvm_track_mem(new_vehicle_state, sizeof(new_vehicle_state));
   printf("Here!\n");
 
   printf("\n\nLaunching ERA pipeline!\n");
@@ -1230,14 +1230,14 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   // Remove relavent memory from memory tracker
   llvm_hpvm_untrack_mem(cv_tr_label);
   llvm_hpvm_untrack_mem(radar_inputs);
-  llvm_hpvm_untrack_mem(&distance);
+  llvm_hpvm_untrack_mem(distance);
   llvm_hpvm_untrack_mem(&vdentry_p->ofdm_p);
   llvm_hpvm_untrack_mem(&vdentry_p->frame_p);
-  llvm_hpvm_untrack_mem(&vdentry_p->in_bits);
-  llvm_hpvm_untrack_mem(&message);
+  llvm_hpvm_untrack_mem(vdentry_p->in_bits);
+  llvm_hpvm_untrack_mem(message);
   llvm_hpvm_untrack_mem(out_msg_text);
-  llvm_hpvm_untrack_mem(&vehicle_state);
-  llvm_hpvm_untrack_mem(&new_vehicle_state);
+  llvm_hpvm_untrack_mem(vehicle_state);
+  llvm_hpvm_untrack_mem(new_vehicle_state);
 }
 
 RootIn *hpvm_initialize() {
