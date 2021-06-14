@@ -201,6 +201,10 @@ int fuse_local_remote_occupancy_grids()
   occ_grid_bad_local_entries += this_occ_grid_bad_local_entries;
   occ_grid_bad_remote_entries += this_occ_grid_bad_remote_entries;
   occ_grid_conflicts += this_occ_grid_conflicts;
+
+
   // Return indicating the total errors this fusion...
   return (this_occ_grid_bad_local_entries + this_occ_grid_bad_remote_entries + this_occ_grid_conflicts);
 }
+
+

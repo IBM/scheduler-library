@@ -1297,13 +1297,15 @@ int main(int argc, char *argv[]) {
       cleanup_and_exit(sptr, -1);
     }
     
-    /* The plan_and_control task makes planning and control decisions
+    message = get_safe_dir_message_from_fused_occ_map(vehicle_state);
+    printf("SAFE-DIR message is %u : %s\n", message, message_names[message]);
+    
+  /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with "
-                 "message %u and distance %.1f\n",
-		 time_step, pandc_repeat_factor, message, distance));
+    //DEBUG(
+    printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance);//);
     task_metadata_block_t *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl2_execution...\n"));
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
@@ -1353,8 +1355,8 @@ int main(int argc, char *argv[]) {
     exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
 #endif
 
-    DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n",
-                 vehicle_state.lane, vehicle_state.speed));
+    //DEBUG(
+    printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed);//);
 
     time_step++;
 

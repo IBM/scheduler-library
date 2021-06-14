@@ -88,7 +88,7 @@ typedef enum {
 #define PNC_THRESHOLD_2 205.0
 #define PNC_THRESHOLD_3 305.0
 
-#define VIT_CLEAR_THRESHOLD  THRESHOLD_1
+#define VIT_CLEAR_THRESHOLD  PNC_THRESHOLD_1
 
 extern float IMPACT_DISTANCE; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
 

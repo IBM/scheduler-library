@@ -96,7 +96,8 @@ radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p);
 //distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr);
 void       post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist);
 
-status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
+message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs);
+  status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message );
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num);
 vit_dict_entry_t* select_random_vit_input();

@@ -29,22 +29,6 @@ typedef float distance_t;
 
 #define MAX_OBJ_IN_LANE  16
 
-#define MAX_DISTANCE     500.0  // Max resolution distance of radar is < 500.0m
-#define DIST_STEP_SIZE    50.0
-#define INF_DISTANCE     (MAX_DISTANCE + DIST_STEP_SIZE)
-#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
-
-/* These thresholds (in meters) are used by the plan_and_control()
- * function to make plan and control decisions.
- */
-#define THRESHOLD_1 155.0
-#define THRESHOLD_2 205.0
-#define THRESHOLD_3 305.0
-
-#define VIT_CLEAR_THRESHOLD  THRESHOLD_1
-
-//#include "fft_accel.h"  // for MAX_RADAR_LOGN
-
 typedef struct {
   unsigned int index;          // A global index (of all radar dictionary entries
   unsigned int set;            // The set this entry is in
