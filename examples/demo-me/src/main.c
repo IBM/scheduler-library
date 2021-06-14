@@ -111,6 +111,7 @@ int input_accel_limit_fft = -1;
 int input_accel_limit_vit = -1;
 int input_accel_limit_cv = -1;
 
+lane_t starting_lane = center;
 
 void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -129,6 +130,9 @@ void print_usage(char *pname) {
 #else
   printf("    -t <trace>  : defines the input trace file <trace> to use\n");
 #endif
+  printf("    -l <str>    : set the initial, starting lane for this car; Valid str are:\n");
+  printf("                :   LH = left-hazard,  LL = left lane,  LM = Left-Middle, MD = Middle,\n");
+  printf("                :   RH = right-hazard, RL = right lane, RM = Right-Middle\n");
   printf("    -W <str>    : set the internet-address for the WiFi server to <str>\n");
   printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
   printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
@@ -410,7 +414,7 @@ int main(int argc, char *argv[]) {
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:g:")) != -1) {
+  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:g:l:")) != -1) {
     switch (opt) {
     case 'h':
       print_usage(argv[0]);
@@ -520,6 +524,29 @@ int main(int argc, char *argv[]) {
       }
       break;
 
+    case 'l': {
+	bool err = false;
+	if (optarg[0] == 'L') {
+	  if (optarg[1] == 'H') { starting_lane = lhazard; }
+	  else if (optarg[1] == 'L') { starting_lane = left; }
+	  else if (optarg[1] == 'M') { starting_lane = l_center; }
+	  else {err = true; }
+	} else if (optarg[0] == 'R') {
+	  if (optarg[1] == 'H') { starting_lane = rhazard; }
+	  else if (optarg[1] == 'L') { starting_lane = right; }
+	  else if (optarg[1] == 'M') { starting_lane = r_center; }
+	  else {err = true; }
+	} else if (optarg[0] == 'M') {starting_lane = center; }
+	else {err = true; }
+
+	if (err) {
+	  printf("ERROR: Unrecognized initial lane setting: %s\n", optarg);
+	  print_usage(argv[0]);
+	  exit(-1);
+	}
+      }
+      break;
+      
     case 'B':
       num_MBs_to_use = atoi(optarg);
       break;
@@ -905,11 +932,11 @@ int main(int argc, char *argv[]) {
   }
 
   /* We assume the vehicle starts in the following state:
-   *  - Lane: center
+   *  - Lane: (center, but spcificable as a run-time input parm)
    *  - Speed: 50 mph
    */
   vehicle_state.active = true;
-  vehicle_state.lane = center;
+  vehicle_state.lane = starting_lane;
   vehicle_state.speed = 50;
   //DEBUG(
   printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed);//);
