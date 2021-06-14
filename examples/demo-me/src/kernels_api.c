@@ -509,15 +509,11 @@ bool show_remote_occ_grid = false;
 bool show_fused_occ_grid = false;
 bool show_side_by_occ_grids = false;
 
-#define OCC_GRID_UNKNOWN_VAL     0
-#define OCC_GRID_NO_OBSTACLE_VAL 1
-#define OCC_GRID_OBSTACLE_VAL    2
-#define OCC_GRID_MY_CAR_VAL      3
-
-char* occ_grid_from_value_str[4] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
-				     "---",   // OCC_GRID_NO_OBSTACLE_VAL 1
-				     "XXX",   // OCC_GRID_OBSTACLE_VAL    2
-				     "***" }; // OCC_GRID_MY_CAR_VAL      3
+char* occ_grid_from_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
+							"---",   // OCC_GRID_NO_OBSTACLE_VAL 1
+							"XXX",   // OCC_GRID_OBSTACLE_VAL    2
+							"***",   // OCC_GRID_MY_CAR_VAL      3
+							"ERR" }; // OCC_GRID_ERROR_VAL       4
 
 
 unsigned MAX_GRID_DIST_FAR_IDX = 3;
@@ -693,7 +689,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
 	  DEBUG(printf(" LEFT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u\n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]));
 	  if (lane_obj[check_lane][i] == 'N') {
-	    if (lanes_over == 1) {
+	    if (lanes_over <= 2) {
 	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
 		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
@@ -707,7 +703,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
 	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
-	    if ((lanes_over == 1) && (dist <= OCC_NEXT_LANE_CLOSE)) {
+	    if ((lanes_over <= 2) && (dist <= OCC_NEXT_LANE_CLOSE)) {
 	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
 	      DEBUG(printf("  ==> FOUND %c LEFT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
@@ -716,7 +712,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      }
 	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
-	      if (lanes_over == 1) {
+	      if (lanes_over <= 2) {
 		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
 		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}
@@ -743,7 +739,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	while ((fi < MAX_GRID_DIST_FAR_IDX) && (i >= 0)) {
 	  DEBUG(printf(" RIGHT-OBJECT lo %u LANE %u : obj = %u %c : dist %u CL %u fi %u FAR %u \n", lanes_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, fi, OCC_NEXT_LANE_FAR[fi]));	
 	  if (lane_obj[check_lane][i] == 'N') {
-	    if (lanes_over == 1) {
+	    if (lanes_over <= 2) {
 	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
 		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
@@ -757,7 +753,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
 	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
-	    if ((lanes_over == 1) && (dist <= OCC_NEXT_LANE_CLOSE)) {
+	    if ((lanes_over <= 2) && (dist <= OCC_NEXT_LANE_CLOSE)) {
 	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
 	      DEBUG(printf("  ==> FOUND %c RIGHT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
@@ -766,7 +762,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      }
 	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
-	      if (lanes_over == 1) {
+	      if (lanes_over <= 2) {
 		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
 		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}

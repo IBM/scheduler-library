@@ -1270,6 +1270,13 @@ int main(int argc, char *argv[]) {
     }
 
     // FUSE the LOCAL and REMOTE occupancy Gridmaps
+    int fusion_error = fuse_local_remote_occupancy_grids();
+    if (fusion_error != 0) {
+      printf("We had a problem with the grid-maps...\n");
+      show_fused_occ_grid = false;
+      show_side_by_occ_grids = true;
+    }
+
     if (show_fused_occ_grid) {
       printf("\n");
       fflush(stdout);
@@ -1285,7 +1292,12 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-/* The plan_and_control task makes planning and control decisions
+    if (fusion_error != 0) {
+      printf("ENDING the run...\n");
+      cleanup_and_exit(sptr, -1);
+    }
+    
+    /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
