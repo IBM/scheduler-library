@@ -165,6 +165,7 @@ void print_usage(char *pname) {
   printf("                :       c or C : display the locally-created occupancy grid-map\n");
   printf("                :       r or R : display the remote-created occupancy grid-map (as it was received)\n");
   printf("                :       f or F : display the fused local+remote occupancy grid-map\n");
+  printf("                :       s or S : display all 3 grids side-by-side\n");
   printf("\n");
   printf(" Options for the Scheduler-Visualizer tool (enable tracing to be visualized):\n");
   printf("    -O <fn>     : Output scheduler visualization trace information to file <fn>\n");
@@ -501,13 +502,16 @@ int main(int argc, char *argv[]) {
       for (int ci = 0; ci < strlen(optarg); ci++) {
 	switch (optarg[ci]) {
 	case 'c' :
-	case 'C' : show_my_created_occ_grid = true;
+	case 'C' : show_local_occ_grid = true;
 	  break;
 	case 'r' :
 	case 'R' : show_remote_occ_grid = true;
 	  break;
   	case 'f' :
-	case 'F' : show_my_fused_occ_grid = true;
+	case 'F' : show_fused_occ_grid = true;
+	  break;
+  	case 's' :
+	case 'S' : show_side_by_occ_grids = true;
 	  break;
 	default :
 	  printf("Don't recognize show-grid option '%c'\n", optarg[ci]);
@@ -1037,8 +1041,7 @@ int main(int argc, char *argv[]) {
     iter_vit_sec += stop_iter_vit.tv_sec - start_iter_vit.tv_sec;
     iter_vit_usec += stop_iter_vit.tv_usec - start_iter_vit.tv_usec;
 #endif
-    //DEBUG(
-    printf(" Back from iterate_vit_kernel: vdentry_p:\n");
+    DEBUG(printf(" Back from iterate_vit_kernel: vdentry_p:\n");
 	  printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
 	  printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
 	  printf("   OFDM    :\n");
@@ -1060,7 +1063,7 @@ int main(int argc, char *argv[]) {
 	      printf("0x%02x ", vdentry_p->in_bits[idx]);
 	    }
 	    printf("\n         ");
-	  }printf("\n");//);
+	  }printf("\n"));
 
     test_dict_entry_t *tdentry_p;
     if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -1239,7 +1242,23 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-    /* The plan_and_control task makes planning and control decisions
+    // FUSE the LOCAL and REMOTE occupancy Gridmaps
+    if (show_fused_occ_grid) {
+      printf("\n");
+      fflush(stdout);
+      print_fused_occupancy_grid();
+      fflush(stdout);
+    }
+
+
+    if (show_side_by_occ_grids) {
+      printf("\n");
+      fflush(stdout);
+      print_side_by_side_occupancy_grids();
+      fflush(stdout);
+    }
+
+/* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */

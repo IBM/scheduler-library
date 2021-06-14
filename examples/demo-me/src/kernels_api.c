@@ -504,9 +504,10 @@ vit_dict_entry_t temp_vit_dict_entry;
 
 #include "occ_grid.h"
 
-bool show_my_created_occ_grid = false;
+bool show_local_occ_grid = false;
 bool show_remote_occ_grid = false;
-bool show_my_fused_occ_grid = false;
+bool show_fused_occ_grid = false;
+bool show_side_by_occ_grids = false;
 
 #define OCC_GRID_UNKNOWN_VAL     0
 #define OCC_GRID_NO_OBSTACLE_VAL 1
@@ -638,8 +639,8 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 }
 
 
-#undef DEBUG
-#define DEBUG(x) x
+/* #undef DEBUG */
+/* #define DEBUG(x) x */
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
@@ -788,7 +789,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     for (int i = 0; i < MY_CAR_OCC_GRID_SIZE; i++) {
       local_occ_grid[my_lane][i] = OCC_GRID_MY_CAR_VAL;
     }
-    if (show_my_created_occ_grid) {
+    if (show_local_occ_grid) {
       print_local_occupancy_grid();
     }
   }
@@ -803,7 +804,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   //char* wifi_msg = (char*)local_occ_grid;
   //int wifi_msg_len = OCC_GRID_X_DIM * OCC_GRID_Y_DIM * sizeof(uint8_t);
   {
-    printf("Preparing to send WIFI message:\n     ");
+    DEBUG(printf("Preparing to send WIFI message:\n"));
     wifi_msg_len = 0;
     for (int xi = 0; xi < OCC_GRID_X_DIM; xi++) {
       for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
@@ -811,7 +812,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	wifi_msg_len++;
       }
     }
-    printf("Total length is %u\n", wifi_msg_len);
+    DEBUG(printf("Total length is %u\n", wifi_msg_len));
   }
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
@@ -935,38 +936,23 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
   recv_count++;
 
-  struct vit_msg_struct { 
-    int           len;
-    ofdm_param    ofdm;
-    frame_param   frame;
-    uint8_t       msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
-  }* vit_msg_ptr = (struct vit_msg_struct*) recvd_in;
+  vit_msg_struct_t* vit_msg_ptr = (struct vit_msg_struct*) recvd_in;
  
-  printf("\n");
-  printf("  unsigned     msg_len   @ %p\n",  &(vit_msg_ptr->len));   //recvd_in);
-  printf("  ofdm_param*  ofdm_ptr  @ %p\n",  &(vit_msg_ptr->ofdm));  // (ofdm_param*)(recvd_in + sizeof(unsigned)));
-  printf("  frame_param* frame_ptr @ %p\n",  &(vit_msg_ptr->frame)); // (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)));
-  printf("  uint8_t*     data_ptr  @ %p\n",   &(vit_msg_ptr->msg));  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
-
-  /* unsigned     msg_len   = *((unsigned*)recvd_in); */
-  /* ofdm_param*  ofdm_ptr  = (ofdm_param*)(recvd_in + sizeof(unsigned)); */
-  /* frame_param* frame_ptr = (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)); */
-  /* uint8_t*     data_ptr  = (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)); */
-  /* temp_vit_dict_entry.msg_num = 0; */
-  /* temp_vit_dict_entry.msg_id  = 0; */
-  /* temp_vit_dict_entry.ofdm_p  = *ofdm_ptr; */
-  /* temp_vit_dict_entry.frame_p = *frame_ptr; */
-  /* temp_vit_dict_entry.in_bits = data_ptr; */
+  DEBUG(printf("\n");
+	printf("  unsigned     msg_len   @ %p\n",  &(vit_msg_ptr->len));   //recvd_in);
+	printf("  ofdm_param*  ofdm_ptr  @ %p\n",  &(vit_msg_ptr->ofdm));  // (ofdm_param*)(recvd_in + sizeof(unsigned)));
+	printf("  frame_param* frame_ptr @ %p\n",  &(vit_msg_ptr->frame)); // (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)));
+	printf("  uint8_t*     data_ptr  @ %p\n",   &(vit_msg_ptr->msg)) );  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
+	
   temp_vit_dict_entry.msg_num = 0;
   temp_vit_dict_entry.msg_id  = 0;
   temp_vit_dict_entry.ofdm_p  = vit_msg_ptr->ofdm;
   temp_vit_dict_entry.frame_p = vit_msg_ptr->frame;
   temp_vit_dict_entry.in_bits = vit_msg_ptr->msg;
 
-  //for (int tti = 0 ; tti < sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param) + 128; tti++) {
-  for (int tti = 0 ; tti < sizeof(struct vit_msg_struct) + 128; tti++) {
-    printf("RECVD_IN %5u @ %p : 0x%02x\n", tti, &(recvd_in[tti]), recvd_in[tti]);
-  }
+  DEBUG(for (int tti = 0 ; tti < sizeof(struct vit_msg_struct); tti++) {
+      printf("RECVD_IN %5u @ %p : 0x%02x\n", tti, &(recvd_in[tti]), recvd_in[tti]);
+    });
   
   hist_total_objs[total_obj]++;
   unsigned tr_val = 0; // set a default to avoid compiler messages
@@ -1025,8 +1011,8 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
   return &temp_vit_dict_entry;
 }
-#undef DEBUG
-#define DEBUG(x)
+/* #undef DEBUG */
+/* #define DEBUG(x) */
 
 // These routines are used to select a random (non-critical?) Viterbi message input
 //  to support variable message sizes per iteration

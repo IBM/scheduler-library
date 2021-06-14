@@ -27,9 +27,10 @@
 #define OCC_GRID_OBSTACLE_VAL    2
 #define OCC_GRID_MY_CAR_VAL      3
 
-extern bool show_my_created_occ_grid;
+extern bool show_local_occ_grid;
 extern bool show_remote_occ_grid;
-extern bool show_my_fused_occ_grid;
+extern bool show_fused_occ_grid;
+extern bool show_side_by_occ_grids;
 
 extern char* occ_grid_from_value_str[4];
 
@@ -54,5 +55,6 @@ extern uint8_t fused_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
 void print_local_occupancy_grid();
 void print_remote_occupancy_grid();
 void print_fused_occupancy_grid();
+void print_side_by_side_occupancy_grids();
 
 #endif

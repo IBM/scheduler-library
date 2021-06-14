@@ -184,7 +184,7 @@ STARGET2=sim-car2-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)
 #$(info $$STARGET1 is [${STARGET1}])
 
 
-all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) sockets tracegen
+all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) sockets gen_new_trace
 
 
 $(OBJ_T1): $(HDR_T)
@@ -214,7 +214,7 @@ sockets:
 	(cd socket; $(MAKE))
 
 
-tracegen: obj_u $(OBJ_U)
+gen_new_trace: obj_u $(OBJ_U)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U) -o $@ $(LDFLAGS)
 
 
@@ -230,7 +230,7 @@ clobber: clean
 	$(RM) -r obj_u
 	$(RM) $(TARGET1) $(TARGET2)
 	$(RM) $(STARGET1) $(STARGET2)
-	$(RM) tracegen
+	$(RM) gen_new_trace
 	(cd socket; make clobber)
 
 

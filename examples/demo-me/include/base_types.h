@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include "base_task_types.h"
 
+
 /* Types definitions */
 // This is the type for distance measurements
 typedef float distance_t;
@@ -42,6 +43,7 @@ typedef float distance_t;
 
 #define VIT_CLEAR_THRESHOLD  THRESHOLD_1
 
+//#include "fft_accel.h"  // for MAX_RADAR_LOGN
 
 typedef struct {
   unsigned int index;          // A global index (of all radar dictionary entries
@@ -61,6 +63,15 @@ typedef struct {
   frame_param  frame_p;
   uint8_t*     in_bits; //[MAX_ENCODED_BITS];
 } vit_dict_entry_t;
+
+#include "sdr_base.h"
+
+typedef struct vit_msg_struct { 
+  int           len;
+  ofdm_param    ofdm;
+  frame_param   frame;
+  uint8_t       msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
+} vit_msg_struct_t;
 
 
 typedef struct {

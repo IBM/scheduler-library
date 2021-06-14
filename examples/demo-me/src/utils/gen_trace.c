@@ -49,6 +49,7 @@ void print_usage(char *pname) {
   printf(" OPTIONS:\n");
   printf("    -h          : print this helpful usage info\n");
   printf("    -w <wfile>  : defines the world environment parameters description file <wfile> to use\n");
+  printf("    -r <N>      : Sets the rand random number seed to N\n");
   printf("    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
 }
 

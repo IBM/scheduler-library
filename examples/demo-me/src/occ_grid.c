@@ -29,7 +29,7 @@ void print_local_occupancy_grid()
     }
     printf("\n");
   }
-  printf("END of LOCAL occupancy map\n");
+  //printf("END of LOCAL occupancy map\n");
 }
 
 void print_remote_occupancy_grid()
@@ -51,7 +51,7 @@ void print_remote_occupancy_grid()
     }
     printf("\n");
   }
-  printf("END of occupancy REMOTE map\n");
+  //printf("END of occupancy REMOTE map\n");
 }
 
 void print_fused_occupancy_grid()
@@ -73,5 +73,32 @@ void print_fused_occupancy_grid()
     }
     printf("\n");
   }
-  printf("END of occupancy FUSED map\n");
+  //printf("END of occupancy FUSED map\n");
+}
+
+
+
+void print_side_by_side_occupancy_grids()
+{
+  printf("\nTime-Step %u : ALL occupancy-grids\n", time_step);
+  printf("            LOCAL (MINE)                       REMOTE(YOURS)                  FUSED (TOTAL)\n");
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-| + |-0-|-1-|-2-|-3-|-4-|-5-|-6-| = |-0-|-1-|-2-|-3-|-4-|-5-|-6-|\n");
+  printf("|---|----|---|---|---|---|---|---|---| + |---|---|---|---|---|---|---| = |---|---|---|---|---|---|---|\n");
+  for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
+    printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
+    for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+      printf("%s|", occ_grid_from_value_str[local_occ_grid[ix][iy]]);
+    }
+    printf(" + |");
+    for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+      printf("%s|", occ_grid_from_value_str[remote_occ_grid[ix][iy]]);
+    }
+    printf(" = |");
+    for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+      printf("%s|", occ_grid_from_value_str[fused_occ_grid[ix][iy]]);
+    }
+    printf("\n");
+  }
+  printf("|---|----|---|---|---|---|---|---|---| + |---|---|---|---|---|---|---| = |---|---|---|---|---|---|---|\n");
+  //printf("END of occupancy FUSED map\n");
 }

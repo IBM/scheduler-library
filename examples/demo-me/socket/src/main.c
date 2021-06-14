@@ -12,9 +12,10 @@
 #include <sys/time.h>
 
 #include "globals.h"
+#include "base_types.h"
 
-#undef DEBUG_MODE
-#define DEBUG_MODE
+//#undef DEBUG_MODE
+//#define DEBUG_MODE
 
 //#define DO_INTERACTIVE(x) x
 #define DO_INTERACTIVE(x) 
@@ -90,12 +91,7 @@ uint64_t pd_lz4_uncmp_usec = 0LL;
 int counter = 0;
 int ascii_counter = 0;
 
-struct vit_msg_struct { 
-  int           len;
-  ofdm_param    ofdm;
-  frame_param   frame;
-  uint8_t       msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
-} vit_msg;
+vit_msg_struct_t vit_msg;
 
 
 // Forward Declarations
@@ -564,11 +560,11 @@ int main(int argc, char *argv[])
 	  pd_wifi_send_sec   += stop_pd_wifi_send.tv_sec  - start_pd_wifi_send.tv_sec;
 	  pd_wifi_send_usec  += stop_pd_wifi_send.tv_usec - start_pd_wifi_send.tv_usec;
          #endif
-	  printf("Got ACK: Showing first %u bytes of message %u\n", 256, sock_xmit_count);
-	  DEBUG(for (int i = 0; i < 256; i++) {
-	      if ((i % 16) == 0) { printf("\n     "); }
-	      printf("%02x ", ((char*)(&vit_msg))[i]);
-	    });
+	  DEBUG(printf("Got ACK: Showing first %u bytes of message %u\n", 256, sock_xmit_count);
+		for (int i = 0; i < 256; i++) {
+		  if ((i % 16) == 0) { printf("\n     "); }
+		  printf("%02x ", ((char*)(&vit_msg))[i]);
+		});
 	  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
 	  sock_xmit_count++;
