@@ -11,6 +11,7 @@
 /* #endif */
 #include "debug.h"
 
+#include "viterbi_types.h"
 #include "sdr_type.h"
 #include "sdr_base.h"
 #include "ofdm.h"
@@ -104,13 +105,13 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
   DEBUG(printf("     at the call to our decode...\n"));
   unsigned num_out_bits = num_inputs/2; // for BPSK_1_2
   {
-    ofdm_param_t ofdm = {   d_frame_encoding, //  encoding   : 0 = BPSK_1_2
+    ofdm_param ofdm = {   d_frame_encoding, //  encoding   : 0 = BPSK_1_2
 			    13,       //             : rate field of SIGNAL header //Taken constant
 			    1,        //  n_bpsc     : coded bits per subcarrier
 			    48,       //  n_cbps     : coded bits per OFDM symbol
 			    24 };     //  n_dbps     : data bits per OFDM symbol
     
-    frame_param_t frame = {  d_frame_bytes, // 1528,     // psdu_size      : PSDU size in bytes
+    frame_param frame = {  d_frame_bytes, // 1528,     // psdu_size      : PSDU size in bytes
 			     (int)(num_sym),      // n_sym          : number of OFDM symbols
 			     18,       // n_pad          : number of padding bits in DATA field
 			     (int)num_inputs, // 24528,    // n_encoded_bits : number of encoded bits
@@ -142,15 +143,15 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
 
 
 
+//uint8_t vit_inbit[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES]; // This is oversize becuase decode uses extra space (?)
 
 void get_viterbi_decoder_inputs( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX],
-				 ofdm_param_t* ofdm, frame_param_t* frame,
-				 unsigned* num_vit_inbits, uint8_t * vit_inbits )
+				 ofdm_param* ofdm, frame_param* frame,
+				 unsigned* num_vit_inbits, uint8_t * vit_inbit )
 {
   // JDW : Thius short-circtuis the decode_signal to drop out the results at the point of calling sdr_decode, returning the inputs
   unsigned num_sym = num_inputs/48;
   uint8_t bit_r[DECODE_IN_SIZE_MAX];
-  uint8_t vit_inbit[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES]; // This is oversize becuase decode uses extra space (?)
 
   DEBUG(printf("In the decode_signal routine with num_inputs = %u\n", num_inputs));
  #ifdef INT_TIME
@@ -211,6 +212,7 @@ void get_viterbi_decoder_inputs( unsigned num_inputs, fx_pt constellation[DECODE
   frame->n_data_bits = (int)num_out_bits;   // n_data_bits    : number of data bits, including service and padding
 
   *num_vit_inbits = num_inputs + OFDM_PAD_ENTRIES;
+  //the_vit_inbits = vit_inbit;
   
 #ifdef INT_TIME
   gettimeofday(&rdec_dec_call_stop, NULL);

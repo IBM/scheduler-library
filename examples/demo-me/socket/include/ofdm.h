@@ -24,7 +24,7 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
 void sdr_descrambler(uint8_t* in, int psdusize, char* out_msg);
 
 void get_viterbi_decoder_inputs( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX],
-				 ofdm_param_t* ofdm, frame_param_t* frame,
+				 ofdm_param* ofdm, frame_param* frame,
 				 unsigned* num_vit_inbits, uint8_t * vit_inbits );
 
 #endif

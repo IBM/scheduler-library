@@ -41,6 +41,8 @@
 
 #include "debug.h"
 
+#include "viterbi_base.h"
+
 #ifdef XMIT_HW_FFT
  #include <fcntl.h>
  #include <math.h>
@@ -181,7 +183,7 @@ int ones_count(int n) {
 
 
 /* from dsrc/gr-ieee802-11/lib/utils.c */
-void convolutional_encoding(const char *in, char *out, int n_data_bits) { //frame_param_t* frame) {
+void convolutional_encoding(const char *in, char *out, int n_data_bits) { //frame_param* frame) {
 
   int state = 0;
 
@@ -193,7 +195,7 @@ void convolutional_encoding(const char *in, char *out, int n_data_bits) { //fram
   }
 }
 
-void interleave(const char *in, char *out, int in_sym, /*frame_param_t* frame,*/ int in_cbps, int in_bpsc, /*ofdm_param_t* ofdm,*/ bool reverse) {
+void interleave(const char *in, char *out, int in_sym, /*frame_param* frame,*/ int in_cbps, int in_bpsc, /*ofdm_param* ofdm,*/ bool reverse) {
 
   int n_cbps = /*ofdm.*/in_cbps;
   int first[n_cbps];
@@ -231,7 +233,7 @@ void interleave(const char *in, char *out, int in_sym, /*frame_param_t* frame,*/
 // NOTE: We currently only run in BPSK_1_2 mode
 
 void
-init_ofdm_parms(ofdm_param_t* ofdm, int enc)
+init_ofdm_parms(ofdm_param* ofdm, int enc)
 {
   ofdm->encoding = enc;
 
@@ -403,8 +405,8 @@ bool         d_debug;
 char         d_symbols[24528];
 int          d_symbols_offset;
 int          d_symbols_len;
-ofdm_param_t   d_ofdm;
-frame_param_t  d_frame;
+ofdm_param   my_ofdm;
+frame_param  my_frame;
 
 char data_bits[12264];        // = (char*)calloc(frame.n_data_bits, sizeof(char));
 char scrambled_data[12264];   // = (char*)calloc(frame.n_data_bits, sizeof(char));
@@ -412,7 +414,7 @@ char encoded_data[12264*2];   // = (char*)calloc(frame.n_data_bits * 2, sizeof(c
 //char punctured_data[24528];   // = (char*)calloc(frame.n_encoded_bits, sizeof(char));
 char* punctured_data = encoded_data; // TRUE for BPSK_1_2, QPSK_1_2, and QAM16_1_2
 char interleaved_data[24528]; // = (char*)calloc(frame.n_encoded_bits, sizeof(char));
-char symbols[24528];          // = (char*)calloc((frame.n_encoded_bits / d_ofdm.n_bpsc), sizeof(char)); ## n_bpsc == 1 ##
+char symbols[24528];          // = (char*)calloc((frame.n_encoded_bits / my_ofdm.n_bpsc), sizeof(char)); ## n_bpsc == 1 ##
 
 
 
@@ -423,29 +425,29 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
  #ifdef INT_TIME
   gettimeofday(&xdmw_total_start, NULL);
  #endif
-  /* frame_param_t frame(d_ofdm, psdu_length); */
-  d_frame.psdu_size = psdu_length;
+  /* frame_param frame(my_ofdm, psdu_length); */
+  my_frame.psdu_size = psdu_length;
   // number of symbols (17-11)
-  d_frame.n_sym = (int) ceil((16 + 8 * d_frame.psdu_size + 6) / (double) d_ofdm.n_dbps);
-  d_frame.n_data_bits = d_frame.n_sym * d_ofdm.n_dbps;
+  my_frame.n_sym = (int) ceil((16 + 8 * my_frame.psdu_size + 6) / (double) my_ofdm.n_dbps);
+  my_frame.n_data_bits = my_frame.n_sym * my_ofdm.n_dbps;
   // number of padding bits (17-13)
-  d_frame.n_pad = d_frame.n_data_bits - (16 + 8 * d_frame.psdu_size + 6);
-  d_frame.n_encoded_bits = d_frame.n_sym * d_ofdm.n_cbps;
+  my_frame.n_pad = my_frame.n_data_bits - (16 + 8 * my_frame.psdu_size + 6);
+  my_frame.n_encoded_bits = my_frame.n_sym * my_ofdm.n_cbps;
 
-  DEBUG(printf("\nOFDM: encoding: %u\n", d_ofdm.encoding);
-	printf("      rate_fld: %u\n", d_ofdm.rate_field);
-	printf("      n_bpsc  : %u\n", d_ofdm.n_bpsc);
-	printf("      n_cbps  : %u\n", d_ofdm.n_cbps);
-	printf("      n_dbps  : %u\n", d_ofdm.n_dbps);
-	printf("\nFRAME: psdu_sz: %u\n", d_frame.psdu_size);
-	printf("       n_sym  : %u\n", d_frame.n_sym);
-	printf("       n_pad  : %u\n", d_frame.n_pad);
-	printf("       n_enc  : %u\n", d_frame.n_encoded_bits);
-	printf("       n_dbits: %u\n", d_frame.n_data_bits));
+  DEBUG(printf("\nOFDM: encoding: %u\n", my_ofdm.encoding);
+	printf("      rate_fld: %u\n", my_ofdm.rate_field);
+	printf("      n_bpsc  : %u\n", my_ofdm.n_bpsc);
+	printf("      n_cbps  : %u\n", my_ofdm.n_cbps);
+	printf("      n_dbps  : %u\n", my_ofdm.n_dbps);
+	printf("\nFRAME: psdu_sz: %u\n", my_frame.psdu_size);
+	printf("       n_sym  : %u\n", my_frame.n_sym);
+	printf("       n_pad  : %u\n", my_frame.n_pad);
+	printf("       n_enc  : %u\n", my_frame.n_encoded_bits);
+	printf("       n_dbits: %u\n", my_frame.n_data_bits));
       
   //generate the WIFI data field, adding service field and pad bits
   //     generate_bits(psdu, data_bits, frame);
-  //     void generate_bits(const char *psdu, char *data_bits, frame_param_t &frame)
+  //     void generate_bits(const char *psdu, char *data_bits, frame_param &frame)
  #ifdef INT_TIME
   gettimeofday(&xdmw_genDF_start, NULL);
  #endif
@@ -456,7 +458,7 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
     for (int i = 0; i < 16; i++) {
       data_bits[i] = 0;
     }
-    for(int i = 0; i < d_frame.psdu_size; i++) {
+    for(int i = 0; i < my_frame.psdu_size; i++) {
       for(int b = 0; b < 8; b++) {
 	data_bits[16 + i * 8 + b] = !!(d_psdu[i] & (1 << b));
       }
@@ -464,7 +466,7 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   }
   DEBUG({
       int di_row = 0;
-      int symbols_len = d_frame.n_data_bits;
+      int symbols_len = my_frame.n_data_bits;
       printf("\ndata_bits out:\n%6u : ", di_row);
       for (int di = 0; di < symbols_len; di++) {
 	printf("%1x", data_bits[di]);
@@ -485,12 +487,12 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
 	
   // scrambling
   //     scramble(     data_bits, scrambled_data,              frame,      d_scrambler++);
-  //     void scramble(const char *in, char *out,      frame_param_t &frame, char initial_state)
+  //     void scramble(const char *in, char *out,      frame_param &frame, char initial_state)
   {
     int state = d_scrambler++; // initial_state;
     int feedback;
       
-    for (int i = 0; i < d_frame.n_data_bits; i++) {
+    for (int i = 0; i < my_frame.n_data_bits; i++) {
       feedback = (!!(state & 64)) ^ (!!(state & 8));
       scrambled_data[i] = feedback ^ data_bits[i];
       DEBUG(printf("  %u : state %u   feedback %u   data %u   scrambled %u\n", i, state, feedback, data_bits[i], scrambled_data[i]));
@@ -504,16 +506,16 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
     
   // reset tail bits
   //     reset_tail_bits(scrambled_data, frame);
-  //     void reset_tail_bits(char *scrambled_data, frame_param_t &frame)
+  //     void reset_tail_bits(char *scrambled_data, frame_param &frame)
   {
-    //memset(scrambled_data + d_frame.n_data_bits - d_frame.n_pad - 6, 0, 6 * sizeof(char));
+    //memset(scrambled_data + my_frame.n_data_bits - my_frame.n_pad - 6, 0, 6 * sizeof(char));
     for (int i = 0; i < 6; i++) {
-      scrambled_data[d_frame.n_data_bits - d_frame.n_pad - 6 + i] = 0;
+      scrambled_data[my_frame.n_data_bits - my_frame.n_pad - 6 + i] = 0;
     }
   }
   DEBUG({
       int di_row = 0;
-      int symbols_len = d_frame.n_data_bits;
+      int symbols_len = my_frame.n_data_bits;
       printf("\nscrambled out:\n%6u : ", di_row);
       for (int di = 0; di < symbols_len; di++) {
 	printf("%1x", scrambled_data[di]);
@@ -534,11 +536,11 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
 	
   // encoding
   //     convolutional_encoding(scrambled_data, encoded_data, frame);
-  //     void convolutional_encoding(const char *in, char *out, frame_param_t &frame)
-  convolutional_encoding(scrambled_data, encoded_data, d_frame.n_data_bits);
+  //     void convolutional_encoding(const char *in, char *out, frame_param &frame)
+  convolutional_encoding(scrambled_data, encoded_data, my_frame.n_data_bits);
   /* { */
   /* 	int state = 0; */
-  /* 	for(int i = 0; i < d_frame.n_data_bits; i++) { */
+  /* 	for(int i = 0; i < my_frame.n_data_bits; i++) { */
   /* 	  assert(scrambled_data[i] == 0 || scrambled_data[i] == 1); */
   /* 	  state = ((state << 1) & 0x7e) | scrambled_data[i]; */
   /* 	  encoded_data[i * 2]     = ones_count(state & 0155) % 2; */
@@ -547,7 +549,7 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   /* } */
   DEBUG({
       int di_row = 0;
-      int symbols_len = d_frame.n_data_bits;
+      int symbols_len = my_frame.n_data_bits;
       printf("\nencoded out:\n%6u : ", di_row);
       for (int di = 0; di < symbols_len; di++) {
 	printf("%1x", encoded_data[di]);
@@ -567,15 +569,15 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
  #endif
     
   // puncturing
-  //puncturing(encoded_data, punctured_data, frame, d_ofdm);
+  //puncturing(encoded_data, punctured_data, frame, my_ofdm);
   /**## TODO: I think we are only using BPSK_1_2 for now -- can hard-code that to avoid the SWITCH ##**/
   /**   NOTE: If we use BPSK_1_2 then this just COPIES the data UNCHANGED -- so it is really a NOP **
-   //void puncturing(const char *in, char *out , frame_param_t *frame, ofdm_param_t *ofdm)
+   //void puncturing(const char *in, char *out , frame_param *frame, ofdm_param *ofdm)
    {
    int mod;
    int oidx = 0;
-   for (int i = 0; i < d_frame.n_data_bits * 2; i++) {
-   switch(d_ofdm.encoding) {
+   for (int i = 0; i < my_frame.n_data_bits * 2; i++) {
+   switch(my_ofdm.encoding) {
    case BPSK_1_2:
    case QPSK_1_2:
    case QAM16_1_2:
@@ -609,7 +611,7 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   // EFFECTIVELY: punctured_data = encoded_data
   DEBUG({
       int di_row = 0;
-      int symbols_len = d_frame.n_data_bits;
+      int symbols_len = my_frame.n_data_bits;
       printf("\npunctured out:\n%6u : ", di_row);
       for (int di = 0; di < symbols_len; di++) {
 	printf("%1x", punctured_data[di]);
@@ -630,12 +632,12 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
     	
   //std::cout << "punctured" << std::endl;
   // interleaving
-  //     interleave(punctured_data, interleaved_data, frame, d_ofdm);
-  interleave(punctured_data, interleaved_data, d_frame.n_sym, d_ofdm.n_cbps, d_ofdm.n_bpsc, false);
+  //     interleave(punctured_data, interleaved_data, frame, my_ofdm);
+  interleave(punctured_data, interleaved_data, my_frame.n_sym, my_ofdm.n_cbps, my_ofdm.n_bpsc, false);
   /* //std::cout << "interleaved" << std::endl; */
   DEBUG({
       int di_row = 0;
-      int symbols_len = d_frame.n_sym * 48; // 24528
+      int symbols_len = my_frame.n_sym * 48; // 24528
       printf("\ninterleaved out:\n%6u : ", di_row);
       for (int di = 0; di < symbols_len; di++) {
 	printf("%1x", interleaved_data[di]);
@@ -655,14 +657,14 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
  #endif
     
   // one byte per symbol
-  //     split_symbols(interleaved_data, symbols, frame, d_ofdm);
-  //     void split_symbols(const char *in, char *out, frame_param_t &frame, ofdm_param_t &ofdm)
+  //     split_symbols(interleaved_data, symbols, frame, my_ofdm);
+  //     void split_symbols(const char *in, char *out, frame_param &frame, ofdm_param &ofdm)
   {
-    int n_symbols = d_frame.n_sym * 48;
+    int n_symbols = my_frame.n_sym * 48;
     int idx = 0;
     for (int i = 0; i < n_symbols; i++) {
       symbols[i] = 0;
-      for(int k = 0; k < d_ofdm.n_bpsc; k++) {
+      for(int k = 0; k < my_ofdm.n_bpsc; k++) {
 	assert(interleaved_data[idx] == 1 || interleaved_data[idx] == 0);
 	symbols[i] |= (interleaved_data[idx] << k);
 	idx++;
@@ -670,16 +672,16 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
     }
   }
 	  
-  d_symbols_len = d_frame.n_sym * 48; // 24528
+  d_symbols_len = my_frame.n_sym * 48; // 24528
   //assert(d_symbols_len == 24528);
-  DEBUG(printf("d_symbols_len = %u * 48 = %u\n", d_frame.n_sym, d_symbols_len); fflush(stdout));
+  DEBUG(printf("d_symbols_len = %u * 48 = %u\n", my_frame.n_sym, d_symbols_len); fflush(stdout));
       	  
   /* d_symbols = (char*)calloc(d_symbols_len, 1); */
   /* std::memcpy(d_symbols, symbols, d_symbols_len); */
   for (int di = 0; di < d_symbols_len; di++) {
     d_symbols[di] = symbols[di];
   }
-  //printf("d_symbols_len = %u * 48 = %u\n", d_frame.n_sym, d_symbols_len); fflush(stdout);
+  //printf("d_symbols_len = %u * 48 = %u\n", my_frame.n_sym, d_symbols_len); fflush(stdout);
   DEBUG({
       int di_row = 0;
       printf("\nd_symbols out:\n%6u : ", di_row);
@@ -716,7 +718,7 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   DEBUG({
       int di_row = 0;
       printf("\nMapper out:\n%6u : ", di_row);
-      for (int di = 0; di < d_frame.n_encoded_bits /*noutput*/; di++) {
+      for (int di = 0; di < my_frame.n_encoded_bits /*noutput*/; di++) {
 	printf("%1x", d_map_out[di]);
 	if ((di % 128) == 127) {
 	  di_row++;
@@ -838,7 +840,7 @@ int get_bit(int b, int i) {  // Is this really an efficient way to do this?
 }
 
 
-void generate_signal_field(char *out) { // , frame_param_t &frame, ofdm_param_t &ofdm) {
+void generate_signal_field(char *out) { // , frame_param &frame, ofdm_param &ofdm) {
   //data bits of the signal header
   //char *signal_header = (char *) malloc(sizeof(char) * 24);
   char signal_header[24];
@@ -850,13 +852,13 @@ void generate_signal_field(char *out) { // , frame_param_t &frame, ofdm_param_t 
   //char *interleaved_signal_header = (char *) malloc(sizeof(char) * 48);
   //char interleaved_signal_header[48]; -- this writes into "out"
 
-  int length = d_frame.psdu_size;
+  int length = my_frame.psdu_size;
 
   // first 4 bits represent the modulation and coding scheme
-  signal_header[ 0] = get_bit(d_ofdm.rate_field, 3);
-  signal_header[ 1] = get_bit(d_ofdm.rate_field, 2);
-  signal_header[ 2] = get_bit(d_ofdm.rate_field, 1);
-  signal_header[ 3] = get_bit(d_ofdm.rate_field, 0);
+  signal_header[ 0] = get_bit(my_ofdm.rate_field, 3);
+  signal_header[ 1] = get_bit(my_ofdm.rate_field, 2);
+  signal_header[ 2] = get_bit(my_ofdm.rate_field, 1);
+  signal_header[ 3] = get_bit(my_ofdm.rate_field, 0);
   // 5th bit is reserved and must be set to 0
   signal_header[ 4] = 0;
   // then 12 bits represent the length
@@ -894,14 +896,14 @@ void generate_signal_field(char *out) { // , frame_param_t &frame, ofdm_param_t 
     signal_header[18 + i] = 0;
   }
 
-  ofdm_param_t signal_ofdm; //(BPSK_1_2);
+  ofdm_param signal_ofdm; //(BPSK_1_2);
   signal_ofdm.encoding = BPSK_1_2;
   signal_ofdm.n_bpsc = 1;
   signal_ofdm.n_cbps = 48;
   signal_ofdm.n_dbps = 24;
   signal_ofdm.rate_field = 0x0D; // 0b00001101
 
-  frame_param_t signal_param; // (signal_ofdm, 0);
+  frame_param signal_param; // (signal_ofdm, 0);
   signal_param.psdu_size = 0;
   signal_param.n_sym = (int) ceil((16 + 8 * signal_param.psdu_size + 6) / (double) signal_ofdm.n_dbps);
   signal_param.n_data_bits = signal_param.n_sym * signal_ofdm.n_dbps;
@@ -941,10 +943,10 @@ bool signal_field_header_formatter(long packet_len, unsigned char *out) //, cons
   /*   return false; */
   /* } */
 
-  /* ofdm_param_t ofdm((Encoding)encoding); */
-  /* frame_param_t frame(ofdm, len); */
+  /* ofdm_param ofdm((Encoding)encoding); */
+  /* frame_param frame(ofdm, len); */
 
-  generate_signal_field((char*)out); //, d_frame, d_ofdm);
+  generate_signal_field((char*)out); //, my_frame, my_ofdm);
   return true;
 }
 
@@ -958,7 +960,7 @@ int do_packet_header_gen(unsigned int packet_len, uint8_t* out ) // int noutput_
   /* I'm inlining this call, as it just calles gneerate_signal_field 
      signal_field_header_formatter(packet_len, out); // , const std::vector<tag_t> &tags)
   */
-  generate_signal_field((char*)out); //, d_frame, d_ofdm);
+  generate_signal_field((char*)out); //, my_frame, my_ofdm);
   return 48; // this is the length of the output header -- the convolutional encoded and interleaved header...
 }
 
@@ -1021,7 +1023,7 @@ int do_packet_header_gen(unsigned int packet_len, uint8_t* out ) // int noutput_
 /*   /\*   throw std::runtime_error("no encoding in input stream"); *\/ */
 /*   /\* } *\/ */
 
-/*   Encoding encoding = d_ofdm.encoding; */
+/*   Encoding encoding = my_ofdm.encoding; */
 
 /*   switch (encoding) { */
 /*   case BPSK_1_2: */
@@ -1045,7 +1047,7 @@ int do_packet_header_gen(unsigned int packet_len, uint8_t* out ) // int noutput_
 /*     break; */
 
 /*   default: */
-/*     printf("signal_chucks_to_symbols : bad encoding in d_ofdm: %u\n", encoding); //throw std::invalid_argument("wrong encoding"); */
+/*     printf("signal_chucks_to_symbols : bad encoding in my_ofdm: %u\n", encoding); //throw std::invalid_argument("wrong encoding"); */
 /*     exit(-4); */
 /*     break; */
 /*   } */
@@ -1564,7 +1566,7 @@ void
 xmit_pipe_init() {
   d_scrambler = 1;
   crcInit();
-  init_ofdm_parms(&d_ofdm, BPSK_1_2);
+  init_ofdm_parms(&my_ofdm, BPSK_1_2);
 
   init_ofdm_carrier_allocator();
 
@@ -1857,7 +1859,7 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   x_domapwk_usec += x_domapwk_stop.tv_usec - x_genmacfr_stop.tv_usec;
  #endif
 
-  int mapper_payload_size = d_frame.n_encoded_bits;
+  int mapper_payload_size = my_frame.n_encoded_bits;
   uint8_t pckt_hdr_out[64]; // I think this only needs to be 48 bytes...
   int pckt_hdr_len = do_packet_header_gen(mapper_payload_size, pckt_hdr_out);
  #ifdef INT_TIME
@@ -1915,17 +1917,17 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
 
 
   //DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n", 520, 24576));
-  DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n", d_frame.n_sym, d_frame.n_encoded_bits));
+  DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n", my_frame.n_sym, my_frame.n_encoded_bits));
   #define ofdm_max_out_size  33280 //520*64  // 33024   // Not sure why, though
   float ofdm_car_str_real[ofdm_max_out_size];
   float ofdm_car_str_imag[ofdm_max_out_size];
 
-  DO_NUM_IOS_ANALYSIS(printf("Calling do_ofdm_carrier_alloc: IN n_sym %u n_enc_bits %u\n", d_frame.n_sym, d_frame.n_encoded_bits));
+  DO_NUM_IOS_ANALYSIS(printf("Calling do_ofdm_carrier_alloc: IN n_sym %u n_enc_bits %u\n", my_frame.n_sym, my_frame.n_encoded_bits));
   //int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(520, 24576, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
  #ifdef INT_TIME
   gettimeofday(&x_ocaralloc_start, NULL);
  #endif
-  int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(d_frame.n_sym, d_frame.n_encoded_bits, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
+  int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(my_frame.n_sym, my_frame.n_encoded_bits, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
   DO_NUM_IOS_ANALYSIS(printf("Back from do_ofdm_carrier_alloc: OUT ofc_res %u : %u max outputs (of %u)\n", ofc_res, ofc_res*d_fft_len, ofdm_max_out_size));
   DEBUG(printf(" return value was %u so max %u outputs\n", ofc_res, ofc_res*d_fft_len);
 	printf(" do_ofdm_carrier_allocator_cvc_impl_work output:\n");

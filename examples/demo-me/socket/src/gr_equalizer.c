@@ -84,13 +84,13 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   gettimeofday(&reql_decSF_start, NULL);
  #endif
   bool ret_val = true;
-  ofdm_param_t ofdm = {   BPSK_1_2, //  encoding   : 0 = BPSK_1_2
-			  13,       //             : rate field of SIGNAL header //Taken constant
-			  1,        //  n_bpsc     : coded bits per subcarrier
-			  48,       //  n_cbps     : coded bits per OFDM symbol
-			  24 };     //  n_dbps     : data bits per OFDM symbol
-
-  /*frame_param::frame_param(ofdm_param_t &ofdm, int psdu_length) {
+  ofdm_param ofdm = {   BPSK_1_2, //  encoding   : 0 = BPSK_1_2
+			13,       //             : rate field of SIGNAL header //Taken constant
+			1,        //  n_bpsc     : coded bits per subcarrier
+			48,       //  n_cbps     : coded bits per OFDM symbol
+			24 };     //  n_dbps     : data bits per OFDM symbol
+  
+  /*frame_param::frame_param(ofdm_param &ofdm, int psdu_length) {
         psdu_size = psdu_length;
         // number of symbols (17-11)
         n_sym = (int) ceil((16 + 8 * psdu_size + 6) / (double) ofdm.n_dbps);
@@ -99,11 +99,11 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
         n_pad = n_data_bits - (16 + 8 * psdu_size + 6);
         n_encoded_bits = n_sym * ofdm.n_cbps;
   */
-  frame_param_t frame = {  0,     // psdu_size      : PSDU size in bytes
-			   1,     // n_sym          : number of OFDM symbols
-			   2,     // n_pad          : number of padding bits in DATA field
-			   48,    // n_encoded_bits : number of encoded bits
-			   24 };  // n_data_bits    : number of data bits, including service and padding
+  frame_param frame = {  0,     // psdu_size      : PSDU size in bytes
+			 1,     // n_sym          : number of OFDM symbols
+			 2,     // n_pad          : number of padding bits in DATA field
+			 48,    // n_encoded_bits : number of encoded bits
+			 24 };  // n_data_bits    : number of data bits, including service and padding
   
   DEBUG(printf("DSF : OFDM  : %u %u %u %u %u\n", ofdm.n_bpsc, ofdm.n_cbps, ofdm.n_dbps, ofdm.encoding, ofdm.rate_field);
 	printf("DSF : FRAME : %u %u %u %u %u\n", frame.psdu_size, frame.n_sym, frame.n_pad, frame.n_encoded_bits, frame.n_data_bits));
@@ -247,7 +247,7 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_total_start.tv_sec;
   reql_decSF_usec += reql_decSF_stop.tv_usec - reql_total_start.tv_usec;
  #endif
-  DEBUG(printf("\nDSF : RETURNING %b\n", ret_val));
+  DEBUG(printf("\nDSF : RETURNING %u\n", ret_val));
   return ret_val;
 }
 

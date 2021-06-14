@@ -370,7 +370,7 @@ int main(int argc, char *argv[]) {
   vehicle_state_t vehicle_state;
   label_t label;
   distance_t distance;
-  message_t message;
+  message_t message = 0;
   test_res_t test_res;
 #ifdef USE_SIM_ENVIRON
   char world_desc_file_name[256] = "default_world.desc";
@@ -649,14 +649,10 @@ int main(int argc, char *argv[]) {
     // Now set the max number of each Accelerator Pool accelerators we want to
     // use/have allocated
     //  Note that a value of -1 indicates "all available
-    sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T] =
-        input_accel_limit_cpu;
-    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] =
-        input_accel_limit_vit;
-    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] =
-        input_accel_limit_fft;
-    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-        input_accel_limit_cv;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_CPU_ACCEL_T]           = input_accel_limit_cpu;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_VITDEC_ACCEL_T] = input_accel_limit_vit;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_1D_FFT_ACCEL_T] = input_accel_limit_fft;
+    sched_inparms->max_accel_to_use_from_pool[SCHED_EPOCHS_CV_CNN_ACCEL_T] = input_accel_limit_cv;
 
     // Now initialize the scheduler and return a datastate space pointer
     printf("Calling get_new_scheduler_datastate_pointer...\n");
@@ -1041,7 +1037,8 @@ int main(int argc, char *argv[]) {
     iter_vit_sec += stop_iter_vit.tv_sec - start_iter_vit.tv_sec;
     iter_vit_usec += stop_iter_vit.tv_usec - start_iter_vit.tv_usec;
 #endif
-    DEBUG(printf(" Back from iterate_vit_kernel: vdentry_p:\n");
+    //DEBUG(
+    printf(" Back from iterate_vit_kernel: vdentry_p:\n");
 	  printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
 	  printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
 	  printf("   OFDM    :\n");
@@ -1056,10 +1053,14 @@ int main(int argc, char *argv[]) {
 	  printf("     n_pad          : %u\n", vdentry_p->frame_p.n_pad);
 	  printf("     n_encoded_bits : %u\n", vdentry_p->frame_p.n_encoded_bits);
 	  printf("     n_data_bits    : %u\n", vdentry_p->frame_p.n_data_bits);
-	  printf("   IN_BITS :         ");
-	  for (int i = 0; i < 16; i++) {
-	    printf("0x%02x ", vdentry_p->in_bits[i]);
-	  });
+	  printf("   IN_BITS :\n         ");
+	  int idx = 0;
+	  for (int iy = 0; iy < 10; iy++) {
+	    for (int ix = 0; ix < 7; ix++) {
+	      printf("0x%02x ", vdentry_p->in_bits[idx]);
+	    }
+	    printf("\n         ");
+	  }printf("\n");//);
 
     test_dict_entry_t *tdentry_p;
     if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -1187,7 +1188,7 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_wait_all_crit, NULL);
    #endif
 
-    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
+    DEBUG(printf("MAIN: Calling wait_on_tasklist\n"));
     // wait_all_critical(sptr);
     if (num_Crit_test_tasks > 0) {
       wait_on_tasklist(sptr, 4, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr,
@@ -1204,7 +1205,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     finish_task_execution(radar_mb_ptr, &distance);
-    char out_msg_text[1600]; // more than large enough to hold max-size message
+    char out_msg_text[1500]; //  = (char*)remote_occ_grid;
     message_t dummy_msg;
     finish_task_execution(viterbi_mb_ptr, &dummy_msg, out_msg_text);
     if (!no_crit_cnn_task) {
@@ -1223,13 +1224,28 @@ int main(int argc, char *argv[]) {
     exec_cv_usec += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
 #endif
 
+    {
+      int idx = 0;
+      for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
+	for (int iy = 0; iy < OCC_GRID_Y_DIM; iy++) {
+	  remote_occ_grid[ix][iy] = out_msg_text[idx++];
+	}
+      }
+    }
+    if (show_remote_occ_grid) {
+      printf("\n");
+      fflush(stdout);
+      print_remote_occupancy_grid();
+      fflush(stdout);
+    }
+
     /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
     DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with "
                  "message %u and distance %.1f\n",
-                 time_step, pandc_repeat_factor, message, distance));
+		 time_step, pandc_repeat_factor, message, distance));
     task_metadata_block_t *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl2_execution...\n"));
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,

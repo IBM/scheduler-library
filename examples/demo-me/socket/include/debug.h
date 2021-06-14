@@ -3,8 +3,17 @@
 #ifndef DEBUG_H
 #define DEBUG_H 
 
+#ifdef DEBUG_MSGS
+ #define DBG_MSG(X) X
+#else
+ #define DBG_MSG(X)
+#endif
+
+
 #ifdef DEBUG_MODE
  #define DEBUG(X) X
+ #undef  DBG_MSG
+ #define DBG_MSG(X) X
  #define DEBUG2(X)
  #define DO_NUM_IOS_ANALYSIS(x) x
 #else 

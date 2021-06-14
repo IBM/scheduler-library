@@ -15,7 +15,7 @@ CC = gcc -std=c99
 
 
 INCDIR ?=
-INCDIR += -I./include -I../../sched_library/include -I../../task_library/include
+INCDIR += -I./include -I./socket/include -I../../sched_library/include -I../../task_library/include
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include

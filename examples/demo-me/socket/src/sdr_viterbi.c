@@ -88,55 +88,6 @@ t_branchtab27 d_branchtab27_generic[2];
 //unsigned char d_path0_generic[64] __attribute__ ((aligned(16)));
 //unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
 
-int d_ntraceback;
-int d_k;
-
-static ofdm_param_t *d_ofdm;
-static frame_param_t *d_frame;
-static const unsigned char *d_depuncture_pattern;
-
-static uint8_t d_depunctured[MAX_ENCODED_BITS];
-
-static const unsigned char PARTAB[256] = {
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         0, 1, 1, 0, 1, 0, 0, 1,
-         1, 0, 0, 1, 0, 1, 1, 0,
-}; 
-
-static const unsigned char PUNCTURE_1_2[2] = {1, 1};
-static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
-static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
-
-
 // Position in circular buffer where the current decoded byte is stored
 // int d_store_pos = 0;
 // Metrics for each state
@@ -779,7 +730,7 @@ void sdr_reset() {
 //    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
 //  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
-void sdr_decode(bool use_hw_accel, ofdm_param_t *ofdm, frame_param_t *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
+void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
   d_ofdm = ofdm;
   d_frame = frame;
 

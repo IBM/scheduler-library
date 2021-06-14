@@ -41,7 +41,7 @@ typedef struct {
   float return_data[2 * MAX_RADAR_N];
 } radar_dict_entry_t;
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 typedef struct {
   unsigned int msg_num;
   unsigned int msg_id;

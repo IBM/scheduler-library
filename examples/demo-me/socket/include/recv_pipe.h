@@ -89,7 +89,7 @@ extern uint64_t r_fHcvtout_usec;
 
 void recv_pipe_init();
 
-void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* vit_msg_len, ofdm_param_t* ofdm_parms, frame_param_t* frame_parms, uint8_t* vit_msg);
+void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* vit_msg_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t* vit_msg);
 
 
 #endif

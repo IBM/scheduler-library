@@ -18,7 +18,7 @@ CC = gcc -std=c99
 
 
 INCDIR ?=
-INCDIR += -I./include
+INCDIR += -I./include -I../include -I../../../sched_library/include -I../../../task_library/include
 ifdef COMPILE_TO_ESP
 INCDIR += -I$(ESP_DRIVERS)/common/include
 INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -122,6 +122,9 @@ OBJ_WIFI2 = $(SRC_WIFI2:src/%.c=obj_wifi2/%.o)
 OBJ_TWIFI1 = $(SRC_WIFI1:src/%.c=obj_twifi1/%.o)
 OBJ_TWIFI2 = $(SRC_WIFI2:src/%.c=obj_twifi2/%.o)
 
+OBJ_VWIFI1 = $(SRC_WIFI1:src/%.c=obj_vwifi1/%.o)
+OBJ_VWIFI2 = $(SRC_WIFI2:src/%.c=obj_vwifi2/%.o)
+
 VPATH = ./src
 
 TARGET_WIFI1=wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
@@ -130,10 +133,13 @@ TARGET_WIFI2=wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GR
 TARGET_TWIFI1=t_wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
 TARGET_TWIFI2=t_wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
 
-ALL_OBJ_DIR=obj_wifi1 obj_wifi2 obj_twifi1 obj_twifi2
+TARGET_VWIFI1=v_wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_VWIFI2=v_wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+
+ALL_OBJ_DIR=obj_wifi1 obj_wifi2 obj_twifi1 obj_twifi2 obj_vwifi1 obj_vwifi2
 
 
-all: esp-libs wifi t_wifi 
+all: esp-libs wifi t_wifi v_wifi
 
 
 esp-build:
@@ -191,6 +197,13 @@ obj_twifi2/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5560 -DXMIT_PORT=5559 -c $< -o $@
 
 
+obj_vwifi1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5558 -DXMIT_PORT=5561 -DDEBUG_MSGS -c $< -o $@
+
+obj_vwifi2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5560 -DXMIT_PORT=5559 -DDEBUG_MSGS -c $< -o $@
+
+
 
 $(OBJ_WIFI1): $(HDR_T)
 
@@ -202,6 +215,12 @@ $(OBJ_TWIFI1): $(HDR_T)
 
 
 $(OBJ_TWIFI2): $(HDR_T)
+
+
+$(OBJ_VWIFI1): $(HDR_T)
+
+
+$(OBJ_VWIFI2): $(HDR_T)
 
 
 
@@ -216,6 +235,12 @@ $(TARGET_TWIFI1): obj_twifi1 $(TARGET_TWIFI1).exe
 	echo "Done building $@"
 
 $(TARGET_TWIFI2): obj_twifi2 $(TARGET_TWIFI2).exe
+	echo "Done building $@"
+
+$(TARGET_VWIFI1): obj_vwifi1 $(TARGET_VWIFI1).exe
+	echo "Done building $@"
+
+$(TARGET_VWIFI2): obj_vwifi2 $(TARGET_VWIFI2).exe
 	echo "Done building $@"
 
 
@@ -234,16 +259,25 @@ $(TARGET_TWIFI2).exe: $(OBJ_TWIFI2)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 
+$(TARGET_VWIFI1).exe: $(OBJ_VWIFI1)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_VWIFI2).exe: $(OBJ_VWIFI2)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+
 clean:
 	$(RM) $(OBJ_WIFI1) $(OBJ_WIFI2)
 	$(RM) $(OBJ_TWIFI1) $(OBJ_TWIFI2)
 	$(RM) $(TARGET_WIFI1) $(TARGET_WIFI2)
 	$(RM) $(TARGET_TWIFI1) $(TARGET_TWIFI2)
+	$(RM) $(TARGET_VWIFI1) $(TARGET_VWIFI2)
 
 clobber: clean
 	$(RM) -r $(ALL_OBJ_DIR)
 	$(RM) $(TARGET_WIFI1).exe $(TARGET_WIFI2).exe
 	$(RM) $(TARGET_TWIFI1).exe $(TARGET_TWIFI2).exe
+	$(RM) $(TARGET_VWIFI1).exe $(TARGET_VWIFI2).exe
 
 
 obj_wifi1:
@@ -260,6 +294,13 @@ obj_twifi2:
 	mkdir $@
 
 
+obj_vwifi1:
+	mkdir $@
+
+obj_vwifi2:
+	mkdir $@
+
+
 # Some "aliases" for builds...
 wifi1: $(TARGET_WIFI1)
 
@@ -273,7 +314,13 @@ t_wifi2: $(TARGET_TWIFI2)
 
 t_wifi: t_wifi1 t_wifi2
 
-.PHONY: all clean wifi1 wifi2 wifi t_wifi1 t_wifi2 t_wifi 
+v_wifi1: $(TARGET_VWIFI1)
+
+v_wifi2: $(TARGET_VWIFI2)
+
+v_wifi: v_wifi1 v_wifi2
+
+.PHONY: all clean wifi1 wifi2 wifi t_wifi1 t_wifi2 t_wifi  v_wifi1 v_wifi2 v_wifi 
 
 
 #depend:;	makedepend -fMakefile -- $(CFLAGS) -- $(SRC_D)

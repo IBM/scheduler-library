@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include <math.h>
 
+#include "viterbi_types.h"
+#include "sdr_base.h"
 #include "scheduler.h" // for cleanup_and_exit
 #include "fft_task.h"
 #include "vit_task.h"
@@ -33,6 +35,9 @@
 #include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
+
+//#define DO_INTERACTIVE(x) x
+#define DO_INTERACTIVE(x) 
 
 #ifdef USE_SIM_ENVIRON
  #include "sim_environs.h"
@@ -449,7 +454,7 @@ unsigned recv_count = 0;
 char *ack = "OK";
 
 char wifi_msg[1500];
-int wifi_msg_len;
+int  wifi_msg_len;
 
 struct sockaddr_in xmit_servaddr;
 struct sockaddr_in recv_servaddr;
@@ -528,15 +533,19 @@ unsigned OCC_NEXT_LANE_FAR[3] = {150, 300, 450};
 
 unsigned MY_CAR_OCC_GRID_SIZE = 5; // 25 / GRID_DIST_STEP_SIZE;
 
-//uint8_t my_occ_grid[NUM_LANES][100]; // [OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
-uint8_t my_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+//uint8_t local_occ_grid[NUM_LANES][100]; // [OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+uint8_t local_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+uint8_t remote_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
+uint8_t fused_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
 
 status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
   //printf(" XMIT-PORT = %u and RECV-PORT = %u on IP %s\n", XMIT_PORT, RECV_PORT, wifi_inet_addr_str);
-  snprintf(wifi_msg, 1500, "XMIT-PORT %u to RECV-PORT %u : This is a test message sent via WiFi.",  XMIT_PORT, RECV_PORT);
-  wifi_msg_len = strlen(wifi_msg);
+  //snprintf(wifi_msg, 1500, "XMIT-PORT %u to RECV-PORT %u : This is a test message sent via WiFi.",  XMIT_PORT, RECV_PORT);
+  //snprintf(wifi_msg, 1500, "XMIT-PORT %u to RECV-PORT %u : This is a test message sent via WiFi",  XMIT_PORT, RECV_PORT);
+  //snprintf(wifi_msg, 1500, "This is a noticeably much longer message to be sent through the XMIT-PORT %u to the remote RECV-PORT %u : This is a LONG test message being sent via the socket-based WiFi substrate.",  XMIT_PORT, RECV_PORT);
+  //wifi_msg_len = strlen(wifi_msg);
   // Set up the WiFi interchange Sockets.
   // Open and connect to the XMIT_SERVER
   printf("Connecting to xmit-server at IP %s PORT %u\n", wifi_inet_addr_str, XMIT_PORT);
@@ -552,7 +561,6 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   xmit_servaddr.sin_addr.s_addr = inet_addr(wifi_inet_addr_str);  /* Set IP address to localhost */
   xmit_servaddr.sin_port = htons(XMIT_PORT);  /* Set port number, using htons function to use proper byte order */
   memset(xmit_servaddr.sin_zero, '\0', sizeof(xmit_servaddr.sin_zero));  /* Set all bits of the padding field to 0 */
-
 
   while (true) {
     if (connect(xmit_sock, (struct sockaddr*)&xmit_servaddr, sizeof(xmit_servaddr)) != 0) {
@@ -630,7 +638,8 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 }
 
 
-
+#undef DEBUG
+#define DEBUG(x) x
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
@@ -642,7 +651,9 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   {
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
       for (int iy = 0; iy < OCC_GRID_Y_DIM; iy++) {
-	my_occ_grid[ix][iy] = OCC_GRID_UNKNOWN_VAL;
+	local_occ_grid[ix][iy] = OCC_GRID_UNKNOWN_VAL;
+	remote_occ_grid[ix][iy] = OCC_GRID_UNKNOWN_VAL;
+	fused_occ_grid[ix][iy] = OCC_GRID_UNKNOWN_VAL;
       }
     }
 
@@ -662,13 +673,13 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	DEBUG(printf("MY Lane %u NEAREST : dist %u gd %u\n", my_lane, dist, grid_dist));
 	//printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", my_lane, 0, grid_dist-1);
 	for (int yi = 0; yi < grid_dist; yi++) {
-	  my_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	  local_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	}
-	my_occ_grid[my_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	local_occ_grid[my_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
       } else {
 	//printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", my_lane, 0, OCC_GRID_Y_DIM-1);
 	for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
-	  my_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	  local_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	}
       }
     }
@@ -683,15 +694,15 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  if (lane_obj[check_lane][i] == 'N') {
 	    if (lanes_over == 1) {
 	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
 	    }		
 	    unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
 	    //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1);
 	    for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
-	      my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
-	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, my_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
+	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, local_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
 	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
 	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
@@ -700,13 +711,13 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      DEBUG(printf("  ==> FOUND %c LEFT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
 	      for (int yi = 0; yi < grid_dist; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
-	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
 	      if (lanes_over == 1) {
 		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
-		  my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}
 	      }		
 	      unsigned grid_dist = (unsigned)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
@@ -714,9 +725,9 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, grid_dist-1);
 	      for (int yi = grid_min; yi < grid_dist; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
-	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	      fi++;
 	    }
 	  }
@@ -733,15 +744,15 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  if (lane_obj[check_lane][i] == 'N') {
 	    if (lanes_over == 1) {
 	      for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
 	    }		
 	    unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
 	    DEBUG(printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1));
 	    for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
-	      my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
-	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, my_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
+	    //printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, local_occ_grid[check_lane][OCC_GRID_Y_DIM-1]);
 	  } else {
 	    unsigned dist = lane_dist[check_lane][i];
 	    DEBUG(printf("      ((fi %u < %u MAX_GRID_DIST_FAR_IDX) && (dist %u < %.1f MAX_DISTANCE) && (dist %u >= %u OCC_NEXT_LANE_FAR[fi]))\n", fi, MAX_GRID_DIST_FAR_IDX, dist, MAX_DISTANCE, dist, OCC_NEXT_LANE_FAR[fi]));
@@ -750,13 +761,13 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      DEBUG(printf("  ==> FOUND %c RIGHT lo %u Lane %u NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lanes_over, check_lane, dist, grid_dist));
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1);
 	      for (int yi = 0; yi < grid_dist; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
-	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	    } else if ((fi < MAX_GRID_DIST_FAR_IDX) && (dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[fi])) {
 	      if (lanes_over == 1) {
 		for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
-		  my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}
 	      }		
 	      unsigned grid_dist = lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE;
@@ -764,9 +775,9 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      unsigned grid_min = OCC_NEXT_LANE_FAR[fi] / GRID_DIST_STEP_SIZE;
 	      //printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, grid_dist-1);
 	      for (int yi = grid_min; yi < grid_dist; yi++) {
-		my_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
+		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	      }
-	      my_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
+	      local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 	      fi++;
 	    }
 	  }
@@ -775,44 +786,67 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
       }
     }
     for (int i = 0; i < MY_CAR_OCC_GRID_SIZE; i++) {
-      my_occ_grid[my_lane][i] = OCC_GRID_MY_CAR_VAL;
+      local_occ_grid[my_lane][i] = OCC_GRID_MY_CAR_VAL;
     }
     if (show_my_created_occ_grid) {
-      printf("\nTime-Step %u occupancy-grid\n", time_step);
-      printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|\n");
-      printf("|---|----|---|---|---|---|---|---|---|\n");
-      for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
-	printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
-	for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-	  /*	switch (my_occ_grid[ix][iy]) {
-		case OCC_GRID_UNKNOWN_VAL :     printf("???|"); break;
-		case OCC_GRID_NO_OBSTACLE_VAL : printf("---|"); break;
-		case OCC_GRID_OBSTACLE_VAL :    printf("XXX|"); break;
-		case OCC_GRID_MY_CAR_VAL :      printf("MMM|"); break;
-		default :                       printf("***|"); break;
-		}*/
-	  printf("%s|", occ_grid_from_value_str[my_occ_grid[ix][iy]]);
-	}
-	printf("\n");
-      }
+      print_local_occupancy_grid();
     }
   }
+
   
-  // Send the base-line (my local) Occupancy Map type information fir XMIT socket.
+  // Send the base-line (my local) Occupancy Map information to XMIT socket.
   // Connect to the Wifi-Socket and send the n_xmit_out
   char w_buffer[10];
  #ifdef INT_TIME
   gettimeofday(&start_wifi_send, NULL);
- #endif	
+ #endif
+  //char* wifi_msg = (char*)local_occ_grid;
+  //int wifi_msg_len = OCC_GRID_X_DIM * OCC_GRID_Y_DIM * sizeof(uint8_t);
+  {
+    printf("Preparing to send WIFI message:\n     ");
+    wifi_msg_len = 0;
+    for (int xi = 0; xi < OCC_GRID_X_DIM; xi++) {
+      for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
+	wifi_msg[wifi_msg_len] = local_occ_grid[xi][yi];
+	wifi_msg_len++;
+      }
+    }
+    printf("Total length is %u\n", wifi_msg_len);
+  }
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
+
   unsigned xfer_bytes = wifi_msg_len * sizeof(char);
   snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
   DEBUG(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
   send(xmit_sock, w_buffer, 8, 0);
-  DEBUG(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", wifi_msg_len, xfer_bytes, XMIT_PORT));
+  DEBUG(printf("     Send %u values %u bytes on XMIT port %u socket\n", wifi_msg_len, xfer_bytes, XMIT_PORT));
+  {
+    char isACK[3];
+    int ackread = read_all(xmit_sock, isACK, 2);
+    if ((isACK[0] != ack[0]) || (isACK[1] != ack[1])) {
+      printf("ERROR : Failed to get ACK from receiver after XMIT %u\n", xmit_count);
+      cleanup_and_exit(sptr, -2);
+    } else {
+      DEBUG(printf(" GOT a header %u ACK from the XMIT target\n", xmit_count));
+    }
+  }
+  
  #ifdef INT_TIME
   gettimeofday(&start_wifi_send, NULL);
- #endif	
-  send(xmit_sock, (char*)(wifi_msg),wifi_msg_len*sizeof(float), 0);
+ #endif
+  DEBUG(printf("Calling send for the XMIT %u data-body...\n", xmit_count));
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
+  send(xmit_sock, (char*)(wifi_msg),wifi_msg_len*sizeof(uint8_t), 0);
+  {
+    char isACK[3];
+    int ackread = read_all(xmit_sock, isACK, 2);
+    if ((isACK[0] != ack[0]) || (isACK[1] != ack[1])) {
+      printf("ERROR : Failed to get ACK from receiver after XMIT %u\n", xmit_count);
+      cleanup_and_exit(sptr, -2);
+    } else {
+      DEBUG(printf(" GOT a data body %u ACK from the XMIT target\n", xmit_count));
+    }
+  }
  #ifdef INT_TIME
   gettimeofday(&stop_wifi_send, NULL);
   wifi_send_sec   += stop_wifi_send.tv_sec  - start_wifi_send.tv_sec;
@@ -820,13 +854,14 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   wifi_send_sec   += stop_wifi_send.tv_sec  - start_wifi_send.tv_sec;
   wifi_send_usec  += stop_wifi_send.tv_usec - start_wifi_send.tv_usec;
  #endif
-  DEBUG(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", wifi_msg_len, xfer_bytes, XMIT_PORT));
-  DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n    \"", xmit_count);
-	  for (int i = 0; i < wifi_msg_len; i++) {
-	    //printf("XFER %4u IMAG-byte %6u : %f\n", xmit_count, i, xmit_out_imag[i]);
-	    printf("%c", wifi_msg[i]);
-	  }
-	  printf("\"\n"));
+  DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n", xmit_count);
+	for (int i = 0; i < wifi_msg_len; i++) {
+	  if ((i % 56) == 0) { printf("\n"); }
+	  if ((i % 7) == 0) { printf(" "); }
+	  printf("%u", wifi_msg[i]);
+	}
+	printf("\n"));
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
   xmit_count++;
   
   // Now receive the other car's Wifi data (input Viterbi Message)
@@ -835,13 +870,16 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
 
   int n_recvd_in;
-
-  char r_buffer[10];
+  DEBUG(printf("\nNow calling read_all to receive the remote-input header...\n"));
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
+  char r_buffer[10] = "\0\0\0\0\0\0\0\0\0\0";
   int valread = read_all(recv_sock, r_buffer, 8);
+  DEBUG(printf("  RECV done\n"));
+  DEBUG(printf("  RECV got %d bytes\n", valread));
   DEBUG(printf("  RECV got %d bytes :'%s'\n", valread, r_buffer));
   SDEBUG(printf("  RECV msg psn %s\n", "01234567890"));
   if (valread != 8) {
-    printf(" ERROR inti_vit_kernel RECV got a wrong-sized length indicator message\n");
+    printf(" ERROR init_vit_kernel RECV got a wrong-sized length indicator message\n");
     cleanup_and_exit(sptr, -6);
   }
  #ifdef INT_TIME
@@ -858,6 +896,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
   n_recvd_in = xfer_in_bytes / sizeof(uint8_t);
   DEBUG(printf("     Recv %u UINT8_T values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
  #ifdef INT_TIME
   gettimeofday(&start_wifi_recv, NULL);
  #endif	
@@ -871,10 +910,17 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
       cleanup_and_exit(sptr, -1);
     }
   }
-  DEBUG(printf("XFER %4u : Dumping %u RECV-PIPE bytes out of %u at %p\n", recv_count, 32, n_recvd_in, recvd_in);
+  SDEBUG(printf("XFER %4u : Dumping %u RECV-PIPE bytes out of %u at %p\n", recv_count, 32, n_recvd_in, recvd_in);
 	for (int i = 0; i < 32 /*n_recvd_in*/; i++) {
 	  printf("  Byte %5u : 0x%02x\n", i, recvd_in[i]);
 	});
+  DEBUG(printf("XFER %4u : Dumping %u RECV-PIPE bytes out of %u\n", recv_count, 256, n_recvd_in);
+	for (int i = 0; i < 256 /*n_recvd_in*/; i++) {
+	  if ((i % 16) == 0) { printf("\n     "); }
+	  printf("%02x ", recvd_in[i]);
+	});
+  send(recv_sock, ack, 2, 0);
+  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
   
  #ifdef INT_TIME
@@ -889,16 +935,39 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
   recv_count++;
 
-  unsigned     msg_len   = *((unsigned*)recvd_in);
-  ofdm_param*  ofdm_ptr  = (ofdm_param*)(recvd_in + sizeof(unsigned));
-  frame_param* frame_ptr = (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param));
-  uint8_t*     data_ptr  = recvd_in +sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param);
+  struct vit_msg_struct { 
+    int           len;
+    ofdm_param    ofdm;
+    frame_param   frame;
+    uint8_t       msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
+  }* vit_msg_ptr = (struct vit_msg_struct*) recvd_in;
+ 
+  printf("\n");
+  printf("  unsigned     msg_len   @ %p\n",  &(vit_msg_ptr->len));   //recvd_in);
+  printf("  ofdm_param*  ofdm_ptr  @ %p\n",  &(vit_msg_ptr->ofdm));  // (ofdm_param*)(recvd_in + sizeof(unsigned)));
+  printf("  frame_param* frame_ptr @ %p\n",  &(vit_msg_ptr->frame)); // (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)));
+  printf("  uint8_t*     data_ptr  @ %p\n",   &(vit_msg_ptr->msg));  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
+
+  /* unsigned     msg_len   = *((unsigned*)recvd_in); */
+  /* ofdm_param*  ofdm_ptr  = (ofdm_param*)(recvd_in + sizeof(unsigned)); */
+  /* frame_param* frame_ptr = (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)); */
+  /* uint8_t*     data_ptr  = (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)); */
+  /* temp_vit_dict_entry.msg_num = 0; */
+  /* temp_vit_dict_entry.msg_id  = 0; */
+  /* temp_vit_dict_entry.ofdm_p  = *ofdm_ptr; */
+  /* temp_vit_dict_entry.frame_p = *frame_ptr; */
+  /* temp_vit_dict_entry.in_bits = data_ptr; */
   temp_vit_dict_entry.msg_num = 0;
   temp_vit_dict_entry.msg_id  = 0;
-  temp_vit_dict_entry.ofdm_p  = *ofdm_ptr;
-  temp_vit_dict_entry.frame_p = *frame_ptr;
-  temp_vit_dict_entry.in_bits = data_ptr;
+  temp_vit_dict_entry.ofdm_p  = vit_msg_ptr->ofdm;
+  temp_vit_dict_entry.frame_p = vit_msg_ptr->frame;
+  temp_vit_dict_entry.in_bits = vit_msg_ptr->msg;
 
+  //for (int tti = 0 ; tti < sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param) + 128; tti++) {
+  for (int tti = 0 ; tti < sizeof(struct vit_msg_struct) + 128; tti++) {
+    printf("RECVD_IN %5u @ %p : 0x%02x\n", tti, &(recvd_in[tti]), recvd_in[tti]);
+  }
+  
   hist_total_objs[total_obj]++;
   unsigned tr_val = 0; // set a default to avoid compiler messages
   switch (vs.lane) {
@@ -956,6 +1025,8 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
   return &temp_vit_dict_entry;
 }
+#undef DEBUG
+#define DEBUG(x)
 
 // These routines are used to select a random (non-critical?) Viterbi message input
 //  to support variable message sizes per iteration

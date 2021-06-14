@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INCLUDED_BASE_H
-#define INCLUDED_BASE_H
+#ifndef INCLUDED_SDR_BASE_H
+#define INCLUDED_SDR_BASE_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -36,17 +36,6 @@
 
 /* Types definitions */
 
-enum Encoding {
-         BPSK_1_2  = 0,
-         BPSK_3_4  = 1,
-         QPSK_1_2  = 2,
-         QPSK_3_4  = 3,
-         QAM16_1_2 = 4,
-         QAM16_3_4 = 5,
-         QAM64_2_3 = 6,
-         QAM64_3_4 = 7,
-};
-
 typedef struct mac_header_struct {
 	//protocol version, type, subtype, to_ds, from_ds, ...
 	uint16_t frame_control;
@@ -56,44 +45,6 @@ typedef struct mac_header_struct {
 	uint8_t addr3[6];
 	uint16_t seq_nr;
 } mac_header; // __attribute__((packed));
-
-/**
- * WIFI parameters
- */
-typedef struct {
-	//ofdm_param(Encoding e); use init_ofdm_param instead
-
-	// data rate
-	enum Encoding encoding;
-	// rate field of the SIGNAL header
-	char     rate_field;
-	// number of coded bits per sub carrier
-	int      n_bpsc;
-	// number of coded bits per OFDM symbol
-	int      n_cbps;
-	// number of data bits per OFDM symbol
-	int      n_dbps;
-
-	//void print(ofdm_param* ofdm_param);
-} ofdm_param_t;
-
-/**
- * packet specific parameters
- */
-typedef struct {
-	//frame_param(ofdm_param &ofdm, int psdu_length); use init_frame_param isntead
-	// PSDU size in bytes
-	int psdu_size;
-	// number of OFDM symbols (17-11)
-	int n_sym;
-	// number of padding bits in the DATA field (17-13)
-	int n_pad;
-	int n_encoded_bits;
-	// number of data bits, including service and padding (17-12)
-	int n_data_bits;
-
-	//void print();
-} frame_param_t;
 
 
 // The folowing are some "MAX SIZE" definitions (used to allocate memory arrays right now)

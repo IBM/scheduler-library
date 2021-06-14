@@ -24,6 +24,7 @@
 #endif // RECV_HW_FFT
 
 #include "globals.h"
+#include "viterbi_types.h"
 #include "sdr_type.h"
 #include "sdr_base.h"
 #include "delay.h"
@@ -146,7 +147,7 @@ uint8_t  decoded_message[MAX_PAYLOAD_SIZE];   // Holds the resulting decodede me
 fx_pt*   input_data = &delay16_out[16]; // [2*(RAW_DATA_IN_MAX_SIZE + 16)];  // Holds the input data (plus a "front-pad" of 16 0's for delay16
 
 
-void compute(unsigned num_inputs, fx_pt *inbuff, int* vit_msg_len, ofdm_param_t* ofdm_parms, frame_param_t* frame_parms, uint8_t *outbuff);
+void compute(unsigned num_inputs, fx_pt *inbuff, int* vit_msg_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *outbuff);
 
 
 /********************************************************************************
@@ -436,7 +437,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
  * This routine manages the transmit pipeline functions and components
  ********************************************************************************/
 void
-do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* vit_msg_len, ofdm_param_t* ofdm_parms, frame_param_t* frame_parms, uint8_t* vit_msg)
+do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t* vit_bits)
 {
   DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
   for (int i = 0; i < num_recvd_vals; i++) {
@@ -446,18 +447,17 @@ do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag,
  #ifdef INT_TIME
   gettimeofday(&r_pipe_start, NULL);
  #endif
-  compute(num_recvd_vals, input_data, vit_msg_len, ofdm_parms, frame_parms, (uint8_t*)vit_msg); // outbuff);
+  compute(num_recvd_vals, input_data, vit_bits_len, ofdm_parms, frame_parms, (uint8_t*)vit_bits); // outbuff);
  #ifdef INT_TIME
   gettimeofday(&r_pipe_stop, NULL);
   r_pipe_sec  += r_pipe_stop.tv_sec  - r_pipe_start.tv_sec;
   r_pipe_usec += r_pipe_stop.tv_usec - r_pipe_start.tv_usec;
  #endif
   
-  DEBUG(printf("CMP_MSG:\n%s\n", vit_msg));
 }
 
 
-void compute(unsigned num_inputs, fx_pt *input_data, int* vit_msg_len, ofdm_param_t* ofdm_parms, frame_param_t* frame_parms, uint8_t *vit_msg) {
+void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *vit_bits) {
   uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
   DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
 	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, crealf(input_data[ti]), cimagf(input_data[ti]));
@@ -663,10 +663,10 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_msg_len, ofdm_para
  #endif
   
   DEBUG(printf("Calling get_viterbi_decoder_inputs for %u EQ-out bits\n", num_eq_out_bits));
-  get_viterbi_decoder_inputs(num_eq_out_bits, equalized, ofdm_parms, frame_parms, vit_msg_len, vit_msg);
-  DEBUG(printf(" Back from get_viterbi_decoder_inputs with %u Vit In-Bits\n", vit_msg_len));
-  SDEBUG(for (int ti = 0; ti < vit_msg_len; ti++) {
-      printf(" VIT_INBITS %5u : %u\n", ti, vit_msg[ti]);
+  get_viterbi_decoder_inputs(num_eq_out_bits, equalized, ofdm_parms, frame_parms, vit_bits_len, vit_bits);
+  DEBUG(printf(" Back from get_viterbi_decoder_inputs with %u Vit In-Bits\n", *vit_bits_len));
+  SDEBUG(for (int ti = 0; ti < *vit_bits_len; ti++) {
+      printf(" VIT_INBITS %5u : %u\n", ti, vit_bits[ti]);
     });
 
  #ifdef INT_TIME

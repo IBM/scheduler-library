@@ -225,7 +225,7 @@ policies/%.so: src/policy_src/%.c
 
 $(OBJ): $(HDR)
 
-$(TARGET): obj $(OBJ)
+$(TARGET): $(SRC) obj $(OBJ)
 	$(CROSS_COMPILE)$(AR) rcsv $@ $(OBJ)
 #	$(CROSS_COMPILE)$(LD) -shared $(LDLIBS) $(OBJ) -o $@ $(LDFLAGS)
 

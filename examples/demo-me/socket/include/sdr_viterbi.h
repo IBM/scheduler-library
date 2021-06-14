@@ -1,6 +1,7 @@
 #ifndef INCLUDED_VITERBI_FLAT_H
 #define INCLUDED_VITERBI_FLAT_H
 
+#include "viterbi_base.h"
 /*
  * Copyright (C) 2016 Bastian Bloessl <bloessl@ccs-labs.org>
  *
@@ -35,7 +36,7 @@ uint8_t* sdr_depuncture(uint8_t *in);
  * created by Phil Karn. The SSE2 version was made by Bogdan
  * Diaconescu. For more info see: gr-dvbt/lib/d_viterbi.h
  */
-void sdr_decode(bool use_hw_accel, ofdm_param_t *ofdm, frame_param_t *frame, uint8_t *in, int* n_dec_char, uint8_t* output);
+void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output);
 
 typedef union branchtab27_u {
   unsigned char c[32];
