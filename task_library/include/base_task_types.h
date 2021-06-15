@@ -84,7 +84,7 @@ typedef enum {
 /* These thresholds (in meters) are used by the plan_and_control()
  * function to make plan and control decisions.
  */
-#define PNC_THRESHOLD_1 155.0
+#define PNC_THRESHOLD_1 100.0
 #define PNC_THRESHOLD_2 205.0
 #define PNC_THRESHOLD_3 305.0
 

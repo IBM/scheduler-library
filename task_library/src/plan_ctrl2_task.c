@@ -126,6 +126,9 @@ void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
   }
 }
 
+#undef DEBUG
+#define DEBUG(x) x
+
 void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_block) {
   DEBUG(printf("In execute_on_cpu_plan_ctrl2_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
@@ -133,15 +136,12 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(task_metadata_block->data_space);
   plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the plan_and_control task : label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n",
-               plan_ctrl2_data_p->object_label,
-               object_names[plan_ctrl2_data_p->object_label],
-               plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2,
-               PNC_THRESHOLD_3, plan_ctrl2_data_p->safe_lanes_msg));
+  DEBUG(printf("In the plan_and_control task : lane %u %s label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n",
+	       plan_ctrl2_data_p->vehicle_state.lane, lane_names[plan_ctrl2_data_p->vehicle_state.lane],
+               plan_ctrl2_data_p->object_label, object_names[plan_ctrl2_data_p->object_label],
+               plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, plan_ctrl2_data_p->safe_lanes_msg));
   DEBUG(printf("Plan-Ctrl: current Vehicle-State : Active %u Lane %u Speed %.1f\n",
-	       plan_ctrl2_data_p->vehicle_state.active,
-	       plan_ctrl2_data_p->vehicle_state.lane,
-	       plan_ctrl2_data_p->vehicle_state.speed));
+	       plan_ctrl2_data_p->vehicle_state.active, plan_ctrl2_data_p->vehicle_state.lane, plan_ctrl2_data_p->vehicle_state.speed));
   
  #ifdef INT_TIME
   gettimeofday(&(plan_ctrl2_timings_p->call_start), NULL);
@@ -161,72 +161,53 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
 #endif
        )) {
     // This covers all cases where we have an obstacle "too close" ahead of us
+    DEBUG(printf("  We are in lane %s with object %u %s a tdistance %.1f\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane], plan_ctrl2_data_p->object_label, object_names[plan_ctrl2_data_p->object_label], plan_ctrl2_data_p->object_distance));
     if (plan_ctrl2_data_p->object_distance <= IMPACT_DISTANCE) {
       // We've crashed into an obstacle...
-      printf("WHOOPS: We've suffered a collision on time_step %u!\n",
-             plan_ctrl2_data_p->time_step);
+      printf("WHOOPS: We've suffered a collision on time_step %u!\n", plan_ctrl2_data_p->time_step);
       // fprintf(stderr, "WHOOPS: We've suffered a collision on time_step
       // %u!\n", plan_ctrl2_data_p->time_step);
       plan_ctrl2_data_p->new_vehicle_state.speed = 0.0;
-      plan_ctrl2_data_p->new_vehicle_state.active =
-          false; // We should add visualizer stuff for this!
+      plan_ctrl2_data_p->new_vehicle_state.active = false;
     } else {
       // Some object ahead of us that needs to be avoided.
-      DEBUG(printf("  In lane %s with object %u at %.1f\n",
-                   lane_names[plan_ctrl2_data_p->vehicle_state.lane],
-                   plan_ctrl2_data_p->object_label,
-                   plan_ctrl2_data_p->object_distance));
+      DEBUG(printf("  In lane %s with object %u at %.1f\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane], plan_ctrl2_data_p->object_label, plan_ctrl2_data_p->object_distance));
       switch (plan_ctrl2_data_p->safe_lanes_msg) {
       case safe_to_move_right_or_left:
         /* Bias is move right, UNLESS we are in the Right lane and would then
          * head into the RHazard Lane */
         if (plan_ctrl2_data_p->vehicle_state.lane < right) {
-          DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n",
-                       lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+          DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
           plan_ctrl2_data_p->new_vehicle_state.lane += 1;
         } else {
-          DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n",
-                       lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+          DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
           plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
         }
         break; // prefer right lane
       case safe_to_move_right_only:
-        DEBUG(printf("   In %s with Safe_R_only : Moving Right\n",
-                     lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+        DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
         plan_ctrl2_data_p->new_vehicle_state.lane += 1;
         break;
       case safe_to_move_left_only:
-        DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n",
-                     lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+        DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
         plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
         break;
       case unsafe_to_move_left_or_right:
-#ifdef USE_SIM_ENVIRON
+       #ifdef USE_SIM_ENVIRON
         if (plan_ctrl2_data_p->vehicle_state.speed > car_decel_rate) {
-          plan_ctrl2_data_p->new_vehicle_state.speed =
-              plan_ctrl2_data_p->vehicle_state.speed -
-              car_decel_rate; // was / 2.0;
-          DEBUG(printf(
-              "   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n",
-              lane_names[plan_ctrl2_data_p->vehicle_state.lane],
-              plan_ctrl2_data_p->vehicle_state.speed,
-              plan_ctrl2_data_p->new_vehicle_state.speed));
+          plan_ctrl2_data_p->new_vehicle_state.speed = plan_ctrl2_data_p->vehicle_state.speed - car_decel_rate; // was / 2.0;
+          DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane], plan_ctrl2_data_p->vehicle_state.speed, plan_ctrl2_data_p->new_vehicle_state.speed));
         } else {
-          DEBUG(printf(
-              "   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n",
-              lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+          DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
           plan_ctrl2_data_p->new_vehicle_state.speed = 0.0;
         }
-#else
-        DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n",
-                     lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+       #else
+        DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
         plan_ctrl2_data_p->new_vehicle_state.speed = 0.0;
-#endif
+       #endif
         break; /* Stop!!! */
       default:
-        printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
-               lane_names[plan_ctrl2_data_p->vehicle_state.lane],
-               plan_ctrl2_data_p->safe_lanes_msg);
+        printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane], plan_ctrl2_data_p->safe_lanes_msg);
         // cleanup_and_exit(sptr, -6);
       }
     } // end of "we have some obstacle too close ahead of us"
@@ -235,22 +216,20 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
     switch (plan_ctrl2_data_p->vehicle_state.lane) {
     case lhazard:
     case left:
-      if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) ||
-          (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_only)) {
-        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n",
-                     lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+    case l_center:
+      if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) || (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_only)) {
+        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
         plan_ctrl2_data_p->new_vehicle_state.lane += 1;
       }
       break;
     case center:
       // No need to alter, already in the center
       break;
+    case r_center:
     case right:
     case rhazard:
-      if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) ||
-          (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_left_only)) {
-        DEBUG(printf("  In %s with Can_move_Left : Moving Left\n",
-                     lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
+      if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) || (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_left_only)) {
+        DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
         plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
       }
       break;
@@ -284,6 +263,9 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+
+#undef DEBUG
+#define DEBUG(x)
 
 uint64_t plan_ctrl2_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_plan_ctrl2_task_on_accel_profile_data() {
