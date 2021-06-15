@@ -1380,6 +1380,8 @@ int main(int argc, char *argv[]) {
     
     printf("Launching HPVM graph!\n");
 
+    new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
+
     hpvm_launch(DFGArgs, &cv_tr_label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
 
 

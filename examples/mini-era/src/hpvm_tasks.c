@@ -218,6 +218,8 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
               size_t in_bit_size, message_t *message_id, size_t msg_id_size,
               char *out_msg_text, size_t out_msg_text_size) {
 
+  printf("-- Vitterbi Leaf Node --\n");
+
   __hpvm__hint(DEVICE);
   __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text,
                      2, message_id, out_msg_text);
@@ -693,7 +695,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 }
 
 void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
-
+  printf("-- CV Leaf Node --\n");
   __hpvm__hint(DEVICE);
   __hpvm__attributes(1, obj_label, 1, obj_label);
   __hpvm__task(CV_TASK);
@@ -734,23 +736,34 @@ void radar_leaf(distance_t *distance_ptr, size_t distance_ptr_size,
                 float *inputs_ptr, size_t inputs_ptr_size,
                 uint32_t log_nsamples) {
 
+  printf("-- Radar Leaf Node --\n");
   __hpvm__hint(DEVICE);
   __hpvm__attributes(2, distance_ptr, inputs_ptr, 2, distance_ptr, inputs_ptr);
   __hpvm__task(RADAR_TASK);
 
   size_t data_size = 2 * (1 << log_nsamples) * sizeof(float);
 
+  float* radar_inputs = (float*) malloc(inputs_ptr_size);
+  
+  for(int copy = 0; copy < 2 * (1 << MAX_RADAR_LOGN); copy++){
+      radar_inputs[copy] = inputs_ptr[copy];
+  }
   // radar_data_p->theData == mdataptr
-  // for (int i = 0; i < 2 * (1 << log_nsamples); i++) {
-  //  mdataptr[i] = inputs[i];
-  //  }
+  /*
+  for (int test = 0; test < 2 * (1 << log_nsamples); test++) {
+    printf("%.3f ",inputs_ptr[test]);
+   }
+  printf("\n");
+  */
 
   int sign = -1;
 
   // execute_cpu_fft_accelerator
+  // data = data
+  // N = 1 << fft_log_nsamples
 
   int32_t fft_log_nsamples = log_nsamples; // fft_data_p->log_nsamples;
-  float *data = inputs_ptr;                // (float*)(fft_data_p->theData);
+  float *data = radar_inputs;                // (float*)(fft_data_p->theData);
 
   unsigned int N = 1 << fft_log_nsamples;
 
@@ -851,8 +864,8 @@ void radar_leaf(distance_t *distance_ptr, size_t distance_ptr_size,
   float distance =
       ((float)(max_index * ((float)RADAR_fs) / ((float)(RADAR_N)))) * 0.5 *
       RADAR_c / ((float)(RADAR_alpha));
-  // printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance,
-  // max_psd, max_index);
+  printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance,
+  max_psd, max_index);
 
   // printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd <= RADAR_psd_threshold) {
@@ -870,6 +883,8 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
               label_t *obj_label, size_t obj_label_size, message_t *message_id,
               size_t msg_id_size, char *out_msg_text, size_t out_msg_text_size,
               unsigned time_step, unsigned repeat_factor) {
+  printf("-- PNC Leaf Node --\n");
+
 
   __hpvm__hint(DEVICE);
   __hpvm__attributes(6, new_vehicle_state, vehicle_state_ptr, distance_ptr,
@@ -881,6 +896,19 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
   message_t safe_lanes_msg = *message_id;
 
   distance_t obj_distance = *distance_ptr;
+  printf("In the plan_and_control task : label %u %s distance %.1f (T1 "
+               "%.1f T2 %.1f T3 %.1f) message %u\n",
+               *obj_label,
+               object_names[*obj_label],
+               obj_distance, PNC_THRESHOLD_1,
+               PNC_THRESHOLD_2, PNC_THRESHOLD_3,
+               safe_lanes_msg);
+  printf(
+      "Plan-Ctrl: current Vehicle-State : Active %u Lane %u Speed %.1f\n",
+      vehicle_state->active,
+      vehicle_state->lane,
+      vehicle_state->speed);
+
 
   // Start with outpu vehicle state is a copy of input vehicle state...
   // plan_ctrl_data_p->new_vehicle_state = plan_ctrl_data_p->vehicle_state;
@@ -907,34 +935,32 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
           false; // We should add visualizer stuff for this!
     } else {
       // Some object ahead of us that needs to be avoided.
-      /*
-      DEBUG(printf("  In lane %s with object %u at %.1f\n",
-                   lane_names[plan_ctrl_data_p->vehicle_state.lane],
-                   plan_ctrl_data_p->object_label,
-                   plan_ctrl_data_p->object_distance));
-      */
+      printf("  In lane %s with object %u at %.1f\n",
+                   lane_names[vehicle_state->lane],
+                   *obj_label,
+                   obj_distance);
       switch (safe_lanes_msg) {
       case safe_to_move_right_or_left:
         /* Bias is move right, UNLESS we are in the Right lane and would then
          * head into the RHazard Lane */
         if (vehicle_state->lane < right) {
-          // DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n",
-          //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+          printf("   In %s with Safe_L_or_R : Moving Right\n",
+                       lane_names[vehicle_state->lane]);
           new_vehicle_state->lane += 1;
         } else {
-          // DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n",
-          //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+          DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n",
+                       lane_names[vehicle_state->lane]));
           new_vehicle_state->lane -= 1;
         }
         break; // prefer right lane
       case safe_to_move_right_only:
-        // DEBUG(printf("   In %s with Safe_R_only : Moving Right\n",
-        //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+        printf("   In %s with Safe_R_only : Moving Right\n",
+                     lane_names[vehicle_state->lane]);
         new_vehicle_state->lane += 1;
         break;
       case safe_to_move_left_only:
-        // DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n",
-        //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+        printf("   In %s with Safe_L_Only : Moving Left\n",
+                     lane_names[vehicle_state->lane]);
         new_vehicle_state->lane -= 1;
         break;
       case unsafe_to_move_left_or_right:
@@ -942,26 +968,25 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
         if (vehicle_state->speed > car_decel_rate) {
           new_vehicle_state->speed =->vehicle_state->speed -
                                     car_decel_rate; // was / 2.0;
-          // DEBUG(printf(
-          //    "   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to
-          //    %.2f\n", lane_names[plan_ctrl_data_p->vehicle_state.lane],
-          //    plan_ctrl_data_p->vehicle_state.speed,
-          //    plan_ctrl_data_p->new_vehicle_state.speed));
+          printf(
+              "   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state->lane],
+              vehicle_state.speed,
+              new_vehicle_state->speed)
         } else {
-          // DEBUG(printf(
-          //    "   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n",
-          //    lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+          DEBUG(printf(
+              "   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n",
+              lane_names[vehicle_state->lane]));
           new_vehicle_state->speed = 0.0;
         }
 #else
-        // DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n",
-        //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+        printf("   In %s with No_Safe_Move : STOPPING\n",
+                     lane_names[vehicle_state->lane]);
         new_vehicle_state->speed = 0.0;
 #endif
         break; /* Stop!!! */
-        // printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
-        //       lane_names[plan_ctrl_data_p->vehicle_state.lane],
-        //       plan_ctrl_data_p->safe_lanes_msg);
+        printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
+               lane_names[vehicle_state->lane],
+               safe_lanes_msg);
         // cleanup_and_exit(sptr, -6);
       }
     } // end of "we have some obstacle too close ahead of us"
@@ -972,26 +997,27 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
     case left:
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_right_only)) {
-        // DEBUG(printf("  In %s with Can_move_Right: Moving Right\n",
-        //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n",
+                     lane_names[vehicle_state->lane]));
         new_vehicle_state->lane += 1;
       }
       break;
     case center:
       // No need to alter, already in the center
+      printf("No need to alter, already in the center\n");
       break;
     case right:
     case rhazard:
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_left_only)) {
-        // DEBUG(printf("  In %s with Can_move_Left : Moving Left\n",
-        //             lane_names[plan_ctrl_data_p->vehicle_state.lane]));
+        printf("  In %s with Can_move_Left : Moving Left\n",
+                     lane_names[vehicle_state->lane]);
         new_vehicle_state->lane -= 1;
       }
       break;
     }
 #ifdef USE_SIM_ENVIRON
-    if ((vehicle_state.speed <
+    if ((vehicle_state->speed <
          car_goal_speed) && // We are going slower than we want to, and
                             //((plan_ctrl_data_p->object_label == no_object) ||
                             //// There is no object ahead of us -- don't need;
@@ -1003,22 +1029,18 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
       } else {
         new_vehicle_state->speed = car_goal_speed;
       }
-      // DEBUG(printf("  Going %.2f : slower than target speed %.2f : Speeding
-      // up "
-      //             "to %.2f\n",
-      //              plan_ctrl_data_p->vehicle_state.speed, 50.0,
-      //             plan_ctrl_data_p->new_vehicle_state.speed));
+      printf("  Going %.2f : slower than target speed %.2f : Speeding up to %.2f\n",
+                    vehicle_state->speed, 50.0,
+                   new_vehicle_state->speed);
     }
 #endif
   } // end of plan-and-control logic functions...
 
-  /*
-  DEBUG(printf(
+  printf(
       "Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n",
       new_vehicle_state->active,
       new_vehicle_state->lane,
-      new_vehicle_state->speed));
-      */
+      new_vehicle_state->speed);
 
   __hpvm__return(1, new_vehicle_state);
 }
@@ -1099,7 +1121,7 @@ void MiniERARootWrapper(
   __hpvm__bindIn(PNCNode, 23, 12, 0);
   __hpvm__bindIn(PNCNode, 24, 13, 0);
 
-  __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
+ __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
 }
 
 void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
@@ -1151,10 +1173,10 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindIn(WrapperNode, 23, 23, 0);
   __hpvm__bindIn(WrapperNode, 24, 24, 0);
 
-  __hpvm__bindOut(WrapperNode, 0, 0, 0);
+  // __hpvm__bindOut(WrapperNode, 0, 0, 0);
 }
 
-void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
+void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  unsigned log_nsamples, float *radar_inputs,
                  distance_t *distance, message_size_t vit_msgs_size,
                  vit_dict_entry_t *vdentry_p, message_t *message,
@@ -1163,16 +1185,27 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  unsigned pandc_repeat_factor) {
   printf("In hpvm_launch()\n");
 
+  printf("[LAUNCH]Initial vehicle state: lane %u speed %.1f\n\n",
+            vehicle_state->lane, vehicle_state->speed);
+
+
+
+  RootIn* DFGArgs = (RootIn*) malloc(sizeof(RootIn));
+
   /* -- HPVM Host Code -- */
+  
   DFGArgs->in_label = *cv_tr_label;
   DFGArgs->obj_label = cv_tr_label;
   DFGArgs->obj_label_size = sizeof(label_t);
 
   DFGArgs->time_step = time_step;
   DFGArgs->log_nsamples = log_nsamples;
-  DFGArgs->inputs_ptr = radar_inputs;
+  DFGArgs->inputs_ptr = radar_inputs;// copy in radar_inputs explicitly.
   // described in base_types.h
-  DFGArgs->inputs_ptr_size = 2 * (1 << MAX_RADAR_LOGN);
+  DFGArgs->inputs_ptr_size = 2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
+
+
+
   DFGArgs->distance_ptr = distance;
   DFGArgs->distance_ptr_size = sizeof(distance_t);
 
@@ -1195,11 +1228,13 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DFGArgs->repeat_factor = pandc_repeat_factor;
 
   // Add relavent memory to memory tracker
-  llvm_hpvm_track_mem(radar_inputs, 2 * (1 << MAX_RADAR_LOGN));
+  llvm_hpvm_track_mem(distance, sizeof(distance_t));
+  printf("Here!\n");
+  llvm_hpvm_track_mem(DFGArgs->inputs_ptr, 2 * (1 << MAX_RADAR_LOGN));
   printf("Here!\n");
   llvm_hpvm_track_mem(cv_tr_label, sizeof(label_t));
   printf("Here!\n");
-  llvm_hpvm_track_mem(distance, sizeof(distance));
+  // llvm_hpvm_track_mem(distance, sizeof(distance));
   printf("Here!\n");
   llvm_hpvm_track_mem(&vdentry_p->ofdm_p, sizeof(ofdm_param));
   printf("Here!\n");
@@ -1225,11 +1260,12 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   printf("\n\nRequesting Memory!\n");
 
   // Requesting memory back from DFG
-  llvm_hpvm_request_mem(&new_vehicle_state, sizeof(vehicle_state_t));
+  llvm_hpvm_request_mem(new_vehicle_state, sizeof(vehicle_state_t));
 
   // Remove relavent memory from memory tracker
+  
   llvm_hpvm_untrack_mem(cv_tr_label);
-  llvm_hpvm_untrack_mem(radar_inputs);
+  llvm_hpvm_untrack_mem(DFGArgs->inputs_ptr);
   llvm_hpvm_untrack_mem(distance);
   llvm_hpvm_untrack_mem(&vdentry_p->ofdm_p);
   llvm_hpvm_untrack_mem(&vdentry_p->frame_p);
@@ -1238,6 +1274,12 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_untrack_mem(out_msg_text);
   llvm_hpvm_untrack_mem(vehicle_state);
   llvm_hpvm_untrack_mem(new_vehicle_state);
+
+  printf("[LAUNCH]New vehicle state: lane %u speed %.1f\n\n",
+            new_vehicle_state->lane, new_vehicle_state->speed);
+
+
+  free(DFGArgs);
 }
 
 RootIn *hpvm_initialize() {
