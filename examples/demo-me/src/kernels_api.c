@@ -32,7 +32,6 @@
 #include "vit_task.h"
 #include "cv_task.h"
 #include "test_task.h"
-#include "plan_ctrl_task.h"
 
 #include "kernels_api.h"
 
@@ -1284,36 +1283,5 @@ void closeout_test_kernel()
   // Nothing to do?
   printf("\nThere were a total of %u Test-Tasks run, with %u bad Test-Task results\n", total_test_tasks, bad_test_task_res);
   printf("\n");
-}
-
-
-
-
-
-
-
-void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
-{
-  int tidx = mb_ptr->accelerator_type;
-  plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
-  // Data is set up prior to call here...
-  //plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
- #ifdef INT_TIME
-  gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
- #endif
-  request_execution(mb_ptr);
-  // This now ends this block -- we've kicked off execution
-}
-
-vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));
-  plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);
-  vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;
-  DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
-  // We've finished the execution and lifetime for this task; free its metadata
-  free_task_metadata_block(mb_ptr);
-
-  return vehicle_state;
 }
 
