@@ -33,7 +33,8 @@ typedef struct { // The "Plan-and-Control" Task view of "data"
   label_t         object_label;      // The determined label of the object in the image
   distance_t      object_distance;   // The distance to the closest vehicle in our lane
   message_t       safe_lanes_msg;    // The message indicating which lanes are safe to change into
-  uint8_t*        remote_data;       // Data sent from a remote car 
+  uint8_t*        remote_data;       // Data sent from a remote car
+  lane_t          preferred_lane;    // The lane I prefer to drive in
   vehicle_state_t vehicle_state;     // The current (input) vehicle state
   vehicle_state_t new_vehicle_state; // The new (oputput) vehicle state
 }  plan_ctrl2_data_struct_t;

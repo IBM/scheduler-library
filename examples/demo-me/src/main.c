@@ -131,8 +131,8 @@ void print_usage(char *pname) {
   printf("    -t <trace>  : defines the input trace file <trace> to use\n");
 #endif
   printf("    -l <str>    : set the initial, starting lane for this car; Valid str are:\n");
-  printf("                :   LH = left-hazard,  LL = left lane,  LM = Left-Middle, MD = Middle,\n");
-  printf("                :   RH = right-hazard, RL = right lane, RM = Right-Middle\n");
+  printf("                :   LH = left-hazard,  FL = far-left,  LL = left lane,  LM = Left-Middle, MD = Middle,\n");
+  printf("                :   RH = right-hazard, FR = far-right, RL = right lane, RM = Right-Middle\n");
   printf("    -W <str>    : set the internet-address for the WiFi server to <str>\n");
   printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
   printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
@@ -537,6 +537,10 @@ int main(int argc, char *argv[]) {
 	  else if (optarg[1] == 'M') { starting_lane = r_center; }
 	  else {err = true; }
 	} else if (optarg[0] == 'M') {starting_lane = center; }
+	else if (optarg[0] == 'F') {
+	  if (optarg[1] == 'L') { starting_lane = far_left; }
+	  else if (optarg[1] == 'R') { starting_lane = far_left; }
+	}
 	else {err = true; }
 
 	if (err) {
@@ -544,6 +548,7 @@ int main(int argc, char *argv[]) {
 	  print_usage(argv[0]);
 	  exit(-1);
 	}
+	printf("Set starting lane (preferred lane) to %u\n", starting_lane);
       }
       break;
       
@@ -1310,7 +1315,7 @@ int main(int argc, char *argv[]) {
     DEBUG(printf("Calling start_plan_ctrl2_execution...\n"));
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
 			     false, time_step,
-			     time_step, pandc_repeat_factor, label, distance, message, vehicle_state);
+			     time_step, pandc_repeat_factor, label, distance, message, starting_lane, vehicle_state);
     DEBUG(printf(" MB%u Back from set_up_plan_ctrl2_task\n", pnc_mb_ptr->block_id));
     request_execution(pnc_mb_ptr);
 

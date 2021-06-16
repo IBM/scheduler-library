@@ -48,7 +48,7 @@
 extern unsigned time_step;
 extern unsigned task_size_variability;
 
-char* lane_names[NUM_LANES] = {"LHazard", "Left", "LeftCntr", "Center", "RtCntr", "Right", "RHazard" };
+char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
 
@@ -66,8 +66,8 @@ unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this
 unsigned lane_dist[NUM_LANES][MAX_OBJ_IN_LANE]; // The distance to each obstacle object in each lane
 char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
 
-char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N' };
-float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
+float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
 
 unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
@@ -608,9 +608,7 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 }
 
 /* Each time-step of the trace, we read in the
- * trace values for the left, middle and right lanes
- * (i.e. which message if the autonomous car is in the
- *  left, middle or right lane).
+ * trace values for the various lanes
  */
 
 
@@ -644,20 +642,20 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 {
   unsigned msg_val = 0; // set a default to avoid compiler messages
-  printf("At time %u We are in lane %u : %s  : VIT_CLEAR_TH = %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD);
+  printf("At time %u We are in lane %u %s TH %.1f : obj in %u is %c at %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD, vs.lane, nearest_obj[vs.lane], nearest_dist[vs.lane]);
   switch (vs.lane) {
   case lhazard:
     {
-      unsigned nd_l = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[left] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+      unsigned nd_l = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[lhazard+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane+1, nearest_obj[vs.lane+1], nd_l));
-      if ((nearest_obj[left] != 'N') && (nd_l < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the left lane within threshold distance
-	msg_val = 3; // Unsafe to move from lhazard lane into the left lane
+      if ((nearest_obj[lhazard+1] != 'N') && (nd_l < VIT_CLEAR_THRESHOLD)) {
+	// Some object is in the lhazard+1 lane within threshold distance
+	msg_val = 3; // Unsafe to move from lhazard lane into the lhazard+1 lane
       } else {
 	// Check that the other "MY_CAR" is not in one of the 2 lanes to the right
 	//   (or else it might merge into the lane I'm merging into)
-	printf(" fused %u = %u  and %u = %u\n", left, fused_occ_grid[left][1], l_center, fused_occ_grid[l_center][1]);
-	if ((fused_occ_grid[left][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[l_center][1] != OCC_GRID_MY_CAR_VAL)) {
+	printf(" fused %u = %u  and %u = %u\n", lhazard+1, fused_occ_grid[lhazard+1][1], l_center, fused_occ_grid[l_center][1]);
+	if ((fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[l_center][1] != OCC_GRID_MY_CAR_VAL)) {
 	  msg_val = 1;
 	} else {
 	  msg_val = 3;
@@ -665,7 +663,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       }
     }
     break;
-  case left:
+  case far_left:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -688,9 +686,11 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
+  case left:
   case l_center:
   case center:
   case r_center:
+  case right:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -714,7 +714,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-  case right:
+  case far_right:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -739,13 +739,13 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 
   case rhazard:
     {
-      unsigned nd_r = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[right] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+      unsigned nd_r = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[rhazard-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane-1, nearest_obj[vs.lane-1], nd_r));
-      if ((nearest_obj[right] != 'N') && (nd_r < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the right lane within threshold distance
-	msg_val = 3; // Unsafe to move from center lane to the right.
+      if ((nearest_obj[rhazard-1] != 'N') && (nd_r < VIT_CLEAR_THRESHOLD)) {
+	// Some object is in the rhazard-1 lane within threshold distance
+	msg_val = 3; // Unsafe to move from rhazard lane to the left
       } else {
-	if ((fused_occ_grid[right][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[r_center][1] != OCC_GRID_MY_CAR_VAL)) {
+	if ((fused_occ_grid[rhazard-1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[r_center][1] != OCC_GRID_MY_CAR_VAL)) {
 	  msg_val = 2;
 	} else {
 	  msg_val = 3;

@@ -38,11 +38,13 @@ typedef enum {
 /* The potential (horizontal) positions of any object (i.e. lane indications) */
 typedef enum {
   lhazard = 0, 
+  far_left, 
   left, 
   l_center, 
   center, 
   r_center, 
   right,
+  far_right,
   rhazard,
   NUM_LANES
 } lane_t;
