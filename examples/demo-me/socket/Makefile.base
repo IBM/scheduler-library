@@ -25,6 +25,8 @@ INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
 CFLAGS ?= -O -g
+# We can define this for aall wifi -- it doesn't use the NUM_LANES, etc. 
+CFLAGS += -DBUILD_WITH_N_LANES=5
 CFLAGS += $(INCDIR)
 CFLAGS += -DGRID_MAP_X_DIM=$(CONFIG_GRID_MAP_X_DIM)
 CFLAGS += -DGRID_MAP_Y_DIM=$(CONFIG_GRID_MAP_Y_DIM)

@@ -65,8 +65,8 @@ unsigned* truck_sp_thds;
 unsigned* bike_sp_thds;
 unsigned* person_sp_thds;
 
-// These are defined in kernels_api but the world_description_file can alter their settings for a sim run.
-float car_goal_speed = 50.0; 
+// These are defined for kernels_api but the world_description_file can alter their settings for a sim run.
+extern float car_goal_speed;
 float car_accel_rate = 15.0;
 float car_decel_rate = 15.0;
 

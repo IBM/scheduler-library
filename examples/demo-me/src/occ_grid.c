@@ -13,19 +13,17 @@ extern unsigned time_step;
 void print_local_occupancy_grid()
 {
   printf("\nTime-Step %u : %s occupancy-grid\n", time_step, "LOCAL");
-  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n"); //-5-|-6-|\n");
-  printf("|---|----|---|---|---|---|---|\n"); //---|---|\n");
+ #if (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
+  printf("|---|----|---|---|---|---|---|\n");
+ #elif (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
+  printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
+ #endif
   for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
     printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      /*	switch (my_occ_grid[ix][iy]) {
-		case OCC_GRID_UNKNOWN_VAL :     printf("???|"); break;
-		case OCC_GRID_NO_OBSTACLE_VAL : printf("---|"); break;
-		case OCC_GRID_OBSTACLE_VAL :    printf("XXX|"); break;
-		case OCC_GRID_MY_CAR_VAL :      printf("MMM|"); break;
-		default :                       printf("***|"); break;
-		}*/
-      printf("%s|", occ_grid_from_value_str[local_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_local_value_str[local_occ_grid[ix][iy]]);
     }
     printf("\n");
   }
@@ -35,19 +33,17 @@ void print_local_occupancy_grid()
 void print_remote_occupancy_grid()
 {
   printf("\nTime-Step %u : %s occupancy-grid\n", time_step, "REMOTE");
-  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n"); //-5-|-6-|\n");
-  printf("|---|----|---|---|---|------||\n"); //---|---|\n");
+ #if (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
+  printf("|---|----|---|---|---|---|---|\n");
+ #elif (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
+  printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
+ #endif
   for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
     printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      /*	switch (my_occ_grid[ix][iy]) {
-		case OCC_GRID_UNKNOWN_VAL :     printf("???|"); break;
-		case OCC_GRID_NO_OBSTACLE_VAL : printf("---|"); break;
-		case OCC_GRID_OBSTACLE_VAL :    printf("XXX|"); break;
-		case OCC_GRID_MY_CAR_VAL :      printf("MMM|"); break;
-		default :                       printf("***|"); break;
-		}*/
-      printf("%s|", occ_grid_from_value_str[remote_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_remote_value_str[remote_occ_grid[ix][iy]]);
     }
     printf("\n");
   }
@@ -57,19 +53,17 @@ void print_remote_occupancy_grid()
 void print_fused_occupancy_grid()
 {
   printf("\nTime-Step %u : %s occupancy-grid\n", time_step, "FUSED");
-  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n"); //-5-|-6-|\n");
-  printf("|---|----|---|---|---|---|---|\n"); //---|---|\n");
+ #if (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
+  printf("|---|----|---|---|---|---|---|\n");
+ #elif (BUILD_WITH_N_LANES == 5)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
+  printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
+ #endif
   for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
     printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      /*	switch (my_occ_grid[ix][iy]) {
-		case OCC_GRID_UNKNOWN_VAL :     printf("???|"); break;
-		case OCC_GRID_NO_OBSTACLE_VAL : printf("---|"); break;
-		case OCC_GRID_OBSTACLE_VAL :    printf("XXX|"); break;
-		case OCC_GRID_MY_CAR_VAL :      printf("MMM|"); break;
-		default :                       printf("***|"); break;
-		}*/
-      printf("%s|", occ_grid_from_value_str[fused_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_local_value_str[fused_occ_grid[ix][iy]]);
     }
     printf("\n");
   }
@@ -82,27 +76,33 @@ void print_side_by_side_occupancy_grids()
 {
   printf("\nTime-Step %u : ALL occupancy-grids\n", time_step);
   printf("            LOCAL (MINE)                       REMOTE(YOURS)                  FUSED (TOTAL)\n");
-  //printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-| + |-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-| = |-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
-  //  printf("|---|----|---|---|---|---|---|---|---|-7-|-8-| + |---|---|---|---|---|---|---|-7-|-8-| = |---|---|---|---|---|---|---|-7-|-8-|\n");
+ #if (BUILD_WITH_N_LANES == 5)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-| + |-0-|-1-|-2-|-3-|-4-| = |-0-|-1-|-2-|-3-|-4-|\n");
   printf("|---|----|---|---|---|---|---| + |---|---|---|---|---| = |---|---|---|---|---|\n");
+ #elif (BUILD_WITH_N_LANES == 9)
+  printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-| + |-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-| = |-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
+  printf("|---|----|---|---|---|---|---|---|---|-7-|-8-| + |---|---|---|---|---|---|---|-7-|-8-| = |---|---|---|---|---|---|---|-7-|-8-|\n");
+ #endif
   for (int iy = OCC_GRID_Y_DIM-1; iy >= 0; iy--) {
     printf("|%3u|%4u|", iy, GRID_DIST_STEP_SIZE * iy);
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      printf("%s|", occ_grid_from_value_str[local_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_local_value_str[local_occ_grid[ix][iy]]);
     }
     printf(" + |");
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      printf("%s|", occ_grid_from_value_str[remote_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_remote_value_str[remote_occ_grid[ix][iy]]);
     }
     printf(" = |");
     for (int ix = 0; ix < OCC_GRID_X_DIM; ix++) {
-      printf("%s|", occ_grid_from_value_str[fused_occ_grid[ix][iy]]);
+      printf("%s|", occ_grid_from_local_value_str[fused_occ_grid[ix][iy]]);
     }
     printf("\n");
   }
+ #if (BUILD_WITH_N_LANES == 5)
   printf("|---|----|---|---|---|---|---| + |---|---|---|---|---| = |---|---|---|---|---|\n");
-  //printf("|---|----|---|---|---|---|---|---|---|---|---| + |---|---|---|---|---|---|---|---|---| = |---|---|---|---|---|---|---|---|---|\n");
+ #elif (BUILD_WITH_N_LANES == 9)
+  printf("|---|----|---|---|---|---|---|---|---|---|---| + |---|---|---|---|---|---|---|---|---| = |---|---|---|---|---|---|---|---|---|\n");
+ #endif
   //printf("END of occupancy FUSED map\n");
 }
 
@@ -131,8 +131,10 @@ int fuse_local_remote_occupancy_grids()
       // And then supplement with the remote information...
       switch (local_occ_grid[ix][iy]) {
       case OCC_GRID_UNKNOWN_VAL:
-	if (remote_occ_grid[ix][iy] <= OCC_GRID_MY_CAR_VAL) {
+	if (remote_occ_grid[ix][iy] < OCC_GRID_MY_CAR_VAL) {
 	  fused_occ_grid[ix][iy] = remote_occ_grid[ix][iy];
+	} else if (remote_occ_grid[ix][iy] == OCC_GRID_MY_CAR_VAL) { // If we found your "my-car"
+	  fused_occ_grid[ix][iy] = OCC_GRID_YOUR_CAR_VAL; // Swap it to my "your-car"
 	} else {
 	  if (occ_grid_bad_remote_entries == 0) {
 	    printf("ERROR : REMOTE map has bad entry at lane %u didx %u of %u\n", ix, iy, remote_occ_grid[ix][iy]);
@@ -145,8 +147,8 @@ int fuse_local_remote_occupancy_grids()
 	// Local is "CLEAR" so if remote is "unknown" or "clear" we're fine, otherwise process onwards...
 	if ((remote_occ_grid[ix][iy] != OCC_GRID_UNKNOWN_VAL) && (remote_occ_grid[ix][iy] != local_occ_grid[ix][iy])) {
 	  // If we are marked "clear" and remote indicates THAT CAR is there, then we must take that as truth
-	  if (remote_occ_grid[ix][iy] == OCC_GRID_MY_CAR_VAL) {
-	    fused_occ_grid[ix][iy] = OCC_GRID_MY_CAR_VAL;
+	  if (remote_occ_grid[ix][iy] == OCC_GRID_MY_CAR_VAL) {  // If we foudn your "my-car"
+	    fused_occ_grid[ix][iy] = OCC_GRID_YOUR_CAR_VAL; // Swap it to my "your-car"
 	  } else {
 	    fused_occ_grid[ix][iy] = OCC_GRID_ERROR_VAL;
 	    if (occ_grid_conflicts == 0) {
@@ -171,27 +173,15 @@ int fuse_local_remote_occupancy_grids()
       case OCC_GRID_MY_CAR_VAL :
 	// Local is "MY_CAR" so if remote is "unknown" or "clear" we're fine, otherwise process onwards...
 	if ((remote_occ_grid[ix][iy] != OCC_GRID_UNKNOWN_VAL) && (remote_occ_grid[ix][iy] != OCC_GRID_NO_OBSTACLE_VAL)) {
-	  // If we are marked "clear" and remote indicates THAT CAR is there, then we must take that as truth
-	  /* if (remote_occ_grid[ix][iy] == OCC_GRID_MY_CAR_VAL) { */
-	  /*   fused_occ_grid[ix][iy] = OCC_GRID_ERROR_VAL; */
-	  /* } else { */
 	  fused_occ_grid[ix][iy] = OCC_GRID_ERROR_VAL;
 	  if (occ_grid_conflicts == 0) {
 	    printf("ERROR : LOCAL and REMOTE maps conflict at lane %u didx %u : %u vs %u\n", ix, iy, local_occ_grid[ix][iy], remote_occ_grid[ix][iy]);
 	  }
 	  this_occ_grid_conflicts++;
-	  /* } */
 	}
 	break;
 
-	/* if ((remote_occ_grid[ix][iy] != OCC_GRID_UNKNOWN_VAL) && (remote_occ_grid[ix][iy] != local_occ_grid[ix][iy])) { */
-	/*   fused_occ_grid[ix][iy] = OCC_GRID_ERROR_VAL; */
-	/*   if (occ_grid_conflicts == 0) { */
-	/*     printf("ERROR : LOCAL and REMOTE maps conflict at lane %u didx %u : %u vs %u\n", ix, iy, local_occ_grid[ix][iy], remote_occ_grid[ix][iy]); */
-	/*   } */
-	/*   occ_grid_conflicts++; */
-	/* } */
-	/* break; */
+      case OCC_GRID_YOUR_CAR_VAL :
       default:
 	if (occ_grid_bad_local_entries == 0) {
 	  printf("ERROR : LOCAL map has bad entry at lane %u didx %u of %u\n", ix, iy, local_occ_grid[ix][iy]);

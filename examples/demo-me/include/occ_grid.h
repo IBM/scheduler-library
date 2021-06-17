@@ -25,9 +25,9 @@
 enum { OCC_GRID_UNKNOWN_VAL = 0,
        OCC_GRID_NO_OBSTACLE_VAL, // 1
        OCC_GRID_OBSTACLE_VAL,    // 2
-       OCC_GRID_MY_CAR_VAL,      // 3
-       OCC_GRID_ERROR_VAL,       // 4
-       OCC_GRID_YOUR_CAR_VAL,
+       OCC_GRID_YOUR_CAR_VAL,    // 3
+       OCC_GRID_MY_CAR_VAL,      // 4
+       OCC_GRID_ERROR_VAL,       // 5
        OCC_GRID_NUM_OF_VALS};
        
 extern bool show_local_occ_grid;
@@ -35,7 +35,8 @@ extern bool show_remote_occ_grid;
 extern bool show_fused_occ_grid;
 extern bool show_side_by_occ_grids;
 
-extern char* occ_grid_from_value_str[OCC_GRID_NUM_OF_VALS];
+extern char* occ_grid_from_local_value_str[OCC_GRID_NUM_OF_VALS];
+extern char* occ_grid_from_remote_value_str[OCC_GRID_NUM_OF_VALS];
 
 extern unsigned MAX_GRID_DIST_FAR_IDX;
 //extern unsigned GRID_DIST_STEP_SIZE;

@@ -164,17 +164,20 @@ endif
 SRC = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
 HDR = $(wildcard include/*.h)
 OBJ = $(SRC:%.c=obj/%.o)
+OBJ_W = $(SRC:%.c=obj_w/%.o)
 LL_OBJ = $(SRC:%.c=obj/%.bc)
+LL_OBJ_W = $(SRC:%.c=obj_w/%.bc)
 
 VPATH = ./src
 
 TARGET=libtasks.a
+TARGET_W=libtasksW.a
 HPVM_TARGET=libtasks.bc
 
 #$(info $$TARGET is [${TARGET}])
 
 
-all: esp-libs $(TARGET)
+all: esp-libs $(TARGET) $(TARGET_W)
 
 ESP_BUILD_DRIVERS     = esp-build/drivers
 
@@ -212,7 +215,7 @@ endif
 .PHONY: esp-build-clean esp-build-distclean esp-libs
 
 obj/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DBUILD_WITH_N_LANES=5 -c $< -o $@
 
 $(OBJ): $(HDR)
 
@@ -221,17 +224,31 @@ $(TARGET): obj $(OBJ)
 #	$(CROSS_COMPILE)$(LD) -shared $(LDLIBS) $(OBJ) -o $@ $(LDFLAGS)
 
 
+obj_w/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DBUILD_WITH_N_LANES=9 -c $< -o $@
+
+$(OBJ_W): $(HDR)
+
+$(TARGET_W): obj_w $(OBJ_W)
+	$(CROSS_COMPILE)$(AR) rcsv $@ $(OBJ_W)
+#	$(CROSS_COMPILE)$(LD) -shared $(LDLIBS) $(OBJ_W) -o $@ $(LDFLAGS)
+
+
 clean:
 	$(RM) $(OBJ) $(LL_OBJ) $(TARGET)
-	$(RM) -rf obj
+	$(RM) $(OBJ_W) $(LL_OBJ_W) $(TARGET_W)
 
 clobber: clean
-	$(RM) $(TARGET) 
+	$(RM) -rf obj obj_w
 	$(RM) -rf esp-build
 
 
 obj:
 	mkdir $@
+
+obj_w:
+	mkdir $@
+
 
 hpvm: obj $(HPVM_TARGET)
 

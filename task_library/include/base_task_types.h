@@ -34,7 +34,7 @@ typedef enum {
   NUM_OBJECTS
 } label_t;
 
-
+#if (BUILD_WITH_N_LANES == 5)
 /* The potential (horizontal) positions of any object (i.e. lane indications) */
 typedef enum {
   lhazard = 0, 
@@ -44,6 +44,21 @@ typedef enum {
   rhazard,
   NUM_LANES
 } lane_t;
+#elif (BUILD_WITH_N_LANES == 9)
+/* The potential (horizontal) positions of any object (i.e. lane indications) */
+typedef enum {
+  lhazard = 0,
+  far_left,
+  left,
+  l_center,
+  center,
+  r_center,
+  right,
+  far_right,
+  rhazard,
+  NUM_LANES
+} lane_t;
+#endif
 
 /* These are some global type defines, etc. */
 typedef struct

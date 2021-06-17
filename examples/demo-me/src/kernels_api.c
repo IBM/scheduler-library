@@ -47,8 +47,12 @@
 extern unsigned time_step;
 extern unsigned task_size_variability;
 
-//char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
+#if (BUILD_WITH_N_LANES == 5)
 char* lane_names[NUM_LANES] = {"LHazard", "Left", "Center", "Right", "RHazard" };
+#elif (BUILD_WITH_N_LANES == 9)
+char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
+#endif
+
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
 
@@ -521,12 +525,20 @@ bool show_remote_occ_grid = false;
 bool show_fused_occ_grid = false;
 bool show_side_by_occ_grids = false;
 
-char* occ_grid_from_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
-							"---",   // OCC_GRID_NO_OBSTACLE_VAL 1
-							"XXX",   // OCC_GRID_OBSTACLE_VAL    2
-							"[A]",   // OCC_GRID_MY_CAR_VAL      3
-							"{V}",   // OCC_GRID_MY_CAR_VAL      3
-							"ERR" }; // OCC_GRID_ERROR_VAL       4
+char* occ_grid_from_local_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
+							      "---",   // OCC_GRID_NO_OBSTACLE_VAL 1
+							      "XXX",   // OCC_GRID_OBSTACLE_VAL    2
+							      "{V}",   // OCC_GRID_YOUR_CAR_VAL    3
+							      "[A]",   // OCC_GRID_MY_CAR_VAL      4
+							      "ERR" }; // OCC_GRID_ERROR_VAL       5
+
+
+char* occ_grid_from_remote_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
+							       "---",   // OCC_GRID_NO_OBSTACLE_VAL 1
+							       "XXX",   // OCC_GRID_OBSTACLE_VAL    2
+							       "[A]",   // OCC_GRID_YOUR_CAR_VAL    3
+							       "{V}",   // OCC_GRID_MY_CAR_VAL      4
+							       "ERR" }; // OCC_GRID_ERROR_VAL       5
 
 
 unsigned MAX_GRID_DIST_FAR_IDX = 3;
@@ -676,7 +688,11 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       }
     }
     break;
-  case left: // far_left:
+#if (BUILD_WITH_N_LANES == 5)
+  case left: // the lane immediately to the right of the lhazard
+#elif (BUILD_WITH_N_LANES == 9)
+  case far_left: // the lane immediately to the right of the lhazard
+#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -699,11 +715,15 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-    //case left:
-    //case l_center:
+#if (BUILD_WITH_N_LANES == 5)
+  case center: // Lanes with 2 lanes on each side...
+#elif (BUILD_WITH_N_LANES == 9)
+  case left:  // Lanes with 2 lanes on each side...
+  case l_center:
   case center:
-    //case r_center:
-    //case right:
+  case r_center:
+  case right:
+#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -727,7 +747,11 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-  case right: //far_right:
+#if (BUILD_WITH_N_LANES == 5)
+  case right: // the lane immediately to the left of the rhazard
+#elif (BUILD_WITH_N_LANES == 9)
+  case far_right: // the lane immediately to the left of the rhazard
+#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...

@@ -112,6 +112,7 @@ int input_accel_limit_vit = -1;
 int input_accel_limit_cv = -1;
 
 lane_t starting_lane = center;
+float car_goal_speed = 50.0; 
 
 void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -441,6 +442,9 @@ int main(int argc, char *argv[]) {
     case 'u':
       sched_holdoff_usec = atoi(optarg);
       break;
+    case 'v':
+      car_goal_speed = atoi(optarg);
+      break;
     case 's':
       max_time_steps = atoi(optarg);
       break;
@@ -530,18 +534,24 @@ int main(int argc, char *argv[]) {
 	if (optarg[0] == 'L') {
 	  if (optarg[1] == 'H') { starting_lane = lhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = left; }
-	  //else if (optarg[1] == 'M') { starting_lane = l_center; }
+         #if (BUILD_WITH_N_LANES == 9)
+	  else if (optarg[1] == 'M') { starting_lane = l_center; }
+         #endif
 	  else {err = true; }
 	} else if (optarg[0] == 'R') {
 	  if (optarg[1] == 'H') { starting_lane = rhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = right; }
-	  //else if (optarg[1] == 'M') { starting_lane = r_center; }
+         #if (BUILD_WITH_N_LANES == 9)
+	  else if (optarg[1] == 'M') { starting_lane = r_center; }
+         #endif
 	  else {err = true; }
 	} else if (optarg[0] == 'M') {starting_lane = center; }
-	//else if (optarg[0] == 'F') {
-	//  if (optarg[1] == 'L') { starting_lane = far_left; }
-	//  else if (optarg[1] == 'R') { starting_lane = far_left; }
-	//}
+       #if (BUILD_WITH_N_LANES == 9)
+	else if (optarg[0] == 'F') {
+	  if (optarg[1] == 'L') { starting_lane = far_left; }
+	  else if (optarg[1] == 'R') { starting_lane = far_left; }
+	}
+       #endif
 	else {err = true; }
 
 	if (err) {
@@ -937,8 +947,8 @@ int main(int argc, char *argv[]) {
    *  - Speed: 50 mph
    */
   vehicle_state.active = true;
-  vehicle_state.lane = starting_lane;
-  vehicle_state.speed = 50;
+  vehicle_state.lane  = starting_lane;
+  vehicle_state.speed = car_goal_speed;
   //DEBUG(
   printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed);//);
 
@@ -1359,6 +1369,13 @@ int main(int argc, char *argv[]) {
     //DEBUG(
     printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed);//);
 
+   #ifndef USE_SIM_ENVIRON
+    // Something BAD has happened...
+    if (vehicle_state.speed != car_goal_speed) {
+      printf("New vehicle state: lane %u speed %.1f -- Speed is < car_goal_speed (%.1f) -- HALT RUN!\n", vehicle_state.lane, vehicle_state.speed, car_goal_speed);
+    }
+   #endif
+    
     time_step++;
 
 #ifndef USE_SIM_ENVIRON
