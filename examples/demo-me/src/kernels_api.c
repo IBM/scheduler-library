@@ -47,7 +47,8 @@
 extern unsigned time_step;
 extern unsigned task_size_variability;
 
-char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
+//char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
+char* lane_names[NUM_LANES] = {"LHazard", "Left", "Center", "Right", "RHazard" };
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
 
@@ -65,8 +66,10 @@ unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this
 unsigned lane_dist[NUM_LANES][MAX_OBJ_IN_LANE]; // The distance to each obstacle object in each lane
 char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
 
-char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
-float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N'};
+float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE};
+//char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
+//float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
 
 unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
@@ -653,8 +656,8 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       } else {
 	// Check that the other "MY_CAR" is not in one of the 2 lanes to the right
 	//   (or else it might merge into the lane I'm merging into)
-	printf(" fused %u = %u  and %u = %u\n", lhazard+1, fused_occ_grid[lhazard+1][1], l_center, fused_occ_grid[l_center][1]);
-	if ((fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[l_center][1] != OCC_GRID_MY_CAR_VAL)) {
+	printf(" fused %u = %u  and %u = %u\n", lhazard+1, fused_occ_grid[lhazard+1][1], lhazard+1, fused_occ_grid[lhazard+1][1]);
+	if ((fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL)) {
 	  msg_val = 1;
 	} else {
 	  msg_val = 3;
@@ -662,7 +665,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       }
     }
     break;
-  case far_left:
+  case left: // far_left:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -685,11 +688,11 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-  case left:
-  case l_center:
+    //case left:
+    //case l_center:
   case center:
-  case r_center:
-  case right:
+    //case r_center:
+    //case right:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -713,7 +716,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-  case far_right:
+  case right: //far_right:
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -744,7 +747,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 	// Some object is in the rhazard-1 lane within threshold distance
 	msg_val = 3; // Unsafe to move from rhazard lane to the left
       } else {
-	if ((fused_occ_grid[rhazard-1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[r_center][1] != OCC_GRID_MY_CAR_VAL)) {
+	if ((fused_occ_grid[rhazard-1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[rhazard-1][1] != OCC_GRID_MY_CAR_VAL)) {
 	  msg_val = 2;
 	} else {
 	  msg_val = 3;
@@ -799,7 +802,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	}
 	local_occ_grid[my_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
       } else {
-	DEBUG(printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", my_lane, 0, OCC_GRID_Y_DIM-1));
+	DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", my_lane, 0, OCC_GRID_Y_DIM-1));
 	for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
 	  local_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	}
@@ -820,7 +823,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	    }
 	  }		
 	  int grid_min = OCC_NEXT_LANE_FAR[abs_lane_diff] / GRID_DIST_STEP_SIZE;
-	  DEBUG(printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1));
+	  DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1));
 	  for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
 	    local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	  }
@@ -837,7 +840,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	      } else {
 		int grid_dist = (int)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
 		DEBUG(printf("  ==> FOUND %c Lane-Over %d Lane %u %s NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lane_over, check_lane, lane_names[check_lane], dist, grid_dist));
-		DEBUG(printf("   Filling lane %u from %u to %u with NO-OBSTACLE\n", check_lane, 0, grid_dist-1));
+		DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, 0, grid_dist-1));
 		for (int yi = 0; yi < grid_dist; yi++) {
 		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}

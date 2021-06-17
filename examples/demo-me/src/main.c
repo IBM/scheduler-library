@@ -131,8 +131,9 @@ void print_usage(char *pname) {
   printf("    -t <trace>  : defines the input trace file <trace> to use\n");
 #endif
   printf("    -l <str>    : set the initial, starting lane for this car; Valid str are:\n");
-  printf("                :   LH = left-hazard,  FL = far-left,  LL = left lane,  LM = Left-Middle, MD = Middle,\n");
-  printf("                :   RH = right-hazard, FR = far-right, RL = right lane, RM = Right-Middle\n");
+  printf("                :   LH = left-hazard, LL = left lane, MD = Middle, RL = right lane, RH = right-hazard\n");
+  /* printf("                :   LH = left-hazard,  FL = far-left,  LL = left lane,  LM = Left-Middle, MD = Middle,\n"); */
+  /* printf("                :   RH = right-hazard, FR = far-right, RL = right lane, RM = Right-Middle\n"); */
   printf("    -W <str>    : set the internet-address for the WiFi server to <str>\n");
   printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
   printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
@@ -529,18 +530,18 @@ int main(int argc, char *argv[]) {
 	if (optarg[0] == 'L') {
 	  if (optarg[1] == 'H') { starting_lane = lhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = left; }
-	  else if (optarg[1] == 'M') { starting_lane = l_center; }
+	  //else if (optarg[1] == 'M') { starting_lane = l_center; }
 	  else {err = true; }
 	} else if (optarg[0] == 'R') {
 	  if (optarg[1] == 'H') { starting_lane = rhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = right; }
-	  else if (optarg[1] == 'M') { starting_lane = r_center; }
+	  //else if (optarg[1] == 'M') { starting_lane = r_center; }
 	  else {err = true; }
 	} else if (optarg[0] == 'M') {starting_lane = center; }
-	else if (optarg[0] == 'F') {
-	  if (optarg[1] == 'L') { starting_lane = far_left; }
-	  else if (optarg[1] == 'R') { starting_lane = far_left; }
-	}
+	//else if (optarg[0] == 'F') {
+	//  if (optarg[1] == 'L') { starting_lane = far_left; }
+	//  else if (optarg[1] == 'R') { starting_lane = far_left; }
+	//}
 	else {err = true; }
 
 	if (err) {
