@@ -911,31 +911,26 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   printf("Initializing the Radar kernel...\n");
-  if (init_radar_kernel(sptr, rad_dict) != success) {
+  if (init_radar_kernel(sptr, rad_dict, crit_fft_samples_set) != success) {
+    if (crit_fft_samples_set >= num_radar_samples_sets) {
+      printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
+      print_usage(argv[0]);
+    }
     printf("Error: the radar kernel couldn't be initialized properly.\n");
     return 1;
   }
   printf("Initializing the Viterbi kernel...\n");
   if (init_vit_kernel(sptr, vit_dict) != success) {
-    printf("Error: the Viterbi decoding kernel couldn't be initialized "
-           "properly.\n");
+    printf("Error: the Viterbi decoding kernel couldn't be initialized properly.\n");
     return 1;
   }
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (init_test_kernel(sptr, "") != success) {
-      printf(
-          "Error: the testing-task kernel couldn't be initialized properly.\n");
+      printf("Error: the testing-task kernel couldn't be initialized properly.\n");
       return 1;
     }
   }
 
-  if (crit_fft_samples_set >= num_radar_samples_sets) {
-    printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there "
-           "are only %u sets in the dictionary %s\n",
-           crit_fft_samples_set, num_radar_samples_sets, rad_dict);
-    print_usage(argv[0]);
-    cleanup_and_exit(sptr, -1);
-  }
 
   /* We assume the vehicle starts in the following state:
    *  - Lane: (center, but spcificable as a run-time input parm)
@@ -1055,7 +1050,7 @@ int main(int argc, char *argv[]) {
     iter_rad_usec += stop_iter_rad.tv_usec - start_iter_rad.tv_usec;
 #endif
     distance_t rdict_dist = rdentry_p->distance;
-    float *radar_inputs = rdentry_p->return_data;
+    float *radar_inputs = rdentry_p->radar_return_data;
 
     /* The Viterbi decoding kernel performs Viterbi decoding on the next
      * OFDM symbol (message), and returns the extracted message.
@@ -1174,7 +1169,7 @@ int main(int argc, char *argv[]) {
           // rdentry_p2->set);
         }
         int base_fft_samples_set = rdentry_p2->set;
-        float *addl_radar_inputs = rdentry_p2->return_data;
+        float *addl_radar_inputs = rdentry_p2->radar_return_data;
         task_metadata_block_t *radar_mb_ptr_2 = NULL;
         radar_mb_ptr_2 = set_up_task(sptr, radar_task_type, BASE_TASK,
 				     true, time_step,

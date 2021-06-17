@@ -75,8 +75,8 @@ unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
 unsigned rand_seed = 0; // Only used if -r <N> option set
 
-float IMPACT_DISTANCE = 50.0; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
-
+distance_t RADAR_BUCKET_DISTANCE = 0.0;
+distance_t IMPACT_DISTANCE       = MAX_DIST_STEP_SIZE; // Minimum distance at which a
 
 /* These are types, functions, etc. required for VITERBI */
 //#include "viterbi_flat.h"
@@ -110,10 +110,11 @@ unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 
 /*   float return_data[2 * MAX_RADAR_N]; */
 /* } radar_dict_entry_t; */
 
-#define MAX_RDICT_ENTRIES      12   // This should be updated eventually...
+#define MAX_RDICT_ENTRIES      120   // This should be updated eventually...
 unsigned int         num_radar_samples_sets = 0;
 unsigned int         radar_dict_items_per_set = 0;
 radar_dict_entry_t** the_radar_return_dict;
+float                radar_bucket_size_per_dict_set[MAX_RDICT_SAMPLE_SETS];
 unsigned int         radar_log_nsamples_per_dict_set[MAX_RDICT_SAMPLE_SETS];
 
 unsigned radar_total_calc = 0;
@@ -235,14 +236,13 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 
 
 
-status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
+status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn, int set_to_use)
 {
   DEBUG(printf("In init_radar_kernel...\n"));
 
   // Read in the radar distances dictionary file
   FILE *dictF = fopen(dict_fn,"r");
-  if (!dictF)
-  {
+  if (!dictF) {
     printf("Error: unable to open dictionary file %s\n", dict_fn);
     fclose(dictF);
     return error;
@@ -259,6 +259,11 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     fclose(dictF);
     return error;
   }
+  if (set_to_use >= num_radar_samples_sets) {
+    printf("ERROR : Specified set to use is %u but only %u sets in the dictionary file\n", set_to_use, num_radar_samples_sets);
+    fclose(dictF);
+    return error;
+  }
   for (int si = 0; si < num_radar_samples_sets; si++) {
     the_radar_return_dict[si] = (radar_dict_entry_t*)calloc(radar_dict_items_per_set, sizeof(radar_dict_entry_t));
     if (the_radar_return_dict[si] == NULL) {
@@ -270,11 +275,11 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   unsigned tot_dict_values = 0;
   unsigned tot_index = 0;
   for (int si = 0; si < num_radar_samples_sets; si++) {
-    if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
-      printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
+    if (fscanf(dictF, "%u %f\n", &(radar_log_nsamples_per_dict_set[si]), &(radar_bucket_size_per_dict_set[si])) != 2) {
+      printf("ERROR reading the Log2 number of Radar Dictionary samples for set %u\n", si);
       cleanup_and_exit(sptr, -2);
     }
-    DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
+    DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples (with bucket-size %.1f)\n", si, radar_log_nsamples_per_dict_set[si], radar_bucket_size_per_dict_set[si]));
     for (int di = 0; di < radar_dict_items_per_set; di++) {
       unsigned entry_id;
       unsigned entry_log_nsamples;
@@ -296,13 +301,14 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
       the_radar_return_dict[si][di].return_id = entry_id;
       the_radar_return_dict[si][di].log_nsamples = entry_log_nsamples;
       the_radar_return_dict[si][di].distance =  entry_dist;
+      the_radar_return_dict[si][di].radar_return_data = (float*)malloc(2 * (1<<entry_log_nsamples) * sizeof(float));
       for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
 	float fin;
 	if (fscanf(dictF, "%f", &fin) != 1) {
 	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
 	  cleanup_and_exit(sptr, -2);
 	}
-	the_radar_return_dict[si][di].return_data[i] = fin;
+	the_radar_return_dict[si][di].radar_return_data[i] = fin;
 	tot_dict_values++;
 	entry_dict_values++;
       }
@@ -311,6 +317,7 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
     DEBUG(printf("   Done reading in Radar dictionary set %u\n", si));
   } // for (si across radar dictionary sets)
   DEBUG(printf("  Read %u sets with %u entries totalling %u values across them all\n", num_radar_samples_sets, radar_dict_items_per_set, tot_dict_values));
+
   if (!feof(dictF)) {
     printf("NOTE: Did not hit eof on the radar dictionary file %s\n", dict_fn);
     while(!feof(dictF)) {
@@ -325,6 +332,9 @@ status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
   }
   fclose(dictF);
 
+  RADAR_BUCKET_DISTANCE = radar_bucket_size_per_dict_set[set_to_use];
+  printf("Using RADAR_BUCKET_DISTANCE of %.1f\n", RADAR_BUCKET_DISTANCE);
+  
   // Initialize hist_pct_errs values
   for (int si = 0; si < num_radar_samples_sets; si++) {
     for (int di = 0; di < radar_dict_items_per_set; di++) {
@@ -514,7 +524,8 @@ bool show_side_by_occ_grids = false;
 char* occ_grid_from_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_GRID_UNKNOWN_VAL     0
 							"---",   // OCC_GRID_NO_OBSTACLE_VAL 1
 							"XXX",   // OCC_GRID_OBSTACLE_VAL    2
-							"***",   // OCC_GRID_MY_CAR_VAL      3
+							"[A]",   // OCC_GRID_MY_CAR_VAL      3
+							"{V}",   // OCC_GRID_MY_CAR_VAL      3
 							"ERR" }; // OCC_GRID_ERROR_VAL       4
 
 

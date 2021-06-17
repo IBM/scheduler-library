@@ -88,7 +88,7 @@ void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_v
 label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr);
 void    post_execute_cv_kernel(label_t tr_val, label_t d_object);
 
-status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn);
+status_t init_radar_kernel(scheduler_datastate_block_t* sptr, char* dict_fn, int set_to_use);
 radar_dict_entry_t* iterate_radar_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs);
 radar_dict_entry_t* select_random_radar_input();
 radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p);
