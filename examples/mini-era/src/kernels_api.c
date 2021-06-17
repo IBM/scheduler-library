@@ -60,7 +60,8 @@ unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
 unsigned rand_seed = 0; // Only used if -r <N> option set
 
-float IMPACT_DISTANCE = 50.0; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
+distance_t RADAR_BUCKET_DISTANCE = MAX_DIST_STEP_SIZE;
+distance_t IMPACT_DISTANCE       = MAX_DIST_STEP_SIZE; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
 
 
 /* These are types, functions, etc. required for VITERBI */
@@ -762,9 +763,9 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
   }
   
   if (//(label != no_label) && // For safety, assume every return is from SOMETHING we should not hit!
-      ((distance <= THRESHOLD_1)
+      ((distance <= PNC_THRESHOLD_1)
        #ifdef USE_SIM_ENVIRON
-       || ((vehicle_state.speed < car_goal_speed) && (distance <= THRESHOLD_2))
+       || ((vehicle_state.speed < car_goal_speed) && (distance <= PNC_THRESHOLD_2))
        #endif
        )) {
     if (distance <= IMPACT_DISTANCE) {
@@ -840,7 +841,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
     #ifdef USE_SIM_ENVIRON
     if ((vehicle_state.speed < car_goal_speed) &&  // We are going slower than we want to, and
 	//((label == no_label) ||      // There is no object ahead of us -- don't need; NOTHING is at INF_DISTANCE
-	(distance >= THRESHOLD_2)) { // Any object is far enough away 
+	(distance >= PNC_THRESHOLD_2)) { // Any object is far enough away 
       if (vehicle_state.speed <= (car_goal_speed - car_accel_rate)) {
 	new_vehicle_state.speed += 15.0;
       } else {
