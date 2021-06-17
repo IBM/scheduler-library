@@ -38,13 +38,9 @@ typedef enum {
 /* The potential (horizontal) positions of any object (i.e. lane indications) */
 typedef enum {
   lhazard = 0, 
-  far_left, 
   left, 
-  l_center, 
   center, 
-  r_center, 
   right,
-  far_right,
   rhazard,
   NUM_LANES
 } lane_t;
@@ -86,7 +82,7 @@ typedef enum {
 /* These thresholds (in meters) are used by the plan_and_control()
  * function to make plan and control decisions.
  */
-#define PNC_THRESHOLD_1 100.0
+#define PNC_THRESHOLD_1 155.0
 #define PNC_THRESHOLD_2 205.0
 #define PNC_THRESHOLD_3 305.0
 

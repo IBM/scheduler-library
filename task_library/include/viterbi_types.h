@@ -1,5 +1,5 @@
-#ifndef INCLUDED_VITERBI_UTILS_H
-#define INCLUDED_VITERBI_UTILS_H
+#ifndef INCLUDED_VITERBI_TYPES_H
+#define INCLUDED_VITERBI_TYPES_H
 
 #include <stdint.h>
 #include <stdlib.h>

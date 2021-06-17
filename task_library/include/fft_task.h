@@ -18,8 +18,8 @@
 #ifndef H_FFT_TASK_INCLUDE_H
 #define H_FFT_TASK_INCLUDE_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 #include "base_task_types.h"
