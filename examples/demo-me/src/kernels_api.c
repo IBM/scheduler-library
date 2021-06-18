@@ -71,10 +71,13 @@ unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this
 unsigned lane_dist[NUM_LANES][MAX_OBJ_IN_LANE]; // The distance to each obstacle object in each lane
 char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
 
+#if (BUILD_WITH_N_LANES == 5)
 char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N'};
 float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE};
-//char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
-//float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+#elif (BUILD_WITH_N_LANES == 9)
+char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
+float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+#endif
 
 unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 
@@ -534,7 +537,7 @@ char* occ_grid_from_remote_value_str[OCC_GRID_NUM_OF_VALS] = { "???",   // OCC_G
 							       "ERR" }; // OCC_GRID_ERROR_VAL       5
 
 
-unsigned MAX_GRID_DIST_FAR_IDX = 3;
+unsigned MAX_GRID_DIST_NEAR_FAR_IDX = 3;
 //unsigned GRID_DIST_STEP_SIZE = 5;
 
 //unsigned OCC_GRID_X_DIM = NUM_LANES;
@@ -542,10 +545,10 @@ unsigned MAX_GRID_DIST_FAR_IDX = 3;
 // - THESE ARE IN occ_grid.h : #define OCC_GRID_X_DIM  NUM_LANES
 // - THESE ARE IN occ_grid.h : #define OCC_GRID_Y_DIM  101
 
-#define DEFAULT_OCC_NEXT_LANE_CLOSE_DIST  100 // 75
-unsigned OCC_NEXT_LANE_CLOSE  = DEFAULT_OCC_NEXT_LANE_CLOSE_DIST;
-unsigned OCC_NEXT_LANE_CLOSE_GRID  = DEFAULT_OCC_NEXT_LANE_CLOSE_DIST / GRID_DIST_STEP_SIZE;
-unsigned OCC_NEXT_LANE_FAR[3] = {150, 300, 450};
+unsigned OCC_NEXT_LANE_NEAR[4] = {500, 100, 75, 50};
+unsigned OCC_NEXT_LANE_FAR[4]  = {0, 175, 300, 450};
+unsigned OCC_NEXT_LANE_NEAR_GRID[4];
+unsigned OCC_NEXT_LANE_FAR_GRID[4];
 
 unsigned MY_CAR_OCC_GRID_SIZE = 5; // 25 / GRID_DIST_STEP_SIZE;
 
@@ -556,6 +559,16 @@ uint8_t fused_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
 status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
+
+  // Set up some globals to be used in the run...
+  printf("Setting Near/Far Grid to : ");
+  for (int i = 0; i < 4; i++) {
+    OCC_NEXT_LANE_NEAR_GRID[i] = OCC_NEXT_LANE_NEAR[i]/GRID_DIST_STEP_SIZE; 
+    OCC_NEXT_LANE_FAR_GRID[i]  = OCC_NEXT_LANE_FAR[i]/GRID_DIST_STEP_SIZE;
+    printf("%u %u : ", OCC_NEXT_LANE_NEAR_GRID[i], OCC_NEXT_LANE_FAR_GRID[i]);
+  }
+  printf("\n");
+  
   //printf(" XMIT-PORT = %u and RECV-PORT = %u on IP %s\n", XMIT_PORT, RECV_PORT, wifi_inet_addr_str);
   // Set up the WiFi interchange Sockets.
   // Open and connect to the XMIT_SERVER
@@ -813,7 +826,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     // First manage vision in my current lane -- find the closest object ahdead of me.
     int my_lane = vs.lane;
     int nobj = obj_in_lane[my_lane];
-    DEBUG(printf("MY Lane %u : nobj = %u OBJ %c at %u\n", my_lane, nobj, lane_obj[my_lane][nobj-1], lane_dist[my_lane][nobj-1]));
+    DEBUG(printf("MY Lane %u : obj = %d OBJ %c at %u\n", my_lane, nobj, lane_obj[my_lane][nobj-1], lane_dist[my_lane][nobj-1]));
     {
       int i = nobj-1;
       if ((nobj > 0) && (lane_obj[my_lane][i] != 'N') && (lane_dist[my_lane][i] <= MAX_DISTANCE)) {
@@ -838,11 +851,12 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
       if ((check_lane >= 0) && (check_lane < NUM_LANES) && (check_lane != my_lane)) { // check lane_over lanes to the left and right 
 	int i = obj_in_lane[check_lane]-1;  // i starets at the "last" (nearest) object
 	int abs_lane_diff = abs(lane_over);
-	DEBUG(printf(" Lane-Over %d LANE %u : obj = %u %c : dist %u CL %u FAR %u\n", lane_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_CLOSE, OCC_NEXT_LANE_FAR[abs_lane_diff]));
+	DEBUG(printf(" Lane-Over %d LANE %u : obj = %d %c : dist %u CL %u FAR %u\n", lane_over, check_lane, i, lane_obj[check_lane][i], lane_dist[check_lane][i], OCC_NEXT_LANE_NEAR[abs_lane_diff], OCC_NEXT_LANE_FAR[abs_lane_diff]));
 	// First, we check the nearest object overall in the lane -- if it is 'N' then no obstacles in the lane
-	if (lane_obj[check_lane][i] == 'N') {
+	if ((i < 0) || (lane_obj[check_lane][i] == 'N')) {
 	  if (lane_over <= 2) {
-	    for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+	    DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, 0, OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]));
+	    for (int yi = 0; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
 	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
 	  }		
@@ -858,7 +872,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  while (i >= 0) { // While we still have un-considered objects...
 	    unsigned dist = lane_dist[check_lane][i];
 	    // first check whether the obstacle is in the "close" distance...
-	    if (dist <= OCC_NEXT_LANE_CLOSE) {
+	    if (dist <= OCC_NEXT_LANE_NEAR[abs_lane_diff]) {
 	      if (found_close) {
 		DEBUG(printf(" we already found a NEAR object in lane %u %s\n", check_lane, lane_names[check_lane]));
 	      } else {
@@ -887,7 +901,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  } // while (i >=- 0)
 	  if ((!found_close) && (lane_over <= 2)) {
 	    // Need to fill in the "close" space with NO_OBSTACLE
-	    for (int yi = 0; yi < OCC_NEXT_LANE_CLOSE_GRID; yi++) {
+	    for (int yi = 0; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
 	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
 	  }		

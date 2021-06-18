@@ -38,7 +38,7 @@ extern bool show_side_by_occ_grids;
 extern char* occ_grid_from_local_value_str[OCC_GRID_NUM_OF_VALS];
 extern char* occ_grid_from_remote_value_str[OCC_GRID_NUM_OF_VALS];
 
-extern unsigned MAX_GRID_DIST_FAR_IDX;
+extern unsigned MAX_GRID_DIST_NEAR_FAR_IDX;
 //extern unsigned GRID_DIST_STEP_SIZE;
 #define GRID_DIST_STEP_SIZE 5
 
@@ -47,8 +47,10 @@ extern unsigned MAX_GRID_DIST_FAR_IDX;
 #define OCC_GRID_X_DIM  NUM_LANES
 #define OCC_GRID_Y_DIM  101
 
-extern unsigned OCC_NEXT_LANE_CLOSE;
-extern unsigned OCC_NEXT_LANE_FAR[3];
+extern unsigned OCC_NEXT_LANE_NEAR[4];
+extern unsigned OCC_NEXT_LANE_NEAR_GRID[4];
+extern unsigned OCC_NEXT_LANE_FAR[4];
+extern unsigned OCC_NEXT_LANE_FAR_GRID[4];
 
 extern unsigned MY_CAR_OCC_GRID_SIZE;
 

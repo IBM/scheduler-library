@@ -711,9 +711,9 @@ int main(int argc, char *argv[]) {
   }
 
   printf("RUN Settings: %u Lanes, Occ-Grid X %u and Y %u with %u Dist-Step\n", NUM_LANES, OCC_GRID_X_DIM, OCC_GRID_Y_DIM, GRID_DIST_STEP_SIZE);
-  printf("  OCC_GR has %u NEAR and %u FAR of ", OCC_NEXT_LANE_CLOSE, MAX_GRID_DIST_FAR_IDX);
-  for (int ti = 0; ti < MAX_GRID_DIST_FAR_IDX; ti++) {
-    printf("%u ", OCC_NEXT_LANE_FAR[ti]);
+  printf("  OCC_GR has %u NEAR / FAR of : ", MAX_GRID_DIST_NEAR_FAR_IDX);
+  for (int ti = 0; ti < MAX_GRID_DIST_NEAR_FAR_IDX; ti++) {
+    printf("%u / %u : ", OCC_NEXT_LANE_NEAR[ti], OCC_NEXT_LANE_FAR[ti]);
   }
   printf("\n");
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times "
