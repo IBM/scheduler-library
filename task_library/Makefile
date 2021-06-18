@@ -17,6 +17,12 @@ ifdef COMPILE_TO_ESP
  #$(info $$ESP_DRV_LINUX is [${ESP_DRV_LINUX}])
 endif
 
+HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
+OPT = $(HPVM_BIN_PATH)/opt
+LLVM_LINK = $(HPVM_BIN_PATH)/llvm-link
+HPVMCC = $(HPVM_BIN_PATH)/clang
+HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
+HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 
 
 CC = gcc -std=c99

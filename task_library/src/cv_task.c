@@ -488,9 +488,10 @@ void cv_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the CV results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
-void finish_cv_execution(/*task_metadata_block_t*/ void *cv_metadata_block_ptr, void *args) {
+void finish_cv_execution(/*task_metadata_block_t*/ void *cv_metadata_block_ptr,  void *args) {
   va_list var_list;
   va_copy(var_list, *(va_list*)args);
+  // va_start(var_list, cv_metadata_block_ptr);
   task_metadata_block_t *cv_metadata_block =
       (task_metadata_block_t *)cv_metadata_block_ptr;
   // label_t *obj_label)

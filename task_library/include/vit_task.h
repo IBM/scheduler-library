@@ -79,6 +79,6 @@ void *set_up_vit_task(void *sptr, task_type_t vit_task_type,
 void viterbi_auto_finish_routine(void *mb);
 void finish_viterbi_execution(
     void *vit_metadata_block,
-    void *); // message_t* message_id, char* out_msg_txt);
+    void * args); // message_t* message_id, char* out_msg_txt);
 
 #endif

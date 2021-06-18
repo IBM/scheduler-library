@@ -626,9 +626,11 @@ void fft_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 void finish_fft_execution(
     /*task_metadata_block_t*/ void *fft_metadata_block_ptr,
     void *args) // float* results)
+    //... )
 {
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
+  //va_start(var_list, fft_metadata_block_ptr);
   task_metadata_block_t *fft_metadata_block =
       (task_metadata_block_t *)fft_metadata_block_ptr;
   // float* results)

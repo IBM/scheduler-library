@@ -1176,8 +1176,12 @@ void finish_viterbi_execution(
     /*task_metadata_block_t*/ void *vit_metadata_block_ptr,
     void *args) // message_t* message_id, char* out_msg_text)
 {
+  
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
+  // va_start(var_list, vit_metadata_block_ptr);
+
+
   task_metadata_block_t *vit_metadata_block =
       (task_metadata_block_t *)vit_metadata_block_ptr;
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr,

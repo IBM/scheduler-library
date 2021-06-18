@@ -65,6 +65,7 @@ void *set_up_plan_ctrl_task(void *sptr, task_type_t plan_ctrl_task_type,
 void plan_ctrl_auto_finish_routine(void *mb);
 void finish_plan_ctrl_execution(
     void *plan_ctrl_metadata_block,
-    void *var_list); // vehicle_state_t* new_vehicle_state);
+     void *var_list); // vehicle_state_t* new_vehicle_state);
+    //...);
 
 #endif

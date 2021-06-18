@@ -228,7 +228,7 @@ typedef /*task_metadata_block_t*/ void *(*set_up_task_function_t)(
     task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
     int32_t dag_id, void* args);
 typedef void (*finish_task_execution_function_t)(
-    /*task_metadata_block_t*/ void *the_metadata_block, ...);
+    /*task_metadata_block_t*/ void *the_metadata_block, void* args);
 typedef void (*auto_finish_task_function_t)(/*task_metadata_block_t*/ void *mb);
 
 // These are function pointer prototype declaration types, used for the

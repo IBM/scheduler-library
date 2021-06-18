@@ -11,14 +11,14 @@
 #include "viterbi_standalone.h"
 
 #ifdef FAKE_HW_CV
-unsigned cv_cpu_run_time_in_usec = 10000;
-unsigned cv_fake_hwr_run_time_in_usec = 1000;
+static unsigned cv_cpu_run_time_in_usec = 10000;
+static unsigned cv_fake_hwr_run_time_in_usec = 1000;
 #else
 #ifdef COMPILE_TO_ESP
-unsigned cv_cpu_run_time_in_usec = 10000;
+static unsigned cv_cpu_run_time_in_usec = 10000;
 // unsigned cv_fake_hwr_run_time_in_usec =  1000;
 #else
-unsigned cv_cpu_run_time_in_usec = 50;
+static unsigned cv_cpu_run_time_in_usec = 50;
 // unsigned cv_fake_hwr_run_time_in_usec =     1;
 #endif
 #endif
@@ -49,7 +49,7 @@ typedef union branchtab27_u {
 
 t_branchtab27 d_branchtab27_generic[2];
 
-void reset(ofdm_param *d_ofdm) {
+static void reset(ofdm_param *d_ofdm) {
   int i, j;
 
   int polys[2] = {0x6d, 0x4f};
@@ -84,7 +84,7 @@ void reset(ofdm_param *d_ofdm) {
   }
 }
 
-uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame) {
+static uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame) {
   int count;
   int n_cbps = d_ofdm->n_cbps;
   uint8_t *depunctured;
@@ -1164,7 +1164,7 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
 
 
 
- __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
+  __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
 }
 
 /*

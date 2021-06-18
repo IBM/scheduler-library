@@ -464,9 +464,11 @@ void plan_ctrl_auto_finish_routine(void *mb_ptr) {
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
 void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr,
-                                void *args) {
+                             void *args) {
+                                //... ){
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
+  // va_start(var_list, plan_ctrl_metadata_block_ptr);
   task_metadata_block_t *plan_ctrl_metadata_block =
       (task_metadata_block_t *)plan_ctrl_metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)

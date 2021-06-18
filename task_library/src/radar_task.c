@@ -264,9 +264,10 @@ void radar_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
-void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_ptr, void *args) {
+void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_ptr,void *args) {
   va_list var_list;
   va_copy(var_list,*(va_list*)args);
+  //va_start(var_list, radar_metadata_block_ptr);
   task_metadata_block_t *radar_metadata_block = (task_metadata_block_t*) radar_metadata_block_ptr;
   // float* obj_dist)
   float *obj_dist = va_arg(var_list, float *);
