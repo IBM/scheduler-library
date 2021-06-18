@@ -438,6 +438,8 @@ int main(int argc, char *argv[]) {
   int32_t viz_task_start_count = -1;
   int32_t viz_task_stop_count = -1;
 
+  VIT_CLEAR_THRESHOLD = 155.0;
+
   set_up_scheduler();
   initialize_task_lib();
   

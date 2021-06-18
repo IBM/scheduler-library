@@ -410,6 +410,11 @@ int main(int argc, char *argv[]) {
   int32_t viz_task_start_count = -1;
   int32_t viz_task_stop_count = -1;
 
+  PNC_THRESHOLD_1 = 105.0;
+  PNC_THRESHOLD_2 = 205.0;
+  PNC_THRESHOLD_3 = 305.0;
+  VIT_CLEAR_THRESHOLD = 105.0;
+  
   set_up_scheduler();
   initialize_task_lib();
   

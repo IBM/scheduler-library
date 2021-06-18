@@ -147,8 +147,9 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   gettimeofday(&(plan_ctrl2_timings_p->call_start), NULL);
  #endif
 
-  // Start with outpu vehicle state is a copy of input vehicle state...
+  // Start with output vehicle state is a copy of input vehicle state...
   plan_ctrl2_data_p->new_vehicle_state = plan_ctrl2_data_p->vehicle_state;
+  printf("obj_dist = %.1f vs %.1f\n", plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1);
   if (!plan_ctrl2_data_p->vehicle_state.active) {
     // Our car is broken and burning, no plan-and-control possible -- nothing to
     // do

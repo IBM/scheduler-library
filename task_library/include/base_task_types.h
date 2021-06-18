@@ -98,11 +98,11 @@ typedef enum {
 /* These thresholds (in meters) are used by the plan_and_control()
  * function to make plan and control decisions.
  */
-#define PNC_THRESHOLD_1 155.0
-#define PNC_THRESHOLD_2 205.0
-#define PNC_THRESHOLD_3 305.0
+extern distance_t PNC_THRESHOLD_1;
+extern distance_t PNC_THRESHOLD_2;
+extern distance_t PNC_THRESHOLD_3;
 
-#define VIT_CLEAR_THRESHOLD  PNC_THRESHOLD_1
+extern distance_t VIT_CLEAR_THRESHOLD;
 
 extern float IMPACT_DISTANCE; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
 

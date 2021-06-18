@@ -143,6 +143,10 @@ unsigned total_test_tasks = 0;  // Total test tasks executed during the full run
 unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full run
 
 
+distance_t PNC_THRESHOLD_1 = 155.0;
+distance_t PNC_THRESHOLD_2 = 205.0;
+distance_t PNC_THRESHOLD_3 = 305.0;
+distance_t VIT_CLEAR_THRESHOLD = 155.0;
 
 
 

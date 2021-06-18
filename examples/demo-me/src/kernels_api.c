@@ -133,6 +133,10 @@ unsigned total_test_tasks = 0;  // Total test tasks executed during the full run
 unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full run
 
 
+distance_t PNC_THRESHOLD_1 = 155.0;
+distance_t PNC_THRESHOLD_2 = 205.0;
+distance_t PNC_THRESHOLD_3 = 305.0;
+distance_t VIT_CLEAR_THRESHOLD = 155.0;
 
 
 
@@ -674,7 +678,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
   case lhazard:
     {
       unsigned nd_l = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[lhazard+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane+1, nearest_obj[vs.lane+1], nd_l));
+      DEBUG(printf("  A: Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane+1, nearest_obj[vs.lane+1], nd_l));
       if ((nearest_obj[lhazard+1] != 'N') && (nd_l < VIT_CLEAR_THRESHOLD)) {
 	// Some object is in the lhazard+1 lane within threshold distance
 	msg_val = 3; // Unsafe to move from lhazard lane into the lhazard+1 lane
@@ -699,7 +703,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       msg_val = 0;
-      DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
+      DEBUG(printf(" B:  Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
       printf(" fused %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1]);
@@ -730,17 +734,17 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       msg_val = 0;
-      DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
+      DEBUG(printf("  C: Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
-      printf(" fused %u = %u  and %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1], vs.lane-2, fused_occ_grid[vs.lane-2][1]);
+      printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane-1], ndm1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane-1, fused_occ_grid[vs.lane-1][1], OCC_GRID_MY_CAR_VAL, vs.lane-2, fused_occ_grid[vs.lane-2][1], OCC_GRID_MY_CAR_VAL);
       if (((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane-1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane-2][1] == OCC_GRID_MY_CAR_VAL) ) {
 	//printf("(((nearest_obj[%u] %c != 'N') && (%u < %u VIT_CLEAR)) || (foc[%u] %u vs %u ) || (foc[%u] %u vs %u)\n", vs.lane-1, nearest_obj[vs.lane-1], ndm1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane-1, fused_occ_grid[vs.lane-1][1], OCC_GRID_MY_CAR_VAL, vs.lane-2, fused_occ_grid[vs.lane-2][1], OCC_GRID_MY_CAR_VAL);
 	DEBUG(printf("    Marking unsafe to move left\n"));
 	msg_val += 1; // Unsafe to move from this lane to the left.
       }
-      printf(" fused %u = %u  and %u = %u\n", vs.lane+1, fused_occ_grid[vs.lane+1][1], vs.lane+2, fused_occ_grid[vs.lane+2][1]);
+      printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane+1], ndp1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane+1, fused_occ_grid[vs.lane+1][1], OCC_GRID_MY_CAR_VAL, vs.lane+2, fused_occ_grid[vs.lane+2][1], OCC_GRID_MY_CAR_VAL);
       if (((nearest_obj[vs.lane+1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane+1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane+2][1] == OCC_GRID_MY_CAR_VAL) ) {
 	DEBUG(printf("    Marking unsafe to move right\n"));
@@ -758,7 +762,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       msg_val = 0;
-      DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
+      DEBUG(printf("  D: Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
       printf(" fused %u = %u  and %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1], vs.lane-2, fused_occ_grid[vs.lane-2][1]);
@@ -779,7 +783,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
   case rhazard:
     {
       unsigned nd_r = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[rhazard-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      DEBUG(printf("  Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane-1, nearest_obj[vs.lane-1], nd_r));
+      DEBUG(printf("  E: Lane %u TH %.1f : obj in %u is %c at %u\n", vs.lane, VIT_CLEAR_THRESHOLD, vs.lane-1, nearest_obj[vs.lane-1], nd_r));
       if ((nearest_obj[rhazard-1] != 'N') && (nd_r < VIT_CLEAR_THRESHOLD)) {
 	// Some object is in the rhazard-1 lane within threshold distance
 	msg_val = 3; // Unsafe to move from rhazard lane to the left

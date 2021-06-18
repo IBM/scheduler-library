@@ -137,6 +137,13 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
   }
   DEBUG(printf("IN_LINE : %s\n", in_line_buf));
 
+  //DEBUG(
+  if (!vs.active) {
+    printf("%4u  InTrace: %d : %s\n", time_step, -vs.lane, in_line_buf);
+  } else {
+    printf("%4u  InTrace: %d : %s\n", time_step, vs.lane, in_line_buf);
+  }//);
+
   last_i = 0;
   in_tok = 0;
   in_lane = min_obst_lane;
