@@ -37,9 +37,12 @@
 
 extern bool  output_viz_trace;
 
+extern vehicle_state_t other_car; // This is the reported state of the other car (from their transmission)
+
 extern char* lane_names[NUM_LANES];
 extern char* message_names[NUM_MESSAGES];
 extern char* object_names[NUM_OBJECTS];
+extern char  object_char[NUM_OBJECTS];
 
 extern unsigned vit_msgs_size;
 extern unsigned vit_msgs_per_step;
@@ -79,6 +82,8 @@ typedef struct {
 #ifndef USE_SIM_ENVIRON
  #include "read_trace.h"
 #endif
+
+void output_VizTrace_line(unsigned min_obst_lane, unsigned max_obst_lane, vehicle_state_t* vehicle_state, vehicle_state_t* other_car);
 
 /* Kernels initialization */
 status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn);

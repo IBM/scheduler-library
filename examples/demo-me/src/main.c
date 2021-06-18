@@ -948,6 +948,7 @@ int main(int argc, char *argv[]) {
    */
   vehicle_state.active = true;
   vehicle_state.lane  = starting_lane;
+  vehicle_state.distance = 0.0;
   vehicle_state.speed = car_goal_speed;
   //DEBUG(
   printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed);//);
@@ -1020,6 +1021,17 @@ int main(int argc, char *argv[]) {
   gettimeofday(&start_prog, NULL);
   /*init_accelerators_in_use_interval(sptr, start_prog);*/
 #endif
+
+  unsigned min_obst_lane;
+  unsigned max_obst_lane;
+  if (all_obstacle_lanes_mode == true) {
+    min_obst_lane  = 0;
+    max_obst_lane = NUM_LANES;
+  } else {
+    // Obstacles are NOT in the far-left or far-right (Hazard) lanes
+    min_obst_lane  = 1;
+    max_obst_lane = (NUM_LANES - 1);
+  }
 
 #ifdef USE_SIM_ENVIRON
   DEBUG(printf("\n\nTime Step %d\n", time_step));
@@ -1310,7 +1322,11 @@ int main(int argc, char *argv[]) {
     
     message = get_safe_dir_message_from_fused_occ_map(vehicle_state);
     printf("SAFE-DIR message is %u : %s\n", message, message_names[message]);
-    
+
+    if (output_viz_trace) {
+      output_VizTrace_line(min_obst_lane, max_obst_lane, &vehicle_state, &other_car);
+    }
+
   /* The plan_and_control task makes planning and control decisions
      * based on the currently perceived information. It returns the new
      * vehicle state.
@@ -1375,7 +1391,7 @@ int main(int argc, char *argv[]) {
       printf("New vehicle state: lane %u speed %.1f -- Speed is < car_goal_speed (%.1f) -- HALT RUN!\n", vehicle_state.lane, vehicle_state.speed, car_goal_speed);
     }
    #endif
-    
+
     time_step++;
 
 #ifndef USE_SIM_ENVIRON

@@ -49,12 +49,19 @@ typedef struct {
 } vit_dict_entry_t;
 
 #include "sdr_base.h"
+#include "occ_grid.h"
+
+typedef struct xmit_msg_struct {
+  vehicle_state_t car_state;
+  uint8_t         raw_occ_grid[OCC_GRID_X_DIM * OCC_GRID_Y_DIM];
+} xmit_msg_t;
 
 typedef struct vit_msg_struct { 
-  int           len;
-  ofdm_param    ofdm;
-  frame_param   frame;
-  uint8_t       msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
+  int             len;
+  vehicle_state_t car_state;
+  ofdm_param      ofdm;
+  frame_param     frame;
+  uint8_t         msg[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];	//uint8_t vit_msg[25000]; // really 24528 Max >
 } vit_msg_struct_t;
 
 

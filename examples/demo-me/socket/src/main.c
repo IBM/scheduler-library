@@ -328,8 +328,8 @@ int main(int argc, char *argv[])
     // Now we take in a received transmission with the other AV's map
     // If we receive a transmission, the process to turn it back into the gridMap is:
     //unsigned num_unexpected_messages = 0;
-    int      n_recvd_in;
-    uint8_t  recvd_in[MAX_XMIT_OUTPUTS];
+    int        n_recvd_in;
+    xmit_msg_t recvd_in;
     while (1) {
      #ifdef INT_TIME
       gettimeofday(&start_pd_wifi_recv_th, NULL);
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
          #ifdef INT_TIME
 	  gettimeofday(&start_pd_wifi_recv, NULL);
          #endif	
-	  valread = read_all(recv_sock, (char*)recvd_in, xfer_in_bytes);
+	  valread = read_all(recv_sock, (char*)&recvd_in, xfer_in_bytes);
 	  if (valread < xfer_in_bytes) {
 	    if (valread == 0) {
 	      printf("  RECV REAL got ZERO bytes -- END of TRANSFER?\n");
@@ -386,11 +386,6 @@ int main(int argc, char *argv[])
 	      closeout_and_exit("RECV REAL got too few bytes..", -1);
 	    }
 	  }
-	  DEBUG2(printf("XFER %4u : Dumping %u of %u RECV-PIPE bytes\n", sock_recv_count, 32, n_recvd_in);
-		for (int i = 0; i < n_recvd_in; i++) {
-		  printf("XFER %4u byte %6u : 0x%02x = %c\n", sock_recv_count, i, recvd_in[i], recvd_in[i]);
-		}
-		printf("\n"));
 
          #ifdef INT_TIME
 	  gettimeofday(&stop_pd_wifi_recv, NULL);
@@ -403,34 +398,15 @@ int main(int argc, char *argv[])
 	  send(recv_sock, ack, 2, 0);
 
 	  DEBUG(printf("RECV %4u : Dumping RECEVIED (map) bytes\n", sock_recv_count);
-		for (int i = 0; i < n_recvd_in; i++) {
+		for (int i = 0; i < OCC_GRID_X_DIM * OCC_GRID_Y_DIM; i++) {
 		  if ((i % 56) == 0) { printf("\n"); }
 		  if ((i % 7) == 0) { printf(" "); }
-		  printf("%u", recvd_in[i]);
+		  printf("%u", recvd_in.raw_occ_grid[i]);
 		}
 		printf("\n"));
 	  
 	  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
-       #if(0)
-	  // Now we decompress the grid received via transmission...
-	  DEBUG(printf("Calling LZ4_decompress_default...\n"));
-	  unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
-         #ifdef INT_TIME
-	  gettimeofday(&start_pd_lz4_uncmp, NULL);
-         #endif
-	  DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", vit_msg_len));
-	  int dec_bytes = LZ4_decompress_safe((char*)recvd_in, (char*)uncmp_data, xfer_in_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
-	  if (dec_bytes < 0) {
-	    printf("LZ4_decompress_safe ERROR : %d\n", dec_bytes);
-	  } DEBUG(else {
-	      printf("LZ4_decompress_safe returned %d bytes\n", dec_bytes);
-	    });
-         #ifdef INT_TIME
-	  gettimeofday(&stop_pd_lz4_uncmp, NULL);
-	  pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
-	  pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
-         #endif
-       #endif
+
 	  sock_recv_count++;
 	  
 	  // Now we have the transmission input data to be decoded...
@@ -441,6 +417,8 @@ int main(int argc, char *argv[])
 	    printf("ERROR: Received too many input bytes -- have to compress the message?\n");
 	    closeout_and_exit("RECV got too many input bytes -- add input compression?", -1);
 	  }
+
+	  vit_msg.car_state = recvd_in.car_state;
 	  DEBUG(printf("Calling do_xmit_pipeline for %u input grid elements\n", xfer_in_bytes));
 	  //DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 	  int n_xmit_out;
@@ -449,7 +427,7 @@ int main(int argc, char *argv[])
          #ifdef INT_TIME
 	  gettimeofday(&start_pd_wifi_pipe, NULL);
          #endif	
-	  do_xmit_pipeline(xfer_in_bytes, recvd_in, &n_xmit_out, xmit_out_real, xmit_out_imag);
+	  do_xmit_pipeline(xfer_in_bytes, recvd_in.raw_occ_grid, &n_xmit_out, xmit_out_real, xmit_out_imag);
          #ifdef INT_TIME
 	  gettimeofday(&stop_pd_wifi_pipe, NULL);
 	  pd_wifi_pipe_sec   += stop_pd_wifi_pipe.tv_sec  - start_pd_wifi_pipe.tv_sec;
@@ -472,21 +450,6 @@ int main(int argc, char *argv[])
 	  pd_recv_pipe_usec  += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
          #endif
 
-       #if(0)
-	  // And now we can compress to encode for Wifi transmission, etc.
-	  unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-         #ifdef INT_TIME
-	  gettimeofday(&start_pd_lz4_cmp, NULL);
-         #endif	
-	  int n_cmp_bytes = LZ4_compress_default((char*)vit_msg, (char*)cmp_data, vit_msg_len, MAX_COMPRESSED_DATA_SIZE);
-         #ifdef INT_TIME
-	  gettimeofday(&stop_pd_lz4_cmp, NULL);
-	  pd_lz4_cmp_sec   += stop_pd_lz4_cmp.tv_sec  - start_pd_lz4_cmp.tv_sec;
-	  pd_lz4_cmp_usec  += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
-         #endif
-	  DEBUG(double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
-		printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio););
-       #endif
     
 	  // Now send the resulting Viterbi-Decoder input to the other car...
 	  // This is now the content that should be sent out via IEEE 802.11p WiFi
@@ -496,7 +459,7 @@ int main(int argc, char *argv[])
          #ifdef INT_TIME
 	  gettimeofday(&start_pd_wifi_send, NULL);
          #endif	
-	  unsigned xfer_bytes = sizeof(struct vit_msg_struct); // vit_msg_len * sizeof(uint8_t);
+	  unsigned xfer_bytes = sizeof(vit_msg_struct_t); // vit_msg_len * sizeof(uint8_t);
 	  snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
 	  DEBUG(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
 	  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
@@ -542,7 +505,7 @@ int main(int argc, char *argv[])
 		}
 		printf("\n"));
 	  DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
-	  send(xmit_sock, (char*)(&vit_msg), sizeof(struct vit_msg_struct), 0);
+	  send(xmit_sock, (char*)(&vit_msg), sizeof(vit_msg_struct_t), 0);
 	  DEBUG(printf("     Sent %u bytes on XMIT port %u socket\n", xfer_bytes, XMIT_PORT));
 	  {
 	    char isACK[3];

@@ -55,6 +55,7 @@ char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Cente
 
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
+char  object_char[NUM_OBJECTS] = {'N', 'C', 'T', 'P', 'B' };
 
 
 #ifdef VERBOSE
@@ -82,37 +83,13 @@ unsigned rand_seed = 0; // Only used if -r <N> option set
 distance_t RADAR_BUCKET_DISTANCE = 0.0;
 distance_t IMPACT_DISTANCE       = MAX_DIST_STEP_SIZE; // Minimum distance at which a
 
-/* These are types, functions, etc. required for VITERBI */
-//#include "viterbi_flat.h"
+vehicle_state_t other_car; // This is the reported state fo the other car (from their transmission)
 
-
-
-
-/* These are some top-level defines needed for CV kernel */
-/* #define IMAGE_SIZE  32  // What size are these? */
-/* typedef struct { */
-/*   unsigned int image_id; */
-/*   label_t  object; */
-/*   unsigned image_data[IMAGE_SIZE]; */
-/* } cv_dict_entry_t; */
-
-/** The CV kernel uses a different method to select appropriate inputs; dictionary not needed
-unsigned int     num_cv_dictionary_items = 0;
-cv_dict_entry_t* the_cv_object_dict;
-**/
 unsigned label_match[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0};  // Times CNN matched dictionary
 unsigned label_lookup[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0}; // Times we used CNN for object classification
 unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 
 
-/* These are some top-level defines needed for RADAR */
-/* typedef struct { */
-/*   unsigned int index; */
-/*   unsigned int return_id; */
-/*   unsigned int log_nsamples; */
-/*   float distance; */
-/*   float return_data[2 * MAX_RADAR_N]; */
-/* } radar_dict_entry_t; */
 
 #define MAX_RDICT_ENTRIES      120   // This should be updated eventually...
 unsigned int         num_radar_samples_sets = 0;
@@ -129,15 +106,6 @@ unsigned radar_inputs_histogram[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 
 #define VITERBI_LENGTHS  4
 unsigned viterbi_messages_histogram[VITERBI_LENGTHS][NUM_MESSAGES];
-
-/* These are some top-level defines needed for VITERBI */
-/* typedef struct { */
-/*   unsigned int msg_num; */
-/*   unsigned int msg_id; */
-/*   ofdm_param   ofdm_p; */
-/*   frame_param  frame_p; */
-/*   uint8_t      in_bits[MAX_ENCODED_BITS]; */
-/* } vit_dict_entry_t; */
 
 uint8_t descramble[1600]; // I think this covers our max use cases
 uint8_t actual_msg[1600];
@@ -163,6 +131,32 @@ unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full
 
 
 
+
+
+void output_VizTrace_line(unsigned min_obst_lane, unsigned max_obst_lane, vehicle_state_t* vehicle_state, vehicle_state_t* other_car)
+{
+  if (!vehicle_state->active) {
+    printf("%4u  VizTrace: %d:%u,", time_step, -vehicle_state->lane, (unsigned)vehicle_state->distance);
+  } else {
+    printf("%4u  VizTrace: %d:%u,", time_step, vehicle_state->lane, (unsigned)vehicle_state->distance);
+  }      
+  for (int in_lane = min_obst_lane; in_lane < max_obst_lane; in_lane++) {
+    //printf("[%u]", in_lane);
+    if (output_viz_trace && (in_lane > min_obst_lane)) {
+      printf(",");
+    }
+    for (int oi = 0; oi < obj_in_lane[in_lane]; oi++) {
+      if (oi > 0) { printf(" "); }
+      printf("%c:%u", lane_obj[in_lane][oi], lane_dist[in_lane][oi]);
+    }
+  }
+  if (other_car->active) {
+    printf(",%d:%u\n", other_car->lane, (unsigned)other_car->distance);
+  } else {
+    printf(",%d:%u\n", -other_car->lane, (unsigned)other_car->distance);
+  }
+
+} // output_VizTrace_line
 
 
 status_t init_cv_kernel(scheduler_datastate_block_t* sptr, char* py_file, char* dict_fn)
@@ -469,8 +463,7 @@ unsigned recv_count = 0;
 
 char *ack = "OK";
 
-char wifi_msg[1500];
-int  wifi_msg_len;
+xmit_msg_t wifi_out_msg;
 
 struct sockaddr_in xmit_servaddr;
 struct sockaddr_in recv_servaddr;
@@ -564,10 +557,6 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
   //printf(" XMIT-PORT = %u and RECV-PORT = %u on IP %s\n", XMIT_PORT, RECV_PORT, wifi_inet_addr_str);
-  //snprintf(wifi_msg, 1500, "XMIT-PORT %u to RECV-PORT %u : This is a test message sent via WiFi.",  XMIT_PORT, RECV_PORT);
-  //snprintf(wifi_msg, 1500, "XMIT-PORT %u to RECV-PORT %u : This is a test message sent via WiFi",  XMIT_PORT, RECV_PORT);
-  //snprintf(wifi_msg, 1500, "This is a noticeably much longer message to be sent through the XMIT-PORT %u to the remote RECV-PORT %u : This is a LONG test message being sent via the socket-based WiFi substrate.",  XMIT_PORT, RECV_PORT);
-  //wifi_msg_len = strlen(wifi_msg);
   // Set up the WiFi interchange Sockets.
   // Open and connect to the XMIT_SERVER
   printf("Connecting to xmit-server at IP %s PORT %u\n", wifi_inet_addr_str, XMIT_PORT);
@@ -666,8 +655,8 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 
 message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 {
-  unsigned msg_val = 0; // set a default to avoid compiler messages
-  printf("At time %u We are in lane %u %s TH %.1f : obj in %u is %c at %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD, vs.lane, nearest_obj[vs.lane], nearest_dist[vs.lane]);
+  unsigned msg_val = 0; // set a default to avoid compiler messages 
+ printf("At time %u We are in lane %u %s TH %.1f : obj in %u is %c at %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD, vs.lane, nearest_obj[vs.lane], nearest_dist[vs.lane]);
   switch (vs.lane) {
   case lhazard:
     {
@@ -843,7 +832,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	}
       }
     }
-    // Nwo we will check the neighboring lanes - span 2 lanes to each side
+    // Now we will check the neighboring lanes - span 2 lanes to each side
     for (int lane_over = -2; lane_over <= 2; lane_over++) {
       int check_lane = my_lane + lane_over;
       if ((check_lane >= 0) && (check_lane < NUM_LANES) && (check_lane != my_lane)) { // check lane_over lanes to the left and right 
@@ -925,26 +914,25 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #ifdef INT_TIME
   gettimeofday(&start_wifi_send, NULL);
  #endif
-  //char* wifi_msg = (char*)local_occ_grid;
-  //int wifi_msg_len = OCC_GRID_X_DIM * OCC_GRID_Y_DIM * sizeof(uint8_t);
   {
     DEBUG(printf("Preparing to send WIFI message:\n"));
-    wifi_msg_len = 0;
+    wifi_out_msg.car_state = vs;
+    int gi = 0;
     for (int xi = 0; xi < OCC_GRID_X_DIM; xi++) {
       for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
-	wifi_msg[wifi_msg_len] = local_occ_grid[xi][yi];
-	wifi_msg_len++;
+	wifi_out_msg.raw_occ_grid[gi] = local_occ_grid[xi][yi];
+	gi++;
       }
     }
-    DEBUG(printf("Total length is %u\n", wifi_msg_len));
+    DEBUG(printf("Total length is %u\n", sizeof(xmit_msg_t)));
   }
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
-  unsigned xfer_bytes = wifi_msg_len * sizeof(char);
+  unsigned xfer_bytes = sizeof(xmit_msg_t);
   snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
   DEBUG(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
   send(xmit_sock, w_buffer, 8, 0);
-  DEBUG(printf("     Send %u values %u bytes on XMIT port %u socket\n", wifi_msg_len, xfer_bytes, XMIT_PORT));
+  DEBUG(printf("     Send %u values %u bytes on XMIT port %u socket\n", sizeof(xmit_msg_t), xfer_bytes, XMIT_PORT));
   {
     char isACK[3];
     int ackread = read_all(xmit_sock, isACK, 2);
@@ -961,7 +949,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
   DEBUG(printf("Calling send for the XMIT %u data-body...\n", xmit_count));
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
-  send(xmit_sock, (char*)(wifi_msg),wifi_msg_len*sizeof(uint8_t), 0);
+  send(xmit_sock, (char*)(&wifi_out_msg), sizeof(xmit_msg_t), 0);
   {
     char isACK[3];
     int ackread = read_all(xmit_sock, isACK, 2);
@@ -980,10 +968,10 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   wifi_send_usec  += stop_wifi_send.tv_usec - start_wifi_send.tv_usec;
  #endif
   DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n", xmit_count);
-	for (int i = 0; i < wifi_msg_len; i++) {
+	for (int i = 0; i < wifi_out_msg_len; i++) {
 	  if ((i % 56) == 0) { printf("\n"); }
 	  if ((i % 7) == 0) { printf(" "); }
-	  printf("%u", wifi_msg[i]);
+	  printf("%u", wifi_out_msg[i]);
 	}
 	printf("\n"));
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
@@ -1062,14 +1050,17 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
   vit_msg_struct_t* vit_msg_ptr = (struct vit_msg_struct*) recvd_in;
  
-  DEBUG(printf("\n");
-	printf("  unsigned     msg_len   @ %p\n",  &(vit_msg_ptr->len));   //recvd_in);
+  //DEBUG(
+  printf("\nVIT_MSG_STRUCT\n");
+  printf("  unsigned     msg_len   @ %p = %u\n",  &(vit_msg_ptr->len), vit_msg_ptr->len);   //recvd_in);
+  printf("  ve_statete_t car_state @ %p = a %u l %u d %.1f s %.1f\n",  &(vit_msg_ptr->car_state), vit_msg_ptr->car_state.active , vit_msg_ptr->car_state.lane , vit_msg_ptr->car_state.distance , vit_msg_ptr->car_state.speed);
 	printf("  ofdm_param*  ofdm_ptr  @ %p\n",  &(vit_msg_ptr->ofdm));  // (ofdm_param*)(recvd_in + sizeof(unsigned)));
 	printf("  frame_param* frame_ptr @ %p\n",  &(vit_msg_ptr->frame)); // (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)));
-	printf("  uint8_t*     data_ptr  @ %p\n",   &(vit_msg_ptr->msg)) );  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
+	printf("  uint8_t*     data_ptr  @ %p\n",  &(vit_msg_ptr->msg)); // );  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
 	
   temp_vit_dict_entry.msg_num = 0;
   temp_vit_dict_entry.msg_id  = 0;
+  other_car = vit_msg_ptr->car_state;
   temp_vit_dict_entry.ofdm_p  = vit_msg_ptr->ofdm;
   temp_vit_dict_entry.frame_p = vit_msg_ptr->frame;
   temp_vit_dict_entry.in_bits = vit_msg_ptr->msg;

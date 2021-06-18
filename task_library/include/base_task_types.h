@@ -65,6 +65,7 @@ typedef struct
 {
   bool active;
   lane_t lane;
+  distance_t distance;
   float speed;
 } vehicle_state_t;
 
