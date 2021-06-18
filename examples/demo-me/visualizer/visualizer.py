@@ -42,6 +42,9 @@ x_rhaz  = 380
 x_main_car = x_mid # your car's x position, starts in mid lane
 y_main_car = 440 # your car's y position
 
+x_other_car = x_right # your car's x position, starts in mid lane
+y_other_car = 440 # your car's y position
+
 # Frame update rate for moving down
 MOVE_DOWN = 100 # 500 # every 500ms
 
@@ -88,7 +91,7 @@ def get_img(path):
 
 def parse_trace(filename, five_lanes):  
     """
-    Objective: Parces trace files
+    Objective: Parses trace files
     Trace_Format:  One epoch per line: my_lane, Left-Lane Objs, Mid-Lane Objs, Right-Lane-Objs\n
     Returns: 4 lists corresponding to 'columns' of trace file
         my_lane   : list of lane positions for my car for each epoch
@@ -103,8 +106,9 @@ def parse_trace(filename, five_lanes):
     left_lane  = []
     mid_lane   = []
     right_lane = []
-    rhaz_lane = []
-
+    rhaz_lane  = []
+    other_lane = []
+    
     with open(filename) as f:
         lines = f.readlines()
     for line in lines:
@@ -116,11 +120,13 @@ def parse_trace(filename, five_lanes):
             mid_lane.append(tokens[3])
             right_lane.append(tokens[4])
             rhaz_lane.append(tokens[5].strip("\n"))
+            other_lane.append(tokens[6])
         else:
             left_lane.append(tokens[1])
             mid_lane.append(tokens[2])
             right_lane.append(tokens[3].strip("\n"))
-    return my_lane, lhaz_lane, left_lane, mid_lane, right_lane, rhaz_lane
+            other_lane.append(tokens[4])
+    return my_lane, lhaz_lane, left_lane, mid_lane, right_lane, rhaz_lane, other_lane
 
 # def get_object(bit_str):
 #     """
@@ -213,7 +219,7 @@ def main(argv):
     # Set variables
     done = False # while loop condition
 
-    global x_lhaz, x_left, x_mid, x_right, x_rhaz, x_main_car
+    global x_lhaz, x_left, x_mid, x_right, x_rhaz, x_main_car, y_main_car, x_other_car, y_other_car
     global MOVE_DOWN
     global obj_list
     global five_lane_trace
@@ -260,20 +266,22 @@ def main(argv):
     # Trace format: 3 columns per epoch with the form XY
     #               where X is a 2-bit string representing object type ('01' car, '10' motorcycle, '11' truck) and
     #               where Y is a 10-bit string representing distance from car (0 to 1023 in binary)
-    mine, lhaz, left, mid, right, rhaz  = parse_trace(tracefile, five_lane_trace)
+    mine, lhaz, left, mid, right, rhaz, other  = parse_trace(tracefile, five_lane_trace)
     print("Sizes of mine %u lhaz %u left %u mid %u right %u rhaz %u\n" % (len(mine), len(lhaz), len(left), len(mid), len(right), len(rhaz)))
-    mine.reverse()
+    mine.reverse() # reverse list order so popping gives chronological order
     lhaz.reverse()
-    left.reverse() # reverse list order so popping gives chronological order
+    left.reverse()
     mid.reverse()
     right.reverse()
     rhaz.reverse()
+    other.reverse()
 
     x_per_lane = (x_lhaz, x_left, x_mid, x_right, x_rhaz)
 
 
     # MAIN LOOP
     my_inactive = False
+    other_inactive = False
     while not done:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -296,15 +304,28 @@ def main(argv):
                 if (five_lane_trace):
                     lhaz_data  = lhaz.pop()
                     rhaz_data  = rhaz.pop()
+                other_data = other.pop()
 
                 #DEBUG print my_data, left_data, mid_data, right_data
                 # Update lane position (x position) of your car
-                my_lane = int(my_data)
+                (my_lane_s, my_dist_s) = my_data.split(":")
+                my_lane = int(my_lane_s)
+                my_dist = int(my_dist_s)
                 if (my_lane < 0):
                     my_lane = -my_lane
                     my_inactive = True
+                x_main_car = x_per_lane[my_lane]
+                y_main_car = (440 - my_dist)
 
-                x_main_car = x_per_lane[my_lane] # 100*int(my_data) + 37.5; # change this if car should switch lanes
+                (other_lane_s, other_dist_s) = other_data.split(":")
+                other_lane = int(other_lane_s)
+                other_dist = int(other_dist_s)
+                if (other_lane < 0):
+                    other_lane = -other_lane
+                    other_inactive = True
+
+                x_other_car = x_per_lane[other_lane]
+                y_other_car = (440 - other_dist)
 
                 # Create list of objects to display
                 #   Parse trace entries into tuples: (x-position, pixel distance from tip of car, object type)
@@ -355,11 +376,16 @@ def main(argv):
             bgY2 = -500
 
         # Draw objects every epoch
-        #DEBUG print "My_inactive = ", my_inactive
+        #DEBUG print "x_main_car = ", x_main_car, " y_main_car = ", y_main_car, "x_other_car = ", x_other_car, " y_other_car = ", y_other_car
         if (my_inactive):
             screen.blit(get_img('images/red-crash.png'), (x_main_car, y_main_car)) # your car crashed            
         else:
             screen.blit(get_img('images/red-car.png'), (x_main_car, y_main_car)) # your car
+
+        if (other_inactive):
+            screen.blit(get_img('images/orange-crash.png'), (x_other_car, y_other_car)) # other car crashed            
+        else:
+            screen.blit(get_img('images/orange-car.png'), (x_other_car, y_other_car)) # other car
             
         for obj in obj_list:
             blit_obj(screen, obj[2], obj[0], obj[1]-55)
