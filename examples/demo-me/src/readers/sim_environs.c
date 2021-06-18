@@ -484,22 +484,14 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
   }
 
   // Now set up the global objects-in-lane, etc. indications.
-  if (output_viz_trace) {
-    if (!vehicle_state.active) {
-      printf("%4u  VizTrace: %d,", time_step, -vehicle_state.lane);
-    } else {
-      printf("%4u  VizTrace: %d,", time_step, vehicle_state.lane);
-    }      
-  }
   if (output_source_trace) {
     printf("Trace: ");
   }
-  bool output_trace = output_source_trace | output_viz_trace;
   
   for (int in_lane = min_obst_lane; in_lane < max_obst_lane; in_lane++) {
     object_state_t* obj = the_objects[in_lane];
     int outputs_in_lane = 0;
-    if (output_trace && (in_lane > min_obst_lane)) {
+    if (output_source_trace && (in_lane > min_obst_lane)) {
       printf(",");
     }
     if (obj != NULL) {
@@ -510,7 +502,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	nearest_obj[in_lane]  = vis_obj_ids[obj->object];
 	nearest_dist[in_lane] = obj->distance;
 	obj_in_lane[in_lane]++;
-	if (output_trace) {
+	if (output_source_trace) {
 	  if (outputs_in_lane > 0) { printf(" "); }
 	  printf("%c:%u", vis_obj_ids[obj->object], (int)obj->distance);
 	  outputs_in_lane++;       
@@ -519,12 +511,12 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	obj = obj->next; // move to the next object
       }
     } else {
-      if (output_trace) {
+      if (output_source_trace) {
 	printf("N:%u", (int)INF_DISTANCE);
       }
     }
   }
-  if (output_trace) { printf("\n"); }
+  if (output_source_trace) { printf("\n"); }
   DEBUG(visualize_world());
   time_step++; // Iterate the count of time_step so far
   return true;

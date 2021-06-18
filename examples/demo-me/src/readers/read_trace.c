@@ -136,13 +136,6 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
     in_line_buf[strlen (in_line_buf) - 1] = '\0';
   }
   DEBUG(printf("IN_LINE : %s\n", in_line_buf));
-  if (output_viz_trace) {
-    if (!vs.active) {
-      printf("%4u  VizTrace: %d,%s\n", time_step, -vs.lane, in_line_buf);
-    } else {
-      printf("%4u  VizTrace: %d,%s\n", time_step, vs.lane, in_line_buf);
-    }
-  }
 
   last_i = 0;
   in_tok = 0;
