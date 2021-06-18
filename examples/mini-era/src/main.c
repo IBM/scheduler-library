@@ -1165,7 +1165,7 @@ int main(int argc, char *argv[]) {
     task_metadata_block_t *radar_mb_ptr = NULL;
     radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
 			       false, time_step,
-			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs); // Critical RADAR task
+			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs,2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
     DEBUG(printf("FFT task Block-ID = %u\n", radar_mb_ptr->block_id));
     request_execution(radar_mb_ptr);
 
@@ -1184,7 +1184,7 @@ int main(int argc, char *argv[]) {
     task_metadata_block_t *viterbi_mb_ptr = NULL;
     viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
-				 vit_msgs_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits); // Critical VITERBI task
+				 vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
@@ -1331,9 +1331,18 @@ int main(int argc, char *argv[]) {
                  time_step, pandc_repeat_factor, message, distance));
     task_metadata_block_t *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
+
+    DEBUG(printf("PRE-SetUPPNC: label %u, distance: %.3f\n", label, distance));
+
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
 			     false, time_step,
-			     time_step, pandc_repeat_factor, label, distance, message, vehicle_state);
+			     time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state);
+    /*
+    pnc_mb_ptr = set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
+			     false, time_step,
+			     time_step, pandc_repeat_factor, label, distance, message,  vehicle_state);
+                 */
+
     DEBUG(printf(" MB%u Back from set_up_plan_ctrl_task\n", pnc_mb_ptr->block_id));
     request_execution(pnc_mb_ptr);
 

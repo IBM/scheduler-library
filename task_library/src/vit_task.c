@@ -1095,8 +1095,12 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   // uint8_t* in_bits)
   message_size_t msize = va_arg(var_list, message_size_t);
   ofdm_param *ofdm_ptr = va_arg(var_list, ofdm_param *);
+  size_t ofdm_param_size = va_arg(var_list, size_t);
   frame_param *frame_ptr = va_arg(var_list, frame_param *);
+  size_t frame_ptr_size = va_arg(var_list, size_t);
   uint8_t *in_bits = va_arg(var_list, uint8_t *);
+  size_t in_bits_size = va_arg(var_list, size_t);
+
 
   // Request a MetadataBlock (for an VIT task at Critical Level)
   task_metadata_block_t *vit_mb_ptr = NULL;

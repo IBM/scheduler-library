@@ -104,6 +104,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   // uint32_t log_nsamples, float * inputs
   uint32_t log_nsamples = va_arg(var_list, uint32_t);
   float *inputs = va_arg(var_list, float *);
+  size_t inputs_size = va_arg(var_list, size_t);
 
   // Request a MetadataBlock (for an RADAR task at Critical Level)
   task_metadata_block_t *radar_mb_ptr = NULL;
@@ -151,6 +152,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     mdataptr[i] = inputs[i];
   }
 
+  
 #ifdef INT_TIME
   gettimeofday(&(radar_timings_p->call_start), NULL);
 #endif
@@ -221,8 +223,8 @@ do_finish_radar_computations(task_metadata_block_t *radar_metadata_block) {
   float distance =
       ((float)(max_index * ((float)RADAR_fs) / ((float)(RADAR_N)))) * 0.5 *
       RADAR_c / ((float)(RADAR_alpha));
-  // printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance,
-  // max_psd, max_index);
+   printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance,
+   max_psd, max_index);
 
   // printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd <= RADAR_psd_threshold) {

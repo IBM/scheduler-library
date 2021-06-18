@@ -336,11 +336,35 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
 #endif
   unsigned time_step = va_arg(var_list, unsigned);
   unsigned repeat_factor = va_arg(var_list, unsigned);
+  label_t* object_label_ptr = va_arg(var_list, label_t*);
+  label_t object_label = *object_label_ptr; 
+  size_t object_label_size = va_arg(var_list, size_t);
+  // double* xfer_object_dist_ptr = va_arg(var_list, double*);
+  distance_t* xfer_object_dist_ptr = va_arg(var_list, distance_t*);
+  distance_t xfer_object_dist = *xfer_object_dist_ptr; 
+  size_t dist_size = va_arg(var_list, size_t);
+  distance_t object_dist = xfer_object_dist;
+  message_t* safe_lanes_msg_ptr = va_arg(var_list, message_t*);
+  message_t safe_lanes_msg = *safe_lanes_msg_ptr;
+  size_t safe_lanes_msg_size = va_arg(var_list, size_t);
+
+  vehicle_state_t* vehicle_state_ptr = va_arg(var_list, vehicle_state_t*);
+
+  vehicle_state_t vehicle_state = *vehicle_state_ptr;
+
+
+  DEBUG(printf("SetUPPNC: label %u, xfer_dist: %.3f,,distance: %.3f\n", object_label, xfer_object_dist,object_dist));
+
+  /*
+  unsigned time_step = va_arg(var_list, unsigned);
+  unsigned repeat_factor = va_arg(var_list, unsigned);
   label_t object_label = va_arg(var_list, label_t);
   double xfer_object_dist = va_arg(var_list, double);
   distance_t object_dist = xfer_object_dist;
   message_t safe_lanes_msg = va_arg(var_list, message_t);
+
   vehicle_state_t vehicle_state = va_arg(var_list, vehicle_state_t);
+  */
 
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *plan_ctrl_mb_ptr = NULL;

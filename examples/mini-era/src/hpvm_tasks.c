@@ -732,9 +732,15 @@ static float *bit_reverse(float *w, unsigned int N, unsigned int bits) {
   return w;
 }
 
+/*
 void radar_leaf(distance_t *distance_ptr, size_t distance_ptr_size,
                 float *inputs_ptr, size_t inputs_ptr_size,
                 uint32_t log_nsamples) {
+                */
+void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
+                distance_t *distance_ptr, size_t distance_ptr_size
+                ) {
+
 
   printf("-- Radar Leaf Node --\n");
   __hpvm__hint(DEVICE);
@@ -872,26 +878,41 @@ void radar_leaf(distance_t *distance_ptr, size_t distance_ptr_size,
     distance = INFINITY;
   }
 
+  printf("Assigning distance to pointer\n");
+
+  printf("Distance ptr %lu\n",distance_ptr);
   *distance_ptr = distance;
+
+  printf("Distance in object: %.3f\n",*distance_ptr);
+  printf("Finished executing Radar_leaf\n");
 
   __hpvm__return(1, distance_ptr);
 }
 
+/*
 void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
               vehicle_state_t *new_vehicle_state, size_t new_vehicle_state_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
               label_t *obj_label, size_t obj_label_size, message_t *message_id,
               size_t msg_id_size, char *out_msg_text, size_t out_msg_text_size,
               unsigned time_step, unsigned repeat_factor) {
+              */
+void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
+              distance_t *distance_ptr, size_t distance_ptr_size,
+              message_t *message_id, size_t msg_id_size, vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
+              vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size
+              ) {
+
   printf("-- PNC Leaf Node --\n");
 
 
   __hpvm__hint(DEVICE);
-  __hpvm__attributes(6, new_vehicle_state, vehicle_state_ptr, distance_ptr,
+  __hpvm__attributes(6,current_vehicle_state, new_vehicle_state, distance_ptr,
                      obj_label, message_id, out_msg_text, 1, new_vehicle_state);
   __hpvm__task(PNC_TASK);
 
-  vehicle_state_t *vehicle_state = vehicle_state_ptr;
+
+  vehicle_state_t *vehicle_state = current_vehicle_state;
 
   message_t safe_lanes_msg = *message_id;
 
@@ -1045,6 +1066,7 @@ void pnc_leaf(vehicle_state_t *vehicle_state_ptr, size_t vehicle_state_size,
   __hpvm__return(1, new_vehicle_state);
 }
 
+/*
 void MiniERARootWrapper(
     message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
@@ -1055,12 +1077,26 @@ void MiniERARootWrapper(
     uint32_t log_nsamples, vehicle_state_t *vehicle_state_ptr,
     size_t vehicle_state_size, vehicle_state_t *new_vehicle_state,
     size_t new_vehicle_state_size, unsigned time_step, unsigned repeat_factor) {
+    */
+
+void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
+                 size_t ofdm_size, frame_param *frame_ptr,
+                 size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
+                 message_t *message_id, size_t msg_id_size, char *out_msg_text,
+                 size_t out_msg_text_size, label_t in_label, label_t *obj_label,
+                 size_t obj_label_size, uint32_t log_nsamples, float *inputs_ptr,
+                 size_t inputs_ptr_size, distance_t *distance_ptr,
+                 size_t distance_ptr_size,
+                 unsigned time_step, unsigned repeat_factor,
+                 vehicle_state_t *current_vehicle_state,
+                 size_t current_vehicle_state_size,
+                 vehicle_state_t *new_vehicle_state,
+                 size_t new_vehicle_state_size){
 
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(
       10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-      distance_ptr, inputs_ptr, vehicle_state_ptr, new_vehicle_state,
-      // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,
+      distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
       1, new_vehicle_state);
 
   void *ViterbiNode =
@@ -1099,31 +1135,39 @@ void MiniERARootWrapper(
 
   __hpvm__bindIn(PNCNode, 19, 0, 0);
   __hpvm__bindIn(PNCNode, 20, 1, 0);
-  __hpvm__bindIn(PNCNode, 21, 2, 0);
-  __hpvm__bindIn(PNCNode, 22, 3, 0);
+
+  // CV Outputs
+  __hpvm__edge(CVNode, PNCNode, /* replType */ 1, 0, 2, /* isStream */ 0);
+  __hpvm__bindIn(PNCNode, 13, 3, 0);
+
 
   // Radar Outputs
   __hpvm__edge(RadarNode, PNCNode, /* replType */ 1, 0, 4, /* isStream */ 0);
-  __hpvm__bindIn(PNCNode, 15, 5, 0);
+  __hpvm__bindIn(PNCNode, 18, 5, 0);
 
-  // CV Outputs
-  __hpvm__edge(CVNode, PNCNode, /* replType */ 1, 0, 6, /* isStream */ 0);
-  __hpvm__bindIn(PNCNode, 13, 7, 0);
 
   // Viterbi Outputs
-  __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 0, 8, /* isStream */ 0);
-  __hpvm__bindIn(PNCNode, 8, 9, 0);
+  __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 0, 6, /* isStream */ 0);
+  __hpvm__bindIn(PNCNode, 8, 7, 0);
 
-  __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 1, 10, /* isStream */ 0);
-  __hpvm__bindIn(PNCNode, 10, 11, 0);
 
-  // Remaining PNC inputs
-  __hpvm__bindIn(PNCNode, 23, 12, 0);
-  __hpvm__bindIn(PNCNode, 24, 13, 0);
+  __hpvm__edge(ViterbiNode, PNCNode, /* replType */ 1, 1, 12, /* isStream */ 0);
+  __hpvm__bindIn(PNCNode, 10, 13, 0);
+
+
+  __hpvm__bindIn(PNCNode, 21, 8, 0);
+  __hpvm__bindIn(PNCNode, 22, 9, 0);
+  __hpvm__bindIn(PNCNode, 23, 10, 0);
+  __hpvm__bindIn(PNCNode, 24, 11, 0);
+
+
+
+
 
  __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
 }
 
+/*
 void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  size_t ofdm_size, frame_param *frame_ptr,
                  size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
@@ -1136,17 +1180,31 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  vehicle_state_t *new_vehicle_state,
                  size_t new_vehicle_state_size, unsigned time_step,
                  unsigned repeat_factor) {
+                 */
+void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
+                 size_t ofdm_size, frame_param *frame_ptr,
+                 size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
+                 message_t *message_id, size_t msg_id_size, char *out_msg_text,
+                 size_t out_msg_text_size, label_t in_label, label_t *obj_label,
+                 size_t obj_label_size, uint32_t log_nsamples, float *inputs_ptr,
+                 size_t inputs_ptr_size, distance_t *distance_ptr,
+                 size_t distance_ptr_size,
+                 unsigned time_step,
+                 unsigned repeat_factor,
+                 vehicle_state_t* current_vehicle_state,
+                 size_t current_vehicle_state_size,
+                 vehicle_state_t *new_vehicle_state,
+                 size_t new_vehicle_state_size) {
 
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(
       10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-      distance_ptr, inputs_ptr, vehicle_state_ptr, new_vehicle_state,
-      // 6, message_id, out_msg_text, obj_label, distance_ptr, inputs_ptr,
+      distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state_size,
       1, new_vehicle_state);
 
   void *WrapperNode = __hpvm__createNodeND(0, MiniERARootWrapper);
 
-  // 29 arguments
+  // 25 arguments
   __hpvm__bindIn(WrapperNode, 0, 0, 0);
   __hpvm__bindIn(WrapperNode, 1, 1, 0);
   __hpvm__bindIn(WrapperNode, 2, 2, 0);
@@ -1172,6 +1230,7 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindIn(WrapperNode, 22, 22, 0);
   __hpvm__bindIn(WrapperNode, 23, 23, 0);
   __hpvm__bindIn(WrapperNode, 24, 24, 0);
+
 
   // __hpvm__bindOut(WrapperNode, 0, 0, 0);
 }
@@ -1221,8 +1280,8 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DFGArgs->out_msg_text = out_msg_text;
   DFGArgs->out_msg_text_size = 1600;
 
-  DFGArgs->vehicle_state_ptr = vehicle_state;
-  DFGArgs->vehicle_state_size = sizeof(vehicle_state);
+  DFGArgs->current_vehicle_state = vehicle_state;
+  DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
   DFGArgs->new_vehicle_state = new_vehicle_state;
   DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
   DFGArgs->repeat_factor = pandc_repeat_factor;
@@ -1246,7 +1305,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   printf("Here!\n");
   llvm_hpvm_track_mem(out_msg_text, 1600);
   printf("Here!\n");
-  llvm_hpvm_track_mem(vehicle_state, sizeof(vehicle_state));
+  llvm_hpvm_track_mem(vehicle_state, sizeof(new_vehicle_state));
   printf("Here!\n");
   llvm_hpvm_track_mem(new_vehicle_state, sizeof(new_vehicle_state));
   printf("Here!\n");
@@ -1272,8 +1331,8 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_untrack_mem(vdentry_p->in_bits);
   llvm_hpvm_untrack_mem(message);
   llvm_hpvm_untrack_mem(out_msg_text);
-  llvm_hpvm_untrack_mem(vehicle_state);
   llvm_hpvm_untrack_mem(new_vehicle_state);
+  llvm_hpvm_untrack_mem(vehicle_state);
 
   printf("[LAUNCH]New vehicle state: lane %u speed %.1f\n\n",
             new_vehicle_state->lane, new_vehicle_state->speed);
