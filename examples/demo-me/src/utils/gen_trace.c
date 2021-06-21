@@ -42,8 +42,13 @@ unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this
 unsigned lane_dist[NUM_LANES][MAX_OBJ_IN_LANE]; // The distance to each obstacle object in each lane
 char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
 
+distance_t MAX_DISTANCE =       500.0;  // Max resolution distance of radar is < 500.0m
+distance_t MAX_DIST_STEP_SIZE = 50.0;
+distance_t INF_DISTANCE =       550.0; // (MAX_DISTANCE + MAX_DIST_STEP_SIZE)
+
+
 char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N' };
-float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+float    nearest_dist[NUM_LANES];// = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
 
 
 void print_usage(char *pname) {
