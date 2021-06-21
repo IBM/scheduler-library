@@ -85,4 +85,8 @@ extern float car_decel_rate;
 extern char  nearest_obj[NUM_LANES];
 extern float nearest_dist[NUM_LANES];
 
+extern distance_t MAX_DISTANCE;
+extern distance_t MAX_DIST_STEP_SIZE;
+extern distance_t INF_DISTANCE;
+
 #endif
