@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "base_types.h"
 #include "kernels_api.h"
 #include "sim_environs.h"
 
