@@ -2080,7 +2080,8 @@ void wait_all_critical(scheduler_datastate_block_t *sptr) {
   }
 }
 
-void wait_on_tasklist(scheduler_datastate_block_t *sptr, int num_tasks, ...) {
+void wait_on_tasklist(/* scheduler_datastate_block_t */ void *_sptr, int num_tasks, ...) {
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*)_sptr;
   struct timeval stop_wait_tasklist, start_wait_tasklist;
   uint64_t wait_tasklist_sec = 0LL;
   uint64_t wait_tasklist_usec = 0LL;
