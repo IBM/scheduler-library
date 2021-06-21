@@ -131,7 +131,6 @@ endif
 
 SCHED_LIB = ../../sched_library/libscheduler.a
 TASK_LIB = ../../task_library/libtasks.a
-TASK_LIB_W = ../../task_library/libtasksW.a
 
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
@@ -146,7 +145,6 @@ endif
 LDLIBS += -L../../task_library -L../../sched_library
 
 MYLIBS   += -ltasks -lscheduler
-MYLIBS_W += -ltasksW -lscheduler
 
 LDFLAGS ?=
 LDFLAGS += -lm
@@ -172,12 +170,7 @@ OBJ_T1 = $(SRC_T:%.c=obj_t1/%.o)
 OBJ_S1 = $(SRC_S:%.c=obj_s1/%.o)
 OBJ_T2 = $(SRC_T:%.c=obj_t2/%.o)
 OBJ_S2 = $(SRC_S:%.c=obj_s2/%.o)
-OBJ_T1_W = $(SRC_T:%.c=obj_t1w/%.o)
-OBJ_S1_W = $(SRC_S:%.c=obj_s1w/%.o)
-OBJ_T2_W = $(SRC_T:%.c=obj_t2w/%.o)
-OBJ_S2_W = $(SRC_S:%.c=obj_s2w/%.o)
 OBJ_U = $(SRC_U:%.c=obj_u/%.o)
-OBJ_U_W = $(SRC_U:%.c=obj_uw/%.o)
 
 VPATH = ./src ./src/readers ./src/utils
 
@@ -187,18 +180,12 @@ STARGET1=sim-car1-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)
 TARGET2=car2-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 STARGET2=sim-car2-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 
-TARGET1_W=car1-scheduler$(EXE_EXTENSION)-W-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
-STARGET1_W=sim-car1-scheduler$(EXE_EXTENSION)-W-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
-
-TARGET2_W=car2-scheduler$(EXE_EXTENSION)-W-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
-STARGET2_W=sim-car2-scheduler$(EXE_EXTENSION)-W-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
-
 #$(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
 #$(info $$TARGET1 is [${TARGET1}])
 #$(info $$STARGET1 is [${STARGET1}])
 
 
-all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) $(TARGET1_W) $(STARGET1_W) $(TARGET2_W) $(STARGET2_W) sockets gen_new_trace gen_new_wide_trace
+all: $(TARGET1) $(STARGET1) $(TARGET2) sockets gen_new_trace
 
 
 $(OBJ_T1): $(HDR_T)
@@ -208,14 +195,6 @@ $(OBJ_T2): $(HDR_T)
 $(OBJ_S1): $(HDR_S)
 
 $(OBJ_S2): $(HDR_S)
-
-$(OBJ_T1_W): $(HDR_T)
-
-$(OBJ_T2_W): $(HDR_T)
-
-$(OBJ_S1_W): $(HDR_S)
-
-$(OBJ_S2_W): $(HDR_S)
 
 
 $(TARGET1): $(TASK_LIB) $(SCHED_LIB) obj_t1 $(OBJ_T1)
@@ -231,25 +210,10 @@ $(STARGET2): $(TASK_LIB) $(SCHED_LIB) obj_s2 $(OBJ_S2)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S2) -o $@ $(MYLIBS) $(LDFLAGS)
 
 
-$(TARGET1_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_t1w $(OBJ_T1_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_T1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
-
-$(STARGET1_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_s1w $(OBJ_S1_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_S1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
-
-$(TARGET2_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_t2w $(OBJ_T2_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_T2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
-
-$(STARGET2_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_s2w $(OBJ_S2_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_S2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
-
 $(SCHED_LIB):
 	(cd ../../sched_library; $(MAKE))
 
 $(TASK_LIB):
-	(cd ../../task_library; $(MAKE))
-
-$(TASK_LIB_W):
 	(cd ../../task_library; $(MAKE))
 
 sockets:
@@ -259,29 +223,19 @@ sockets:
 gen_new_trace: obj_u $(OBJ_U)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U) -o $@ $(MYLIBS) $(LDFLAGS)
 
-gen_new_wide_trace: obj_uw $(OBJ_U_W)
-	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
-
 
 clean:
 	$(RM) $(OBJ_T1) $(OBJ_S1)
 	$(RM) $(OBJ_T2) $(OBJ_S2)
-	$(RM) $(OBJ_T1_W) $(OBJ_S1_W)
-	$(RM) $(OBJ_T2_W) $(OBJ_S2_W)
 	$(RM) $(OBJ_U)
-	$(RM) $(OBJ_U_W)
 	$(RM) $(TARGET1) $(TARGET2)
 	$(RM) $(STARGET1) $(STARGET2)
-	$(RM) $(TARGET1_W) $(TARGET2_W)
-	$(RM) $(STARGET1_W) $(STARGET2_W)
 	(cd socket; make clean)
 
 clobber: clean
 	$(RM) -r obj_t1 obj_s1
 	$(RM) -r obj_t2 obj_s2
 	$(RM) -r obj_u
-	$(RM) -r obj_t1w obj_s1w
-	$(RM) -r obj_t2w obj_s2w
 	$(RM) -r obj_uw
 	$(RM) gen_new_trace
 	(cd socket; make clobber)
@@ -304,22 +258,6 @@ obj_u/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -DBUILD_WITH_N_LANES=5 -c $< -o $@
 
 
-obj_t1w/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=9 -c $< -o $@
-
-obj_s1w/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DUSE_SIM_ENVIRON -DBUILD_WITH_N_LANES=9 -c $< -o $@
-
-
-obj_t2w/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=9 -c $< -o $@
-
-obj_s2w/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DUSE_SIM_ENVIRON -DBUILD_WITH_N_LANES=9 -c $< -o $@
-
-obj_uw/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -DBUILD_WITH_N_LANES=9 -c $< -o $@
-
 
 obj_t1:
 	mkdir $@
@@ -337,22 +275,6 @@ obj_s2:
 obj_u:
 	mkdir $@
 
-
-obj_t1w:
-	mkdir $@
-
-obj_s1w:
-	mkdir $@
-
-
-obj_t2w:
-	mkdir $@
-
-obj_s2w:
-	mkdir $@
-
-obj_uw:
-	mkdir $@
 
 
 .PHONY: all clean
