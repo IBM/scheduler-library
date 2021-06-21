@@ -75,3 +75,59 @@ The Scheduler Library is under constant development (and hopefully improvement).
 
  - J-D Wellman (wellman@us.ibm.com)
  - Augusto Vega (ajvega@us.ibm.com)
+
+
+
+# MINIERA-HPVM
+
+## HPVM Setup
+
+-   HPVM (internal repository branch  `hpvm-epochs0-backend`  located  [here](https://gitlab.engr.illinois.edu/llvm/hpvm/-/tree/hpvm-epochs0-backend))
+    -   Refer to  [HPVM Build Instructions](https://hpvm.readthedocs.io/en/latest/build-hpvm.html)  for detailed set up instructions.  _Note: During installation, make sure target is set to X86;RISCV to be able to target the EPOCHS-0 RISC-V processor._
+
+-   GCC cross compiler for RISC-V, can be installed using ESP as follows:
+    -   Clone ESP repository using:  `git clone --recursive https://github.com/sld-columbia/esp.git`
+    -   Checkout the epochs branch:  `cd esp && git checkout epochs`
+    -   Invoke the cross-compiler installation script:  `./utils/scripts/build_riscv_toolchain.sh`
+
+## HPVM Installation and Execution
+
+First we must clone and set up the hpvm repository:
+
+    git clone --branch hpvm-epochs0-backend https://gitlab.engr.illinois.edu/llvm/hpvm.git
+
+Install HPVM via the provided install script and follow the provided prompts:
+
+    cd ${HPVM_SRC_ROOT}/hpvm/hpvm/
+    ./install.sh
+
+## Setting up required paths
+After installation source the `set_paths.sh` script to export the environment variables needed for running the hpvm scheduler backend for MiniERA.
+
+    cd ${HPVM_SRC_ROOT}/hpvm/hpvm/
+    source set_paths.sh
+Then update the `HPVM_DIR` variable definition in `${SCHED_LIB_SRC_ROOT}/setup_paths.sh` to be the path to the directory containing the build directory for HPVM. After which:
+
+    cd ${SCHED_LIB_SRC_ROOT}
+    source setup_paths.sh
+
+## Build
+
+We provided two hpvm compiled versions of the MiniERA application:
+1. `hpvm-cpu` : Using the CPU backend in HPVM (without using the task library and the scheduler library).
+2. `hpvm-epochs`: Using the EPOCHs backend in HPVM (which generates the api calls for the scheduler library).
+
+### HPVM-CPU
+To build MiniERA using the HPVM CPU backend:
+1. `cd` to the root of the scheduler library repository.
+2. run `make hpvm-cpu`
+	-   _Note: The `setup_paths.sh` scripts must be sourced using  `source`  because it sets up environment variables that will be needed by the Makefiles._
+3. To clean the build run `make clobber`
+
+### HPVM-EPOCHS
+To build MiniERA using the HPVM CPU backend:
+1. `cd` to the root of the scheduler library repository.
+2. run `make hpvm-epochs`
+	-   _Note: The `setup_paths.sh` scripts must be sourced using  `source`  because it sets up environment variables that will be needed by the Makefiles._
+
+3. To clean the build run `make clobber`
