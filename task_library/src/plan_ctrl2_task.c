@@ -38,11 +38,9 @@
 
 void print_plan_ctrl2_metadata_block_contents(task_metadata_block_t *mb) {
   print_base_metadata_block_contents(mb);
-  plan_ctrl2_data_struct_t *plan_ctrl2_data_p =
-      (plan_ctrl2_data_struct_t *)(mb->data_space);
+  plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(mb->data_space);
   printf("  PLAN_CTRL: in_object     = %u\n", plan_ctrl2_data_p->object_label);
-  printf("  PLAN_CTRL: in_distance   = %.1f\n",
-         plan_ctrl2_data_p->object_distance);
+  printf("  PLAN_CTRL: in_distance   = %.1f\n", plan_ctrl2_data_p->object_distance);
   printf("  PLAN_CTRL: in_message    = %u\n", plan_ctrl2_data_p->safe_lanes_msg);
   printf("  PLAN_CTRL: in_rem_data_p = %p\n", plan_ctrl2_data_p->remote_data);
   printf("  PLAN_CTRL: in_veh_state  : Active %u Lane %u Speed %.1f\n",
@@ -59,10 +57,7 @@ void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
                                           unsigned my_task_type,
                                           unsigned total_accel_types) {
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u "
-         "accelerators\n",
-         my_task_type, sptr->task_name_str[my_task_type],
-         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The PLAN_CTRL/CNN Task Timing Info
   unsigned total_plan_ctrl2_comp_by[total_accel_types + 1];
   uint64_t total_plan_ctrl2_call_usec[total_accel_types + 1];
@@ -126,8 +121,8 @@ void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
   }
 }
 
-#undef DEBUG
-#define DEBUG(x) x
+/* #undef DEBUG */
+/* #define DEBUG(x) x */
 
 void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_block) {
   DEBUG(printf("In execute_on_cpu_plan_ctrl2_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
@@ -149,7 +144,7 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
 
   // Start with output vehicle state is a copy of input vehicle state...
   plan_ctrl2_data_p->new_vehicle_state = plan_ctrl2_data_p->vehicle_state;
-  printf("obj_dist = %.1f vs %.1f\n", plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1);
+  //DEBUG(printf("obj_dist = %.1f vs %.1f\n", plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1));
   if (!plan_ctrl2_data_p->vehicle_state.active) {
     // Our car is broken and burning, no plan-and-control possible -- nothing to
     // do
@@ -266,8 +261,8 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   mark_task_done(task_metadata_block);
 }
 
-#undef DEBUG
-#define DEBUG(x)
+/* #undef DEBUG */
+/* #define DEBUG(x) */
 
 uint64_t plan_ctrl2_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_plan_ctrl2_task_on_accel_profile_data() {

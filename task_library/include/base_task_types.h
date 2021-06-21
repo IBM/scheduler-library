@@ -90,10 +90,6 @@ typedef enum {
 
 /* These are GLOBAL and affect the underlying world, etc. */
 
-#define MAX_DISTANCE        500.0  // Max resolution distance of radar is < 500.0m
-#define MAX_DIST_STEP_SIZE  50.0
-#define INF_DISTANCE        (MAX_DISTANCE + MAX_DIST_STEP_SIZE)
-//#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
 
 /* These thresholds (in meters) are used by the plan_and_control()
  * function to make plan and control decisions.
