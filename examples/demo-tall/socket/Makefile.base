@@ -1,0 +1,331 @@
+CPU ?= ariane
+ARCH ?= riscv
+ifdef DO_CROSS_COMPILATION
+CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
+endif
+
+ifdef COMPILE_TO_ESP
+ESP_ROOT ?= $(realpath ../../esp)
+ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
+ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
+$(info $$ESP_ROOT is [${ESP_ROOT}])
+$(info $$ESP_DRIVERS is [${ESP_DRIVERS}])
+$(info $$ESP_DRV_LINUX is [${ESP_DRV_LINUX}])
+endif
+
+
+CC = gcc -std=c99
+
+
+INCDIR ?=
+INCDIR += -I./include -I../include -I../../../sched_library/include -I../../../task_library/include
+ifdef COMPILE_TO_ESP
+INCDIR += -I$(ESP_DRIVERS)/common/include
+INCDIR += -I$(ESP_DRIVERS)/linux/include
+endif
+
+CFLAGS ?= -O -g
+# We can define this for aall wifi -- it doesn't use the NUM_LANES, etc. 
+CFLAGS += -DBUILD_WITH_N_LANES=5
+CFLAGS += $(INCDIR)
+CFLAGS += -DGRID_MAP_X_DIM=$(CONFIG_GRID_MAP_X_DIM)
+CFLAGS += -DGRID_MAP_Y_DIM=$(CONFIG_GRID_MAP_Y_DIM)
+CFLAGS += -DGRID_MAP_RESLTN=$(CONFIG_GRID_MAP_RESLTN)
+CFLAGS += -DRAYTR_RANGE=$(CONFIG_RAYTR_RANGE)
+CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
+ifdef COMPILE_TO_ESP
+CFLAGS += -DCOMPILE_TO_ESP
+endif
+
+ifdef CONFIG_NUM_XMIT_FFT
+ CFLAGS += -DNUM_XMIT_FFT_ACCEL=$(CONFIG_NUM_XMIT_FFT)
+endif
+ifdef CONFIG_XMIT_FFT_LOGN
+ CFLAGS += -DMAX_XMIT_FFT_LOGN=$(CONFIG_XMIT_FFT_LOGN)
+endif
+ifdef CONFIG_XMIT_FFT_MAX_N
+ CFLAGS += -DMAX_XMIT_NUM_FFTS=$(CONFIG_XMIT_FFT_MAX_N)
+endif
+
+ifdef CONFIG_NUM_RECV_FFT
+ CFLAGS += -DNUM_RECV_FFT_ACCEL=$(CONFIG_NUM_RECV_FFT)
+endif
+ifdef CONFIG_RECV_FFT_LOGN
+ CFLAGS += -DMAX_RECV_FFT_LOGN=$(CONFIG_RECV_FFT_LOGN)
+endif
+ifdef CONFIG_RECV_FFT_MAX_N
+ CFLAGS += -DMAX_RECV_NUM_FFTS=$(CONFIG_RECV_FFT_MAX_N)
+endif
+
+
+
+CFLAGS += -DDEC_SIG_FIELD_ON_HW=false
+
+ifdef SHOW_FUSE
+CFLAGS += -DWRITE_FUSED_MAPS
+endif
+
+ifdef CONFIG_DEBUG
+CFLAGS += -DDEBUG_MODE
+endif
+
+ifdef CONFIG_VERBOSE
+CFLAGS += -DVERBOSE_MODE -DDEBUG_MODE
+endif
+
+ifdef CONFIG_FUSED_MAP
+CFLAGS += -DWRITE_FUSED_MAPS
+endif
+
+ifdef CONFIG_ASCII_MAP
+CFLAGS += -DWRITE_ASCII_MAP
+endif
+
+ifdef CONFIG_GDB
+CFLAGS += -g
+endif
+
+ifdef CONFIG_LIMITS
+CFLAGS += -DDO_LIMITS
+endif
+
+ifdef CONFIG_NUM_IOS
+CFLAGS += -DDO_NUM_IOS
+endif
+
+ESP_BUILD_DRIVERS     = esp-build/drivers
+
+LDLIBS ?=
+ifdef COMPILE_TO_ESP
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/libesp
+endif
+
+LDFLAGS ?=
+LDFLAGS += -lm
+LDFLAGS += -lpthread
+ifdef COMPILE_TO_ESP
+LDFLAGS += -lrt
+LDFLAGS += -lesp
+LDFLAGS += -ltest
+LDFLAGS += -lcontig
+endif
+
+SRC_WIFI1 = src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c
+SRC_WIFI2 = $(SRC_WIFI1)
+
+#SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_D = $(wildcard src/*.c)
+HDR_T = $(wildcard include/*.h)
+
+OBJ_WIFI1 = $(SRC_WIFI1:src/%.c=obj_wifi1/%.o)
+OBJ_WIFI2 = $(SRC_WIFI2:src/%.c=obj_wifi2/%.o)
+
+OBJ_TWIFI1 = $(SRC_WIFI1:src/%.c=obj_twifi1/%.o)
+OBJ_TWIFI2 = $(SRC_WIFI2:src/%.c=obj_twifi2/%.o)
+
+OBJ_VWIFI1 = $(SRC_WIFI1:src/%.c=obj_vwifi1/%.o)
+OBJ_VWIFI2 = $(SRC_WIFI2:src/%.c=obj_vwifi2/%.o)
+
+VPATH = ./src
+
+TARGET_WIFI1=wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_WIFI2=wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+
+TARGET_TWIFI1=t_wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_TWIFI2=t_wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+
+TARGET_VWIFI1=v_wifi1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_VWIFI2=v_wifi2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+
+ALL_OBJ_DIR=obj_wifi1 obj_wifi2 obj_twifi1 obj_twifi2 obj_vwifi1 obj_vwifi2
+
+
+all: esp-libs wifi t_wifi v_wifi
+
+
+esp-build:
+	@mkdir -p $(ESP_BUILD_DRIVERS)/contig_alloc
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp_cache
+	@mkdir -p $(ESP_BUILD_DRIVERS)/probe
+	@mkdir -p $(ESP_BUILD_DRIVERS)/libesp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/test
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/baremetal
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/linux
+	@ln -sf $(ESP_DRV_LINUX)/contig_alloc/* $(ESP_BUILD_DRIVERS)/contig_alloc
+	@ln -sf $(ESP_DRV_LINUX)/esp/* $(ESP_BUILD_DRIVERS)/esp
+	@ln -sf $(ESP_DRV_LINUX)/esp_cache/* $(ESP_BUILD_DRIVERS)/esp_cache
+	@ln -sf $(ESP_DRV_LINUX)/driver.mk $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/include $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/../common $(ESP_BUILD_DRIVERS)/../common
+
+esp-build-clean:
+
+esp-build-distclean: esp-build-clean
+	$(QUIET_CLEAN)$(RM) -rf esp-build
+
+ifdef COMPILE_TO_ESP
+esp-libs: esp-build
+	  CROSS_COMPILE=$(CROSS_COMPILE) DRIVERS=$(ESP_DRV_LINUX) $(MAKE) -C $(ESP_BUILD_DRIVERS)/contig_alloc/ libcontig.a
+	  cd $(ESP_BUILD_DRIVERS)/test; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/test
+	  cd $(ESP_BUILD_DRIVERS)/libesp; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/libesp
+	  cd $(ESP_BUILD_DRIVERS)/utils; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/utils
+else
+esp-libs: 
+	  @echo Blank rule for esp-libs
+endif
+
+.PHONY: esp-build-clean esp-build-distclean esp-libs
+
+
+obj_wifi1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DRECV_PORT=5558 -DXMIT_PORT=5561 -c $< -o $@
+
+obj_wifi2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DRECV_PORT=5560 -DXMIT_PORT=5559 -c $< -o $@
+
+obj_recv/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+
+obj_xmit/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+
+
+obj_twifi1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5558 -DXMIT_PORT=5561 -c $< -o $@
+
+obj_twifi2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5560 -DXMIT_PORT=5559 -c $< -o $@
+
+
+obj_vwifi1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5558 -DXMIT_PORT=5561 -DDEBUG_MSGS -c $< -o $@
+
+obj_vwifi2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DINT_TIME -DRECV_PORT=5560 -DXMIT_PORT=5559 -DDEBUG_MSGS -c $< -o $@
+
+
+
+$(OBJ_WIFI1): $(HDR_T)
+
+
+$(OBJ_WIFI2): $(HDR_T)
+
+
+$(OBJ_TWIFI1): $(HDR_T)
+
+
+$(OBJ_TWIFI2): $(HDR_T)
+
+
+$(OBJ_VWIFI1): $(HDR_T)
+
+
+$(OBJ_VWIFI2): $(HDR_T)
+
+
+
+$(TARGET_WIFI1): obj_wifi1 $(TARGET_WIFI1).exe
+	echo "Done building $@"
+
+$(TARGET_WIFI2): obj_wifi2 $(TARGET_WIFI2).exe
+	echo "Done building $@"
+
+
+$(TARGET_TWIFI1): obj_twifi1 $(TARGET_TWIFI1).exe
+	echo "Done building $@"
+
+$(TARGET_TWIFI2): obj_twifi2 $(TARGET_TWIFI2).exe
+	echo "Done building $@"
+
+$(TARGET_VWIFI1): obj_vwifi1 $(TARGET_VWIFI1).exe
+	echo "Done building $@"
+
+$(TARGET_VWIFI2): obj_vwifi2 $(TARGET_VWIFI2).exe
+	echo "Done building $@"
+
+
+
+$(TARGET_WIFI1).exe: $(OBJ_WIFI1)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_WIFI2).exe: $(OBJ_WIFI2)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+
+$(TARGET_TWIFI1).exe: $(OBJ_TWIFI1)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_TWIFI2).exe: $(OBJ_TWIFI2)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+
+$(TARGET_VWIFI1).exe: $(OBJ_VWIFI1)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_VWIFI2).exe: $(OBJ_VWIFI2)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+
+clean:
+	$(RM) $(OBJ_WIFI1) $(OBJ_WIFI2)
+	$(RM) $(OBJ_TWIFI1) $(OBJ_TWIFI2)
+	$(RM) $(TARGET_WIFI1) $(TARGET_WIFI2)
+	$(RM) $(TARGET_TWIFI1) $(TARGET_TWIFI2)
+	$(RM) $(TARGET_VWIFI1) $(TARGET_VWIFI2)
+
+clobber: clean
+	$(RM) -r $(ALL_OBJ_DIR)
+	$(RM) $(TARGET_WIFI1).exe $(TARGET_WIFI2).exe
+	$(RM) $(TARGET_TWIFI1).exe $(TARGET_TWIFI2).exe
+	$(RM) $(TARGET_VWIFI1).exe $(TARGET_VWIFI2).exe
+
+
+obj_wifi1:
+	mkdir $@
+
+obj_wifi2:
+	mkdir $@
+
+
+obj_twifi1:
+	mkdir $@
+
+obj_twifi2:
+	mkdir $@
+
+
+obj_vwifi1:
+	mkdir $@
+
+obj_vwifi2:
+	mkdir $@
+
+
+# Some "aliases" for builds...
+wifi1: $(TARGET_WIFI1)
+
+wifi2: $(TARGET_WIFI2)
+
+wifi: wifi1 wifi2 
+
+t_wifi1: $(TARGET_TWIFI1)
+
+t_wifi2: $(TARGET_TWIFI2)
+
+t_wifi: t_wifi1 t_wifi2
+
+v_wifi1: $(TARGET_VWIFI1)
+
+v_wifi2: $(TARGET_VWIFI2)
+
+v_wifi: v_wifi1 v_wifi2
+
+.PHONY: all clean wifi1 wifi2 wifi t_wifi1 t_wifi2 t_wifi  v_wifi1 v_wifi2 v_wifi 
+
+
+#depend:;	makedepend -fMakefile -- $(CFLAGS) -- $(SRC_D)
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
