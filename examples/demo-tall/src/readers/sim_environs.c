@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "base_types.h"
 #include "kernels_api.h"
 #include "sim_environs.h"
 
