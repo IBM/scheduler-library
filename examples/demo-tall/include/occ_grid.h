@@ -45,7 +45,7 @@ extern unsigned MAX_GRID_DIST_NEAR_FAR_IDX;
 //extern unsigned OCC_GRID_X_DIM;
 //extern unsigned OCC_GRID_Y_DIM;
 #define OCC_GRID_X_DIM  NUM_LANES
-#define OCC_GRID_Y_DIM  101
+#define OCC_GRID_Y_DIM  201
 
 extern unsigned OCC_NEXT_LANE_NEAR[4];
 extern unsigned OCC_NEXT_LANE_NEAR_GRID[4];
