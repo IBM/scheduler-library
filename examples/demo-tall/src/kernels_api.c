@@ -47,6 +47,11 @@
 extern unsigned time_step;
 extern unsigned task_size_variability;
 
+distance_t MAX_DISTANCE =       500.0;  // Max resolution distance of radar is < 500.0m
+distance_t MAX_DIST_STEP_SIZE = 50.0;
+distance_t INF_DISTANCE =       550.0; // (MAX_DISTANCE + MAX_DIST_STEP_SIZE)
+//#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
+
 #if (BUILD_WITH_N_LANES == 5)
 char* lane_names[NUM_LANES] = {"LHazard", "Left", "Center", "Right", "RHazard" };
 #elif (BUILD_WITH_N_LANES == 9)
@@ -74,10 +79,10 @@ char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle obje
 
 #if (BUILD_WITH_N_LANES == 5)
 char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N'};
-float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE};
+float    nearest_dist[NUM_LANES]; // = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE};
 #elif (BUILD_WITH_N_LANES == 9)
 char     nearest_obj[NUM_LANES]  = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
-float    nearest_dist[NUM_LANES] = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
+float    nearest_dist[NUM_LANES]; // = { INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE, INF_DISTANCE };
 #endif
 
 unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
@@ -85,7 +90,7 @@ unsigned hist_total_objs[NUM_LANES * MAX_OBJ_IN_LANE];
 unsigned rand_seed = 0; // Only used if -r <N> option set
 
 distance_t RADAR_BUCKET_DISTANCE = 0.0;
-distance_t IMPACT_DISTANCE       = MAX_DIST_STEP_SIZE; // Minimum distance at which a
+distance_t IMPACT_DISTANCE; //       = MAX_DIST_STEP_SIZE; // Minimum distance at which a
 
 vehicle_state_t other_car; // This is the reported state fo the other car (from their transmission)
 
@@ -516,7 +521,7 @@ struct timeval stop_recv_pipe, start_recv_pipe;
 uint64_t recv_pipe_sec  = 0LL;
 uint64_t recv_pipe_usec = 0LL;
 
-uint8_t recvd_in[sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
+uint8_t recvd_in[2256*1024]; // sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
 vit_dict_entry_t temp_vit_dict_entry;
 
 #include "occ_grid.h"
@@ -565,6 +570,8 @@ status_t init_vit_kernel(scheduler_datastate_block_t* sptr, char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
 
+  distance_t IMPACT_DISTANCE = MAX_DIST_STEP_SIZE; // Minimum distance at which a
+ 
   // Set up some globals to be used in the run...
   printf("Setting Near/Far Grid to : ");
   for (int i = 0; i < 4; i++) {
@@ -668,8 +675,8 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 
 // This actually uses the standard inputs/values (e.g. the local state) for most of this,
 //  but it resolves whether the "other" car is in the "danger proximity" from the fused map
-#undef  DEBUG
-#define DEBUG(x) x
+//#undef  DEBUG
+//#define DEBUG(x) x
 
 message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 {
@@ -801,10 +808,11 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
   DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], msg_val));
   return msg_val;
 }
-#undef  DEBUG
-#define DEBUG(x)
-#undef DEBUG
-#define DEBUG(x) x
+//#undef  DEBUG
+//#define DEBUG(x)
+
+//#undef DEBUG
+//#define DEBUG(x) x
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]);
@@ -928,8 +936,8 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     }
   }
 
- #undef DEBUG
- #define DEBUG(x)
+  //#undef DEBUG
+  //#define DEBUG(x)
   
   // Send the base-line (my local) Occupancy Map information to XMIT socket.
   // Connect to the Wifi-Socket and send the n_xmit_out
@@ -947,7 +955,8 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	gi++;
       }
     }
-    DEBUG(printf("Total length is %u\n", sizeof(xmit_msg_t)));
+    //DEBUG(
+    printf("Total length is %lu with %u grid entries\n", sizeof(xmit_msg_t), gi);//);
   }
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
@@ -955,7 +964,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
   DEBUG(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
   send(xmit_sock, w_buffer, 8, 0);
-  DEBUG(printf("     Send %u values %u bytes on XMIT port %u socket\n", sizeof(xmit_msg_t), xfer_bytes, XMIT_PORT));
+  DEBUG(printf("     Send %lu values %u bytes on XMIT port %u socket\n", sizeof(xmit_msg_t), xfer_bytes, XMIT_PORT));
   {
     char isACK[3];
     int ackread = read_all(xmit_sock, isACK, 2);
@@ -972,6 +981,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
   DEBUG(printf("Calling send for the XMIT %u data-body...\n", xmit_count));
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
+  printf("sizeof wifi_out_msg_t = %lu\n", sizeof(wifi_out_msg));
   send(xmit_sock, (char*)(&wifi_out_msg), sizeof(xmit_msg_t), 0);
   {
     char isACK[3];
@@ -990,13 +1000,13 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   wifi_send_sec   += stop_wifi_send.tv_sec  - start_wifi_send.tv_sec;
   wifi_send_usec  += stop_wifi_send.tv_usec - start_wifi_send.tv_usec;
  #endif
-  DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n", xmit_count);
-	for (int i = 0; i < wifi_out_msg_len; i++) {
+  /*DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n", xmit_count);
+	for (int i = 0; i < sizeof(wifi_out_msg); i++) {
 	  if ((i % 56) == 0) { printf("\n"); }
 	  if ((i % 7) == 0) { printf(" "); }
 	  printf("%u", wifi_out_msg[i]);
 	}
-	printf("\n"));
+	printf("\n")); */
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
   xmit_count++;
   
