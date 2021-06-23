@@ -865,8 +865,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
   float distance =
       ((float)(max_index * ((float)RADAR_fs) / ((float)(RADAR_N)))) * 0.5 *
       RADAR_c / ((float)(RADAR_alpha));
-  printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance,
-  max_psd, max_index);
+  DEBUG(printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance, max_psd, max_index));
 
   // printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd <= RADAR_psd_threshold) {
