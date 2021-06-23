@@ -182,6 +182,28 @@ MAX_ACCEL_TO_USE_FROM_POOL_SCHED_EPOCHS_CV_CNN_ACCEL_T = -1
 >
 ```
 
+NOTE: A number of traces are provided.  This distribution also provides a trace generation utility called ```gen_new_trace``` which is buillt by default with the make of the main Mini-ERA program.  This supports relatively few options, but these do include:
+
+```
+./gen_new_trace -h
+Usage: ./gen_new_trace <OPTIONS>
+ OPTIONS:
+    -h          : print this helpful usage info
+    -w <wfile>  : defines the world environment parameters description file <wfile> to use
+    -r <N>      : Sets the rand random number seed to N
+    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)
+```
+
+The primary interesting inputs are the world description file (see the Simulation-Driven Version below) and the random seed.
+The trace generator uses the simulation version's world-generation engine, whcih uses random values to determine the addition of obstacle vehicles to the various lanes at variosu times.  The random seed selects different random number series, and the world description file indicates the thresholds used in adding these vehicles, their type, their speed, etc.
+
+To generate a trace requires a little unix manipulation:
+```
+./gen_new_trace | grep Trace: | awk '{$1="";}1' | sed 's/^ //' > <target_trace_file>
+```
+This should generate a 3-lane trace similar to those in the ```traces``` directory.
+
+
 #### Simulation-Driven Version: ```sim-test-scheduler*```
 ```
 ./sim-test-scheduler-S-P3V0F0N0 -h
