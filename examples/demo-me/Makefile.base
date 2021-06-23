@@ -274,6 +274,8 @@ clean:
 	$(RM) $(STARGET1) $(STARGET2)
 	$(RM) $(TARGET1_W) $(TARGET2_W)
 	$(RM) $(STARGET1_W) $(STARGET2_W)
+	$(RM) gen_new_trace
+	$(RM) gen_new_wide_trace
 	(cd socket; make clean)
 
 clobber: clean
@@ -283,7 +285,6 @@ clobber: clean
 	$(RM) -r obj_t1w obj_s1w
 	$(RM) -r obj_t2w obj_s2w
 	$(RM) -r obj_uw
-	$(RM) gen_new_trace
 	(cd socket; make clobber)
 
 
