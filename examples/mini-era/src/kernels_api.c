@@ -47,6 +47,7 @@ bool output_viz_trace = true;
 #else
 bool output_viz_trace = false;
 #endif
+bool output_source_trace = false;
 
 unsigned total_obj; // Total non-'N' obstacle objects across all lanes this time step
 unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this time step (at least one, 'n')
