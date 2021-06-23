@@ -19,9 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "base_types.h"
 #include "kernels_api.h"
-#include "sim_environs.h"
 
 /* File pointer to the input trace */
 FILE *input_trace = NULL;
@@ -34,6 +32,9 @@ int last_i = 0;
 int in_tok = 0;
 int in_lane = 0;
 
+int min_obst_lane;
+int max_obst_lane;
+
 extern unsigned time_step;
 
 status_t init_trace_reader(char* trace_filename)
@@ -45,6 +46,15 @@ status_t init_trace_reader(char* trace_filename)
   if (!input_trace) {
     printf("Error: unable to open trace file %s\n", trace_filename);
     return error;
+  }
+
+  if (all_obstacle_lanes_mode == true) {
+    min_obst_lane  = 0;
+    max_obst_lane = NUM_LANES;
+  } else {
+    // Obstacles are NOT in the far-left or far-right (Hazard) lanes
+    min_obst_lane  = 1;
+    max_obst_lane = (NUM_LANES - 1);
   }
 
   return success;
@@ -136,7 +146,7 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
 
   last_i = 0;
   in_tok = 0;
-  in_lane = 1;
+  in_lane = min_obst_lane;
   DEBUG(printf("read_trace: scanning the next input trace line...\n"));
   for (int i = 0; i < 256; i++) { // Scan the input line
     // Find the token seperators
@@ -170,8 +180,8 @@ bool read_next_trace_record(scheduler_datastate_block_t* sptr, vehicle_state_t v
   }
 
 
-#ifdef SUPER_VERBOSE
-  for (int i = 1; i < (NUM_LANES-1); i++) {
+  #ifdef SUPER_VERBOSE
+  for (int i = min_obst_lane; i < max_obst_lane; i++) {
     printf("  Lane %u %8s : ", i, lane_names[i]);
     if (obj_in_lane[i] > 0) {
       for (int j = 0; j < obj_in_lane[i]; j++) {

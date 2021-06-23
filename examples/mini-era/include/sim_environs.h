@@ -19,6 +19,8 @@
 #define _sim_environs_h
 
 #include "verbose.h"
+#include "base_types.h"
+#include "base_task_types.h"
 
 /* Types definitions */
 

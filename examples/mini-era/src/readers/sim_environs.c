@@ -31,6 +31,8 @@ object_state_t* the_objects[5];
 // This represents my car.
 object_state_t my_car;		
 
+extern bool output_source_trace;
+
 unsigned time_steps;            // The number of elapsed time steps
 unsigned max_time_steps = 5000; // The max time steps to simulate (default to 5000)
 
@@ -493,11 +495,15 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
     } else {
       printf("  VizTrace: %d,", vehicle_state.lane);
     }      
+  } else if (output_source_trace) {
+    printf("Trace: ");
   }
+  bool output_trace = (output_viz_trace | output_source_trace);
+  
   for (int in_lane = min_obst_lane; in_lane < max_obst_lane; in_lane++) {
     object_state_t* obj = the_objects[in_lane];
     int outputs_in_lane = 0;
-    if (output_viz_trace && (in_lane > min_obst_lane)) {
+    if (output_trace && (in_lane > min_obst_lane)) {
       printf(",");
     }
     if (obj != NULL) {
@@ -508,7 +514,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	nearest_obj[in_lane]  = vis_obj_ids[obj->object];
 	nearest_dist[in_lane] = obj->distance;
 	obj_in_lane[in_lane]++;
-	if (output_viz_trace) {
+	if (output_trace) {
 	  if (outputs_in_lane > 0) { printf(" "); }
 	  printf("%c:%u", vis_obj_ids[obj->object], (int)obj->distance);
 	  outputs_in_lane++;       
@@ -517,12 +523,12 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
 	obj = obj->next; // move to the next object
       }
     } else {
-      if (output_viz_trace) {
+      if (output_trace) {
 	printf("N:%u", (int)INF_DISTANCE);
       }
     }
   }
-  if (output_viz_trace) { printf("\n"); }
+  if (output_trace) { printf("\n"); }
   DEBUG(visualize_world());
   time_steps++; // Iterate the count of time_steps so far
   return true;

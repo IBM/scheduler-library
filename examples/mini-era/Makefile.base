@@ -159,13 +159,17 @@ ifndef CONFIG_KERAS_CV_BYPASS
  LDFLAGS += -lpython2.7
 endif
 
-SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_B = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_T = $(SRC_B) read_trace.c
+SRC_S = $(SRC_B) sim_environs.c
+SRC_U = sim_environs.c gen_trace.c
 SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
 OBJ_T = $(SRC_T:%.c=obj_t/%.o)
-OBJ_S = $(SRC_T:%.c=obj_s/%.o)
+OBJ_S = $(SRC_S:%.c=obj_s/%.o)
+OBJ_U = $(SRC_U:%.c=obj_u/%.o)
 
-VPATH = ./src
+VPATH = ./src ./src/readers ./src/utils
 
 TARGET=test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 STARGET=sim-test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
@@ -175,14 +179,7 @@ $(info $$TARGET is [${TARGET}])
 $(info $$STARGET is [${STARGET}])
 
 
-all: $(TARGET) $(STARGET)
-
-
-obj_t/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
-
-obj_s/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
+all: $(TARGET) $(STARGET) gen_new_trace
 
 
 $(OBJ_T): $(HDR_T)
@@ -199,19 +196,36 @@ $(SCHED_LIB):
 $(TASK_LIB):
 	(cd ../../sched_library; $(MAKE))
 
-clean:
-	$(RM) $(OBJ_T) $(OBJ_S)
-	$(RM) -r obj_t obj_s
+gen_new_trace: obj_u $(OBJ_U)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U) -o $@ $(MYLIBS) $(LDFLAGS)
 
-clobber: clean
+clean:
+	$(RM) $(OBJ_T)
+	$(RM) $(OBJ_S)
+	$(RM) $(OBJ_U)
 	$(RM) $(TARGET)
 	$(RM) $(STARGET)
 
+clobber: clean
+	$(RM) -r obj_t obj_s obj_u
+
+
+obj_t/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+
+obj_s/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
+
+obj_u/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
 
 obj_t:
 	mkdir $@
 
 obj_s:
+	mkdir $@
+
+obj_u:
 	mkdir $@
 
 

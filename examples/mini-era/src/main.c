@@ -417,6 +417,8 @@ int main(int argc, char *argv[]) {
   char global_config_file[256] = "";
   int opt;
 
+  unsigned max_time_steps = 5000; // The max time steps to simulate (default to 5000)
+
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0] = '\0';
