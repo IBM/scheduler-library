@@ -38,20 +38,20 @@ typedef struct obj_struct {
 } object_state_t;
 
 
-/* The "world" consists of the (7) lanes (horizontal) and N vertical distances *
- *       "x"     0         1         2         3        4          5        6
- *   "y"   | LHazard |   Left  |  L-Mid  |  Middle |  R-Mid  |  Right  | RHazard |
- *         |---------|---------|---------|---------|---------|---------|---------|
- *    N    |         |         |         | Truck   |         |         |         |
- *  N-1    |         |         |         |         |         |         |         |
- *  N-2    |         |  Car    |         |         |         |         |         |
- *  N-3    |         |         |         |         |         |         |         |
+/* The "world" consists of up to 9 lanes (horizontal) and N vertical distances *
+ *       "x"     0         1         2         3        4          5        6         7         9
+ *   "y"   | LHazard | Far-Left|   Left  |  L-Mid  |  Middle |  R-Mid  |  Right  |Far-Right| RHazard |
+ *         |---------|---------|---------|---------|---------|---------|---------|---------|---------|
+ *    N    |         |         |         | Truck   |         |         |         |         |         |
+ *  N-1    |         |         |         |         |         |         |         |         |         |
+ *  N-2    |         |  Car    |         |         |         |         |         |         |         |
+ *  N-3    |         |         |         |         |         |         |         |         |         |
  *  ...
- *    4    |         |         |         |         |         |         |         |
- *    3    |         |         |         |         |         |         |         |
- *    2    |         |         |         |         |         |         |         |
- *    1    |         |  Pedest |         |         |         |         |         |
- *    0    |         |         |  Myself |         |         |         |         |
+ *    4    |         |         |         |         |         |         |         |         |         |
+ *    3    |         |         |         |         |         |         |         |         |         |
+ *    2    |         |         |         |         |         |         |         |         |         |
+ *    1    |         |  Pedest |         |         |         |         |         |         |         |
+ *    0    |         |         |  Myself |         |         |         |         |         |         |
  */
 
 // This is the master list of all currently live objects in the world.
