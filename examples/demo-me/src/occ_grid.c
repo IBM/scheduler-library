@@ -16,7 +16,7 @@ void print_local_occupancy_grid()
  #if (BUILD_WITH_N_LANES == 5)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
   printf("|---|----|---|---|---|---|---|\n");
- #elif (BUILD_WITH_N_LANES == 5)
+ #elif (BUILD_WITH_N_LANES == 9)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
   printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
  #endif
@@ -36,7 +36,7 @@ void print_remote_occupancy_grid()
  #if (BUILD_WITH_N_LANES == 5)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
   printf("|---|----|---|---|---|---|---|\n");
- #elif (BUILD_WITH_N_LANES == 5)
+ #elif (BUILD_WITH_N_LANES == 9)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
   printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
  #endif
@@ -56,7 +56,7 @@ void print_fused_occupancy_grid()
  #if (BUILD_WITH_N_LANES == 5)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|\n");
   printf("|---|----|---|---|---|---|---|\n");
- #elif (BUILD_WITH_N_LANES == 5)
+ #elif (BUILD_WITH_N_LANES == 9)
   printf("|IDX|DIST|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|\n");
   printf("|---|----|---|---|---|---|---|---|---|---|---|\n");
  #endif
