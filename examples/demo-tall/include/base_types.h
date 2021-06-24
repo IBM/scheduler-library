@@ -76,11 +76,10 @@ extern char* lane_names[NUM_LANES];
 extern char* message_names[NUM_MESSAGES];
 extern char* object_names[NUM_OBJECTS];
 
-#ifdef USE_SIM_ENVIRON
-extern float car_goal_speed;
-extern float car_accel_rate;
-extern float car_decel_rate;
-#endif
+extern float      car_goal_speed;
+extern distance_t car_goal_distance;
+extern float      car_accel_rate;
+extern float      car_decel_rate;
 
 extern char  nearest_obj[NUM_LANES];
 extern float nearest_dist[NUM_LANES];

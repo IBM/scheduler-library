@@ -29,8 +29,10 @@ typedef enum {success, error} status_t;
 bool output_viz_trace = false;
 bool output_source_trace = true;
 
-float car_goal_speed = 50.0;
-float car_goal_distance = 0.0; 
+distance_t car_goal_distance = 0.0; 
+float      car_goal_speed = 50.0; 
+float      car_accel_rate = 15.0;
+float      car_decel_rate = 15.0;
 
 char world_desc_file_name[256] = "default_world.desc";
 float IMPACT_DISTANCE = 50.0;  // Minimum distance at which an obstacle "impacts" MyCar (collision case)

@@ -52,11 +52,7 @@ distance_t MAX_DIST_STEP_SIZE = 50.0;
 distance_t INF_DISTANCE =       550.0; // (MAX_DISTANCE + MAX_DIST_STEP_SIZE)
 //#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
 
-#if (BUILD_WITH_N_LANES == 5)
 char* lane_names[NUM_LANES] = {"LHazard", "Left", "Center", "Right", "RHazard" };
-#elif (BUILD_WITH_N_LANES == 9)
-char* lane_names[NUM_LANES] = {"LHazard", "Far-Left", "Left", "LeftCntr", "Center", "RtCntr", "Right", "Far-Right", "RHazard" };
-#endif
 
 char* message_names[NUM_MESSAGES] = {"Safe_L_or_R", "Safe_R_only", "Safe_L_only", "Unsafe_L_or_R" };
 char* object_names[NUM_OBJECTS] = {"Nothing", "Car", "Truck", "Person", "Bike" };
@@ -521,7 +517,7 @@ struct timeval stop_recv_pipe, start_recv_pipe;
 uint64_t recv_pipe_sec  = 0LL;
 uint64_t recv_pipe_usec = 0LL;
 
-uint8_t recvd_in[2256*1024]; // sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
+uint8_t recvd_in[sizeof(vit_dict_entry_t) + MAX_ENCODED_BITS*sizeof(uint8_t) + 4096];
 vit_dict_entry_t temp_vit_dict_entry;
 
 #include "occ_grid.h"
@@ -675,13 +671,13 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
 
 // This actually uses the standard inputs/values (e.g. the local state) for most of this,
 //  but it resolves whether the "other" car is in the "danger proximity" from the fused map
-//#undef  DEBUG
-//#define DEBUG(x) x
+/* #undef  DEBUG */
+/* #define DEBUG(x) x */
 
 message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
 {
   unsigned msg_val = 0; // set a default to avoid compiler messages 
- printf("At time %u We are in lane %u %s TH %.1f : obj in %u is %c at %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD, vs.lane, nearest_obj[vs.lane], nearest_dist[vs.lane]);
+  DEBUG(printf("At time %u We are in lane %u %s TH %.1f : obj in %u is %c at %.1f\n", time_step, vs.lane, lane_names[vs.lane], VIT_CLEAR_THRESHOLD, vs.lane, nearest_obj[vs.lane], nearest_dist[vs.lane]));
   switch (vs.lane) {
   case lhazard:
     {
@@ -693,7 +689,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       } else {
 	// Check that the other "MY_CAR" is not in one of the 2 lanes to the right
 	//   (or else it might merge into the lane I'm merging into)
-	printf(" fused %u = %u  and %u = %u\n", lhazard+1, fused_occ_grid[lhazard+1][1], lhazard+1, fused_occ_grid[lhazard+1][1]);
+	DEBUG(printf(" fused %u = %u  and %u = %u\n", lhazard+1, fused_occ_grid[lhazard+1][1], lhazard+1, fused_occ_grid[lhazard+1][1]));
 	if ((fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL) && (fused_occ_grid[lhazard+1][1] != OCC_GRID_MY_CAR_VAL)) {
 	  msg_val = 1;
 	} else {
@@ -702,11 +698,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       }
     }
     break;
-#if (BUILD_WITH_N_LANES == 5)
   case left: // the lane immediately to the right of the lhazard
-#elif (BUILD_WITH_N_LANES == 9)
-  case far_left: // the lane immediately to the right of the lhazard
-#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -714,13 +706,13 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       DEBUG(printf(" B:  Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
-      printf(" fused %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1]);
+      DEBUG(printf(" fused %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1]));
       if (((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Left lane at distance 0 or 1
 	  || ((fused_occ_grid[vs.lane-1][1] == OCC_GRID_MY_CAR_VAL))) {
 	DEBUG(printf("    Marking unsafe to move left\n"));
 	msg_val += 1; // Unsafe to move from this lane to the left.
       }
-      printf(" fused %u = %u  and %u = %u\n", vs.lane+1, fused_occ_grid[vs.lane+1][1], vs.lane+2, fused_occ_grid[vs.lane+2][1]);
+      DEBUG(printf(" fused %u = %u  and %u = %u\n", vs.lane+1, fused_occ_grid[vs.lane+1][1], vs.lane+2, fused_occ_grid[vs.lane+2][1]));
       if (((nearest_obj[vs.lane+1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane+1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane+2][1] == OCC_GRID_MY_CAR_VAL) ) {
 	DEBUG(printf("    Marking unsafe to move right\n"));
@@ -729,15 +721,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-#if (BUILD_WITH_N_LANES == 5)
   case center: // Lanes with 2 lanes on each side...
-#elif (BUILD_WITH_N_LANES == 9)
-  case left:  // Lanes with 2 lanes on each side...
-  case l_center:
-  case center:
-  case r_center:
-  case right:
-#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -745,14 +729,13 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       DEBUG(printf("  C: Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
-      printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane-1], ndm1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane-1, fused_occ_grid[vs.lane-1][1], OCC_GRID_MY_CAR_VAL, vs.lane-2, fused_occ_grid[vs.lane-2][1], OCC_GRID_MY_CAR_VAL);
+      DEBUG(printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane-1], ndm1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane-1, fused_occ_grid[vs.lane-1][1], OCC_GRID_MY_CAR_VAL, vs.lane-2, fused_occ_grid[vs.lane-2][1], OCC_GRID_MY_CAR_VAL));
       if (((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane-1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane-2][1] == OCC_GRID_MY_CAR_VAL) ) {
-	//printf("(((nearest_obj[%u] %c != 'N') && (%u < %u VIT_CLEAR)) || (foc[%u] %u vs %u ) || (foc[%u] %u vs %u)\n", vs.lane-1, nearest_obj[vs.lane-1], ndm1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane-1, fused_occ_grid[vs.lane-1][1], OCC_GRID_MY_CAR_VAL, vs.lane-2, fused_occ_grid[vs.lane-2][1], OCC_GRID_MY_CAR_VAL);
 	DEBUG(printf("    Marking unsafe to move left\n"));
 	msg_val += 1; // Unsafe to move from this lane to the left.
       }
-      printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane+1], ndp1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane+1, fused_occ_grid[vs.lane+1][1], OCC_GRID_MY_CAR_VAL, vs.lane+2, fused_occ_grid[vs.lane+2][1], OCC_GRID_MY_CAR_VAL);
+      DEBUG(printf("   NObj %c at %u vs %u  with fused %u = %u vs %u  and %u = %u vs %u\n", nearest_obj[vs.lane+1], ndp1, (unsigned)VIT_CLEAR_THRESHOLD, vs.lane+1, fused_occ_grid[vs.lane+1][1], OCC_GRID_MY_CAR_VAL, vs.lane+2, fused_occ_grid[vs.lane+2][1], OCC_GRID_MY_CAR_VAL));
       if (((nearest_obj[vs.lane+1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane+1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane+2][1] == OCC_GRID_MY_CAR_VAL) ) {
 	DEBUG(printf("    Marking unsafe to move right\n"));
@@ -761,11 +744,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     }
     break;
 
-#if (BUILD_WITH_N_LANES == 5)
   case right: // the lane immediately to the left of the rhazard
-#elif (BUILD_WITH_N_LANES == 9)
-  case far_right: // the lane immediately to the left of the rhazard
-#endif
     {
       unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
       unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
@@ -773,13 +752,13 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       DEBUG(printf("  D: Lane %u TH %.1f : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane, VIT_CLEAR_THRESHOLD, 
 		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
 		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
-      printf(" fused %u = %u  and %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1], vs.lane-2, fused_occ_grid[vs.lane-2][1]);
+      DEBUG(printf(" fused %u = %u  and %u = %u\n", vs.lane-1, fused_occ_grid[vs.lane-1][1], vs.lane-2, fused_occ_grid[vs.lane-2][1]));
       if (((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || (fused_occ_grid[vs.lane-1][1] == OCC_GRID_MY_CAR_VAL) || (fused_occ_grid[vs.lane-2][1] == OCC_GRID_MY_CAR_VAL) ) {
 	DEBUG(printf("    Marking unsafe to move left\n"));
 	msg_val += 1; // Unsafe to move from this lane to the left.
       }
-      printf(" fused %u = %u\n", vs.lane+1, fused_occ_grid[vs.lane+1][1]);
+      DEBUG(printf(" fused %u = %u\n", vs.lane+1, fused_occ_grid[vs.lane+1][1]));
       if (((nearest_obj[vs.lane+1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) // Some object is in the Right lane at distance 0 or 1
 	  || ((fused_occ_grid[vs.lane+1][1] == OCC_GRID_MY_CAR_VAL)) ) {
 	DEBUG(printf("    Marking unsafe to move right\n"));
@@ -808,16 +787,14 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
   DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], msg_val));
   return msg_val;
 }
-//#undef  DEBUG
-//#define DEBUG(x)
+/* #undef  DEBUG */
+/* #define DEBUG(x) */
 
-//#undef DEBUG
-//#define DEBUG(x) x
+/* #undef DEBUG */
+/* #define DEBUG(x) x */
 vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_state_t vs, message_t* tr_message)
 {
-  DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]);
-	printf("Forming the Local Occupancy Grid Map...\n"));
-  
+  DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   // Form my local occupancy grid map
   //  We go through the lanes around the one I occupy, using a "fan" of vision such that
   //   I "see" the first bstacle straight ahead,
@@ -839,10 +816,6 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
     // First manage vision in my current lane -- find the closest object ahdead of me.
     int my_lane = vs.lane;
-    int my_dist = vs.distance;
-    int my_grid_dist = (my_dist / GRID_DIST_STEP_SIZE);
-    int my_grid_max = (my_dist + MAX_DISTANCE) / GRID_DIST_STEP_SIZE;
-    if (my_grid_max >= OCC_GRID_Y_DIM) { my_grid_max = OCC_GRID_Y_DIM - 1;}
     int nobj = obj_in_lane[my_lane];
     DEBUG(printf("MY Lane %u : obj = %d OBJ %c at %u\n", my_lane, nobj, lane_obj[my_lane][nobj-1], lane_dist[my_lane][nobj-1]));
     {
@@ -852,13 +825,13 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	int grid_dist = (int)(lane_dist[my_lane][i] / GRID_DIST_STEP_SIZE);
 	DEBUG(printf("MY Lane %u NEAREST : dist %u gd %u\n", my_lane, dist, grid_dist));
 	DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", my_lane, 0, grid_dist-1));
-	for (int yi = my_grid_dist; yi < grid_dist; yi++) {
+	for (int yi = 0; yi < grid_dist; yi++) {
 	  local_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	}
 	local_occ_grid[my_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
       } else {
-	DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", my_lane, 0, my_grid_max));
-	for (int yi = my_grid_dist; yi < my_grid_max; yi++) {
+	DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", my_lane, 0, OCC_GRID_Y_DIM-1));
+	for (int yi = 0; yi < OCC_GRID_Y_DIM; yi++) {
 	  local_occ_grid[my_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	}
       }
@@ -874,39 +847,40 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	if ((i < 0) || (lane_obj[check_lane][i] == 'N')) {
 	  if (lane_over <= 2) {
 	    DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, 0, OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]));
-	    for (int yi = my_grid_dist; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
+	    for (int yi = 0; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
 	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
-	  }
-	  int grid_min = (my_dist + OCC_NEXT_LANE_FAR[abs_lane_diff]) / GRID_DIST_STEP_SIZE;
-	  DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, grid_min, my_grid_max));
-	  for (int yi = grid_min; yi < my_grid_max; yi++) {
+	  }		
+	  int grid_min = OCC_NEXT_LANE_FAR[abs_lane_diff] / GRID_DIST_STEP_SIZE;
+	  DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, grid_min, OCC_GRID_Y_DIM-1));
+	  for (int yi = grid_min; yi < OCC_GRID_Y_DIM; yi++) {
 	    local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	  }
+	  //DEBUG(printf("     So lane %u dist %u = %u\n", check_lane, OCC_GRID_Y_DIM-1, local_occ_grid[check_lane][OCC_GRID_Y_DIM-1]));
 	} else {
 	  bool found_close = false;
 	  // Okay, so we have some obstacle in the lane...
 	  while (i >= 0) { // While we still have un-considered objects...
 	    unsigned dist = lane_dist[check_lane][i];
 	    // first check whether the obstacle is in the "close" distance...
-	    if (dist <= (my_dist + OCC_NEXT_LANE_NEAR[abs_lane_diff])) {
+	    if (dist <= OCC_NEXT_LANE_NEAR[abs_lane_diff]) {
 	      if (found_close) {
 		DEBUG(printf(" we already found a NEAR object in lane %u %s\n", check_lane, lane_names[check_lane]));
 	      } else {
-		int grid_dist = (int)(dist / GRID_DIST_STEP_SIZE);
+		int grid_dist = (int)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
 		DEBUG(printf("  ==> FOUND %c Lane-Over %d Lane %u %s NEAR : dist %u gd %u\n", lane_obj[check_lane][i], lane_over, check_lane, lane_names[check_lane], dist, grid_dist));
 		DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, 0, grid_dist-1));
-		for (int yi = my_grid_dist; yi < grid_dist; yi++) {
+		for (int yi = 0; yi < grid_dist; yi++) {
 		  local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 		}
 		DEBUG(printf("   Filling lane %u %d with OBSTACLE\n", check_lane, grid_dist));
 		local_occ_grid[check_lane][grid_dist] = OCC_GRID_OBSTACLE_VAL;
 		found_close = true;
 	      } 
-	    } else if ((dist <= (my_dist + MAX_DISTANCE)) && (dist >= (my_dist + OCC_NEXT_LANE_FAR[abs_lane_diff]))) {
-	      int grid_dist = (int)(dist / GRID_DIST_STEP_SIZE);
+	    } else if ((dist <= MAX_DISTANCE) && (dist >= OCC_NEXT_LANE_FAR[abs_lane_diff])) {
+	      int grid_dist = (int)(lane_dist[check_lane][i] / GRID_DIST_STEP_SIZE);
 	      DEBUG(printf("  ==> FOUND %c Lane-Over %d Lane %u %s FAR : dist %u gd %u\n", lane_obj[check_lane][i], lane_over, check_lane, lane_names[check_lane], dist, grid_dist));
-	      int grid_min = (my_dist + OCC_NEXT_LANE_FAR[abs_lane_diff]) / GRID_DIST_STEP_SIZE;
+	      int grid_min = OCC_NEXT_LANE_FAR[abs_lane_diff] / GRID_DIST_STEP_SIZE;
 	      DEBUG(printf("   Filling lane %u from %d to %d with NO-OBSTACLE\n", check_lane, grid_min, grid_dist-1));
 	      for (int yi = grid_min; yi < grid_dist; yi++) {
 		local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
@@ -918,7 +892,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	  } // while (i >=- 0)
 	  if ((!found_close) && (lane_over <= 2)) {
 	    // Need to fill in the "close" space with NO_OBSTACLE
-	    for (int yi = my_grid_dist; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
+	    for (int yi = 0; yi < OCC_NEXT_LANE_NEAR_GRID[abs_lane_diff]; yi++) {
 	      local_occ_grid[check_lane][yi] = OCC_GRID_NO_OBSTACLE_VAL;
 	    }
 	  }		
@@ -927,7 +901,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     } // for (lanex_over from [-2 to 2]
     
     DEBUG(printf("Setting MY_CAR in Lane %u from %u to %u\n", my_lane, 0, MY_CAR_OCC_GRID_SIZE));
-    for (int i = my_grid_dist; i < (my_grid_dist + MY_CAR_OCC_GRID_SIZE); i++) {
+    for (int i = 0; i < MY_CAR_OCC_GRID_SIZE; i++) {
       local_occ_grid[my_lane][i] = OCC_GRID_MY_CAR_VAL;
     }
     DEBUG(printf("Done forming local-occ-grid...\n\n"));
@@ -936,8 +910,8 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
     }
   }
 
-  //#undef DEBUG
-  //#define DEBUG(x)
+ /* #undef DEBUG */
+ /* #define DEBUG(x) */
   
   // Send the base-line (my local) Occupancy Map information to XMIT socket.
   // Connect to the Wifi-Socket and send the n_xmit_out
@@ -955,8 +929,7 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 	gi++;
       }
     }
-    //DEBUG(
-    printf("Total length is %lu with %u grid entries\n", sizeof(xmit_msg_t), gi);//);
+    DEBUG(printf("Total length is %lu\n", sizeof(xmit_msg_t)));
   }
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
 
@@ -981,7 +954,6 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
  #endif
   DEBUG(printf("Calling send for the XMIT %u data-body...\n", xmit_count));
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
-  printf("sizeof wifi_out_msg_t = %lu\n", sizeof(wifi_out_msg));
   send(xmit_sock, (char*)(&wifi_out_msg), sizeof(xmit_msg_t), 0);
   {
     char isACK[3];
@@ -1001,12 +973,12 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
   wifi_send_usec  += stop_wifi_send.tv_usec - start_wifi_send.tv_usec;
  #endif
   /*DEBUG(printf("XFER %4u : Dumping XMIT-PIPE bytes\n", xmit_count);
-	for (int i = 0; i < sizeof(wifi_out_msg); i++) {
+	for (int i = 0; i < wifi_out_msg_len; i++) {
 	  if ((i % 56) == 0) { printf("\n"); }
 	  if ((i % 7) == 0) { printf(" "); }
 	  printf("%u", wifi_out_msg[i]);
 	}
-	printf("\n")); */
+	printf("\n"));*/
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
   xmit_count++;
   
@@ -1083,13 +1055,12 @@ vit_dict_entry_t* iterate_vit_kernel(scheduler_datastate_block_t* sptr, vehicle_
 
   vit_msg_struct_t* vit_msg_ptr = (struct vit_msg_struct*) recvd_in;
  
-  //DEBUG(
-  printf("\nVIT_MSG_STRUCT\n");
-  printf("  unsigned     msg_len   @ %p = %u\n",  &(vit_msg_ptr->len), vit_msg_ptr->len);   //recvd_in);
-  printf("  ve_statete_t car_state @ %p = a %u l %u d %.1f s %.1f\n",  &(vit_msg_ptr->car_state), vit_msg_ptr->car_state.active , vit_msg_ptr->car_state.lane , vit_msg_ptr->car_state.distance , vit_msg_ptr->car_state.speed);
+  DEBUG(printf("\nVIT_MSG_STRUCT\n");
+	printf("  unsigned     msg_len   @ %p = %u\n",  &(vit_msg_ptr->len), vit_msg_ptr->len);   //recvd_in);
+	printf("  ve_statete_t car_state @ %p = a %u l %u d %.1f s %.1f\n",  &(vit_msg_ptr->car_state), vit_msg_ptr->car_state.active , vit_msg_ptr->car_state.lane , vit_msg_ptr->car_state.distance , vit_msg_ptr->car_state.speed);
 	printf("  ofdm_param*  ofdm_ptr  @ %p\n",  &(vit_msg_ptr->ofdm));  // (ofdm_param*)(recvd_in + sizeof(unsigned)));
 	printf("  frame_param* frame_ptr @ %p\n",  &(vit_msg_ptr->frame)); // (frame_param*)(recvd_in + sizeof(unsigned) + sizeof(ofdm_param)));
-	printf("  uint8_t*     data_ptr  @ %p\n",  &(vit_msg_ptr->msg)); // );  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
+	printf("  uint8_t*     data_ptr  @ %p\n",  &(vit_msg_ptr->msg)));  // (recvd_in + sizeof(unsigned) + sizeof(ofdm_param) + sizeof(frame_param)));
 	
   temp_vit_dict_entry.msg_num = 0;
   temp_vit_dict_entry.msg_id  = 0;

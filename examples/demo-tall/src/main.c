@@ -111,9 +111,11 @@ int input_accel_limit_fft = -1;
 int input_accel_limit_vit = -1;
 int input_accel_limit_cv = -1;
 
-lane_t starting_lane    = center;
-float car_goal_speed    = 50.0; 
-float car_goal_distance = 0.0; 
+lane_t starting_lane = center;
+distance_t car_goal_distance = 0.0; 
+float      car_goal_speed = 50.0; 
+float      car_accel_rate = 15.0;
+float      car_decel_rate = 15.0;
 
 void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -383,7 +385,7 @@ int main(int argc, char *argv[]) {
 #ifdef USE_SIM_ENVIRON
   char world_desc_file_name[256] = "default_world.desc";
 #else
-  char trace_file[256] = "[PROVIDE_A_TRACE_FILE Using -t option]";
+  char trace_file[256] = "";
 #endif
   char global_config_file[256] = "";
   int opt;
@@ -422,7 +424,8 @@ int main(int argc, char *argv[]) {
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
-  while ((opt = getopt(argc, argv, ":hcAot:v:m:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:g:l:")) != -1) {
+  while ((opt = getopt(argc, argv, ":hcAot:v:s:r:W:w:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:g:l:")) != -1) {
+    printf("I found option '%c':\n", opt);
     switch (opt) {
     case 'h':
       print_usage(argv[0]);
@@ -450,11 +453,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'v':
       car_goal_speed = atof(optarg);
-      printf(" NOTE: Set car_goal_speed to %.1f\n", car_goal_speed);
       break;
-    case 'm':
+    case 'y':
       car_goal_distance = atof(optarg);
-      printf(" NOTE: Set car_goal_distance to %.1f\n", car_goal_distance);
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -473,9 +474,6 @@ int main(int argc, char *argv[]) {
     case 't':
 #ifndef USE_SIM_ENVIRON
       snprintf(trace_file, 255, "%s", optarg);
-      printf("Set trace_file to %s\n", trace_file);
-#else
-      printf("Don't set trace_file in USE_SIM_ENVIRON\n");
 #endif
       break;
     case 'S':
@@ -548,24 +546,12 @@ int main(int argc, char *argv[]) {
 	if (optarg[0] == 'L') {
 	  if (optarg[1] == 'H') { starting_lane = lhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = left; }
-         #if (BUILD_WITH_N_LANES == 9)
-	  else if (optarg[1] == 'M') { starting_lane = l_center; }
-         #endif
 	  else {err = true; }
 	} else if (optarg[0] == 'R') {
 	  if (optarg[1] == 'H') { starting_lane = rhazard; }
 	  else if (optarg[1] == 'L') { starting_lane = right; }
-         #if (BUILD_WITH_N_LANES == 9)
-	  else if (optarg[1] == 'M') { starting_lane = r_center; }
-         #endif
 	  else {err = true; }
 	} else if (optarg[0] == 'M') {starting_lane = center; }
-       #if (BUILD_WITH_N_LANES == 9)
-	else if (optarg[0] == 'F') {
-	  if (optarg[1] == 'L') { starting_lane = far_left; }
-	  else if (optarg[1] == 'R') { starting_lane = far_left; }
-	}
-       #endif
 	else {err = true; }
 
 	if (err) {
@@ -919,7 +905,6 @@ int main(int argc, char *argv[]) {
 
 #ifndef USE_SIM_ENVIRON
   /* Trace Reader initialization */
-  printf("Calling init_trace_read for input file %s\n", trace_file);
   if (init_trace_reader(trace_file) != success) {
     printf("Error: the trace reader couldn't be initialized properly -- check "
            "the '-t' option.\n");
@@ -963,7 +948,7 @@ int main(int argc, char *argv[]) {
    */
   vehicle_state.active = true;
   vehicle_state.lane  = starting_lane;
-  vehicle_state.distance = car_goal_distance;
+  vehicle_state.distance = 0.0;
   vehicle_state.speed = car_goal_speed;
   //DEBUG(
   printf("\nVehicle starts with the following state: active: %u lane %u speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed);//);
@@ -1336,7 +1321,7 @@ int main(int argc, char *argv[]) {
     }
     
     message = get_safe_dir_message_from_fused_occ_map(vehicle_state);
-    printf("SAFE-DIR message is %u : %s\n", message, message_names[message]);
+    DEBUG(printf("SAFE-DIR message is %u : %s\n", message, message_names[message]));
 
     if (output_viz_trace) {
       output_VizTrace_line(min_obst_lane, max_obst_lane, &vehicle_state, &other_car);
@@ -1346,8 +1331,7 @@ int main(int argc, char *argv[]) {
      * based on the currently perceived information. It returns the new
      * vehicle state.
      */
-    //DEBUG(
-    printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance);//);
+    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
     task_metadata_block_t *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl2_execution...\n"));
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
@@ -1397,13 +1381,13 @@ int main(int argc, char *argv[]) {
     exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
 #endif
 
-    //DEBUG(
-    printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed);//);
+    DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 
    #ifndef USE_SIM_ENVIRON
     // Something BAD has happened...
     if (vehicle_state.speed != car_goal_speed) {
       printf("New vehicle state: lane %u speed %.1f -- Speed is < car_goal_speed (%.1f) -- HALT RUN!\n", vehicle_state.lane, vehicle_state.speed, car_goal_speed);
+      cleanup_and_exit(sptr, -1);
     }
    #endif
 

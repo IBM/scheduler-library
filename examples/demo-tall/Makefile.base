@@ -185,7 +185,7 @@ STARGET2=sim-car2-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)
 #$(info $$STARGET1 is [${STARGET1}])
 
 
-all: $(TARGET1) $(STARGET1) $(TARGET2) sockets gen_new_trace
+all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) sockets gen_new_trace
 
 
 $(OBJ_T1): $(HDR_T)
