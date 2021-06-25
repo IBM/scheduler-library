@@ -7,7 +7,7 @@ ifdef DO_CROSS_COMPILATION
 endif
 
 ifdef COMPILE_TO_ESP
- ESP_ROOT ?= $(realpath ../../esp)
+ ESP_ROOT ?= $(realpath ../../../../esp)
  ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 endif
@@ -230,7 +230,8 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) test.o -o $@ $(LDFLAGS)
+	#$(CROSS_COMPILE)$(CXX) $(LDLIBS) test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
 
 obj_t:
 	mkdir $@
