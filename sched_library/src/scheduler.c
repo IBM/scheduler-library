@@ -1461,6 +1461,8 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   sptr->scheduler_decisions = 0;
   sptr->scheduler_decision_checks = 0;
 
+  sptr->sl_viz_fp = NULL;
+
   if (sptr->inparms->visualizer_output_enabled) {
     // sptr->sl_viz_fp = fopen("./sl_viz.trace", "w");
     sptr->sl_viz_fp = fopen(sptr->inparms->sl_viz_fname, "w");
