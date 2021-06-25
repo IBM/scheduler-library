@@ -15,10 +15,10 @@ libscheduler.a:
 libtasks.a:
 	(cd task_library; $(MAKE))
 
-hpvm-cpu:
+hpvm-cpu: libscheduler.a libtasks.a 
 	(cd examples/mini-era/ ; make CONFIG_VERBOSE=y hpvm-cpu)
 
-hpvm-epochs:
+hpvm-epochs: libscheduler.a libtasks.a
 	(cd examples/mini-era/ ; make CONFIG_VERBOSE=y hpvm-epochs)
 
 
