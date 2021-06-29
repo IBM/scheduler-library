@@ -1,7 +1,7 @@
-STARGET=libscheduler.a
+TARGET=libscheduler.a
 TTARGET=libtasks.a
 
-EXAMPLES=mini-era demo-me
+EXAMPLES=mini-era demo-me demo-tall
 
 #$(info $$TARGET is [${TARGET}])
 #$(info $$EXAMPLES is [${EXAMPLES}])
@@ -20,6 +20,9 @@ mini-era: $(STARGET) $(TTARGET)
 
 demo-me: $(STARGET) $(TTARGET)
 	(cd examples ; make demo-me-build)
+
+demo-tall: $(STARGET) $(TTARGET)
+	(cd examples ; make demo-tall-build)
 
 clean:
 	(cd sched_library; $(MAKE) clean)

@@ -6,7 +6,7 @@ ifdef DO_CROSS_COMPILATION
 endif
 
 ifdef COMPILE_TO_ESP
- ESP_ROOT ?= $(realpath ../../esp)
+ ESP_ROOT ?= $(realpath ../../../../esp)
  ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 endif
@@ -21,7 +21,7 @@ ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O -g
+nCFLAGS ?= -O -g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -30,7 +30,6 @@ endif
 #  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
-
 
 # This sets the maximum number of any Acceleartor type in this build
 #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
@@ -232,16 +231,16 @@ $(STARGET2): $(TASK_LIB) $(SCHED_LIB) obj_s2 $(OBJ_S2)
 
 
 $(TARGET1_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_t1w $(OBJ_T1_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_T1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
 
 $(STARGET1_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_s1w $(OBJ_S1_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_S1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S1_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
 
 $(TARGET2_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_t2w $(OBJ_T2_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_T2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
 
 $(STARGET2_W): $(TASK_LIB_W) $(SCHED_LIB_W) obj_s2w $(OBJ_S2_W)
-	$(CROSS_COMPILE_W)$(CC) $(LDLIBS) $(OBJ_S2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S2_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
 
 $(SCHED_LIB):
 	(cd ../../sched_library; $(MAKE))
