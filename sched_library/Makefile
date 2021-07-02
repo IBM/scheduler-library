@@ -36,7 +36,6 @@ endif
 
 CFLAGS ?= -O2 -g
 CFLAGS += $(INCDIR)
-CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
  CFLAGS += -DCOMPILE_TO_ESP
@@ -44,6 +43,8 @@ endif
 #  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
+
+CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 
 # # This sets the maximum number of any Acceleartor type in this build
 # #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
@@ -101,7 +102,7 @@ endif
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV
+ CFLAGS += -DHW_CV -DENABLE_NVDLA
  #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
