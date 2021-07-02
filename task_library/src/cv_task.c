@@ -56,17 +56,19 @@ char *python_func = "predict";
 char *python_func_load = "loadmodel";
 #endif
 
-#ifdef FAKE_HW_CV
-unsigned cv_cpu_run_time_in_usec = 10000;
-unsigned cv_fake_hwr_run_time_in_usec = 1000;
-#else
-#ifdef COMPILE_TO_ESP
-unsigned cv_cpu_run_time_in_usec = 10000;
-// unsigned cv_fake_hwr_run_time_in_usec =  1000;
-#else
-unsigned cv_cpu_run_time_in_usec = 50;
-// unsigned cv_fake_hwr_run_time_in_usec =     1;
+#ifdef ENABLE_NVDLA
+ extern void initNVDLA();
+ extern void runImageonNVDLAWrapper(char *Image);
 #endif
+
+#ifdef COMPILE_TO_ESP
+ // This is using the hardware (RISC-V FPGA) numbers
+ unsigned cv_cpu_run_time_in_usec = 5000000;
+ unsigned cv_fake_hwr_run_time_in_usec = 150000;
+#else
+ // This is using the local (presume X86) numbers
+ unsigned cv_cpu_run_time_in_usec = 10000;
+ unsigned cv_fake_hwr_run_time_in_usec = 1000;
 #endif
 
 void print_cv_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
@@ -190,79 +192,82 @@ static inline label_t parse_output_dimg() {
   return (label_t)max_idx;
 }
 
-void execute_hwr_cv_accelerator(
-    /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block =
-      (task_metadata_block_t *)task_metadata_block_ptr;
+void execute_hwr_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
+  cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(task_metadata_block->data_space);
+
   int fn = task_metadata_block->accelerator_id;
   int aidx = task_metadata_block->accelerator_type;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(
-      task_metadata_block->task_timings[task_metadata_block->task_type]);
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&( task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  TDEBUG(printf(
-      "In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn,
-      task_metadata_block->block_id, task_metadata_block->crit_level));
+  TDEBUG(printf( "In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
 #ifdef HW_CV
+ #ifdef ENABLE_NVDLA
   // Add the call to the NVDLA stuff here.
-  printf("Doing the system call : './nvdla_runtime --loadable hpvm-mod.nvdla "
-         "--image 2004_2.jpg --rawdump'\n");
-// printf("Doing the system call : './nvdla_runtime --loadable
-// mio_loadable.nvdla --image three.jpg'\n");
-#ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
-#endif
-
-  int sret = system(
-      "./nvdla_runtime --loadable hpvm-mod.nvdla --image 0003_0.jpg --rawdump");
-  // int sret = system("./nvdla_runtime --loadable mio_loadable.nvdla --image
-  // three.jpg");
-  if (sret == -1) {
-    printf(" The system call returned -1 -- an error occured?\n");
+ #endif
+  printf("Calling NVDLA:\n");
+  label_t tr_label = cv_data_p->object_label;
+  switch (tr_label) {
+  case no_label:
+    runImageonNVDLAWrapper("cnn_data/empty0.jpg");
+    break;
+  case bicycle:
+    runImageonNVDLAWrapper("cnn_data/bike0.jpg");
+    break;
+  case car:
+    runImageonNVDLAWrapper("cnn_data/car0.jpg");
+    break;
+  case pedestrian:
+    runImageonNVDLAWrapper("cnn_data/person0.jpg");
+    break;
+  case truck:
+    runImageonNVDLAWrapper("cnn_data/atruck0.jpg");
+    break;
+  default:
+    printf("ERROR : unknown input object type %u\n", tr_label);
   }
-#ifdef INT_TIME
+  printf("   DONE with NVDLA call...\n");
+
+ #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->parse_start), NULL);
-  cv_timings_p->call_sec[aidx] +=
-      cv_timings_p->parse_start.tv_sec - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[aidx] +=
-      cv_timings_p->parse_start.tv_usec - cv_timings_p->call_start.tv_usec;
-  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n",
-               cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
-#endif
+  cv_timings_p->call_sec[aidx] += cv_timings_p->parse_start.tv_sec - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[aidx] += cv_timings_p->parse_start.tv_usec - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
+ #endif
   label_t pred_label = parse_output_dimg();
-#ifdef INT_TIME
+ #ifdef INT_TIME
   struct timeval stop;
   gettimeofday(&(stop), NULL);
-  cv_timings_p->parse_sec[aidx] +=
-      stop.tv_sec - cv_timings_p->parse_start.tv_sec;
-  cv_timings_p->parse_usec[aidx] +=
-      stop.tv_usec - cv_timings_p->parse_start.tv_usec;
-#endif
-  TDEBUG(printf("---> Predicted label = %d\n", pred_label));
+  cv_timings_p->parse_sec[aidx]  += stop.tv_sec - cv_timings_p->parse_start.tv_sec;
+  cv_timings_p->parse_usec[aidx] += stop.tv_usec - cv_timings_p->parse_start.tv_usec;
+ #endif
+  //TDEBUG(
+  printf("---> Predicted label = %d\n", pred_label); //);
   // Set result into the metatdata block
-  task_metadata_block->data_view.cv_data.object_label = pred_label;
+  //task_metadata_block->data_view.cv_data.object_label = pred_label;
+  cv_data_p->object_label = pred_label;
+ #endif // ifdef ENABLE_NVDLA
 
-#else // Of #ifdef HW_CV
-#ifdef FAKE_HW_CV
-#ifdef INT_TIME
+ #else // Of #ifdef HW_CV
+ #ifdef FAKE_HW_CV
+ #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
-#endif
+ #endif
   // This usleep call stands in as the "Fake" CNN accelerator
   usleep(cv_fake_hwr_run_time_in_usec);
 
-#ifdef INT_TIME
+ #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  cv_timings_p->call_sec[aidx] +=
-      stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[aidx] +=
-      stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", aidx,
-               cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
-#endif
-#endif
-#endif
-  TDEBUG(printf("MB%u CV_HWR calling mark_task_done...\n",
-                task_metadata_block->block_id));
+  cv_timings_p->call_sec[aidx]  += stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
+  cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+  DEBUG(printf("FAKE_HW_CV: Set Call_Sec[%u] to %lu %lu\n", aidx, cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
+ #endif // #ifdef INT_TIME
+ #endif // #fdef FAKE_HE_CV
+#endif // else of #ifdef HW_CV
+  TDEBUG(printf("MB%u CV_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
@@ -345,16 +350,12 @@ label_t run_object_classification(unsigned tr_val) {
   return object;
 }
 
-void execute_cpu_cv_accelerator(
-    /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block =
-      (task_metadata_block_t *)task_metadata_block_ptr;
-  DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n",
-               task_metadata_block->block_id, task_metadata_block->crit_level));
+void execute_cpu_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
+  DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(
-      task_metadata_block->task_timings[task_metadata_block->task_type]);
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
 #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
@@ -377,29 +378,32 @@ void execute_cpu_cv_accelerator(
 }
 
 uint64_t cv_profile[SCHED_MAX_ACCEL_TYPES];
+
 void set_up_cv_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     cv_profile[ai] = ACINFPROF;
   }
-#ifdef COMPILE_TO_ESP
+ #ifndef CONFIG_CV_OoNLY_HWR
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
+  cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
+  DEBUG(printf("CV_PROFILE: NOT_HW_ONLY : cv_profile[CPU] = %u\n", cv_profile[SCHED_CPU_ACCEL_T]));
+ #endif
 
-  cv_profile[SCHED_CPU_ACCEL_T] =
-      cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
-#ifdef FAKE_HW_CV
-  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-      cv_fake_hwr_run_time_in_usec; // Specified in the run
-#else
+ #ifdef COMPILE_TO_ESP
+  printf("CV_PROFILE: COMPILE_TO_ESP : \n");
+  #ifdef FAKE_HW_CV
+  cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = cv_fake_hwr_run_time_in_usec; // Specified in the run
+  DEBUG(printf("CV_PROFILE: ESP_and_FAKE_HW : cv_profile[NVDLA] = %u\n", cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T]));
+ #else
   cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = 150000;
-#endif
-#else
-  cv_profile[SCHED_CPU_ACCEL_T] =
-      cv_cpu_run_time_in_usec; // Specified in the run - was 50
-#endif
-  DEBUG(printf("%15s :", "cv_profile");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-             ai++) { printf(" 0x%016lx", cv_profile[ai]); } printf("\n");
-        printf("\n"));
+  DEBUG(printf("CV_PROFILE: ESP_and_REAL_HW : cv_profile[NVDLA] = %u\n", cv_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T]));
+  #endif
+ #endif
+  //DEBUG(
+  printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
+  printf("%15s :", "cv_profile");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", cv_profile[ai]); } 
+        printf("\n\n"); //);
 }
 
 /*task_metadata_block_t*/ void *
@@ -420,11 +424,9 @@ set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 
   // Request a MetadataBlock (for an CV task at Critical Level)
   task_metadata_block_t *cv_mb_ptr = NULL;
-  DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n",
-               cv_task_type));
+  DEBUG(printf("Calling get_task_metadata_block for Critical CV-Task %u\n", cv_task_type));
   do {
-    cv_mb_ptr = get_task_metadata_block(sptr, dag_id, cv_task_type, crit_level,
-                                        cv_profile);
+    cv_mb_ptr = get_task_metadata_block(sptr, dag_id, cv_task_type, crit_level, cv_profile);
     // usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
 #ifdef TIME
@@ -446,15 +448,12 @@ set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   DEBUG(printf("MB%u In set_up_cv_task\n", cv_mb_ptr->block_id));
 
   if (use_auto_finish) {
-    cv_mb_ptr->atFinish = sptr->auto_finish_task_function
-                              [cv_task_type]; // get_auto_finish_routine(sptr,
-                                              // cv_task_type);
+    cv_mb_ptr->atFinish = sptr->auto_finish_task_function[cv_task_type]; // get_auto_finish_routine(sptr, cv_task_type);
   } else {
     cv_mb_ptr->atFinish = NULL;
   }
 
-  cv_timing_data_t *cv_timings_p =
-      (cv_timing_data_t *)&(cv_mb_ptr->task_timings[cv_mb_ptr->task_type]);
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(cv_mb_ptr->task_timings[cv_mb_ptr->task_type]);
   cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(cv_mb_ptr->data_space);
   // Handle the input data to the task
   cv_data_p->object_label = in_label;
