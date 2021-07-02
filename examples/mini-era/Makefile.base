@@ -21,6 +21,11 @@ HPVMCC = $(HPVM_BIN_PATH)/clang
 HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
 HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 
+YEL='\033[0;33m'
+NC='\033[0m'
+
+
+
 INCDIR ?=
 INCDIR += -I./include -I../../sched_library/include -I../../task_library/include
 ifdef COMPILE_TO_ESP
@@ -96,7 +101,7 @@ endif
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV
+ CFLAGS += -DHW_CV -DENABLE_NVDLA
  #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
@@ -135,6 +140,61 @@ endif
 ifdef CONFIG_GDB
 CFLAGS += -g
 endif
+
+#------------------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------------------
+
+
+CUR_DIR = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+$(info $$CUR_DIR is [${CUR_DIR}])
+
+ROOT := $(CUR_DIR)/sw/umd
+$(info $$ROOT is [${ROOT}])
+
+ESP_NVDLA_DIR = esp_hardware/nvdla
+#INCLUDES +=  -I$(SRC_DIR) -I$(ESP_NVDLA_DIR) -I$(TOP)/core/include
+INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
+
+NVDLA_MODULE = hpvm-mod.nvdla
+NVDLA_DIR = $(APPROXHPVM_DIR)/llvm/test/VISC/DNN_Benchmarks/benchmarks/miniera-hpvm
+
+NVDLA_RUNTIME_DIR = $(ROOT)
+NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
+$(info $$NVDLA_RUNTIME is [${NVDLA_RUNTIME}])
+$(info $$NVDLA_RUNTIME_DIR is [${NVDLA_RUNTIME_DIR}])
+
+TOOLCHAIN_PREFIX ?= $(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-
+
+ifeq ($(TOOLCHAIN_PREFIX),)
+$(error Toolchain prefix missing)
+endif
+
+MODULE := nvdla_runtime
+
+include $(ROOT)/make/macros.mk
+
+BUILDOUT ?= $(ROOT)/out/apps/runtime
+BUILDDIR := $(BUILDOUT)/$(MODULE)
+TEST_BIN := $(BUILDDIR)/$(MODULE)
+
+MODULE_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
+MODULE_CFLAGS := --std=c99
+MODULE_CPPFLAGS := --std=c++11 -fexceptions -fno-rtti
+NVDLA_FLAGS := -pthread -L$(ROOT)/external/ -ljpeg -L$(ROOT)/out/core/src/runtime/libnvdla_runtime -lnvdla_runtime  -Wl,-rpath=.
+
+include esp_hardware/nvdla/rules.mk
+
+#-----------------------------------------------------------------------------------------------
+
+$(NVDLA_MODULE):
+	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
+	@cd $(NVDLA_RUNTIME_DIR) && make runtime
+	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
+	@cd $(APPROXHPVM_DIR)/llvm/test/VISC/DNN_Benchmarks/benchmarks/miniera-hpvm && make && cp $(NVDLA_MODULE) $(CUR_DIR)
+
+#-----------------------------------------------------------------------------------------------
+
 
 SCHED_LIB = $(SCHED_LIB_DIR)/libscheduler.a
 TASK_LIB = $(TASK_LIB_DIR)/libtasks.a
@@ -195,6 +255,7 @@ $(info $$OBJ_LINKED is [${OBJ_LINKED}])
 
 all: $(TARGET) $(STARGET)
 
+hpvm-epochs: CFLAGS += -DENABLE_NVDLA
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
@@ -209,7 +270,7 @@ hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
-hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(HPVMTARGET)
+hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
 hpvm-cpu: check_env obj_hpvm $(HPVMTARGET)
 
 
@@ -228,10 +289,12 @@ $(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T)
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
-$(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB)
-	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) test.o -o $@ $(LDFLAGS)
-	#$(CROSS_COMPILE)$(CXX) $(LDLIBS) test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
+$(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
+	$(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-ld -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
+	#$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	rm me_test.o wnvdla_test.o
 
 obj_t:
 	mkdir $@
@@ -278,6 +341,9 @@ $(TASK_LIB) $(TASK_MODULE):
 clean:
 	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_LL) $(OBJ_H) $(OBJ_LINKED)
 	$(RM) -r obj_t obj_s obj_hpvm
+	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
+	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
+
 
 clobber: clean
 	$(RM) $(TARGET)

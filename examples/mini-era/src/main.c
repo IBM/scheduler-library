@@ -90,15 +90,6 @@ task_type_t test_task_type;
 //  we know NUM_TASKS) The order is also significant, so "filled in" as we
 //  register the tasks
 unsigned **p0_hw_threshold;
-
-// These are defined by the task-type
-uint64_t fft_profile[2]
-                    [MY_APP_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
-uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short,
-                                             // medium, long, or max
-uint64_t cv_profile[MY_APP_ACCEL_TYPES];
-uint64_t test_profile[MY_APP_ACCEL_TYPES];
-uint64_t plan_ctrl_profile[MY_APP_ACCEL_TYPES];
 #endif
 
 bool all_obstacle_lanes_mode = false;
@@ -271,7 +262,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
 				    &set_up_cv_task, &finish_cv_execution, &cv_auto_finish_routine,
 				    &print_cv_metadata_block_contents, &output_cv_task_type_run_stats, 2,
 				    SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
-				    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_cpu_cv_accelerator);
+				    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
     p0_hw_threshold[cv_task_type][cv_hwr_accel_id] =
@@ -756,22 +747,18 @@ int main(int argc, char *argv[]) {
   for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
     p0_hw_threshold[ti] = malloc(MY_APP_ACCEL_TYPES * sizeof(unsigned));
     if (p0_hw_threshold[ti] == NULL) {
-      printf("ERROR: main couldn't allocate memory for p0_hw_threshold[%u]\n",
-             ti);
+      printf("ERROR: main couldn't allocate memory for p0_hw_threshold[%u]\n", ti);
       exit(-1);
     }
     for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
-      p0_hw_threshold[ti][ai] =
-          101; // Pre-set all to be 0% chance of using any HWR
+      p0_hw_threshold[ti][ai] = 101; // Pre-set all to be 0% chance of using any HWR
     }
   }
 
-  printf("Run using scheduling policy %s with  hold-off %u\n",
-         sptr->inparms->policy, sptr->inparms->scheduler_holdoff_usec);
+  printf("Run using scheduling policy %s with  hold-off %u\n", sptr->inparms->policy, sptr->inparms->scheduler_holdoff_usec);
 
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
-    printf("Added Test-Task with %u Crit and %u Base, Timings: CPU %u FFT %u "
-           "VIT %u CV %u\n",
+    printf("Added Test-Task with %u Crit and %u Base, Timings: CPU %u FFT %u VIT %u CV %u\n",
            num_Crit_test_tasks, num_Base_test_tasks,
            test_on_cpu_run_time_in_usec, test_on_hwr_fft_run_time_in_usec,
            test_on_hwr_vit_run_time_in_usec, test_on_hwr_cv_run_time_in_usec);
@@ -1159,14 +1146,14 @@ int main(int argc, char *argv[]) {
 			      false, time_step,
 			      cv_tr_label); // Critical CV task
       request_execution(cv_mb_ptr);
-      DEBUG(printf("CV/CNN task Block-ID = %u\n", cv_mb_ptr->block_id));
+      DEBUG(printf("CV/CNN task Block-ID = MB%u\n", cv_mb_ptr->block_id));
     }
 
     task_metadata_block_t *radar_mb_ptr = NULL;
     radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
 			       false, time_step,
 			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs,2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
-    DEBUG(printf("FFT task Block-ID = %u\n", radar_mb_ptr->block_id));
+    DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
     request_execution(radar_mb_ptr);
 
 #else
@@ -1185,14 +1172,14 @@ int main(int argc, char *argv[]) {
     viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
 				 vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
-    DEBUG(printf("VIT_TASK_BLOCK: ID = %u\n", viterbi_mb_ptr->block_id));
+    DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
     task_metadata_block_t *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
       test_mb_ptr = set_up_task(sptr, test_task_type, CRITICAL_TASK,
 				false, time_step); // Critical TEST task
-      DEBUG(printf("TEST_TASK_BLOCK: ID = %u\n", test_mb_ptr->block_id));
+      DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
       request_execution(test_mb_ptr);
     }
 
@@ -1215,6 +1202,7 @@ int main(int argc, char *argv[]) {
         cv_mb_ptr_2 = set_up_task(sptr, cv_task_type, BASE_TASK,
 				  true, time_step,
 				  cv_tr_label); // NON-Critical CV task
+        DEBUG(printf("non-crit CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
 	request_execution(cv_mb_ptr_2);
       } // if (i < additional CV tasks)
       // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
@@ -1233,6 +1221,7 @@ int main(int argc, char *argv[]) {
         radar_mb_ptr_2 = set_up_task(sptr, radar_task_type, BASE_TASK,
 				     true, time_step,
 				     radar_log_nsamples_per_dict_set[crit_fft_samples_set], addl_radar_inputs); // NON-Critical RADAR task
+        DEBUG(printf("non-crit RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
 	request_execution(radar_mb_ptr_2);
       } // if (i < additional FFT tasks)
 
@@ -1261,6 +1250,7 @@ int main(int argc, char *argv[]) {
 	viterbi_mb_ptr_2 = set_up_task(sptr, vit_task_type, BASE_TASK,
 				       true, time_step,
 				       base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p), vdentry2_p->in_bits); // NON-Critical VITERBI task
+        DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
 	request_execution(viterbi_mb_ptr_2);
       } // if (i < Additional VIT tasks)
 
@@ -1269,6 +1259,7 @@ int main(int argc, char *argv[]) {
         task_metadata_block_t *test_mb_ptr_2 = NULL;
         test_mb_ptr = set_up_task(sptr, test_task_type, CRITICAL_TASK,
 				  true, time_step); // Critical TEST task
+        DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
 	request_execution(test_mb_ptr_2);
       } // if (i < Additional TEST tasks)
     } // for (i over MAX_additional_tasks)

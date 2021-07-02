@@ -143,14 +143,30 @@ unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full
 
 
 
+#ifdef ENABLE_NVDLA
+ extern void initNVDLA();
+ extern void runImageonNVDLAWrapper(char *Image);
+#endif
+
 
 status_t init_cv_kernel(char* py_file, char* dict_fn)
 {
-  DEBUG(printf("In the init_cv_kernel routine\n"));
+  //DEBUG(
+  printf("In the init_cv_kernel routine\n");//);
+
   /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
   // Initialization to run Keras CNN code
+
+ #ifdef ENABLE_NVDLA
+  // Initialize NVDLA
+  printf("  Calling the initNVDLA routine\n");
+  initNVDLA();
+  printf("  Back from the initNVDLA routine\n");
+ #endif
   return success;
 }
+
+
 label_t iterate_cv_kernel(vehicle_state_t vs)
 {
   DEBUG(printf("In iterate_cv_kernel\n"));
@@ -170,40 +186,6 @@ label_t iterate_cv_kernel(vehicle_state_t vs)
   return d_object;
 }
 
-/*
-void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val)
-{
-  DEBUG(printf("MB%u In start_execution_of_cv_kernel\n", mb_ptr->block_id));
-  // 2) Set up to request object detection on an image frame *
-  int tidx = mb_ptr->accelerator_type;
-  cv_timing_data_t * cv_timings_p = (cv_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
-  // Currently we don't send in any data this way (though we should include the input image here)
-  // We will pre-set the result to match the trace input value (in case we "fake" the accelerator execution)
-  cv_data_p->object_label = in_tr_val;
-  //DEBUG(printf("CV Kernel: MB%u set object as %u from %u\n", mb_ptr->block_id, cv_data_p->object_label, in_tr_val));
- #ifdef INT_TIME
-  gettimeofday(&(cv_timings_p->call_start), NULL);
- #endif
-  //  schedule_task(data);
-  request_execution(mb_ptr);
-  // This now ends this block -- we've kicked off execution
-}
-*/
-/*
-label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("MB%u In finish_execution_of_cv_kernel\n", mb_ptr->block_id));
-  cv_data_struct_t * cv_data_p    = (cv_data_struct_t*)(mb_ptr->data_space);
-  label_t the_label = cv_data_p->object_label;
-  //DEBUG(printf("CV Kernel: Finish label for MB%u is %u\n", mb_ptr->block_id, cv_data_p->object_label));
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u fin_cv Calling free_task_metadata_block\n", mb_ptr->block_id));
-  free_task_metadata_block(mb_ptr);
-
-  return the_label;
-}
-*/
 void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 {
   //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
