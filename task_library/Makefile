@@ -103,7 +103,7 @@ endif
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV
+ CFLAGS += -DHW_CV -DENABLE_NVDLA
  #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
