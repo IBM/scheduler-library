@@ -35,8 +35,8 @@ enum Target {
 enum EPOCHS_DEVICES {
   CPU_ACCEL=0,
   OneD_FFT_ACCEL,
-  CV_CNN_ACCEL,
   VITDEC_ACCEL,
+  CV_CNN_ACCEL,
   NUM_DEVICES
 };
 
