@@ -1307,27 +1307,17 @@ initialize_scheduler_from_config_file(char *config_file_name) {
 #include "vit_accel.h"
 
 void set_up_scheduler() {
-  printf(
-      "Setting up the Global Scheduler Hardware State (System Accelerators)\n");
+  printf( "Setting up the Global Scheduler Hardware State (System Accelerators)\n");
   // Set up the "CPU" (threada/accelerators)
-  printf("Setting up the Accel %u CPU (thread) Accelerators...\n",
-         SCHED_CPU_ACCEL_T);
-  sprintf(global_hardware_state_block.accel_name_str[SCHED_CPU_ACCEL_T],
-          "CPU-Acc");
-  sprintf(global_hardware_state_block.accel_desc_str[SCHED_CPU_ACCEL_T],
-          "Run task on a RISC-V CPU thread");
-  global_hardware_state_block.num_accelerators_of_type[SCHED_CPU_ACCEL_T] =
-      NUM_CPU_ACCEL;
-  global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] =
-      &do_cpu_accel_type_initialization;
-  global_hardware_state_block.do_accel_closeout_function[SCHED_CPU_ACCEL_T] =
-      &do_cpu_accel_type_closeout;
-  global_hardware_state_block
-      .output_accel_run_stats_function[SCHED_CPU_ACCEL_T] =
-      &output_cpu_accel_type_run_stats;
+  printf("Setting up the Accel %u CPU (thread) Accelerators...\n", SCHED_CPU_ACCEL_T);
+  sprintf(global_hardware_state_block.accel_name_str[SCHED_CPU_ACCEL_T], "CPU-Acc");
+  sprintf(global_hardware_state_block.accel_desc_str[SCHED_CPU_ACCEL_T], "Run task on a RISC-V CPU thread");
+  global_hardware_state_block.num_accelerators_of_type[SCHED_CPU_ACCEL_T] = NUM_CPU_ACCEL;
+  global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] = &do_cpu_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_CPU_ACCEL_T] = &do_cpu_accel_type_closeout;
+  global_hardware_state_block.output_accel_run_stats_function[SCHED_CPU_ACCEL_T] = &output_cpu_accel_type_run_stats;
   // Now initialize this accelerator
-  if (global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] !=
-      NULL) {
+  if (global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] != NULL) {
     // DEBUG(
     printf(" Calling the accelerator initialization function...\n"); //);
     global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T](NULL);
@@ -1336,92 +1326,50 @@ void set_up_scheduler() {
   }
 
   // Set up the Viterbi Decoder HWR accelerators
-  printf("Setting up the Accel %u  Viterbi Decoder Hardware Accelerators...\n",
-         SCHED_EPOCHS_VITDEC_ACCEL_T);
-  sprintf(
-      global_hardware_state_block.accel_name_str[SCHED_EPOCHS_VITDEC_ACCEL_T],
-      "VIT-HW-Acc");
-  sprintf(
-      global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_VITDEC_ACCEL_T],
-      "Run task on the Viterbi-Decode Hardware Accelerator");
-  global_hardware_state_block
-      .num_accelerators_of_type[SCHED_EPOCHS_VITDEC_ACCEL_T] = NUM_VIT_ACCEL;
-  global_hardware_state_block
-      .do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] =
-      &do_vit_accel_type_initialization;
-  global_hardware_state_block
-      .do_accel_closeout_function[SCHED_EPOCHS_VITDEC_ACCEL_T] =
-      &do_vit_accel_type_closeout;
-  global_hardware_state_block
-      .output_accel_run_stats_function[SCHED_EPOCHS_VITDEC_ACCEL_T] =
-      &output_vit_accel_type_run_stats;
+  printf("Setting up the Accel %u  Viterbi Decoder Hardware Accelerators...\n", SCHED_EPOCHS_VITDEC_ACCEL_T);
+  sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "VIT-HW-Acc");
+  sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "Run task on the Viterbi-Decode Hardware Accelerator");
+  global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_VITDEC_ACCEL_T] = NUM_VIT_ACCEL;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &do_vit_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &do_vit_accel_type_closeout;
+  global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &output_vit_accel_type_run_stats;
   // Now initialize this accelerator
-  if (global_hardware_state_block
-          .do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] != NULL) {
+  if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] != NULL) {
     // DEBUG(
     printf(" Calling the accelerator initialization function...\n"); //);
-    global_hardware_state_block
-        .do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T](NULL);
+    global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T](NULL);
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }
 
-  printf("Setting up the Accel %u 1-D FFT Hardware Accelerators...\n",
-         SCHED_EPOCHS_1D_FFT_ACCEL_T);
-  sprintf(
-      global_hardware_state_block.accel_name_str[SCHED_EPOCHS_1D_FFT_ACCEL_T],
-      "FFT-HW-Acc");
-  sprintf(
-      global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_1D_FFT_ACCEL_T],
-      "Run task on the 1-D FFT Hardware Accelerator");
-  global_hardware_state_block
-      .num_accelerators_of_type[SCHED_EPOCHS_1D_FFT_ACCEL_T] = NUM_FFT_ACCEL;
-  global_hardware_state_block
-      .do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] =
-      &do_fft_accel_type_initialization;
-  global_hardware_state_block
-      .do_accel_closeout_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] =
-      &do_fft_accel_type_closeout;
-  global_hardware_state_block
-      .output_accel_run_stats_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] =
-      &output_fft_accel_type_run_stats;
+  printf("Setting up the Accel %u 1-D FFT Hardware Accelerators...\n", SCHED_EPOCHS_1D_FFT_ACCEL_T);
+  sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "FFT-HW-Acc");
+  sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "Run task on the 1-D FFT Hardware Accelerator");
+  global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_1D_FFT_ACCEL_T] = NUM_FFT_ACCEL;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &do_fft_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &do_fft_accel_type_closeout;
+  global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &output_fft_accel_type_run_stats;
   // Now initialize this accelerator
-  if (global_hardware_state_block
-          .do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] != NULL) {
+  if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] != NULL) {
     // DEBUG(
     printf(" Calling the accelerator initialization function...\n"); //);
-    global_hardware_state_block
-        .do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T](NULL);
+    global_hardware_state_block .do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T](NULL);
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }
 
-  printf("Setting up the Accel %u NVDLA CV/CNN Hardware Accelerators...\n",
-         SCHED_EPOCHS_CV_CNN_ACCEL_T);
-  sprintf(
-      global_hardware_state_block.accel_name_str[SCHED_EPOCHS_CV_CNN_ACCEL_T],
-      "CV-HW-Acc");
-  sprintf(
-      global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_CV_CNN_ACCEL_T],
-      "Run task on the CV/CNN NVDLA Hardware Accelerator");
-  global_hardware_state_block
-      .num_accelerators_of_type[SCHED_EPOCHS_CV_CNN_ACCEL_T] = NUM_CV_ACCEL;
-  global_hardware_state_block
-      .do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-      &do_cv_accel_type_initialization;
-  global_hardware_state_block
-      .do_accel_closeout_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-      &do_cv_accel_type_closeout;
-  global_hardware_state_block
-      .output_accel_run_stats_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] =
-      &output_cv_accel_type_run_stats;
+  printf("Setting up the Accel %u NVDLA CV/CNN Hardware Accelerators...\n", SCHED_EPOCHS_CV_CNN_ACCEL_T);
+  sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "CV-HW-Acc");
+  sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "Run task on the CV/CNN NVDLA Hardware Accelerator");
+  global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_CV_CNN_ACCEL_T] = NUM_CV_ACCEL;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &do_cv_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &do_cv_accel_type_closeout;
+  global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &output_cv_accel_type_run_stats;
   // Now initialize this accelerator
-  if (global_hardware_state_block
-          .do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] != NULL) {
+  if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] != NULL) {
     // DEBUG(
     printf(" Calling the accelerator initialization function...\n"); //);
-    global_hardware_state_block
-        .do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T](NULL);
+    global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T](NULL);
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }

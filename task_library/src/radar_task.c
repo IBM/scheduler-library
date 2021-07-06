@@ -40,6 +40,8 @@
 #define RADAR_c 300000000.0 // Speed of Light in Meters/Sec
 #define RADAR_threshold -100;
 
+uint64_t radar_profile[15][SCHED_MAX_ACCEL_TYPES];
+
 // This now illustrates the use of the "task metadata" to transfer information
 // for a radar (FFT) operation.
 //  NOTE: We request a metadata block form the scheduler -- if one is not
@@ -58,13 +60,12 @@
 
 // We declare this for all possible legal RADAR log_nsamples inputs, but RADAR
 // tasks can only be 1k or 16k samples
-uint64_t radar_profile[15][SCHED_MAX_ACCEL_TYPES];
 
 void set_up_radar_task_on_accel_profile_data() {
-  for (int li = 0; li < SCHED_MAX_ACCEL_TYPES; li++) {
+  for (int si = 0; si <= 14; si++) {
     for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
-      radar_profile[li][ai] = ACINFPROF;
-      radar_profile[li][ai] = ACINFPROF;
+      radar_profile[si][ai] = ACINFPROF;
+      radar_profile[si][ai] = ACINFPROF;
     }
   }
 #ifdef COMPILE_TO_ESP
@@ -78,16 +79,13 @@ void set_up_radar_task_on_accel_profile_data() {
   radar_profile[10][SCHED_CPU_ACCEL_T] = 50;
   radar_profile[14][SCHED_CPU_ACCEL_T] = 1250;
 #endif
-  DEBUG(
-      printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
-             "FFT-HWR", "CV-HWR");
-      printf("%15s :", "radar_profile[0]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", radar_profile[0][ai]); } printf("\n");
-      printf("%15s :", "radar_profile[1]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", radar_profile[1][ai]); } printf("\n");
-      printf("\n"));
+  //DEBUG(
+      printf("\n%18s : %18s %18s %18s %18s\n", "RADAR-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+      printf("%15s :", "radar_profile[10]");
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[10][ai]); } printf("\n");
+      printf("%15s :", "radar_profile[14]");
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[14][ai]); } printf("\n");
+      printf("\n"); //);
 }
 
 /*task_metadata_block_t*/ void *

@@ -39,6 +39,8 @@
 unsigned num_Crit_test_tasks = 0;
 unsigned num_Base_test_tasks = 0;
 
+uint64_t test_profile[SCHED_MAX_ACCEL_TYPES];
+
 void print_test_metadata_block_contents(/*task_metadata_block_t*/void* mb_ptr) {
   task_metadata_block_t* mb = (task_metadata_block_t*)mb_ptr;
   print_base_metadata_block_contents(mb);
@@ -215,7 +217,6 @@ unsigned test_on_hwr_vit_run_time_in_usec    =     1;
 unsigned test_on_hwr_cv_run_time_in_usec     =     1;
 #endif
 
-uint64_t test_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_test_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     test_profile[ai] = ACINFPROF;
@@ -226,10 +227,11 @@ void set_up_test_task_on_accel_profile_data() {
   test_profile[SCHED_EPOCHS_1D_FFT_ACCEL_T] = test_on_hwr_fft_run_time_in_usec;
   test_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
   
-  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
+  //DEBUG(
+        printf("\n%18s : %18s %18s %18s %18s\n", "TEST-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
-        printf("\n"));
+        printf("\n"); //);
 }
 
 /*task_metadata_block_t*/void*

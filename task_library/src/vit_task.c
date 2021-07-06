@@ -62,6 +62,8 @@ extern uint64_t depunc_usec;
 extern ofdm_param ofdm;
 extern frame_param frame;
 
+uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
+
 t_branchtab27 d_branchtab27_generic[2];
 
 ofdm_param ofdm = {0,   //  encoding   : 0 = BPSK_1_2
@@ -1038,13 +1040,11 @@ uint8_t *finish_decode(task_metadata_block_t *vit_metadata_block,
   return d_decoded;
 }
 
-uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
 void set_up_vit_task_on_accel_profile_data() {
-  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
-    vit_profile[0][ai] = ACINFPROF;
-    vit_profile[1][ai] = ACINFPROF;
-    vit_profile[2][ai] = ACINFPROF;
-    vit_profile[3][ai] = ACINFPROF;
+  for (int si = 0; si < 4; si++) {
+    for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
+      vit_profile[si][ai] = ACINFPROF;
+    }
   }
 #ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
@@ -1063,22 +1063,17 @@ void set_up_vit_task_on_accel_profile_data() {
   vit_profile[3][SCHED_CPU_ACCEL_T] = 6600;
 #endif
 
-  DEBUG(
-      printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
-             "FFT-HWR", "CV-HWR");
+  //DEBUG(
+      printf("\n%18s : %18s %18s %18s %18s\n", "VIT-PROFILES", "CPU", "FFT-HWR", "VITT-HWR", "CV-HWR");
       printf("%15s :", "vit_profile[0]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
       printf("%15s :", "vit_profile[1]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
       printf("%15s :", "vit_profile[2]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
       printf("%15s :", "vit_profile[3]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-           ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
-      printf("\n"));
+      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
+      printf("\n"); //);
 }
 
 /*task_metadata_block_t*/ void *

@@ -71,6 +71,8 @@ char *python_func_load = "loadmodel";
  unsigned cv_fake_hwr_run_time_in_usec = 1000;
 #endif
 
+uint64_t cv_profile[SCHED_MAX_ACCEL_TYPES];
+
 void print_cv_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
   task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   print_base_metadata_block_contents(mb);
@@ -200,29 +202,36 @@ void execute_hwr_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_b
   int aidx = task_metadata_block->accelerator_type;
   cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&( task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  TDEBUG(printf( "In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d  CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level));
-#ifdef HW_CV
+  //TDEBUG(
+  printf( "In execute_hwr_cv_accelerator on CV_HWR Accel %u : MB%d CL %d\n", fn, task_metadata_block->block_id, task_metadata_block->crit_level);//);
+#ifdef HW_CV 
+  printf("  We have HW_CV defined...\n");
  #ifdef ENABLE_NVDLA
+  printf("  We have ENABLE_NVDLA defined...\n");
   // Add the call to the NVDLA stuff here.
  #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
  #endif
-  printf("Calling NVDLA:\n");
   label_t tr_label = cv_data_p->object_label;
   switch (tr_label) {
   case no_label:
+    printf("Calling NVDLA for cnn_data/empty0.jpg\n");
     runImageonNVDLAWrapper("cnn_data/empty0.jpg");
     break;
   case bicycle:
+    printf("Calling NVDLA for cnn_data/bike0.jpg\n");
     runImageonNVDLAWrapper("cnn_data/bike0.jpg");
     break;
   case car:
+    printf("Calling NVDLA for cnn_data/car0.jpg\n");
     runImageonNVDLAWrapper("cnn_data/car0.jpg");
     break;
   case pedestrian:
+    printf("Calling NVDLA for cnn_data/person0.jpg\n");
     runImageonNVDLAWrapper("cnn_data/person0.jpg");
     break;
   case truck:
+    printf("Calling NVDLA for cnn_data/atruck0.jpg\n");
     runImageonNVDLAWrapper("cnn_data/atruck0.jpg");
     break;
   default:
@@ -236,6 +245,7 @@ void execute_hwr_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_b
   cv_timings_p->call_usec[aidx] += cv_timings_p->parse_start.tv_usec - cv_timings_p->call_start.tv_usec;
   DEBUG(printf("REAL_HW_CV: Set Call_Sec[%u] to %llu %llu\n", cv_timings_p->call_sec[aidx], cv_timings_p->call_usec[aidx]));
  #endif
+  printf("Setting pred_label from parse_output_dimg call...\n");
   label_t pred_label = parse_output_dimg();
  #ifdef INT_TIME
   struct timeval stop;
@@ -352,7 +362,8 @@ label_t run_object_classification(unsigned tr_val) {
 
 void execute_cpu_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
   task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
-  DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
+  //DEBUG(
+  printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level);//);
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
@@ -377,7 +388,6 @@ void execute_cpu_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_b
   mark_task_done(task_metadata_block);
 }
 
-uint64_t cv_profile[SCHED_MAX_ACCEL_TYPES];
 
 void set_up_cv_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
@@ -400,8 +410,8 @@ void set_up_cv_task_on_accel_profile_data() {
   #endif
  #endif
   //DEBUG(
-  printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
-  printf("%15s :", "cv_profile");
+        printf("\n%18s : %18s %18s %18s %18s\n", "CV-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+        printf("%15s :", "cv_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", cv_profile[ai]); } 
         printf("\n\n"); //);
 }
@@ -435,10 +445,6 @@ set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   exec_get_cv_sec += got_time.tv_sec - start_exec_cv.tv_sec;
   exec_get_cv_usec += got_time.tv_usec - start_exec_cv.tv_usec;
 #endif
-  // printf("CV Crit Profile: %e %e %e %e %e\n",
-  // cv_profile[crit_cv_samples_set][0], cv_profile[crit_cv_samples_set][1],
-  // cv_profile[crit_cv_samples_set][2], cv_profile[crit_cv_samples_set][3],
-  // cv_profile[crit_cv_samples_set][4]);
   if (cv_mb_ptr == NULL) {
     // We ran out of metadata blocks -- PANIC!
     printf("Out of metadata blocks for CV -- PANIC Quit the run (for now)\n");

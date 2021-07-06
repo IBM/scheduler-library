@@ -36,6 +36,8 @@
 #include "plan_ctrl_task.h"
 #include "scheduler.h"
 
+uint64_t plan_ctrl_profile[SCHED_MAX_ACCEL_TYPES];
+
 void print_plan_ctrl_metadata_block_contents(void *mb_ptr) {
   task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   print_base_metadata_block_contents(mb);
@@ -306,7 +308,6 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
   mark_task_done(task_metadata_block);
 }
 
-uint64_t plan_ctrl_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_plan_ctrl_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     plan_ctrl_profile[ai] = ACINFPROF;
@@ -314,12 +315,12 @@ void set_up_plan_ctrl_task_on_accel_profile_data() {
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   plan_ctrl_profile[SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
 
-  DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR",
-               "FFT-HWR", "CV-HWR");
+  //DEBUG(
+        printf("\n%18s : %18s %18s %18s %18s\n", "PnC-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
              ai++) { printf(" 0x%016lx", plan_ctrl_profile[ai]); } printf("\n");
-        printf("\n"));
+        printf("\n"); //);
 }
 
 void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
