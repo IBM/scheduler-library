@@ -244,6 +244,8 @@ VPATH = ./src
 TARGET=test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 STARGET=sim-test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
 HPVMTARGET=hpvm-test-scheduler$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
+HPVMTARGET_CPU=hpvm-test-cpu$(EXE_EXTENSION)-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_STR)$(CB_STR)-P$(CONFIG_NUM_CPU)V$(CONFIG_NUM_VIT)F$(CONFIG_NUM_FFT)N$(CONFIG_NUM_CV)
+
 
 $(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
 $(info $$TARGET is [${TARGET}])
@@ -272,7 +274,7 @@ hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
 hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
-hpvm-cpu: check_env obj_hpvm $(HPVMTARGET)
+hpvm-cpu: check_env obj_hpvm $(HPVMTARGET_CPU)
 
 
 obj_t/%.o: %.c
@@ -292,10 +294,17 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
+	#$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
 	$(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-ld -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
 	#$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
 	rm me_test.o wnvdla_test.o
+
+$(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) me_test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
+
+
 
 obj_t:
 	mkdir $@
