@@ -79,13 +79,12 @@ void set_up_radar_task_on_accel_profile_data() {
   radar_profile[10][SCHED_CPU_ACCEL_T] = 50;
   radar_profile[14][SCHED_CPU_ACCEL_T] = 1250;
 #endif
-  //DEBUG(
-      printf("\n%18s : %18s %18s %18s %18s\n", "RADAR-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
-      printf("%15s :", "radar_profile[10]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[10][ai]); } printf("\n");
-      printf("%15s :", "radar_profile[14]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[14][ai]); } printf("\n");
-      printf("\n"); //);
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "RADAR-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+        printf("%15s :", "radar_profile[10]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[10][ai]); } printf("\n");
+        printf("%15s :", "radar_profile[14]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", radar_profile[14][ai]); } printf("\n");
+        printf("\n"));
 }
 
 /*task_metadata_block_t*/ void *

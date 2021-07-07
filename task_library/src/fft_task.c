@@ -489,13 +489,12 @@ void set_up_fft_task_on_accel_profile_data() {
   fft_profile[10][SCHED_CPU_ACCEL_T] = 50;
   fft_profile[14][SCHED_CPU_ACCEL_T] = 1250;
 #endif
-  //DEBUG(
-      printf("\n%18s : %18s %18s %18s %18s\n", "FFT-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
-      printf("%15s :", "fft_profile[0]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[0][ai]); } printf("\n");
-      printf("%15s :", "fft_profile[1]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[1][ai]); } printf("\n");
-      printf("\n"); //);
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "FFT-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+        printf("%15s :", "fft_profile[0]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[0][ai]); } printf("\n");
+        printf("%15s :", "fft_profile[1]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[1][ai]); } printf("\n");
+        printf("\n"));
 }
 
 /*task_metadata_block_t*/ void *

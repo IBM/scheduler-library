@@ -227,11 +227,10 @@ void set_up_test_task_on_accel_profile_data() {
   test_profile[SCHED_EPOCHS_1D_FFT_ACCEL_T] = test_on_hwr_fft_run_time_in_usec;
   test_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
   
-  //DEBUG(
-        printf("\n%18s : %18s %18s %18s %18s\n", "TEST-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "TEST-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
-        printf("\n"); //);
+        printf("\n"));
 }
 
 /*task_metadata_block_t*/void*

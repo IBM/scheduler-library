@@ -1063,17 +1063,16 @@ void set_up_vit_task_on_accel_profile_data() {
   vit_profile[3][SCHED_CPU_ACCEL_T] = 6600;
 #endif
 
-  //DEBUG(
-      printf("\n%18s : %18s %18s %18s %18s\n", "VIT-PROFILES", "CPU", "FFT-HWR", "VITT-HWR", "CV-HWR");
-      printf("%15s :", "vit_profile[0]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
-      printf("%15s :", "vit_profile[1]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
-      printf("%15s :", "vit_profile[2]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
-      printf("%15s :", "vit_profile[3]");
-      for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
-      printf("\n"); //);
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "VIT-PROFILES", "CPU", "FFT-HWR", "VITT-HWR", "CV-HWR");
+        printf("%15s :", "vit_profile[0]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
+        printf("%15s :", "vit_profile[1]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
+        printf("%15s :", "vit_profile[2]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
+        printf("%15s :", "vit_profile[3]");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
+        printf("\n"));
 }
 
 /*task_metadata_block_t*/ void *

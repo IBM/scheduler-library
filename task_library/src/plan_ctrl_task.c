@@ -315,12 +315,11 @@ void set_up_plan_ctrl_task_on_accel_profile_data() {
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   plan_ctrl_profile[SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
 
-  //DEBUG(
-        printf("\n%18s : %18s %18s %18s %18s\n", "PnC-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "PnC-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
              ai++) { printf(" 0x%016lx", plan_ctrl_profile[ai]); } printf("\n");
-        printf("\n"); //);
+        printf("\n"));
 }
 
 void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,

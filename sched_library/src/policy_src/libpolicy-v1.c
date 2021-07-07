@@ -20,10 +20,10 @@
 #include "scheduler.h"
 #include "verbose.h"
 
-/**/
+/**
 #undef DEBUG
 #define DEBUG(x) x
-/**/
+**/
 
 // This is an initialization routine
 //  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
