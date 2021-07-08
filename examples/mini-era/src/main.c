@@ -411,7 +411,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
 
 int main(int argc, char *argv[]) {
   vehicle_state_t vehicle_state;
-  label_t label;
+  label_t label = NUM_OBJECTS;
   distance_t distance;
   message_t message;
   test_res_t test_res;
@@ -1079,6 +1079,7 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_iter_cv, NULL);
 #endif
     label_t cv_tr_label = iterate_cv_kernel(vehicle_state);
+    printf("cv_tr_label from interate_cv_kernel is %u\n", cv_tr_label);
 #ifdef TIME
     gettimeofday(&stop_iter_cv, NULL);
     iter_cv_sec += stop_iter_cv.tv_sec - start_iter_cv.tv_sec;
@@ -1341,8 +1342,7 @@ int main(int argc, char *argv[]) {
     if (!no_crit_cnn_task) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
-    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set,
-                              rdict_dist, distance);
+    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
     post_execute_vit_kernel(vdentry_p->msg_id, message);
     if (num_Crit_test_tasks > 0) {
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
@@ -1381,10 +1381,16 @@ int main(int argc, char *argv[]) {
     printf("Launching HPVM graph!\n");
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
+    label = cv_tr_label; // label used as input and output in hpvm_launch
+    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
 
-    hpvm_launch(DFGArgs, &cv_tr_label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
-
-
+    // POST-EXECUTE other tasks to gather stats, etc.
+    if (!no_crit_cnn_task) {
+      printf("Calling post_execute_cv_kernel for cv_tr_label %u vs label %u\n", cv_tr_label, label);
+      post_execute_cv_kernel(cv_tr_label, label);
+    }
+    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
+    post_execute_vit_kernel(vdentry_p->msg_id, message);
 
     // Overwrite the current vehicle state with the new state
     vehicle_state = new_vehicle_state;
@@ -1428,31 +1434,18 @@ int main(int argc, char *argv[]) {
 
 #ifdef TIME
   {
-    uint64_t total_exec =
-        (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 +
-        (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
-    uint64_t iter_rad =
-        (uint64_t)(iter_rad_sec)*1000000 + (uint64_t)(iter_rad_usec);
-    uint64_t iter_vit =
-        (uint64_t)(iter_vit_sec)*1000000 + (uint64_t)(iter_vit_usec);
-    uint64_t iter_cv =
-        (uint64_t)(iter_cv_sec)*1000000 + (uint64_t)(iter_cv_usec);
-    uint64_t exec_rad =
-        (uint64_t)(exec_rad_sec)*1000000 + (uint64_t)(exec_rad_usec);
-    uint64_t exec_vit =
-        (uint64_t)(exec_vit_sec)*1000000 + (uint64_t)(exec_vit_usec);
-    uint64_t exec_cv =
-        (uint64_t)(exec_cv_sec)*1000000 + (uint64_t)(exec_cv_usec);
-    uint64_t exec_get_rad =
-        (uint64_t)(exec_get_rad_sec)*1000000 + (uint64_t)(exec_get_rad_usec);
-    uint64_t exec_get_vit =
-        (uint64_t)(exec_get_vit_sec)*1000000 + (uint64_t)(exec_get_vit_usec);
-    uint64_t exec_get_cv =
-        (uint64_t)(exec_get_cv_sec)*1000000 + (uint64_t)(exec_get_cv_usec);
-    uint64_t exec_pandc =
-        (uint64_t)(exec_pandc_sec)*1000000 + (uint64_t)(exec_pandc_usec);
-    uint64_t wait_all_crit =
-        (uint64_t)(wait_all_crit_sec)*1000000 + (uint64_t)(wait_all_crit_usec);
+    uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
+    uint64_t iter_rad = (uint64_t)(iter_rad_sec)*1000000 + (uint64_t)(iter_rad_usec);
+    uint64_t iter_vit = (uint64_t)(iter_vit_sec)*1000000 + (uint64_t)(iter_vit_usec);
+    uint64_t iter_cv = (uint64_t)(iter_cv_sec)*1000000 + (uint64_t)(iter_cv_usec);
+    uint64_t exec_rad = (uint64_t)(exec_rad_sec)*1000000 + (uint64_t)(exec_rad_usec);
+    uint64_t exec_vit = (uint64_t)(exec_vit_sec)*1000000 + (uint64_t)(exec_vit_usec);
+    uint64_t exec_cv = (uint64_t)(exec_cv_sec)*1000000 + (uint64_t)(exec_cv_usec);
+    uint64_t exec_get_rad = (uint64_t)(exec_get_rad_sec)*1000000 + (uint64_t)(exec_get_rad_usec);
+    uint64_t exec_get_vit = (uint64_t)(exec_get_vit_sec)*1000000 + (uint64_t)(exec_get_vit_usec);
+    uint64_t exec_get_cv = (uint64_t)(exec_get_cv_sec)*1000000 + (uint64_t)(exec_get_cv_usec);
+    uint64_t exec_pandc = (uint64_t)(exec_pandc_sec)*1000000 + (uint64_t)(exec_pandc_usec);
+    uint64_t wait_all_crit = (uint64_t)(wait_all_crit_sec)*1000000 + (uint64_t)(wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
     printf("  iterate_rad_kernel run time       %lu usec\n", iter_rad);
     printf("  iterate_vit_kernel run time       %lu usec\n", iter_vit);
@@ -1463,8 +1456,7 @@ int main(int argc, char *argv[]) {
     printf("    GET_MB execute_rad_kernel run time  %lu usec\n", exec_rad);
     printf("    GET_MB execute_vit_kernel run time  %lu usec\n", exec_vit);
     printf("    GET_MB execute_cv_kernel run time   %lu usec\n", exec_cv);
-    printf("  plan_and_control run time         %lu usec at %u factor\n",
-           exec_pandc, pandc_repeat_factor);
+    printf("  plan_and_control run time         %lu usec at %u factor\n", exec_pandc, pandc_repeat_factor);
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
 #endif // TIME
