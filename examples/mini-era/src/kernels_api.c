@@ -85,7 +85,6 @@ unsigned label_match[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0};  // Times CNN matched 
 unsigned label_lookup[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0}; // Times we used CNN for object classification
 unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 
-
 /* These are some top-level defines needed for RADAR */
 /* typedef struct { */
 /*   unsigned int index; */
@@ -190,13 +189,14 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 {
   //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
   if (cv_object == tr_val) {
-    label_match[cv_object]++;
+    label_match[tr_val]++;
     label_match[NUM_OBJECTS]++;
   } else {
+    printf("CV-MISMATCH: cv_object %u tr_val %u\n", cv_object, tr_val);
     label_mismatch[tr_val][cv_object]++;
   }
   label_lookup[NUM_OBJECTS]++;
-  label_lookup[cv_object]++;
+  label_lookup[tr_val]++;
 }
 
 
@@ -839,10 +839,10 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 void closeout_cv_kernel()
 {
   float label_correct_pctg = (100.0*label_match[NUM_OBJECTS])/(1.0*label_lookup[NUM_OBJECTS]);
-  printf("\nFinal CV CNN Accuracy: %u correct of %u classifications = %.2f%%\n", label_match[NUM_OBJECTS], label_lookup[NUM_OBJECTS], label_correct_pctg);
+  printf("\nFinal CV CNN Accuracy: %u correct labelings over %u classifications = %.2f%%\n", label_match[NUM_OBJECTS], label_lookup[NUM_OBJECTS], label_correct_pctg);
   for (int i = 0; i < NUM_OBJECTS; i++) {
     label_correct_pctg = (100.0*label_match[i])/(1.0*label_lookup[i]);
-    printf("  CV CNN Accuracy for %10s : %u correct of %u classifications = %.2f%%\n", object_names[i], label_match[i], label_lookup[i], label_correct_pctg);
+    printf("  CV CNN Accuracy for %10s : %u correct labelings of %u classifications = %.2f%%\n", object_names[i], label_match[i], label_lookup[i], label_correct_pctg);
   }
 
   unsigned errs = label_lookup[NUM_OBJECTS] - label_match[NUM_OBJECTS];
@@ -851,7 +851,16 @@ void closeout_cv_kernel()
     for (int i = 0; i < NUM_OBJECTS; i++) {
       for (int j = 0; j < NUM_OBJECTS; j++) {
 	if (label_mismatch[i][j] != 0) {
-	  printf("  Mislabeled %10s as %10s on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
+	  printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
+	}
+      }
+    }
+
+    printf("\nAnalysis (dual-view) of the %u mis-identifications:\n", errs);
+    for (int j = 0; j < NUM_OBJECTS; j++) {
+      for (int i = 0; i < NUM_OBJECTS; i++) {
+	if (label_mismatch[i][j] != 0) {
+	  printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
 	}
       }
     }

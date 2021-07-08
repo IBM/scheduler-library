@@ -88,7 +88,7 @@ static uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame
   int count;
   int n_cbps = d_ofdm->n_cbps;
   uint8_t *depunctured;
-  // printf("Depunture call...\n");
+  DEBUG(printf("Depunture call...\n"));
   if (d_ntraceback == 5) {
     count = d_frame->n_sym * n_cbps;
     depunctured = in;
@@ -113,7 +113,7 @@ static uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame
       }
     }
   }
-  // printf("  depuncture count = %u\n", count);
+  DEBUG(printf("  depuncture count = %u\n", count));
   return depunctured;
 }
 
@@ -213,12 +213,15 @@ void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t
 	  printf("\n");
 	}
 }
+
+
+
 void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
               frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
               size_t in_bit_size, message_t *message_id, size_t msg_id_size,
               char *out_msg_text, size_t out_msg_text_size) {
 
-  printf("-- Vitterbi Leaf Node --\n");
+  DEBUG(printf("-- Vitterbi Leaf Node --\n"));
 
   __hpvm__hint(DEVICE);
   __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text,
@@ -245,10 +248,8 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
   int32_t n_traceback = d_ntraceback;
   int32_t psdu_size = frame_ptr->psdu_size;
   int32_t inMem_size = 72; // fixed -- always (add the 2 padding bytes)
-  int32_t inData_size =
-      MAX_ENCODED_BITS; // Using the max value here for now/safety
-  int32_t outData_size =
-      (MAX_ENCODED_BITS * 3 / 4); //  Using the max value here for now/safety
+  int32_t inData_size = MAX_ENCODED_BITS; // Using the max value here for now/safety
+  int32_t outData_size = (MAX_ENCODED_BITS * 3 / 4); //  Using the max value here for now/safety
   uint8_t in_Mem[inMem_size];     // &(theData[0]);
   uint8_t in_Data[inData_size];   //= &(theData[inMem_size]);
   uint8_t out_Data[outData_size]; //= &(theData[inMem_size + inData_size]);
@@ -280,8 +281,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     // DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti,
     // in_Data[ti]); });
   }
-  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4);
-       ti++) { // This zeros out the full-size OUTPUT area
+  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area
     out_Data[ti] = 0;
     // vdsptr->theData[imi++] = 0;
   }
@@ -632,8 +632,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 
   /*
   SDEBUG(for (int i = 0; i < 20; i++) {
-      printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i]));
-  // cpuOutMem[i]);
+      printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i])); // cpuOutMem[i]);
     });
     */
 
@@ -662,8 +661,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     });*/
 
   // descramble the output - put it in result
-  descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/,
-              NULL /*msg*/);
+  descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
 
   // Here we look at the message string and select proper message_t
   switch (out_msg_text[3]) {
@@ -737,7 +735,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
                 ) {
 
 
-  printf("-- Radar Leaf Node --\n");
+  DEBUG(printf("-- Radar Leaf Node --\n"));
   __hpvm__hint(DEVICE);
   __hpvm__attributes(2, distance_ptr, inputs_ptr, 2, distance_ptr, inputs_ptr);
   __hpvm__task(RADAR_TASK);
@@ -845,8 +843,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
     RADAR_psd_threshold = 1e-10 * pow(8192, 2);
     break;
   default:
-    printf("ERROR : Unsupported Log-N FFT Samples Value: %u\n",
-           fft_log_nsamples);
+    printf("ERROR : Unsupported Log-N FFT Samples Value: %u\n", fft_log_nsamples);
     exit(-1);
   }
   RADAR_N = (1 << fft_log_nsamples);
@@ -862,23 +859,21 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
       max_index = _i;
     }
   }
-  float distance =
-      ((float)(max_index * ((float)RADAR_fs) / ((float)(RADAR_N)))) * 0.5 *
-      RADAR_c / ((float)(RADAR_alpha));
+  float distance = ((float)(max_index * ((float)RADAR_fs) / ((float)(RADAR_N)))) * 0.5 * RADAR_c / ((float)(RADAR_alpha));
   DEBUG(printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance, max_psd, max_index));
 
-  // printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
+  //printf("max_psd = %f  vs %f\n", max_psd, 1e-10*pow(8192,2));
   if (max_psd <= RADAR_psd_threshold) {
     distance = INFINITY;
   }
 
-  printf("Assigning distance to pointer\n");
+  DEBUG(printf("Assigning distance to pointer\n"));
 
-  printf("Distance ptr %lu\n",distance_ptr);
+  DEBUG(printf("Distance ptr %lu\n",distance_ptr));
   *distance_ptr = distance;
 
-  printf("Distance in object: %.3f\n",*distance_ptr);
-  printf("Finished executing Radar_leaf\n");
+  DEBUG(printf("Distance in object: %.3f\n",*distance_ptr));
+  DEBUG(printf("Finished executing Radar_leaf\n"));
 
   __hpvm__return(1, distance_ptr);
 }
@@ -889,7 +884,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
               vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size
               ) {
 
-  printf("-- PNC Leaf Node --\n");
+  DEBUG(printf("-- PNC Leaf Node --\n"));
 
 
   __hpvm__hint(DEVICE);
@@ -903,19 +898,8 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
   message_t safe_lanes_msg = *message_id;
 
   distance_t obj_distance = *distance_ptr;
-  printf("In the plan_and_control task : label %u %s distance %.1f (T1 "
-               "%.1f T2 %.1f T3 %.1f) message %u\n",
-               *obj_label,
-               object_names[*obj_label],
-               obj_distance, PNC_THRESHOLD_1,
-               PNC_THRESHOLD_2, PNC_THRESHOLD_3,
-               safe_lanes_msg);
-  printf(
-      "Plan-Ctrl: current Vehicle-State : Active %u Lane %u Speed %.1f\n",
-      vehicle_state->active,
-      vehicle_state->lane,
-      vehicle_state->speed);
-
+  DEBUG(printf("In the plan_and_control task : label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n", *obj_label, object_names[*obj_label], obj_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, safe_lanes_msg));
+  DEBUG(printf( "Plan-Ctrl: current Vehicle-State : Active %u Lane %u Speed %.1f\n", vehicle_state->active, vehicle_state->lane, vehicle_state->speed)); 
 
   // Start with outpu vehicle state is a copy of input vehicle state...
   // plan_ctrl_data_p->new_vehicle_state = plan_ctrl_data_p->vehicle_state;
@@ -933,67 +917,48 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
     // This covers all cases where we have an obstacle "too close" ahead of us
     if (obj_distance <= IMPACT_DISTANCE) {
       // We've crashed into an obstacle...
-      printf("WHOOPS: We've suffered a collision on time_step %u!\n",
-             time_step);
-      // fprintf(stderr, "WHOOPS: We've suffered a collision on time_step
-      // %u!\n", plan_ctrl_data_p->time_step);
+      printf("WHOOPS: We've suffered a collision on time_step %u!\n", time_step);
+      // fprintf(stderr, "WHOOPS: We've suffered a collision on time_step %u!\n", plan_ctrl_data_p->time_step);
       new_vehicle_state->speed = 0.0;
-      new_vehicle_state->active =
-          false; // We should add visualizer stuff for this!
+      new_vehicle_state->active = false;
     } else {
       // Some object ahead of us that needs to be avoided.
-      printf("  In lane %s with object %u at %.1f\n",
-                   lane_names[vehicle_state->lane],
-                   *obj_label,
-                   obj_distance);
+      DEBUG(printf("  In lane %s with object %u at %.1f\n", lane_names[vehicle_state->lane], *obj_label, obj_distance));
       switch (safe_lanes_msg) {
       case safe_to_move_right_or_left:
         /* Bias is move right, UNLESS we are in the Right lane and would then
          * head into the RHazard Lane */
         if (vehicle_state->lane < right) {
-          printf("   In %s with Safe_L_or_R : Moving Right\n",
-                       lane_names[vehicle_state->lane]);
+          DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state->lane]));
           new_vehicle_state->lane += 1;
         } else {
-          DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n",
-                       lane_names[vehicle_state->lane]));
+          DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state->lane]));
           new_vehicle_state->lane -= 1;
         }
         break; // prefer right lane
       case safe_to_move_right_only:
-        printf("   In %s with Safe_R_only : Moving Right\n",
-                     lane_names[vehicle_state->lane]);
+        printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state->lane]);
         new_vehicle_state->lane += 1;
         break;
       case safe_to_move_left_only:
-        printf("   In %s with Safe_L_Only : Moving Left\n",
-                     lane_names[vehicle_state->lane]);
+        printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state->lane]);
         new_vehicle_state->lane -= 1;
         break;
       case unsafe_to_move_left_or_right:
 #ifdef USE_SIM_ENVIRON
         if (vehicle_state->speed > car_decel_rate) {
-          new_vehicle_state->speed =->vehicle_state->speed -
-                                    car_decel_rate; // was / 2.0;
-          printf(
-              "   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state->lane],
-              vehicle_state.speed,
-              new_vehicle_state->speed)
+          new_vehicle_state->speed =->vehicle_state->speed - car_decel_rate; // was / 2.0;
+          DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state->lane], vehicle_state.speed, new_vehicle_state->speed));
         } else {
-          DEBUG(printf(
-              "   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n",
-              lane_names[vehicle_state->lane]));
+          DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state->lane]));
           new_vehicle_state->speed = 0.0;
         }
 #else
-        printf("   In %s with No_Safe_Move : STOPPING\n",
-                     lane_names[vehicle_state->lane]);
+        DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n", lane_names[vehicle_state->lane]));
         new_vehicle_state->speed = 0.0;
 #endif
         break; /* Stop!!! */
-        printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n",
-               lane_names[vehicle_state->lane],
-               safe_lanes_msg);
+        printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state->lane], safe_lanes_msg);
         // cleanup_and_exit(sptr, -6);
       }
     } // end of "we have some obstacle too close ahead of us"
@@ -1004,8 +969,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
     case left:
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_right_only)) {
-        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n",
-                     lane_names[vehicle_state->lane]));
+        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state->lane]));
         new_vehicle_state->lane += 1;
       }
       break;
@@ -1017,8 +981,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
     case rhazard:
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_left_only)) {
-        printf("  In %s with Can_move_Left : Moving Left\n",
-                     lane_names[vehicle_state->lane]);
+        DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state->lane]));
         new_vehicle_state->lane -= 1;
       }
       break;
@@ -1036,18 +999,12 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
       } else {
         new_vehicle_state->speed = car_goal_speed;
       }
-      printf("  Going %.2f : slower than target speed %.2f : Speeding up to %.2f\n",
-                    vehicle_state->speed, 50.0,
-                   new_vehicle_state->speed);
+      DEBUG(printf("  Going %.2f : slower than target speed %.2f : Speeding up to %.2f\n", vehicle_state->speed, 50.0, new_vehicle_state->speed));
     }
 #endif
   } // end of plan-and-control logic functions...
 
-  printf(
-      "Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n",
-      new_vehicle_state->active,
-      new_vehicle_state->lane,
-      new_vehicle_state->speed);
+  DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", new_vehicle_state->active, new_vehicle_state->lane, new_vehicle_state->speed));
 
   __hpvm__return(1, new_vehicle_state);
 }
@@ -1068,13 +1025,11 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  size_t new_vehicle_state_size){
 
   __hpvm__hint(CPU_TARGET);
-  __hpvm__attributes(
-      10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-      distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
-      1, new_vehicle_state);
+  __hpvm__attributes(10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
+		     distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
+		      1, new_vehicle_state);
 
-  void *ViterbiNode =
-      __hpvm__createNodeND(0, vit_leaf, /* Node Criticality */ HPVM_CRITICAL);
+  void *ViterbiNode = __hpvm__createNodeND(0, vit_leaf, /* Node Criticality */ HPVM_CRITICAL);
 
   __hpvm__bindIn(ViterbiNode, 0, 0, 0);
   __hpvm__bindIn(ViterbiNode, 1, 1, 0);
@@ -1088,15 +1043,13 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindIn(ViterbiNode, 9, 9, 0);
   __hpvm__bindIn(ViterbiNode, 10, 10, 0);
 
-  void *CVNode =
-      __hpvm__createNodeND(0, cv_leaf, /* Node Criticality */ HPVM_CRITICAL);
+  void *CVNode = __hpvm__createNodeND(0, cv_leaf, /* Node Criticality */ HPVM_CRITICAL);
 
   __hpvm__bindIn(CVNode, 11, 0, 0);
   __hpvm__bindIn(CVNode, 12, 1, 0);
   __hpvm__bindIn(CVNode, 13, 2, 0);
 
-  void *RadarNode =
-      __hpvm__createNodeND(0, radar_leaf, /* Node Criticality */ HPVM_CRITICAL);
+  void *RadarNode = __hpvm__createNodeND(0, radar_leaf, /* Node Criticality */ HPVM_CRITICAL);
 
   __hpvm__bindIn(RadarNode, 14, 0, 0);
   __hpvm__bindIn(RadarNode, 15, 1, 0);
@@ -1104,8 +1057,7 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindIn(RadarNode, 17, 3, 0);
   __hpvm__bindIn(RadarNode, 18, 4, 0);
 
-  void *PNCNode =
-      __hpvm__createNodeND(0, pnc_leaf, /* Node Criticality */ HPVM_CRITICAL);
+  void *PNCNode = __hpvm__createNodeND(0, pnc_leaf, /* Node Criticality */ HPVM_CRITICAL);
 
   __hpvm__bindIn(PNCNode, 19, 0, 0);
   __hpvm__bindIn(PNCNode, 20, 1, 0);
@@ -1133,9 +1085,6 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindIn(PNCNode, 22, 9, 0);
   __hpvm__bindIn(PNCNode, 23, 10, 0);
   __hpvm__bindIn(PNCNode, 24, 11, 0);
-
-
-
 
 
   __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
@@ -1201,7 +1150,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  char *out_msg_text, vehicle_state_t *vehicle_state,
                  vehicle_state_t *new_vehicle_state,
                  unsigned pandc_repeat_factor) {
-  printf("In hpvm_launch()\n");
+  DEBUG(printf("In hpvm_launch()\n"));
 
 
 
@@ -1254,13 +1203,13 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_track_mem(vehicle_state, sizeof(new_vehicle_state));
   llvm_hpvm_track_mem(new_vehicle_state, sizeof(new_vehicle_state));
 
-  printf("\n\nLaunching ERA pipeline!\n");
+  DEBUG(printf("\n\nLaunching ERA pipeline!\n"));
 
   void *ERADFG = __hpvm__launch(0, MiniERARoot, (void *)DFGArgs);
   __hpvm__wait(ERADFG);
 
-  printf("\n\nFinished executing ERA pipeline!\n");
-  printf("\n\nRequesting Memory!\n");
+  DEBUG(printf("\n\nFinished executing ERA pipeline!\n"));
+  DEBUG(printf("\n\nRequesting Memory!\n"));
 
   // Requesting memory back from DFG
   llvm_hpvm_request_mem(new_vehicle_state, sizeof(vehicle_state_t));
@@ -1278,8 +1227,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_untrack_mem(new_vehicle_state);
   llvm_hpvm_untrack_mem(vehicle_state);
 
-  printf("[ HPVM ] New vehicle state: lane %u speed %.1f\n\n",
-            new_vehicle_state->lane, new_vehicle_state->speed);
+  DEBUG(printf("[ HPVM ] New vehicle state: lane %u speed %.1f\n\n", new_vehicle_state->lane, new_vehicle_state->speed));
 
 
   free(DFGArgs);

@@ -1079,7 +1079,7 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_iter_cv, NULL);
 #endif
     label_t cv_tr_label = iterate_cv_kernel(vehicle_state);
-    printf("cv_tr_label from interate_cv_kernel is %u\n", cv_tr_label);
+    DEBUG(printf("cv_tr_label from interate_cv_kernel is %u\n", cv_tr_label));
 #ifdef TIME
     gettimeofday(&stop_iter_cv, NULL);
     iter_cv_sec += stop_iter_cv.tv_sec - start_iter_cv.tv_sec;
@@ -1378,7 +1378,7 @@ int main(int argc, char *argv[]) {
 
 #else
     
-    printf("Launching HPVM graph!\n");
+    DEBUG(printf("Launching HPVM graph!\n"));
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
@@ -1386,7 +1386,7 @@ int main(int argc, char *argv[]) {
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
-      printf("Calling post_execute_cv_kernel for cv_tr_label %u vs label %u\n", cv_tr_label, label);
+      DEBUG(printf("Calling post_execute_cv_kernel for cv_tr_label %u vs label %u\n", cv_tr_label, label));
       post_execute_cv_kernel(cv_tr_label, label);
     }
     post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);

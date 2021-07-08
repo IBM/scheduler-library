@@ -86,11 +86,9 @@ unsigned char d_mmresult[64] __attribute__((aligned(16)));
 unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 
 // Forward Declarations:
-void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
-                             unsigned char *inMemory, unsigned char *outMemory);
+void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);
 void reset();
-void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm,
-                  frame_param *frame, uint8_t *in);
+void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
 uint8_t *finish_decode(task_metadata_block_t *mb_ptr, int *n_dec_char);
 
 void print_viterbi_metadata_block_contents(
@@ -888,12 +886,10 @@ void reset() {
 
 // uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int*
 // n_dec_char) {
-void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm,
-                  frame_param *frame, uint8_t *in) {
+void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   d_ofdm = ofdm;
   d_frame = frame;
-  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&(
-      vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
   reset();
 
 #ifdef INT_TIME
@@ -927,21 +923,17 @@ void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm,
   // Get a viterbi_data_struct_t "View" of the metablock data pointer.
   // Copy inputs into the vdsptr data view of the metadata_block metadata data
   // segment
-  viterbi_data_struct_t *vdsptr =
-      (viterbi_data_struct_t *)(vit_metadata_block->data_space);
+  viterbi_data_struct_t *vdsptr = (viterbi_data_struct_t *)(vit_metadata_block->data_space);
   vdsptr->n_data_bits = frame->n_data_bits;
   vdsptr->n_cbps = ofdm->n_cbps;
   vdsptr->n_traceback = d_ntraceback;
   vdsptr->psdu_size = frame->psdu_size;
   vdsptr->inMem_size = 72; // fixed -- always (add the 2 padding bytes)
-  vdsptr->inData_size =
-      MAX_ENCODED_BITS; // Using the max value here for now/safety
-  vdsptr->outData_size =
-      (MAX_ENCODED_BITS * 3 / 4); //  Using the max value here for now/safety
+  vdsptr->inData_size = MAX_ENCODED_BITS; // Using the max value here for now/safety
+  vdsptr->outData_size = (MAX_ENCODED_BITS * 3 / 4); //  Using the max value here for now/safety
   uint8_t *in_Mem = &(vdsptr->theData[0]);
   uint8_t *in_Data = &(vdsptr->theData[vdsptr->inMem_size]);
-  uint8_t *out_Data =
-      &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
+  uint8_t *out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
   // Copy some multi-block stuff into a single memory (cleaner transport)
   DEBUG(printf("SET UP VITERBI TASK: \n");
         print_viterbi_metadata_block_contents(vit_metadata_block);
@@ -967,14 +959,12 @@ void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm,
     }
   } // scope block for defn of imi
 
-  for (int ti = 0; ti < MAX_ENCODED_BITS;
-       ti++) { // This is over-kill for messages that are not max size
+  for (int ti = 0; ti < MAX_ENCODED_BITS; ti++) { // This is over-kill for messages that are not max size
     in_Data[ti] = depunctured[ti];
     // DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti,
     // in_Data[ti]); });
   }
-  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4);
-       ti++) { // This zeros out the full-size OUTPUT area
+  for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This zeros out the full-size OUTPUT area
     out_Data[ti] = 0;
     // vdsptr->theData[imi++] = 0;
   }
@@ -986,19 +976,15 @@ void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm,
 
 // uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int*
 // n_dec_char) {
-uint8_t *finish_decode(task_metadata_block_t *vit_metadata_block,
-                       int *psdu_size_out) {
+uint8_t *finish_decode(task_metadata_block_t *vit_metadata_block, int *psdu_size_out) {
   // Set up the Viterbit Data view of the metatdata block data
   int aidx = vit_metadata_block->accelerator_type;
-  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&(
-      vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
 
-  viterbi_data_struct_t *vdsptr =
-      (viterbi_data_struct_t *)(vit_metadata_block->data_space);
+  viterbi_data_struct_t *vdsptr = (viterbi_data_struct_t *)(vit_metadata_block->data_space);
   uint8_t *in_Mem = &(vdsptr->theData[0]);
   uint8_t *in_Data = &(vdsptr->theData[vdsptr->inMem_size]);
-  uint8_t *out_Data =
-      &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
+  uint8_t *out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
 
   *psdu_size_out = vdsptr->psdu_size;
 
@@ -1007,23 +993,18 @@ uint8_t *finish_decode(task_metadata_block_t *vit_metadata_block,
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  vit_timings_p->call_sec[aidx] +=
-      stop_time.tv_sec - vit_timings_p->call_start.tv_sec;
-  vit_timings_p->call_usec[aidx] +=
-      stop_time.tv_usec - vit_timings_p->call_start.tv_usec;
+  vit_timings_p->call_sec[aidx] += stop_time.tv_sec - vit_timings_p->call_start.tv_sec;
+  vit_timings_p->call_usec[aidx] += stop_time.tv_usec - vit_timings_p->call_start.tv_usec;
   // printf("VIT: call_start_usec = %lu  call_stop_usec = %lu\n",
   // vit_timings_p->call_start.tv_usec, stop_time.tv_usec);
 
-  vit_timings_p->depunc_sec[aidx] +=
-      vit_timings_p->depunc_stop.tv_sec - vit_timings_p->depunc_start.tv_sec;
-  vit_timings_p->depunc_usec[aidx] +=
-      vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
+  vit_timings_p->depunc_sec[aidx] += vit_timings_p->depunc_stop.tv_sec - vit_timings_p->depunc_start.tv_sec;
+  vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
   // printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx,
   // vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
 #endif
 
-  DEBUG(printf("MB%u is in finish_decode for VITERBI TASK:\n",
-               vit_metadata_block->block_id);
+  DEBUG(printf("MB%u is in finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
         print_viterbi_metadata_block_contents(vit_metadata_block));
   SDEBUG(printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4);

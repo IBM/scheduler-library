@@ -41,6 +41,10 @@ typedef struct {
   uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 
+  struct timeval nvdla_start;
+  uint64_t nvdla_sec[SCHED_MAX_ACCEL_TYPES];
+  uint64_t nvdla_usec[SCHED_MAX_ACCEL_TYPES];
+
   struct timeval parse_start;
   uint64_t parse_sec[SCHED_MAX_ACCEL_TYPES];
   uint64_t parse_usec[SCHED_MAX_ACCEL_TYPES];

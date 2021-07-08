@@ -676,20 +676,20 @@ void execute_task_on_accelerator(task_metadata_block_t *task_metadata_block) {
 }
 
 void *metadata_thread_wait_for_task(void *void_parm_ptr) {
-  task_metadata_block_t *task_metadata_block =
-      (task_metadata_block_t *)void_parm_ptr;
+  // Set up the pthread_cancel conditions for this thread
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)void_parm_ptr;
+
   int bi = task_metadata_block->block_id;
-  DEBUG(printf(
-      "In metadata_thread_wait_for_task for thread for metadata block %d\n",
-      bi));
+  DEBUG(printf( "In metadata_thread_wait_for_task for thread for metadata block %d\n", bi));
   // I think we do this once, then can wait_cond many times
   pthread_mutex_lock(&(task_metadata_block->metadata_mutex));
   do {
     TDEBUG(printf("MB%d calling pthread_cond_wait\n", bi));
     // This will cause the thread to wait for a triggering signal through
     // metadata_condv[bi]
-    pthread_cond_wait(&(task_metadata_block->metadata_condv),
-                      &(task_metadata_block->metadata_mutex));
+    pthread_cond_wait(&(task_metadata_block->metadata_condv), &(task_metadata_block->metadata_mutex));
 
     TDEBUG(printf("MB%d calling execute_task_on_accelerator...\n", bi));
     // Now we have been "triggered" -- so we invoke the appropriate accelerator
@@ -1552,9 +1552,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     if (pthread_create(&(sptr->metadata_threads[i]), &pt_attr,
                        metadata_thread_wait_for_task,
                        &(sptr->master_metadata_pool[i]))) {
-      printf(
-          "ERROR: Scheduler failed to create thread for metadata block: %d\n",
-          i);
+      printf( "ERROR: Scheduler failed to create thread for metadata block: %d\n", i);
       exit( -10);
     }
     sptr->master_metadata_pool[i].thread_id = sptr->metadata_threads[i];
@@ -1604,11 +1602,9 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
 
   // Now start the "schedule_executions_from_queue() pthread -- using the
   // DETACHED pt_attr
-  int pt_ret = pthread_create(&(sptr->scheduling_thread), &pt_attr,
-                              schedule_executions_from_queue, (void *)(sptr));
+  int pt_ret = pthread_create(&(sptr->scheduling_thread), &pt_attr, schedule_executions_from_queue, (void *)(sptr));
   if (pt_ret != 0) {
-    printf("Could not start the scheduler pthread... return value %d\n",
-           pt_ret);
+    printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     exit( -1);
   }
 
@@ -1738,10 +1734,12 @@ void release_accelerator_for_task(task_metadata_block_t *task_metadata_block) {
 // This routine schedules (the first) ready task from the ready task queue
 // The input parm is a pointer to a scheduler_datastate_block_t structure
 void *schedule_executions_from_queue(void *void_parm_ptr) {
-  DEBUG(printf("SCHED: starting execution of schedule_executions_from_queue "
-               "thread...\n"));
-  scheduler_datastate_block_t *sptr =
-      (scheduler_datastate_block_t *)void_parm_ptr;
+  DEBUG(printf("SCHED: starting execution of schedule_executions_from_queue thread...\n"));
+  // Set up the pthread_cancel behaviors
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)void_parm_ptr;
   // This will now be an eternally-running scheduler process, I think.
   // pthread_mutex_lock(&schedule_from_queue_mutex);
   while (1) {
@@ -2351,6 +2349,7 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
 void shutdown_scheduler(scheduler_datastate_block_t *sptr) {
   output_run_statistics(sptr);
 
+  //printf("\nIn the Schecdule Shutdown after output_run_statistics...\n"); fflush(stdout);
   // Dynamically unload the scheduling policy (plug-in)
   dlclose(sptr->policy_handle);
 
@@ -2358,8 +2357,20 @@ void shutdown_scheduler(scheduler_datastate_block_t *sptr) {
     fclose(sptr->sl_viz_fp);
   }
 
+  // Cancel all the created pthreads...
+  //printf("Cancelling the metadata block threads...\n"); fflush(stdout);
+  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+    //printf("  cancelling MB%u pthread\n", i); fflush(stdout);
+    pthread_cancel(sptr->metadata_threads[i]);
+  }
+  //printf("Cancelling the Schedule-From-Ready-Queue pthread\n"); fflush(stdout);
+  pthread_cancel(sptr->scheduling_thread);
+  sleep(1);
+
+  //printf("Calling cleanup_stats...\n"); fflush(stdout);
   cleanup_state(sptr);
 
+  //printf("Doing the free calls...\n"); fflush(stdout);
   free(sptr->free_metadata_pool);
   free(sptr->ready_mb_task_queue_pool);
   free(sptr->metadata_threads);
