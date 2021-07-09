@@ -192,7 +192,7 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
     label_match[tr_val]++;
     label_match[NUM_OBJECTS]++;
   } else {
-    printf("CV-MISMATCH: cv_object %u tr_val %u\n", cv_object, tr_val);
+    DEBUG(printf("CV-MISMATCH: cv_object %u tr_val %u\n", cv_object, tr_val));
     label_mismatch[tr_val][cv_object]++;
   }
   label_lookup[NUM_OBJECTS]++;
