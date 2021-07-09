@@ -118,7 +118,7 @@ bool Emulator::run()
         if (!m_taskQueue.empty())
         {
             NvU8* task_mem = m_taskQueue.front();
-            NvDlaDebugPrintf("Work Found!\n");
+            //NvDlaDebugPrintf("umd: Work Found!\n");
 
             EMUTaskDescAccessor task_desc = emu_if->taskDescAccessor(task_mem);
 
@@ -142,7 +142,7 @@ bool Emulator::run()
 
             // Process the task
             processTask(task_mem, mappedAddressList);
-            NvDlaDebugPrintf("Work Done\n");
+            //NvDlaDebugPrintf("umd:Work Done\n");
 
             m_taskQueue.pop();
             continue;

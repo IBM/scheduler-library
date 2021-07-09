@@ -110,10 +110,10 @@ void runImageonNVDLA(std::string iImage) {
         //return EXIT_FAILURE;
         NvDlaDebugPrintf("Test failed\n");
     }
-    else
+    /**else
     {
         NvDlaDebugPrintf("Image Processed, Test Passed\n");
-    }
+    }**/
 
 }
 

@@ -260,8 +260,8 @@ NvDlaError JPEG2DIMG(std::string inputFileName, NvDlaImage* output, nvdla::IRunt
     output->m_meta.surfaceStride = 0;
     output->m_meta.size = tensorDesc->bufferSize;
 
-    NvDlaDebugPrintf("dlaimg height: %d x %d x %d: ", output->m_meta.height, output->m_meta.width, output->m_meta.channel);
-    NvDlaDebugPrintf("LS: %d SS: %d Size: %d\n", output->m_meta.lineStride, output->m_meta.surfaceStride, output->m_meta.size);
+    //NvDlaDebugPrintf("esp: dlaimg height: %d x %d x %d: ", output->m_meta.height, output->m_meta.width, output->m_meta.channel);
+    //NvDlaDebugPrintf("esp: LS: %d SS: %d Size: %d\n", output->m_meta.lineStride, output->m_meta.surfaceStride, output->m_meta.size);
 
     // Allocate the buffer
     output->m_pData = NvDlaAlloc(output->m_meta.size);
