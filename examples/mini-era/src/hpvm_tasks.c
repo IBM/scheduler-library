@@ -869,7 +869,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
 
   DEBUG(printf("Assigning distance to pointer\n"));
 
-  DEBUG(printf("Distance ptr %lu\n",distance_ptr));
+  DEBUG(printf("Distance ptr %p\n",distance_ptr));
   *distance_ptr = distance;
 
   DEBUG(printf("Distance in object: %.3f\n",*distance_ptr));
