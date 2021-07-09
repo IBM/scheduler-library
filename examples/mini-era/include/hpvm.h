@@ -16,15 +16,15 @@
 namespace hpvm {
 #endif
 
+
+
 enum Target {
   None=0,
   CPU_TARGET,
   GPU_TARGET,
-  SPIR_TARGET,
   CUDNN_TARGET,
-  PROMISE_TARGET,
+  TENSOR_TARGET,
   CPU_OR_GPU_TARGET,
-  CPU_OR_SPIR_TARGET,
   EPOCHS_TARGET,
   //    ALL_TARGETS,
   FFT_TARGET,
