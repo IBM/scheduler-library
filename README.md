@@ -82,7 +82,7 @@ The Scheduler Library is under constant development (and hopefully improvement).
 
 ## HPVM Setup
 
--   HPVM (internal repository branch  `hpvm-epochs0-backend`  located  [here](https://gitlab.engr.illinois.edu/llvm/hpvm/-/tree/hpvm-epochs0-backend))
+-   HPVM (internal repository branch  `hpvm-release-epochs0`  located  [here](https://gitlab.engr.illinois.edu/llvm/hpvm-release/-/tree/hpvm-release-epochs0)
     -   Refer to  [HPVM Build Instructions](https://hpvm.readthedocs.io/en/latest/build-hpvm.html)  for detailed set up instructions.  _Note: During installation, make sure target is set to X86;RISCV to be able to target the EPOCHS-0 RISC-V processor._
 
 -   GCC cross compiler for RISC-V, can be installed using ESP as follows:
@@ -94,7 +94,7 @@ The Scheduler Library is under constant development (and hopefully improvement).
 
 First we must clone and set up the hpvm repository:
 
-    git clone --branch hpvm-epochs0-backend https://gitlab.engr.illinois.edu/llvm/hpvm.git
+    git clone --branch hpvm-release-epochs0 https://gitlab.engr.illinois.edu/llvm/hpvm-release/-/tree/hpvm-release-epochs0
 
 Install HPVM via the provided install script and follow the provided prompts:
 
