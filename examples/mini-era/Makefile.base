@@ -157,7 +157,9 @@ ESP_NVDLA_DIR = esp_hardware/nvdla
 INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
 
 NVDLA_MODULE = hpvm-mod.nvdla
-NVDLA_DIR = $(APPROXHPVM_DIR)/llvm/test/VISC/DNN_Benchmarks/benchmarks/miniera-hpvm
+NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
+#NVDLA_RES_DIR = $(HPVM_DIR)/test/epoch_dnn/res/mniera
+NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/res/miniera
 
 NVDLA_RUNTIME_DIR = $(ROOT)
 NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
@@ -191,7 +193,7 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	@cd $(APPROXHPVM_DIR)/llvm/test/VISC/DNN_Benchmarks/benchmarks/miniera-hpvm && make && cp $(NVDLA_MODULE) $(CUR_DIR)
+	@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------
 
