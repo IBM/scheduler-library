@@ -1,8 +1,10 @@
 #!/bin/bash
 ####### THESE VARIABLES NEED TO BE SET! #########
-export HPVM_DIR=$HOME/work_dir/hpvm-dssoc/hpvm
-#export APPROXHPVM_DIR=$HOME/work_dir/approxhpvm-nvdla
+#export HPVM_DIR=$HOME/work_dir/hpvm-dssoc/hpvm
 #export RISCV_BIN_DIR=$HOME/work_dir/riscv/bin
+export HPVM_DIR=
+export RISCV_BIN_DIR=
+
 
 ####### THESE VARIABLES SHOULD NOT NEED ANY MODIFICATION! #########
 SH="$(readlink -f /proc/$$/exe)"
@@ -14,11 +16,4 @@ fi
 export SCHED_LIB_DIR=$CUR_DIR/sched_library
 export TASK_LIB_DIR=$CUR_DIR/task_library
 export HPVM_BUILD_DIR=$HPVM_DIR/build
-#export HPVM_BENCH_DIR=$HPVM_DIR/test/benchmarks
-#export LLVM_SRC_ROOT=$APPROXHPVM_DIR/llvm
-#export LLVM_BUILD_ROOT=$APPROXHPVM_DIR/build
-##export LIBRARY_PATH=/software/cuda-9.1/lib64/:$LIBRARY_PATH
-#export LD_LIBRARY_PATH=$LLVM_SRC_ROOT/lib/Transforms/HPVM2NVDLA/nvdla:$LD_LIBRARY_PATH
-##export LD_LIBRARY_PATH=$LLVM_SRC_ROOT/lib/Transforms/HPVM2NVDLA/nvdla:/software/cuda-9.1/lib64/:$LD_LIBRARY_PATH
-#export PATH=$HPVM_DIR/build/bin:$PATH
-#export TOP=$MINIERA_DIR/sw/umd
+export LD_LIBRARY_PATH=$HPVM_DIR/build/lib:$LD_LIBRARY_PATH

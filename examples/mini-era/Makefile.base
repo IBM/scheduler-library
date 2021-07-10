@@ -150,6 +150,7 @@ CUR_DIR = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 $(info $$CUR_DIR is [${CUR_DIR}])
 
 ROOT := $(CUR_DIR)/sw/umd
+TOP := $(ROOT)
 $(info $$ROOT is [${ROOT}])
 
 ESP_NVDLA_DIR = esp_hardware/nvdla
@@ -158,7 +159,6 @@ INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
 
 NVDLA_MODULE = hpvm-mod.nvdla
 NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
-#NVDLA_RES_DIR = $(HPVM_DIR)/test/epoch_dnn/res/mniera
 NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/res/miniera
 
 NVDLA_RUNTIME_DIR = $(ROOT)
@@ -191,7 +191,7 @@ include esp_hardware/nvdla/rules.mk
 
 $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
-	@cd $(NVDLA_RUNTIME_DIR) && make runtime
+	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
 	@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 

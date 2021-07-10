@@ -102,11 +102,11 @@ Install HPVM via the provided install script and follow the provided prompts:
     ./install.sh
 
 ## Setting up required paths
-After installation source the `set_paths.sh` script to export the environment variables needed for running the hpvm scheduler backend for MiniERA.
+After installation, you will need to source the `set_paths.sh` script to export the environment variables needed for running the hpvm scheduler backend for MiniERA.
+Specifically you will have to provide definitions for the root of your hpvm clone which contains the build directory (`HPVM_DIR`), as well as the
+path to the RISCV bin directory (`RISCV_BIN_DIR`).
 
-    cd ${HPVM_SRC_ROOT}/hpvm/hpvm/
-    source set_paths.sh
-Then update the `HPVM_DIR` variable definition in `${SCHED_LIB_SRC_ROOT}/setup_paths.sh` to be the path to the directory containing the build directory for HPVM. After which:
+Provide these variable definitions in `${SCHED_LIB_SRC_ROOT}/setup_paths.sh`. After which:
 
     cd ${SCHED_LIB_SRC_ROOT}
     source setup_paths.sh
