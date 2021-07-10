@@ -27,10 +27,10 @@ typedef float distance_t;
 typedef enum {
   myself = -1,
   no_label = 0,
-  car,
-  truck,
-  pedestrian,
   bicycle,
+  car,
+  pedestrian,
+  truck,
   NUM_OBJECTS
 } label_t;
 
