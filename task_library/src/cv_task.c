@@ -201,19 +201,19 @@ void execute_hwr_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_b
   char image_name[32];
   switch (tr_label) {
   case no_label:
-    sprintf(image_name, "cnn_data/empty_%02u.jpg", (image_index & 0xf));
+    sprintf(image_name, "cnn_data/empty_%02u.jpg", (image_index & 0x1f));
     break;
   case bicycle:
-    sprintf(image_name, "cnn_data/bike_%02u.jpg", (image_index & 0xf));
+    sprintf(image_name, "cnn_data/bike_%02u.jpg", (image_index & 0x1f));
     break;
   case car:
-    sprintf(image_name, "cnn_data/car_%02u.jpg", (image_index & 0xf));
+    sprintf(image_name, "cnn_data/car_%02u.jpg", (image_index & 0x1f));
     break;
   case pedestrian:
-    sprintf(image_name, "cnn_data/person_%02u.jpg", (image_index & 0xf));
+    sprintf(image_name, "cnn_data/person_%02u.jpg", (image_index & 0x1f));
     break;
   case truck:
-    sprintf(image_name, "cnn_data/truck_%02u.jpg", (image_index & 0xf));
+    sprintf(image_name, "cnn_data/truck_%02u.jpg", (image_index & 0x1f));
     break;
   default:
     printf("ERROR : unknown input object type %u\n", tr_label);
