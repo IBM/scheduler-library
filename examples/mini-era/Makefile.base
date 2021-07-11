@@ -2,6 +2,7 @@ CPU ?= ariane
 ARCH ?= riscv
 ifdef DO_CROSS_COMPILATION
  CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
+ TOOLCHAIN_PREFIX ?= $(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-
  EXE_EXTENSION=-RV
  CROSS_COMPILE_FLAGS = --target=riscv64 -march=rv64g -mabi=lp64d
 endif
@@ -202,6 +203,11 @@ $(info $$OBJ_LL is [${OBJ_LL}])
 $(info $$OBJ_H is [${OBJ_H}])
 $(info $$OBJ_LINKED is [${OBJ_LINKED}])
 
+ifdef CONFIG_CV_EN
+NVDLA_MODULE = hpvm-mod.nvdla
+endif 
+$(info $$NVDLA_MODULE is [${NVDLA_MODULE}])
+
 #all: $(TARGET) $(STARGET)
 all: $(TARGET)
 
@@ -219,11 +225,6 @@ hpvm-cpu: BACKEND_LOAD = -load LLVMDFG2LLVM_CPU.so
 hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu 
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
-
-ifdef CONFIG_CV_EN
-NVDLA_MODULE = hpvm-mod.nvdla
-endif 
-$(info $$NVDLA_MODULE is [${NVDLA_MODULE}])
 
 
 hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
@@ -255,10 +256,6 @@ $(info $$NVDLA_RUNTIME is [${NVDLA_RUNTIME}])
 $(info $$NVDLA_RUNTIME_DIR is [${NVDLA_RUNTIME_DIR}])
 
 ifdef CONFIG_CV_EN
-TOOLCHAIN_PREFIX ?= $(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-
-ifeq ($(TOOLCHAIN_PREFIX),)
-$(error Toolchain prefix missing)
-endif
 
 MODULE := nvdla_runtime
 
@@ -294,8 +291,11 @@ obj_s/%.o: %.c
 
 $(OBJ_T): $(HDR_T)
 
-$(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T)
-	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
+$(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T) $(NVDLA_MODULE) $(ALLMODULE_OBJS)
+	#$(CROSS_COMPILE)$(CC) -fPIC $< -c -o me_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) $(OBJ_T) -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	#$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
 
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
