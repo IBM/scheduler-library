@@ -141,61 +141,6 @@ ifdef CONFIG_GDB
 CFLAGS += -g
 endif
 
-#------------------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------------------
-
-
-CUR_DIR = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
-$(info $$CUR_DIR is [${CUR_DIR}])
-
-ROOT := $(CUR_DIR)/sw/umd
-TOP := $(ROOT)
-$(info $$ROOT is [${ROOT}])
-
-ESP_NVDLA_DIR = esp_hardware/nvdla
-#INCLUDES +=  -I$(SRC_DIR) -I$(ESP_NVDLA_DIR) -I$(TOP)/core/include
-INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
-
-NVDLA_MODULE = hpvm-mod.nvdla
-NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
-NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/res/miniera
-
-NVDLA_RUNTIME_DIR = $(ROOT)
-NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
-$(info $$NVDLA_RUNTIME is [${NVDLA_RUNTIME}])
-$(info $$NVDLA_RUNTIME_DIR is [${NVDLA_RUNTIME_DIR}])
-
-TOOLCHAIN_PREFIX ?= $(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-
-
-ifeq ($(TOOLCHAIN_PREFIX),)
-$(error Toolchain prefix missing)
-endif
-
-MODULE := nvdla_runtime
-
-include $(ROOT)/make/macros.mk
-
-BUILDOUT ?= $(ROOT)/out/apps/runtime
-BUILDDIR := $(BUILDOUT)/$(MODULE)
-TEST_BIN := $(BUILDDIR)/$(MODULE)
-
-MODULE_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
-MODULE_CFLAGS := --std=c99
-MODULE_CPPFLAGS := --std=c++11 -fexceptions -fno-rtti
-NVDLA_FLAGS := -pthread -L$(ROOT)/external/ -ljpeg -L$(ROOT)/out/core/src/runtime/libnvdla_runtime -lnvdla_runtime  -Wl,-rpath=.
-
-include esp_hardware/nvdla/rules.mk
-
-#-----------------------------------------------------------------------------------------------
-
-$(NVDLA_MODULE):
-	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
-	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
-	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
-
-#-----------------------------------------------------------------------------------------------
 
 
 SCHED_LIB = $(SCHED_LIB_DIR)/libscheduler.a
@@ -257,9 +202,9 @@ $(info $$OBJ_LL is [${OBJ_LL}])
 $(info $$OBJ_H is [${OBJ_H}])
 $(info $$OBJ_LINKED is [${OBJ_LINKED}])
 
-all: $(TARGET) $(STARGET)
+#all: $(TARGET) $(STARGET)
+all: $(TARGET)
 
-hpvm-epochs: CFLAGS += -DENABLE_NVDLA
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
@@ -275,10 +220,71 @@ hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
+ifdef CONFIG_CV_EN
+NVDLA_MODULE = hpvm-mod.nvdla
+endif 
+$(info $$NVDLA_MODULE is [${NVDLA_MODULE}])
+
+
 hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
 hpvm-cpu: check_env obj_hpvm $(HPVMTARGET_CPU)
 
 
+#------------------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------------------
+
+
+CUR_DIR = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+$(info $$CUR_DIR is [${CUR_DIR}])
+
+ROOT := $(CUR_DIR)/sw/umd
+TOP := $(ROOT)
+$(info $$ROOT is [${ROOT}])
+
+ESP_NVDLA_DIR = esp_hardware/nvdla
+#INCLUDES +=  -I$(SRC_DIR) -I$(ESP_NVDLA_DIR) -I$(TOP)/core/include
+INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
+
+NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
+NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/res/miniera
+
+NVDLA_RUNTIME_DIR = $(ROOT)
+NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
+$(info $$NVDLA_RUNTIME is [${NVDLA_RUNTIME}])
+$(info $$NVDLA_RUNTIME_DIR is [${NVDLA_RUNTIME_DIR}])
+
+ifdef CONFIG_CV_EN
+TOOLCHAIN_PREFIX ?= $(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-
+ifeq ($(TOOLCHAIN_PREFIX),)
+$(error Toolchain prefix missing)
+endif
+
+MODULE := nvdla_runtime
+
+include $(ROOT)/make/macros.mk
+
+BUILDOUT ?= $(ROOT)/out/apps/runtime
+BUILDDIR := $(BUILDOUT)/$(MODULE)
+TEST_BIN := $(BUILDDIR)/$(MODULE)
+
+MODULE_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
+MODULE_CFLAGS := --std=c99
+MODULE_CPPFLAGS := --std=c++11 -fexceptions -fno-rtti
+NVDLA_FLAGS := -pthread -L$(ROOT)/external/ -ljpeg -L$(ROOT)/out/core/src/runtime/libnvdla_runtime -lnvdla_runtime  -Wl,-rpath=.
+
+include esp_hardware/nvdla/rules.mk
+endif
+
+#-----------------------------------------------------------------------------------------------
+
+$(NVDLA_MODULE):
+	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
+	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
+	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
+	@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+
+#-----------------------------------------------------------------------------------------------
 obj_t/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
@@ -296,9 +302,7 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
-	#$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(RISCV_BIN_DIR)/riscv64-unknown-linux-gnu-ld -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	#$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
 	rm me_test.o wnvdla_test.o
 
