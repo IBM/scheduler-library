@@ -10,16 +10,19 @@
 #include "viterbi_utils.h"
 #include "viterbi_standalone.h"
 
-#ifdef FAKE_HW_CV
-static unsigned cv_cpu_run_time_in_usec = 10000;
-static unsigned cv_fake_hwr_run_time_in_usec = 1000;
-#else
 #ifdef COMPILE_TO_ESP
-static unsigned cv_cpu_run_time_in_usec = 10000;
-// unsigned cv_fake_hwr_run_time_in_usec =  1000;
+// This would be RISC-V FPGA 
+static unsigned cv_cpu_run_time_in_usec = 5000000;
 #else
-static unsigned cv_cpu_run_time_in_usec = 50;
-// unsigned cv_fake_hwr_run_time_in_usec =     1;
+// This would be x86 
+static unsigned cv_cpu_run_time_in_usec = 10000;
+#endif
+
+#ifdef FAKE_HW_CV
+#ifdef COMPILE_TO_ESP
+static unsigned cv_fake_hwr_run_time_in_usec = 150000;
+#else
+static unsigned cv_fake_hwr_run_time_in_usec = 1000;
 #endif
 #endif
 

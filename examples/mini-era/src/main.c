@@ -837,8 +837,7 @@ int main(int argc, char *argv[]) {
   printf("   Viterbi: %s\n", vit_dict);
 
   printf("\n There are %u additional FFT, %u addtional Viterbi and %u Additional CV/CNN tasks per time step\n",
-         additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step,
-         additional_cv_tasks_per_time_step);
+         additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step, additional_cv_tasks_per_time_step);
   max_additional_tasks_per_time_step = additional_fft_tasks_per_time_step;
   if (additional_vit_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_vit_tasks_per_time_step;
@@ -1314,14 +1313,12 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef HPVM_BASE_CRIT
-
-    // Launch a specific number of 
-    // base criticality instances on the particular 
-    // tasks through hpvm.
+    // Launch a specific number of base criticality instances on the particular tasks through hpvm.
     unsigned task_size_variability = 0;
 
     DEBUG(printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step));
     DEBUG(printf("Launching %d base criticality instances of RADAR\n", additional_fft_tasks_per_time_step));
+    DEBUG(printf("Launching %d base criticality instances of CV/CNN\n", additional_cv_tasks_per_time_step));
 
     // Now we add in the additional non-critical tasks...
     for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
