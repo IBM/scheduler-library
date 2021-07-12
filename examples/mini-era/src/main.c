@@ -112,94 +112,59 @@ void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
   printf("    -h          : print this helpful usage info\n");
-  printf("    -G <file>   : defines the Global-configuration-file <file> with "
-         "scheduler set-up parms\n");
-  printf("    -o          : print the Visualizer output traace information "
-         "during the run\n");
-  printf("    -R <file>   : defines the input Radar dictionary file <file> to "
-         "use\n");
-  printf("    -V <file>   : defines the input Viterbi dictionary file <file> "
-         "to use\n");
-  printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to "
-         "use\n");
+  printf("    -G <file>   : defines the Global-configuration-file <file> with scheduler set-up parms\n");
+  printf("    -o          : print the Visualizer output traace information during the run\n");
+  printf("    -R <file>   : defines the input Radar dictionary file <file> to use\n");
+  printf("    -V <file>   : defines the input Viterbi dictionary file <file> to use\n");
+  printf("    -C <file>   : defines the input CV/CNN dictionary file <file> to use\n");
   printf("    -s <N>      : Sets the max number of time steps to simulate\n");
 #ifdef USE_SIM_ENVIRON
   printf("    -r <N>      : Sets the rand random number seed to N\n");
-  printf("    -A          : Allow obstacle vehciles in All lanes (otherwise "
-         "not in left or right hazard lanes)\n");
-  printf("    -W <wfile>  : defines the world environment parameters "
-         "description file <wfile> to use\n");
+  printf("    -A          : Allow obstacle vehciles in All lanes (otherwise not in left or right hazard lanes)\n");
+  printf("    -W <wfile>  : defines the world environment parameters description file <wfile> to use\n");
 #else
   printf("    -t <trace>  : defines the input trace file <trace> to use\n");
 #endif
-  printf("    -p <N>      : defines the plan-and-control repeat factor (calls "
-         "per time step -- default is 1)\n");
-  printf("    -f <N>      : defines which Radar Dictionary Set is used for "
-         "Critical FFT Tasks\n");
-  printf("                :      Each Set of Radar Dictionary Entries Can use "
-         "a different sample size, etc.\n");
+  printf("    -p <N>      : defines the plan-and-control repeat factor (calls per time step -- default is 1)\n");
+  printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
+  printf("                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
 
-  printf("    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks "
-         "per time step.\n");
-  printf(
-      "    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)\n");
+  printf("    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
+  printf("    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)\n");
 #ifdef FAKE_HW_CV
-  printf(
-      "    -d <N>      : Delay (in usec) of HWR CV Tasks (faked execution)\n");
+  printf("    -d <N>      : Delay (in usec) of HWR CV Tasks (faked execution)\n");
 #endif
-  printf("    -F <N>      : Adds <N> additional (non-critical) FFT tasks per "
-         "time step.\n");
+  printf("    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.\n");
   printf("    -v <N>      : defines Viterbi message size:\n");
   printf("                :      0 = Short messages (4 characters)\n");
   printf("                :      1 = Medium messages (500 characters)\n");
   printf("                :      2 = Long messages (1000 characters)\n");
   printf("                :      3 = Max-sized messages (1500 characters)\n");
-  printf("    -M <N>      : Adds <N> additional (non-critical) Viterbi message "
-         "tasks per time step.\n");
-  printf("    -S <N>      : Task-Size Variability: Varies the sizes of input "
-         "tasks where appropriate\n");
-  printf("                :      0 = No variability (e.g. all messages same "
-         "size, etc.)\n");
-  printf("    -u <N>      : Sets the hold-off usec for checks on work in the "
-         "scheduler queue\n");
-  printf("                :   This reduces the busy-spin-loop rate for the "
-         "scheduler thread\n");
+  printf("    -M <N>      : Adds <N> additional (non-critical) Viterbi message tasks per time step.\n");
+  printf("    -S <N>      : Task-Size Variability: Varies the sizes of input tasks where appropriate\n");
+  printf("                :      0 = No variability (e.g. all messages same size, etc.)\n");
+  printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
+  printf("                :   This reduces the busy-spin-loop rate for the scheduler thread\n");
   printf("    -B <N>      : Sets the number of Metadata Blocks (max) to <N>\n");
-  printf("    -P <policy> : defines the task scheduling policy <policy> to use "
-         "(<policy> is a string)\n");
-  printf("                :   <policy> needs to specify the full path to a "
-         "dynamic shared object (DSO) (e.g. a lib<policy>.so)\n");
-  printf("    -L <tuple>  : Sets the limits on number of each accelerator type "
-         "available in this run.\n");
-  printf("                :      tuple = #CPU,#FFT,#VIT,#CV (string "
-         "interpreted internally)\n");
-  printf("    -X <tuple>  : Sets the Test-Task parameters for this run; "
-         "default is NO Test-Tasks.\n");
+  printf("    -P <policy> : defines the task scheduling policy <policy> to use (<policy> is a string)\n");
+  printf("                :   <policy> needs to specify the full path to a dynamic shared object (DSO) (e.g. a lib<policy>.so)\n");
+  printf("    -L <tuple>  : Sets the limits on number of each accelerator type available in this run.\n");
+  printf("                :      tuple = #CPU,#FFT,#VIT,#CV (string interpreted internally)\n");
+  printf("    -X <tuple>  : Sets the Test-Task parameters for this run; default is NO Test-Tasks.\n");
   printf("                :   Two tuple formats are acceptable:\n");
-  printf("                :      tuple = #Crit,#Base : Number of per-time-step "
-         "Critical and Base Test-tasks injected\n");
-  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num "
-         "Crit and Base tasks, and usec exec time\n");
+  printf("                :      tuple = #Crit,#Base : Number of per-time-step Critical and Base Test-tasks injected\n");
+  printf("                :      tuple = #Crit,#Base,tCPU,tFFT,tVIT,tCV : Num Crit and Base tasks, and usec exec time\n");
   printf("                :              per each accelerator type\n");
   printf("\n");
-  printf(" Options for the Scheduler-Visualizer tool (enable tracing to be "
-         "visualized):\n");
-  printf("    -O <fn>     : Output scheduler visualization trace information "
-         "to file <fn>\n");
-  printf("    -i <N>      : Number of executed tasks (of any type) before "
-         "starting task logging\n");
-  printf("                :   If not specified, then logging starts with the "
-         "execution\n");
-  printf("    -I <type>   : Task type that triggers task logging for the "
-         "Schedule-Visualization tool\n");
-  printf("                :   If not specified, then logging starts with the "
-         "execution\n");
-  printf("                :  NOTE: If -i and -I are specified, then logging "
-         "starts when either condition is satisfied\n");
-  printf("    -e <N>      : Number of executed tasks (of any type) before "
-         "stopping task logging\n");
-  printf("                :   This parameter is mandatory to keep control of "
-         "the trace file size\n");
+  printf(" Options for the Scheduler-Visualizer tool (enable tracing to be visualized):\n");
+  printf("    -O <fn>     : Output scheduler visualization trace information to file <fn>\n");
+  printf("    -i <N>      : Number of executed tasks (of any type) before starting task logging\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("    -I <type>   : Task type that triggers task logging for the Schedule-Visualization tool\n");
+  printf("                :   If not specified, then logging starts with the execution\n");
+  printf("                :  NOTE: If -i and -I are specified, then logging starts when either condition is satisfied\n");
+  printf("    -e <N>      : Number of executed tasks (of any type) before stopping task logging\n");
+  printf("                :   This parameter is mandatory to keep control of the trace file size\n");
 }
 
 // This is just a call-through to the scheduler routine, but we can also print a
@@ -412,12 +377,13 @@ int main(int argc, char *argv[]) {
   rad_dict[0] = '\0';
   vit_dict[0] = '\0';
   cv_dict[0] = '\0';
-#ifndef HPVM
+
   unsigned additional_cv_tasks_per_time_step = 0;
   unsigned additional_fft_tasks_per_time_step = 0;
   unsigned additional_vit_tasks_per_time_step = 0;
   unsigned max_additional_tasks_per_time_step = 0;
 
+#ifndef HPVM
   unsigned sched_holdoff_usec = 0;
   char policy[256];
   unsigned num_MBs_to_use = 32; // pick a value ...
@@ -507,18 +473,24 @@ int main(int argc, char *argv[]) {
 #endif
       break;
     case 'F':
-#ifndef HPVM
+#ifdef HPVM_BASE_CRIT
       additional_fft_tasks_per_time_step = atoi(optarg);
+#else
+      printf("ERROR: Cannot use '-F' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
 #endif
       break;
     case 'M':
-#ifndef HPVM
+#ifdef HPVM_BASE_CRIT
       additional_vit_tasks_per_time_step = atoi(optarg);
+#else
+      printf("ERROR: Cannot use '-M' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
 #endif
       break;
     case 'N':
-#ifndef HPVM
+#ifndef HPVM_BASE_CRIT
       additional_cv_tasks_per_time_step = atoi(optarg);
+     #else
+      printf("ERROR: Cannot use '-N' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
 #endif
       break;
     case 'P':
@@ -864,9 +836,7 @@ int main(int argc, char *argv[]) {
   printf("   Radar  : %s\n", rad_dict);
   printf("   Viterbi: %s\n", vit_dict);
 
-#ifndef HPVM
-  printf("\n There are %u additional FFT, %u addtional Viterbi and %u "
-         "Additional CV/CNN tasks per time step\n",
+  printf("\n There are %u additional FFT, %u addtional Viterbi and %u Additional CV/CNN tasks per time step\n",
          additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step,
          additional_cv_tasks_per_time_step);
   max_additional_tasks_per_time_step = additional_fft_tasks_per_time_step;
@@ -876,7 +846,6 @@ int main(int argc, char *argv[]) {
   if (additional_cv_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_cv_tasks_per_time_step;
   }
-#endif
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
@@ -1349,15 +1318,15 @@ int main(int argc, char *argv[]) {
     // Launch a specific number of 
     // base criticality instances on the particular 
     // tasks through hpvm.
-    int NUM_VIT_BASE_TASKS = 1;
-    int NUM_RADAR_BASE_TASKS = 1;
-    int NUM_CV_BASE_TASKS = 1;
+    //int NUM_VIT_BASE_TASKS = 1;
+    //int NUM_RADAR_BASE_TASKS = 1;
+    //int NUM_CV_BASE_TASKS = 1;
 
     unsigned task_size_variability = 0;
 
-    printf("Launching %d base criticality instances of VIT\n", NUM_VIT_BASE_TASKS);
+    printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step);
 
-    for(int i = 0; i < NUM_VIT_BASE_TASKS; i++){
+    for(int i = 0; i < additional_vit_tasks_per_time_step; i++){
         int vit_base_msg_size;
         vit_dict_entry_t *base_vdentry;
         if(task_size_variability == 0){
@@ -1372,10 +1341,10 @@ int main(int argc, char *argv[]) {
         hpvm_launch_base_VIT(vit_base_msg_size, base_vdentry);
     }
 
-    printf("Launching %d base criticality instances of RADAR\n", NUM_RADAR_BASE_TASKS);
+    printf("Launching %d base criticality instances of RADAR\n", additional_fft_tasks_per_time_step);
 
 
-    for(int i = 0; i < NUM_RADAR_BASE_TASKS; i++){
+    for(int i = 0; i < additional_fft_tasks_per_time_step; i++){
         radar_dict_entry_t* base_rdentry; 
 
         if(task_size_variability == 0){
@@ -1391,10 +1360,9 @@ int main(int argc, char *argv[]) {
 
     }
 
-    printf("Launching %d base criticality instances of CV\n",NUM_CV_BASE_TASKS);
-    for(int i = 0; i < NUM_CV_BASE_TASKS; i++){
+    printf("Launching %d base criticality instances of CV\n", additional_cv_tasks_per_time_step);
+    for(int i = 0; i < additional_cv_tasks_per_time_step; i++){
         hpvm_launch_base_CV(cv_tr_label);
-
     }
 
 #endif

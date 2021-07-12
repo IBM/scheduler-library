@@ -67,6 +67,12 @@ ifdef CONFIG_NUM_CV
  CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
 
+# This adds the code to allow the user to specify (at run-time)
+#  some additional base-level (not-critical) tasks of Vit, CV, FFT
+ifdef ALLOW_ADD_BASE_TASKS
+ CFLAGS += -DHPVM_BASE_CRIT
+endif
+
 CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 
 SW_STR = S
