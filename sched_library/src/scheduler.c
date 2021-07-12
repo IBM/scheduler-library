@@ -2114,11 +2114,25 @@ void wait_all_tasks_finish(scheduler_datastate_block_t *sptr) {
 
 // This cleans up the state (pthreads, etc.) before exit
 void cleanup_state(scheduler_datastate_block_t *sptr) {
-  // Kill (cancel) the per-metablock threads
+  printf("In the cleanup-state routine...\n"); fflush(stdout);
+
+  // Dynamically unload the scheduling policy (plug-in)
+  dlclose(sptr->policy_handle);
+
+  if (sptr->sl_viz_fp != NULL) {
+    fclose(sptr->sl_viz_fp);
+  }
+
+  // Cancel all the created pthreads...
+  //printf("Cancelling the metadata block threads...\n"); fflush(stdout);
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+    //printf("  cancelling MB%u pthread\n", i); fflush(stdout);
     pthread_cancel(sptr->metadata_threads[i]);
   }
+  //printf("Cancelling the Schedule-From-Ready-Queue pthread\n"); fflush(stdout);
   pthread_cancel(sptr->scheduling_thread);
+  sleep(1);
+
   // Clean out the pthread mutex and conditional variables
   pthread_mutex_destroy(&(sptr->free_metadata_mutex));
   pthread_mutex_destroy(&(sptr->accel_alloc_mutex));
@@ -2129,6 +2143,16 @@ void cleanup_state(scheduler_datastate_block_t *sptr) {
 
   // Clean up any hardware accelerator stuff
   do_accelerator_type_closeout(sptr);
+
+  //printf("Doing the free calls...\n"); fflush(stdout);
+  free(sptr->free_metadata_pool);
+  free(sptr->ready_mb_task_queue_pool);
+  free(sptr->metadata_threads);
+  free(sptr->critical_live_tasks_list);
+  free(sptr->free_critlist_pool);
+  free(sptr->master_metadata_pool);
+  free(sptr->inparms);
+  free(sptr);
 }
 
 // This is called at the end of run/life to shut down the scheduler
@@ -2345,37 +2369,9 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
 
 void shutdown_scheduler(scheduler_datastate_block_t *sptr) {
   output_run_statistics(sptr);
-
-  //printf("\nIn the Schecdule Shutdown after output_run_statistics...\n"); fflush(stdout);
-  // Dynamically unload the scheduling policy (plug-in)
-  dlclose(sptr->policy_handle);
-
-  if (sptr->sl_viz_fp != NULL) {
-    fclose(sptr->sl_viz_fp);
-  }
-
-  // Cancel all the created pthreads...
-  //printf("Cancelling the metadata block threads...\n"); fflush(stdout);
-  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
-    //printf("  cancelling MB%u pthread\n", i); fflush(stdout);
-    pthread_cancel(sptr->metadata_threads[i]);
-  }
-  //printf("Cancelling the Schedule-From-Ready-Queue pthread\n"); fflush(stdout);
-  pthread_cancel(sptr->scheduling_thread);
-  sleep(1);
-
+  // DON'T call this here -- there is an "on_exit" call that does this automatically now!
   //printf("Calling cleanup_stats...\n"); fflush(stdout);
-  cleanup_state(sptr);
-
-  //printf("Doing the free calls...\n"); fflush(stdout);
-  free(sptr->free_metadata_pool);
-  free(sptr->ready_mb_task_queue_pool);
-  free(sptr->metadata_threads);
-  free(sptr->critical_live_tasks_list);
-  free(sptr->free_critlist_pool);
-  free(sptr->master_metadata_pool);
-  free(sptr->inparms);
-  free(sptr);
+  // cleanup_state(sptr);
 }
 
 void cleanup_and_exit(int rval, void *sptr_ptr) {
