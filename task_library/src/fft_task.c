@@ -537,9 +537,7 @@ set_up_fft_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    fft_mb_ptr->atFinish = sptr->auto_finish_task_function
-                               [fft_task_type]; // get_auto_finish_routine(sptr,
-                                                // fft_task_type);
+    fft_mb_ptr->atFinish = sptr->auto_finish_task_function[fft_task_type]; // get_auto_finish_routine(sptr, fft_task_type);
   } else {
     fft_mb_ptr->atFinish = NULL;
   }

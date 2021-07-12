@@ -381,7 +381,7 @@ void set_up_cv_task_on_accel_profile_data() {
  #ifndef CONFIG_CV_OoNLY_HWR
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
-  DEBUG(printf("CV_PROFILE: NOT_HW_ONLY : cv_profile[CPU] = %u\n", cv_profile[SCHED_CPU_ACCEL_T]));
+  DEBUG(printf("CV_PROFILE: NOT_HW_ONLY : cv_profile[CPU] = %lu\n", cv_profile[SCHED_CPU_ACCEL_T]));
  #endif
 
  #ifdef COMPILE_TO_ESP
