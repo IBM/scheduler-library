@@ -217,7 +217,7 @@ status_t init_radar_kernel(char* dict_fn)
     printf("ERROR reading the number of Radar Dictionary sets and items per set\n");
     exit(-2);
   }
-  DEBUG(printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, radar_dict_items_per_set));
+  printf("  There are %u dictionary sets of %u entries each\n", num_radar_samples_sets, radar_dict_items_per_set);
   the_radar_return_dict = (radar_dict_entry_t**)calloc(num_radar_samples_sets, sizeof(radar_dict_entry_t*));
   if (the_radar_return_dict == NULL) {
     printf("ERROR : Cannot allocate Radar Trace Dictionary memory space\n");
@@ -245,9 +245,10 @@ status_t init_radar_kernel(char* dict_fn)
       unsigned entry_log_nsamples;
       float entry_dist;
       unsigned entry_dict_values = 0;
+      printf("    Reading Radar dict set %u entry %u\n", si, di);
       if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
-    exit(-2);
+        exit(-2);
       }
       if (radar_log_nsamples_per_dict_set[si] != entry_log_nsamples) {
 	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
@@ -428,7 +429,7 @@ status_t init_vit_kernel(char* dict_fn)
     printf("ERROR reading the number of Viterbi Dictionary items\n");
     exit(-2);
   }
-  DEBUG(printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items));
+  printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items);
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
   if (the_viterbi_trace_dict == NULL)
   {
@@ -440,7 +441,7 @@ status_t init_vit_kernel(char* dict_fn)
   // Read in each dictionary item
   for (int i = 0; i < num_viterbi_dictionary_items; i++)
   {
-    DEBUG(printf("  Reading vit dictionary entry %u\n", i)); //the_viterbi_trace_dict[i].msg_id));
+    printf("    Reading vit dictionary entry %u\n", i);
 
     int mnum, mid;
     if (fscanf(dictF, "%d %d\n", &mnum, &mid) != 2) {
