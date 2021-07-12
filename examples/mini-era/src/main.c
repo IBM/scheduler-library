@@ -1318,15 +1318,19 @@ int main(int argc, char *argv[]) {
     // Launch a specific number of 
     // base criticality instances on the particular 
     // tasks through hpvm.
-    //int NUM_VIT_BASE_TASKS = 1;
-    //int NUM_RADAR_BASE_TASKS = 1;
-    //int NUM_CV_BASE_TASKS = 1;
-
     unsigned task_size_variability = 0;
 
-    printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step);
+    DEBUG(printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step));
+    DEBUG(printf("Launching %d base criticality instances of RADAR\n", additional_fft_tasks_per_time_step));
 
-    for(int i = 0; i < additional_vit_tasks_per_time_step; i++){
+    // Now we add in the additional non-critical tasks...
+    for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
+      // Additional CV Tasks
+      if (i < additional_cv_tasks_per_time_step) {
+        hpvm_launch_base_CV(cv_tr_label);
+      }
+
+      if (i < additional_vit_tasks_per_time_step) {
         int vit_base_msg_size;
         vit_dict_entry_t *base_vdentry;
         if(task_size_variability == 0){
@@ -1337,32 +1341,20 @@ int main(int argc, char *argv[]) {
             base_vdentry = select_random_vit_input();
             vit_base_msg_size = base_vdentry->msg_num / NUM_MESSAGES;
         }
-        
         hpvm_launch_base_VIT(vit_base_msg_size, base_vdentry);
-    }
+      }
 
-    printf("Launching %d base criticality instances of RADAR\n", additional_fft_tasks_per_time_step);
-
-
-    for(int i = 0; i < additional_fft_tasks_per_time_step; i++){
+      if (i < additional_fft_tasks_per_time_step) {
         radar_dict_entry_t* base_rdentry; 
-
         if(task_size_variability == 0){
             base_rdentry = select_critical_radar_input(rdentry_p);
         } else {
             base_rdentry = select_random_radar_input();
         }
-
         int base_radar_samples_set = base_rdentry->set;
         float *base_addl_radar_inputs = base_rdentry->return_data;
-
         hpvm_launch_base_RADAR(radar_log_nsamples_per_dict_set[base_radar_samples_set], base_addl_radar_inputs);
-
-    }
-
-    printf("Launching %d base criticality instances of CV\n", additional_cv_tasks_per_time_step);
-    for(int i = 0; i < additional_cv_tasks_per_time_step; i++){
-        hpvm_launch_base_CV(cv_tr_label);
+      }
     }
 
 #endif
