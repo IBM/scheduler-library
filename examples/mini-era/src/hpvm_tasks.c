@@ -1721,7 +1721,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
   // vit_metadata_block->block_id));
   // free_task_metadata_block(vit_metadata_block);
 
-  __hpvm__return(2, message_id, out_msg_text);
+   __hpvm__return(2, message_id, out_msg_text);
 }
 
 void cv_leaf_base(label_t in_label, label_t *obj_label, size_t obj_label_size) {
@@ -1735,7 +1735,7 @@ void cv_leaf_base(label_t in_label, label_t *obj_label, size_t obj_label_size) {
 
   *obj_label = in_label;
 
-  __hpvm__return(1, obj_label);
+   __hpvm__return(1, obj_label);
 }
 
 void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
@@ -1883,7 +1883,7 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
   DEBUG(printf("Distance in object: %.3f\n",*distance_ptr));
   DEBUG(printf("Finished executing Radar_leaf\n"));
 
-  __hpvm__return(1, distance_ptr);
+   __hpvm__return(1, distance_ptr);
 }
 void VITRootWrapper(
   message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
@@ -1910,8 +1910,8 @@ void VITRootWrapper(
     __hpvm__bindIn(ViterbiNode, 9, 9, 0);
     __hpvm__bindIn(ViterbiNode, 10, 10, 0);
 
-    __hpvm__bindOut(ViterbiNode, 0, 0, /* isStream */ 0);
-    __hpvm__bindOut(ViterbiNode, 1, 1, /* isStream */ 0);
+    // __hpvm__bindOut(ViterbiNode, 0, 0, /* isStream */ 0);
+    // __hpvm__bindOut(ViterbiNode, 1, 1, /* isStream */ 0);
 
 }
 
@@ -1985,7 +1985,7 @@ void RadarRootWrapper(
     __hpvm__bindIn(RadarNode, 3, 3, 0);
     __hpvm__bindIn(RadarNode, 4, 4, 0);
 
-    __hpvm__bindOut(RadarNode, 0, 0, 0);
+    // __hpvm__bindOut(RadarNode, 0, 0, 0);
 
 
 }
@@ -2039,7 +2039,7 @@ void CVRootWrapper(
   __hpvm__bindIn(CVNode, 1, 1, 0);
   __hpvm__bindIn(CVNode, 2, 2, 0);
 
-  __hpvm__bindOut(CVNode, 0, 0, 0);
+  // __hpvm__bindOut(CVNode, 0, 0, 0);
 }
 
 void CVRoot(
