@@ -1488,6 +1488,5 @@ int main(int argc, char *argv[]) {
   shutdown_scheduler(sptr);
 #endif
   printf("\nDone.\n");
-  sptr = NULL;
   return 0;
 }
