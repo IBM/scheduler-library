@@ -1342,23 +1342,7 @@ int main(int argc, char *argv[]) {
     DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, time_step, pandc_repeat_factor, label, distance, message, vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
 
 #else
-    
-    DEBUG(printf("Launching HPVM graph!\n"));
 
-    new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
-    label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
-
-    // POST-EXECUTE other tasks to gather stats, etc.
-    if (!no_crit_cnn_task) {
-      DEBUG(printf("Calling post_execute_cv_kernel for cv_tr_label %u vs label %u\n", cv_tr_label, label));
-      post_execute_cv_kernel(cv_tr_label, label);
-    }
-    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
-    post_execute_vit_kernel(vdentry_p->msg_id, message);
-
-    // Overwrite the current vehicle state with the new state
-    vehicle_state = new_vehicle_state;
 
 #ifdef HPVM_BASE_CRIT
 
@@ -1414,6 +1398,24 @@ int main(int argc, char *argv[]) {
     }
 
 #endif
+    
+    DEBUG(printf("Launching HPVM graph!\n"));
+
+    new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
+    label = cv_tr_label; // label used as input and output in hpvm_launch
+    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
+
+    // POST-EXECUTE other tasks to gather stats, etc.
+    if (!no_crit_cnn_task) {
+      DEBUG(printf("Calling post_execute_cv_kernel for cv_tr_label %u vs label %u\n", cv_tr_label, label));
+      post_execute_cv_kernel(cv_tr_label, label);
+    }
+    post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
+    post_execute_vit_kernel(vdentry_p->msg_id, message);
+
+    // Overwrite the current vehicle state with the new state
+    vehicle_state = new_vehicle_state;
+
 
 #endif
 
