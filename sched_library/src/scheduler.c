@@ -739,10 +739,9 @@ scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
   return pptr;
 }
 
-scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(
-    scheduler_get_datastate_in_parms_t *inp) {
-  scheduler_datastate_block_t *sptr =
-      malloc(sizeof(scheduler_datastate_block_t));
+scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t *inp)
+{
+  scheduler_datastate_block_t *sptr = malloc(sizeof(scheduler_datastate_block_t));
   on_exit(cleanup_and_exit, sptr);
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
   if (sptr == NULL) {
@@ -1894,9 +1893,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
       // such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
       // DEBUG(printf("Waiting for ready task in the queue...\n"));
-      usleep(sptr->inparms
-                 ->scheduler_holdoff_usec); // This defaults to 1 usec (about 78
-                                            // FPGA clock cycles)
+      usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     }
   } // while (1)
   // pthread_mutex_unlock(&schedule_from_queue_mutex);
