@@ -390,42 +390,27 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
   // plan_ctrl_profile[crit_plan_ctrl_samples_set][4]);
   if (plan_ctrl_mb_ptr == NULL) {
     // We ran out of metadata blocks -- PANIC!
-    printf("Out of metadata blocks for PLAN_CTRL -- PANIC Quit the run (for "
-           "now)\n");
+    printf("Out of metadata blocks for PLAN_CTRL -- PANIC Quit the run (for now)\n");
     dump_all_metadata_blocks_states(sptr);
     exit(-4);
   }
   if (use_auto_finish) {
-    plan_ctrl_mb_ptr->atFinish =
-        sptr->auto_finish_task_function
-            [plan_ctrl_task_type]; // get_auto_finish_routine(sptr,
-                                   // plan_ctrl_task_type);
+    plan_ctrl_mb_ptr->atFinish = sptr->auto_finish_task_function[plan_ctrl_task_type]; // get_auto_finish_routine(sptr, plan_ctrl_task_type);
   } else {
     plan_ctrl_mb_ptr->atFinish = NULL;
   }
-  DEBUG(printf("MB%u In start_plan_ctrl_execution\n",
-               plan_ctrl_mb_ptr->block_id));
+  DEBUG(printf("MB%u In start_plan_ctrl_execution\n", plan_ctrl_mb_ptr->block_id));
 
-  plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *)&(
-      plan_ctrl_mb_ptr->task_timings[plan_ctrl_mb_ptr->task_type]);
-  plan_ctrl_data_struct_t *plan_ctrl_data_p =
-      (plan_ctrl_data_struct_t *)(plan_ctrl_mb_ptr->data_space);
+  plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *)&(plan_ctrl_mb_ptr->task_timings[plan_ctrl_mb_ptr->task_type]);
+  plan_ctrl_data_struct_t *plan_ctrl_data_p = (plan_ctrl_data_struct_t *)(plan_ctrl_mb_ptr->data_space);
   // Set the inputs for the plan-and-control task
-  plan_ctrl_data_p->time_step =
-      time_step; // The current time-step of the simulation
-  plan_ctrl_data_p->repeat_factor =
-      repeat_factor; // The current time-step of the simulation
-  plan_ctrl_data_p->object_label =
-      object_label; // The determined label of the object in the image
-  plan_ctrl_data_p->object_distance =
-      object_dist; // The distance to the closest vehicle in our lane
-  plan_ctrl_data_p->safe_lanes_msg =
-      safe_lanes_msg; // The message indicating which lanes are safe to change
-                      // into
-  plan_ctrl_data_p->vehicle_state =
-      vehicle_state; // The current (input) vehicle state
-  DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS "
-               ": act %u lane %u Spd %.1f \n",
+  plan_ctrl_data_p->time_step       = time_step; // The current time-step of the simulation
+  plan_ctrl_data_p->repeat_factor   = repeat_factor; // The current time-step of the simulation
+  plan_ctrl_data_p->object_label    = object_label; // The determined label of the object in the image
+  plan_ctrl_data_p->object_distance = object_dist; // The distance to the closest vehicle in our lane
+  plan_ctrl_data_p->safe_lanes_msg  = safe_lanes_msg; // The message indicating which lanes are safe to change into
+  plan_ctrl_data_p->vehicle_state   = vehicle_state; // The current (input) vehicle state
+  DEBUG(printf("   Set MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n",
                plan_ctrl_mb_ptr->block_id, plan_ctrl_data_p->time_step,
                plan_ctrl_data_p->repeat_factor, plan_ctrl_data_p->object_label,
                plan_ctrl_data_p->object_distance,

@@ -125,9 +125,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    radar_mb_ptr->atFinish =
-        sptr->auto_finish_task_function[radar_task_type]; // get_auto_finish_routine(sptr,
-                                                          // radar_task_type);
+    radar_mb_ptr->atFinish = sptr->auto_finish_task_function[radar_task_type]; // get_auto_finish_routine(sptr, radar_task_type);
   } else {
     radar_mb_ptr->atFinish = NULL;
   }
