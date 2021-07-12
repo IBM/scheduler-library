@@ -20,11 +20,6 @@
 #include "scheduler.h"
 #include "verbose.h"
 
-/**
-#undef DEBUG
-#define DEBUG(x) x
-**/
-
 // This is an initialization routine
 //  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
 // and sets internal policy-required parameters, etc.
@@ -81,16 +76,17 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
             int bi = sptr->accelerator_in_use_by[check_accel][i];
             if (bi == -1) { // Not in use -- available
               new_proj_finish_time = task_metadata_block->task_on_accel_profile[check_accel];
-              DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu\n", check_accel, i, new_proj_finish_time));
+              DEBUG(printf("SCHED_FF:     So AcTy %u Acc %u projected finish_time = %lu\n", check_accel, i, new_proj_finish_time));
             } else {
               // Compute the remaining execution time (estimate) for task currently on accelerator
-              uint64_t elapsed_sec = current_time.tv_sec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec;
-              uint64_t elapsed_usec = current_time.tv_usec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec;
-              uint64_t total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
-              uint64_t remaining_time = sptr->master_metadata_pool[bi].task_on_accel_profile[check_accel] - total_elapsed_usec;
+              int64_t elapsed_sec = current_time.tv_sec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec;
+              int64_t elapsed_usec = current_time.tv_usec - sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec;
+              int64_t total_elapsed_usec = elapsed_sec*1000000 + elapsed_usec;
+              int64_t remaining_time = sptr->master_metadata_pool[bi].task_on_accel_profile[check_accel] - total_elapsed_usec;
+	      if (remaining_time < 0) { remaining_time = 0; }
               // and add that to the projected task run time to get the estimated finish time.
               new_proj_finish_time = task_metadata_block->task_on_accel_profile[check_accel] + remaining_time;
-              DEBUG(printf("SCHED_FFF:     So AcTy %u Acc %u projected finish_time = %lu = %lu + %lu\n", check_accel, i, new_proj_finish_time, task_metadata_block->task_on_accel_profile[check_accel], remaining_time));
+              DEBUG(printf("SCHED_FF:     So AcTy %u Acc %u projected finish_time = %lu = %lu + %lu\n", check_accel, i, new_proj_finish_time, task_metadata_block->task_on_accel_profile[check_accel], remaining_time));
             }
             if (new_proj_finish_time < proj_finish_time) {
               proposed_accel = check_accel;
