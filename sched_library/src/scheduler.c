@@ -2114,7 +2114,7 @@ void wait_all_tasks_finish(scheduler_datastate_block_t *sptr) {
 
 // This cleans up the state (pthreads, etc.) before exit
 void cleanup_state(scheduler_datastate_block_t *sptr) {
-  printf("In the cleanup-state routine...\n"); fflush(stdout);
+  DEBUG(printf("In the cleanup-state routine...\n"); fflush(stdout));
 
   // Dynamically unload the scheduling policy (plug-in)
   dlclose(sptr->policy_handle);
