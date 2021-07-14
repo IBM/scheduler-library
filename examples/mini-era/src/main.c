@@ -471,21 +471,21 @@ int main(int argc, char *argv[]) {
      #endif
       break;
     case 'F':
-     #ifdef HPVM_BASE_CRIT
+     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_fft_tasks_per_time_step = atoi(optarg);
      #else
       printf("ERROR: Cannot use '-F' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
      #endif
       break;
     case 'M':
-     #ifdef HPVM_BASE_CRIT
+     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_vit_tasks_per_time_step = atoi(optarg);
      #else
       printf("ERROR: Cannot use '-M' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
      #endif
       break;
     case 'N':
-     #ifndef HPVM_BASE_CRIT
+     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_cv_tasks_per_time_step = atoi(optarg);
      #else
       printf("ERROR: Cannot use '-N' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
