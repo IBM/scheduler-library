@@ -96,9 +96,9 @@ bool all_obstacle_lanes_mode = false;
 bool no_crit_cnn_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
-#ifndef HPVM
 unsigned task_size_variability;
 
+#ifndef HPVM
 bool enable_sl_viz_output = false;
 char my_sl_viz_fname[256] = "./sl_viz.trace";
 
@@ -463,40 +463,38 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'S':
-#ifndef HPVM
       task_size_variability = atoi(optarg);
-#endif
       break;
     case 'W':
-#ifdef USE_SIM_ENVIRON
+     #ifdef USE_SIM_ENVIRON
       snprintf(world_desc_file_name, 255, "%s", optarg);
-#endif
+     #endif
       break;
     case 'F':
-#ifdef HPVM_BASE_CRIT
+     #ifdef HPVM_BASE_CRIT
       additional_fft_tasks_per_time_step = atoi(optarg);
-#else
+     #else
       printf("ERROR: Cannot use '-F' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-#endif
+     #endif
       break;
     case 'M':
-#ifdef HPVM_BASE_CRIT
+     #ifdef HPVM_BASE_CRIT
       additional_vit_tasks_per_time_step = atoi(optarg);
-#else
+     #else
       printf("ERROR: Cannot use '-M' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-#endif
+     #endif
       break;
     case 'N':
-#ifndef HPVM_BASE_CRIT
+     #ifndef HPVM_BASE_CRIT
       additional_cv_tasks_per_time_step = atoi(optarg);
      #else
       printf("ERROR: Cannot use '-N' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-#endif
+     #endif
       break;
     case 'P':
-#ifndef HPVM
+     #ifndef HPVM
       snprintf(policy, 255, "%s", optarg);
-#endif
+     #endif
       // printf("Set policy to '%s'\n", policy);
       // global_scheduler_selection_policy = atoi(optarg);
       break;
@@ -773,13 +771,9 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
   printf("Using Plan-And-Control repeat factor %u\n", pandc_repeat_factor);
-  printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n",
-         crit_fft_samples_set);
-  printf("Using viterbi message size %u = %s\n", vit_msgs_size,
-         vit_msgs_size_str[vit_msgs_size]);
-#ifndef HPVM
+  printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
+  printf("Using viterbi message size %u = %s\n", vit_msgs_size, vit_msgs_size_str[vit_msgs_size]);
   printf("Using task-size variability behavior %u\n", task_size_variability);
-#endif
   printf("Using %u maximum time steps (simulation)\n", max_time_steps);
 #ifdef USE_SIM_ENVIRON
   printf("Using world description file: %s\n", world_desc_file_name);
@@ -1312,9 +1306,8 @@ int main(int argc, char *argv[]) {
 #else
 
 
-#ifdef HPVM_BASE_CRIT
+   #ifdef HPVM_BASE_CRIT
     // Launch a specific number of base criticality instances on the particular tasks through hpvm.
-    unsigned task_size_variability = 0;
 
     DEBUG(printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step));
     DEBUG(printf("Launching %d base criticality instances of RADAR\n", additional_fft_tasks_per_time_step));
@@ -1330,7 +1323,7 @@ int main(int argc, char *argv[]) {
       if (i < additional_vit_tasks_per_time_step) {
         int vit_base_msg_size;
         vit_dict_entry_t *base_vdentry;
-        if(task_size_variability == 0){
+        if (task_size_variability == 0){
             vit_base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
             int m_id = vdentry_p->msg_num % NUM_MESSAGES;
             base_vdentry = select_specific_vit_input(vit_base_msg_size, m_id);
@@ -1343,7 +1336,7 @@ int main(int argc, char *argv[]) {
 
       if (i < additional_fft_tasks_per_time_step) {
         radar_dict_entry_t* base_rdentry; 
-        if(task_size_variability == 0){
+        if (task_size_variability == 0){
             base_rdentry = select_critical_radar_input(rdentry_p);
         } else {
             base_rdentry = select_random_radar_input();
@@ -1354,7 +1347,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-#endif
+   #endif
     
     DEBUG(printf("Launching HPVM graph!\n"));
 
