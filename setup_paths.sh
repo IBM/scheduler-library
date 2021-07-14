@@ -19,4 +19,4 @@ export TASK_LIB_DIR=$CUR_DIR/task_library
 export HPVM_BUILD_DIR=$HPVM_DIR/build
 export LD_LIBRARY_PATH=$HPVM_DIR/build/lib:$LD_LIBRARY_PATH
 
-export PATH=$PATH:/RISCV_BIN_DIR
+export PATH=$PATH:/$RISCV_BIN_DIR
