@@ -283,6 +283,8 @@ NVDLA_FLAGS := -pthread -L$(ROOT)/external/ -ljpeg -L$(ROOT)/out/core/src/runtim
 include esp_hardware/nvdla/rules.mk
 endif
 
+$(info $$ALLMODULE_OBJS is [${ALLMODULE_OBJS}])
+$(info $$MODULE_OBJS is [${MODULE_OBJS}])
 #-----------------------------------------------------------------------------------------------
 
 $(NVDLA_MODULE):
