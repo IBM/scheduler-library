@@ -192,7 +192,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
   printf("\nAggregate TID %u %s  Tasks Total Timing Data: %u finished FFT tasks\n",
       my_task_type, sptr->task_name_str[my_task_type],
       sptr->freed_metadata_blocks[my_task_type]);
-  printf("     fft-call run time\n");
+  printf("     fft-call run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -204,7 +204,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_call_usec[total_accel_types], avg);
   }
 
-  printf("     fft-total run time\n");
+  printf("     fft-total run time\n                        ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -216,7 +216,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_usec[total_accel_types], avg);
   }
 
-  printf("     bit-reverse run time\n");
+  printf("     bit-reverse run time\n                      ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_br_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -228,7 +228,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_br_usec[total_accel_types], avg);
   }
 
-  printf("     bit-rev run time\n ");
+  printf("     bit-rev run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_bitrev_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -240,7 +240,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_bitrev_usec[total_accel_types], avg);
   }
 
-  printf("     fft-cvtin run time\n");
+  printf("     fft-cvtin run time\n                        ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_cvtin_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -252,7 +252,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_cvtin_usec[total_accel_types], avg);
   }
 
-  printf("     fft-comp run time\n");
+  printf("     fft-comp run time\n                         ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_comp_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -264,7 +264,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_comp_usec[total_accel_types], avg);
   }
 
-  printf("     fft-cvtout run time\n");
+  printf("     fft-cvtout run time\n                       ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fft_cvtout_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
@@ -276,7 +276,7 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
            total_fft_comp_by[total_accel_types], total_fft_cvtout_usec[total_accel_types], avg);
   }
 
-  printf("     calc-dist run time\n");
+  printf("     calc-dist run time\n                        ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_cdfmcw_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,

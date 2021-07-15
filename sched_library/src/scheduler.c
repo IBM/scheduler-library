@@ -1176,7 +1176,7 @@ initialize_scheduler_from_config_file(char *config_file_name) {
 void set_up_scheduler() {
   printf( "Setting up the Global Scheduler Hardware State (System Accelerators)\n");
   // Set up the "CPU" (threada/accelerators)
-  printf("Setting up the Accel %u CPU (thread) Accelerators...\n", SCHED_CPU_ACCEL_T);
+  printf("Setting up the %u Accel : %u CPU (thread) Accelerators...\n", NUM_CPU_ACCEL, SCHED_CPU_ACCEL_T);
   sprintf(global_hardware_state_block.accel_name_str[SCHED_CPU_ACCEL_T], "CPU-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_CPU_ACCEL_T], "Run task on a RISC-V CPU thread");
   global_hardware_state_block.num_accelerators_of_type[SCHED_CPU_ACCEL_T] = NUM_CPU_ACCEL;
@@ -1193,7 +1193,7 @@ void set_up_scheduler() {
   }
 
   // Set up the Viterbi Decoder HWR accelerators
-  printf("Setting up the Accel %u  Viterbi Decoder Hardware Accelerators...\n", SCHED_EPOCHS_VITDEC_ACCEL_T);
+  printf("Setting up the %u Accel : %u Viterbi Decoder Hardware Accelerators...\n", NUM_VIT_ACCEL, SCHED_EPOCHS_VITDEC_ACCEL_T);
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "VIT-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "Run task on the Viterbi-Decode Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_VITDEC_ACCEL_T] = NUM_VIT_ACCEL;
@@ -1209,7 +1209,7 @@ void set_up_scheduler() {
     printf("Note: accelerator initialization function is NULL\n");
   }
 
-  printf("Setting up the Accel %u 1-D FFT Hardware Accelerators...\n", SCHED_EPOCHS_1D_FFT_ACCEL_T);
+  printf("Setting up the %u Accel : %u 1-D FFT Hardware Accelerators...\n", NUM_FFT_ACCEL, SCHED_EPOCHS_1D_FFT_ACCEL_T);
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "FFT-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "Run task on the 1-D FFT Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_1D_FFT_ACCEL_T] = NUM_FFT_ACCEL;
@@ -1225,7 +1225,7 @@ void set_up_scheduler() {
     printf("Note: accelerator initialization function is NULL\n");
   }
 
-  printf("Setting up the Accel %u NVDLA CV/CNN Hardware Accelerators...\n", SCHED_EPOCHS_CV_CNN_ACCEL_T);
+  printf("Setting up the %u Accel : %u NVDLA CV/CNN Hardware Accelerators...\n", NUM_CV_ACCEL, SCHED_EPOCHS_CV_CNN_ACCEL_T);
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "CV-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "Run task on the CV/CNN NVDLA Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_CV_CNN_ACCEL_T] = NUM_CV_ACCEL;
@@ -1485,39 +1485,26 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     if (desired_num != 0) {
       if (global_hardware_state_block.num_accelerators_of_type[i] == 0) {
         if (desired_num < 0) {
-          printf(
-              "WARNING: Requested all-avail Accel for empty Pool %u : %s %s\n",
-              i, global_hardware_state_block.accel_name_str[i],
-              global_hardware_state_block.accel_desc_str[i]);
+          printf("WARNING: Requested all-avail Accel for empty Pool %u : %s %s\n", i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
         } else {
-          printf("WARNING: Requested %u Accel for empty Pool %u : %s %s\n",
-                 desired_num, i, global_hardware_state_block.accel_name_str[i],
-                 global_hardware_state_block.accel_desc_str[i]);
+          printf("WARNING: Requested %u Accel for empty Pool %u : %s %s\n", desired_num, i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
         }
       }
       accelerator_type_t acid = sptr->next_avail_accel_id;
       if (acid >= sptr->inparms->max_accel_types) {
-        printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are "
-               "adding id %u\n",
-               sptr->inparms->max_accel_types, acid);
+        printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", sptr->inparms->max_accel_types, acid);
         exit( -32);
       }
       sptr->map_sched_accel_type_to_local_accel_type[i] = acid;
       printf("map_sched_accel_type_to_local_accel_type[%u] = %u\n", i, acid);
       sptr->next_avail_accel_id += 1;
       printf("sptr->next_avail_accel_id now = %u\n", sptr->next_avail_accel_id);
-      if (desired_num >
-          global_hardware_state_block.num_accelerators_of_type[i]) {
-        printf("ERROR: Specified desired number of accelerators ( %u ) is more "
-               "than available in the hardware ( %u )\n",
-               desired_num,
-               global_hardware_state_block.num_accelerators_of_type[i]);
+      if (desired_num > global_hardware_state_block.num_accelerators_of_type[i]) {
+        printf("ERROR: Specified desired number of accelerators ( %u ) is more than available in the hardware ( %u )\n", desired_num, global_hardware_state_block.num_accelerators_of_type[i]);
         exit( -33);
       }
       if (desired_num > sptr->max_accel_of_any_type) {
-        printf("ERROR: Specified desired number of accelerators ( %u ) is more "
-               "than specified max_accel_of_any_type ( %u )\n",
-               desired_num, sptr->max_accel_of_any_type);
+        printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num, sptr->max_accel_of_any_type);
         exit( -34);
       }
       unsigned alloc_num;
@@ -1530,23 +1517,16 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
       }
       sptr->num_accelerators_of_type[acid] = alloc_num;
       total_accelerators_allocated += alloc_num;
-      printf(
-          "Setting to use %d from Accelerator Pool %u : SL Accel %u %s : %s\n",
-          alloc_num, acid, i, global_hardware_state_block.accel_name_str[i],
-          global_hardware_state_block.accel_desc_str[i]);
-      sptr->do_accel_init_function[acid] =
-          global_hardware_state_block.do_accel_init_function[i];
-      sptr->do_accel_closeout_function[acid] =
-          global_hardware_state_block.do_accel_closeout_function[i];
-      sptr->output_accel_run_stats_function[acid] =
-          global_hardware_state_block.output_accel_run_stats_function[i];
+      printf("Setting to use %d from Accelerator Pool %u : SL Accel %u %s : %s\n", alloc_num, acid, i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
+      sptr->do_accel_init_function[acid] = global_hardware_state_block.do_accel_init_function[i];
+      sptr->do_accel_closeout_function[acid] = global_hardware_state_block.do_accel_closeout_function[i];
+      sptr->output_accel_run_stats_function[acid] = global_hardware_state_block.output_accel_run_stats_function[i];
       sprintf(sptr->accel_name_str[acid], "%s", global_hardware_state_block.accel_name_str[i]);
       sprintf(sptr->accel_desc_str[acid], "%s", global_hardware_state_block.accel_desc_str[i]);
     } // if (desired_num != 0)
   }   // for (itn i = 0 .. SCHED_MAX_ACCEL_TYPES)
   if (total_accelerators_allocated == 0) {
-    printf("WARNING: No scheduler accelerator (pools) were requested -- no "
-           "accelerators allocated for scheduler to schedule\n");
+    printf("WARNING: No scheduler accelerator (pools) were requested -- no accelerators allocated for scheduler to schedule\n");
   }
 
   /**

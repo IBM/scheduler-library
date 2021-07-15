@@ -168,7 +168,7 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
     } // for (bi = 1 .. numMetatdataBlocks)
   }   // for (ai = 0 .. total_accel_types)
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type, sptr->task_name_str[my_task_type]);
-  printf("     Call        run time\n");
+  printf("     Call        run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_call_usec[ai], avg);
@@ -178,7 +178,7 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_call_usec[total_accel_types], avg);
   }
 
-  printf("     depuncture  run time\n");
+  printf("     depuncture  run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_depunc_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_depunc_usec[ai], avg);
@@ -188,7 +188,7 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_depunc_usec[total_accel_types], avg);
   }
 
-  printf("     do-decoding run time\n");
+  printf("     do-decoding run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_dodec_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", ai, sptr->accel_name_str[ai], total_vit_comp_by[ai], total_dodec_usec[ai], avg);

@@ -58,15 +58,19 @@ CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 # MAX for others is determined by the hardware run on
 ifdef CONFIG_NUM_CPU
 CFLAGS += -DNUM_CPU_ACCEL=$(CONFIG_NUM_CPU)
+$(info $$NUM_CPU_ACCEL is [${CONFIG_NUM_CPU}])
 endif
 ifdef CONFIG_NUM_VIT
 CFLAGS += -DNUM_VIT_ACCEL=$(CONFIG_NUM_VIT)
+$(info $$NUM_VIT_ACCEL is [${CONFIG_NUM_VIT}])
 endif
 ifdef CONFIG_NUM_FFT
 CFLAGS += -DNUM_FFT_ACCEL=$(CONFIG_NUM_FFT)
+$(info $$NUM_FFT_ACCEL is [${CONFIG_NUM_FFT}])
 endif
 ifdef CONFIG_NUM_CV
 CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
+$(info $$NUM_CV_ACCEL is [${CONFIG_NUM_CV}])
 endif
 
 SW_STR = S

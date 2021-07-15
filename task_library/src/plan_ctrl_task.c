@@ -100,7 +100,7 @@ void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
 
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
          sptr->task_name_str[my_task_type]);
-  printf("     PnC-call  run time\n");
+  printf("     PnC-call  run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_plan_ctrl_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
