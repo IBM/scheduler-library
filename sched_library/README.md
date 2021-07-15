@@ -20,35 +20,18 @@ This code is the Scheduler library portion; it is usually obtained as part of th
 along with the example-of-use the <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application
 implementation.
 
-Installation and execution are fairly standard, via github clone and makefiles.  To make the full repository:
-
-```
-git clone https://github.com/IBM/scheduler-library.git
-cd scheduler-library
-make
-```
-or to make just the Task-Scheduler Library portion:
-
-```
-git clone https://github.com/IBM/scheduler-library.git
-cd scheduler-library/library
-make
-```
-
-The `make clean` can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. The `make` command should produce the `test-scheduler*` target, which is the core executable that will run the C-mode <a href="https://github.com/IBM/mini-era" target="_blank">Mini-ERA</a> application atop SL.
-
-The `make` process uses the contents of a `.config` file to set various compile-time parameters.  The current version of this configuration is taken from the parent directory (i.e. the usage application in this case).
-
-The resulting output is ```libscheduler.a``` which is a library containing the task-scheduler functionality.
-The buidl also produces a directory ```policies``` which is populated with a set of shared-object libraries that each define a scheduler policy.
-The Scheduler does not provide a default policy, and one must indicate which scheduler (shared-object library) should be used by the Scheduler for the run.
+Installation and execution are fairly standard, via github clone and makefiles.  
+See the top-level installation instructions.
 
 ## The Scheduler API
 
 The basic Scheudler interface is defined in the 
 <a href="https://github.com/IBM/scheduler-library/tree/master/sched_lib/include/scheduler.h">scheduler.h</a> file.
 
-NOTE: This API is undergoing major revision, and the follwing description is somewhat outdated.  This will be updated when we have finalized the nmewest revisions to the API.
+NOTE: This API is undergoing major revision, and the follwing description is somewhat outdated.  This will be updated when we have finalized the newest revisions to the API.
+
+The newest version of the Scheduler API uses fewer, more powerful API functions to reduce the "low-level" interactions from the applicaiton, and overall simplify the apparent API.  As such, the primary new-API functions are still very similar, e.g. the ```set_up_task``` call that now includes many parameters tht previously were provided though a series of individual, lower-level API calls.  Furthermore, the old API is currently still fully supported (in the non-HPVM compilation versions).
+
 
 At the top is a definition of various types (structures) used in the scheduler and in interfacing with the scheduler.
 The basic flow is that an application will
