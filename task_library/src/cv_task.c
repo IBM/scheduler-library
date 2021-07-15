@@ -79,14 +79,11 @@ void print_cv_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
   print_base_metadata_block_contents(mb);
 }
 
-void output_cv_task_type_run_stats(
-    /*scheduler_datastate_block_t*/ void *sptr_ptr, unsigned my_task_type,
-    unsigned total_accel_types) {
+void output_cv_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) 
+{
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
-         my_task_type, sptr->task_name_str[my_task_type],
-         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The CV/CNN Task Timing Info
   unsigned total_cv_comp_by[total_accel_types + 1];
   uint64_t total_cv_call_usec[total_accel_types + 1];
@@ -129,7 +126,7 @@ void output_cv_task_type_run_stats(
   }   // for (ai = 0 .. total_accel_types)
 
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type, sptr->task_name_str[my_task_type]);
-  printf("     CNN-call  run time   ");
+  printf("     CNN-call  run time\n");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_cv_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_cv_comp_by[ai], total_cv_call_usec[ai], avg);
@@ -139,7 +136,7 @@ void output_cv_task_type_run_stats(
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_cv_comp_by[total_accel_types], total_cv_call_usec[total_accel_types], avg);
   }
 
-  printf("     CNN-NVDLA run time   ");
+  printf("     CNN-NVDLA run time\n");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_nvdla_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_cv_comp_by[ai], total_nvdla_usec[ai], avg);
@@ -149,7 +146,7 @@ void output_cv_task_type_run_stats(
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_cv_comp_by[total_accel_types], total_nvdla_usec[total_accel_types], avg);
   }
 
-  printf("     get_label run time   ");
+  printf("     get_label (parse) run time\n");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_parse_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_cv_comp_by[ai], total_parse_usec[ai], avg);

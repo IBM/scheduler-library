@@ -61,10 +61,8 @@ void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
                                           unsigned total_accel_types) {
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u "
-         "accelerators\n",
-         my_task_type, sptr->task_name_str[my_task_type],
-         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
+         my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The PLAN_CTRL/CNN Task Timing Info
   unsigned total_plan_ctrl_comp_by[total_accel_types + 1];
   uint64_t total_plan_ctrl_call_usec[total_accel_types + 1];
@@ -74,30 +72,21 @@ void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
   }
   for (int ai = 0; ai < total_accel_types; ai++) {
     if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u "
-             "%s\n",
-             my_task_type, sptr->task_name_str[my_task_type], ai,
-             sptr->accel_name_str[ai]);
+      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n",
+             my_task_type, sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      plan_ctrl_timing_data_t *plan_ctrl_timings_p =
-          (plan_ctrl_timing_data_t *)&(
+      plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *)&(
               sptr->master_metadata_pool[bi].task_timings[my_task_type]);
-      unsigned this_comp_by =
-          (unsigned)(sptr->master_metadata_pool[bi]
-                         .task_computed_on[ai][my_task_type]);
-      uint64_t this_plan_ctrl_call_usec =
-          (uint64_t)(plan_ctrl_timings_p->call_sec[ai]) * 1000000 +
-          (uint64_t)(plan_ctrl_timings_p->call_usec[ai]);
+      unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
+      uint64_t this_plan_ctrl_call_usec = (uint64_t)(plan_ctrl_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(plan_ctrl_timings_p->call_usec[ai]);
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
         printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi,
-               ai, sptr->accel_name_str[ai], this_comp_by,
-               this_plan_ctrl_call_usec);
+               ai, sptr->accel_name_str[ai], this_comp_by, this_plan_ctrl_call_usec);
       } else {
         if ((this_comp_by + this_plan_ctrl_call_usec) != 0) {
           printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi,
-                 ai, sptr->accel_name_str[ai], this_comp_by,
-                 this_plan_ctrl_call_usec);
+                 ai, sptr->accel_name_str[ai], this_comp_by, this_plan_ctrl_call_usec);
         }
       }
       // Per acceleration (CPU, HWR)
@@ -111,20 +100,16 @@ void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
 
   printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
          sptr->task_name_str[my_task_type]);
-  printf("     CNN-call  run time   ");
+  printf("     PnC-call  run time\n");
   for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_plan_ctrl_call_usec[ai] /
-                 (double)sptr->freed_metadata_blocks[my_task_type];
+    double avg = (double)total_plan_ctrl_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_plan_ctrl_comp_by[ai],
-           total_plan_ctrl_call_usec[ai], avg);
+           sptr->accel_name_str[ai], total_plan_ctrl_comp_by[ai], total_plan_ctrl_call_usec[ai], avg);
   }
   {
-    double avg = (double)total_plan_ctrl_call_usec[total_accel_types] /
-                 (double)sptr->freed_metadata_blocks[my_task_type];
+    double avg = (double)total_plan_ctrl_call_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_plan_ctrl_comp_by[total_accel_types],
-           total_plan_ctrl_call_usec[total_accel_types], avg);
+           total_plan_ctrl_comp_by[total_accel_types], total_plan_ctrl_call_usec[total_accel_types], avg);
   }
 }
 
