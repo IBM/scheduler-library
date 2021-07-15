@@ -35,14 +35,10 @@ typedef struct { // The "Viterbi" view of "data"
   int32_t n_cbps;
   int32_t n_traceback;
   int32_t psdu_size;
-  int32_t inMem_size;   // The first inMem_size bytes of theData are the inMem
-                        // (input memories)
-  int32_t inData_size;  // The next inData_size bytes of theData are the inData
-                        // (input data)
-  int32_t outData_size; // The next outData_size bytes of theData are the
-                        // outData (output data)
-  uint8_t theData[64 * 1024]; // This is larger than needed (~24780 + 18585) but
-                              // less than FFT requires (so okay)
+  int32_t inMem_size;   // The first inMem_size bytes of theData are the inMem (input memories)
+  int32_t inData_size;  // The next inData_size bytes of theData are the inData (input data)
+  int32_t outData_size; // The next outData_size bytes of theData are the outData (output data)
+  uint8_t theData[64 * 1024]; // Larger than needed (~24780 + 18585) but less than FFT (so okay)
 } viterbi_data_struct_t;
 
 typedef struct {

@@ -30,14 +30,11 @@
 //// samples, 14 = 16k-samples)
 //extern unsigned crit_fft_samples_set;
 
-// This is a structure that defines the "FFT" job's "view" of the data (in the
-// metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting
-//  the data space.
+// This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting  the data space.
 typedef struct {                // The "FFT" Task view of "data"
   int32_t log_nsamples;         // The Log2 of the number of samples in this FFT
-  float theData[2 * (1 << 14)]; // MAx supported samples (2^14) * 2 float per
-                                // complex input/output
+  float theData[2 * (1 << 14)]; // MAx supported samples (2^14) * 2 float per complex input/output
 } fft_data_struct_t;
 
 // The following structures are for timing analysis (per job type)

@@ -325,10 +325,8 @@ void execute_hwr_fft_accelerator(
 #ifdef INT_TIME
   struct timeval cvtin_stop;
   gettimeofday(&cvtin_stop, NULL);
-  fft_timings_p->fft_cvtin_sec[aidx] +=
-      cvtin_stop.tv_sec - fft_timings_p->fft_cvtin_start.tv_sec;
-  fft_timings_p->fft_cvtin_usec[aidx] +=
-      cvtin_stop.tv_usec - fft_timings_p->fft_cvtin_start.tv_usec;
+  fft_timings_p->fft_cvtin_sec[aidx] += cvtin_stop.tv_sec - fft_timings_p->fft_cvtin_start.tv_sec;
+  fft_timings_p->fft_cvtin_usec[aidx] += cvtin_stop.tv_usec - fft_timings_p->fft_cvtin_start.tv_usec;
 #endif // INT_TIME
 
   // Call the FFT Accelerator
@@ -342,10 +340,8 @@ void execute_hwr_fft_accelerator(
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_timings_p->fft_comp_sec[aidx] +=
-      stop_time.tv_sec - fft_timings_p->fft_comp_start.tv_sec;
-  fft_timings_p->fft_comp_usec[aidx] +=
-      stop_time.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
+  fft_timings_p->fft_comp_sec[aidx] += stop_time.tv_sec - fft_timings_p->fft_comp_start.tv_sec;
+  fft_timings_p->fft_comp_usec[aidx] += stop_time.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
 #endif
   // convert output from fixed point to float
   DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
@@ -360,17 +356,13 @@ void execute_hwr_fft_accelerator(
 #ifdef INT_TIME
   struct timeval cvtout_stop;
   gettimeofday(&cvtout_stop, NULL);
-  fft_timings_p->fft_cvtout_sec[aidx] +=
-      cvtout_stop.tv_sec - fft_timings_p->fft_cvtout_start.tv_sec;
-  fft_timings_p->fft_cvtout_usec[aidx] +=
-      cvtout_stop.tv_usec - fft_timings_p->fft_cvtout_start.tv_usec;
+  fft_timings_p->fft_cvtout_sec[aidx] += cvtout_stop.tv_sec - fft_timings_p->fft_cvtout_start.tv_sec;
+  fft_timings_p->fft_cvtout_usec[aidx] += cvtout_stop.tv_usec - fft_timings_p->fft_cvtout_start.tv_usec;
   /* #ifdef INT_TIME */
   /*  struct timeval stop_time; */
   /*  gettimeofday(&stop_time, NULL); */
-  fft_timings_p->fft_sec[aidx] +=
-      cvtout_stop.tv_sec - fft_timings_p->fft_start.tv_sec;
-  fft_timings_p->fft_usec[aidx] +=
-      cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
+  fft_timings_p->fft_sec[aidx] += cvtout_stop.tv_sec - fft_timings_p->fft_start.tv_sec;
+  fft_timings_p->fft_usec[aidx] += cvtout_stop.tv_usec - fft_timings_p->fft_start.tv_usec;
 #endif // INT_TIME
 
   DEBUG(printf("EHFA: MB%u FFT_HWR calling mark_task_done...\n",
@@ -410,10 +402,8 @@ void execute_cpu_fft_accelerator(
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_timings_p->fft_sec[aidx] +=
-      stop_time.tv_sec - fft_timings_p->fft_start.tv_sec;
-  fft_timings_p->fft_usec[aidx] +=
-      stop_time.tv_usec - fft_timings_p->fft_start.tv_usec;
+  fft_timings_p->fft_sec[aidx] += stop_time.tv_sec - fft_timings_p->fft_start.tv_sec;
+  fft_timings_p->fft_usec[aidx] += stop_time.tv_usec - fft_timings_p->fft_start.tv_usec;
 #endif
 
   TDEBUG(printf("MB%u FFT_CPU calling mark_task_done...\n",
@@ -551,35 +541,28 @@ void finish_fft_execution(
   float *results = va_arg(var_list, float *);
 
   int tidx = fft_metadata_block->accelerator_type;
-  fft_timing_data_t *fft_timings_p = (fft_timing_data_t *)&(
-      fft_metadata_block->task_timings[fft_metadata_block->task_type]);
-  fft_data_struct_t *fft_data_p =
-      (fft_data_struct_t *)(fft_metadata_block->data_space);
+  fft_timing_data_t *fft_timings_p = (fft_timing_data_t *)&(fft_metadata_block->task_timings[fft_metadata_block->task_type]);
+  fft_data_struct_t *fft_data_p = (fft_data_struct_t *)(fft_metadata_block->data_space);
   uint32_t fft_log_nsamples = fft_data_p->log_nsamples;
   float *data = (float *)fft_data_p->theData;
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
-  fft_timings_p->call_sec[tidx] +=
-      stop_time.tv_sec - fft_timings_p->call_start.tv_sec;
-  fft_timings_p->call_usec[tidx] +=
-      stop_time.tv_usec - fft_timings_p->call_start.tv_usec;
+  fft_timings_p->call_sec[tidx] += stop_time.tv_sec - fft_timings_p->call_start.tv_sec;
+  fft_timings_p->call_usec[tidx] += stop_time.tv_usec - fft_timings_p->call_start.tv_usec;
 
   gettimeofday(&(fft_timings_p->cdfmcw_start), NULL);
 #endif // INT_TIME
 
   // Copy out task data from the MetaData Block to the provided memory space
   float *mdataptr = (float *)fft_data_p->theData;
-  DEBUG(printf("scpdff: log_n = %u data_size = %u mdatp = %p\n",
-               fft_data_p->log_nsamples, fft_metadata_block->data_size,
-               mdataptr));
+  DEBUG(printf("scpdff: log_n = %u data_size = %u mdatp = %p\n", fft_data_p->log_nsamples, fft_metadata_block->data_size, mdataptr));
   for (int i = 0; i < 2 * (1 << fft_log_nsamples); i++) {
     results[i] = data[i];
   }
 
   // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
-               fft_metadata_block->block_id));
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", fft_metadata_block->block_id));
   free_task_metadata_block(fft_metadata_block);
   va_end(var_list);
 }
