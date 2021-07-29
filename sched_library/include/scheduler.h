@@ -172,8 +172,7 @@ typedef struct task_metadata_entry_struct {
                                    //task (in usec) -- maps task projected time
                                    //on accelerator...
 
-  void (*atFinish)(
-      struct task_metadata_entry_struct *); // Call-back Finish-time function
+  void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
 
   // Statistics
   uint32_t *gets_by_task_type;  // Count of times this metadata block allocated
@@ -217,29 +216,20 @@ typedef void (*sched_execute_task_function_t)(task_metadata_block_t *);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_task_type routine.
-typedef void (*print_metadata_block_contents_t)(
-    /*task_metadata_block_t*/ void *);
-typedef void (*output_task_type_run_stats_t)(
-    /*struct scheduler_datastate_block_struct*/ void *sptr,
-    unsigned my_task_type, unsigned total_accel_types);
+typedef void (*print_metadata_block_contents_t)(/*task_metadata_block_t*/ void *);
+typedef void (*output_task_type_run_stats_t)(/*struct scheduler_datastate_block_struct*/ void *sptr, unsigned my_task_type, unsigned total_accel_types);
 
-typedef /*task_metadata_block_t*/ void *(*set_up_task_function_t)(
-    /*struct scheduler_datastate_block_struct*/ void *sptr,
-    task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
-    int32_t dag_id, void* args);
-typedef void (*finish_task_execution_function_t)(
-    /*task_metadata_block_t*/ void *the_metadata_block, void* args);
+typedef /*task_metadata_block_t*/ void *(*set_up_task_function_t)(/*struct scheduler_datastate_block_struct*/ void *sptr,
+								  task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
+								  int32_t dag_id, void* args);
+typedef void (*finish_task_execution_function_t)(/*task_metadata_block_t*/ void *the_metadata_block, void* args);
 typedef void (*auto_finish_task_function_t)(/*task_metadata_block_t*/ void *mb);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_accelerator_type routine.
-typedef void (*do_accel_initialization_t)(
-    struct scheduler_datastate_block_struct *sptr);
-typedef void (*do_accel_closeout_t)(
-    struct scheduler_datastate_block_struct *sptr);
-typedef void (*output_accel_run_stats_t)(
-    struct scheduler_datastate_block_struct *sptr, unsigned my_accel_id,
-    unsigned total_task_types);
+typedef void (*do_accel_initialization_t)(struct scheduler_datastate_block_struct *sptr);
+typedef void (*do_accel_closeout_t)(struct scheduler_datastate_block_struct *sptr);
+typedef void (*output_accel_run_stats_t)(struct scheduler_datastate_block_struct *sptr, unsigned my_accel_id, unsigned total_task_types);
 
 // This typedef defines a structure used to describe a accelerator (for the
 // register_accelerator_type routine)
@@ -350,15 +340,11 @@ typedef struct scheduler_datastate_block_struct {
       *scheduler_execute_task_function; //[MAX_ACCEL_TYPES]; // array over
                                         //TASK_TYPES
 
-  print_metadata_block_contents_t
-      *print_metablock_contents_function; // array over TASK_TYPES
-  output_task_type_run_stats_t
-      *output_task_run_stats_function;          // array over TASK_TYPES
+  print_metadata_block_contents_t *print_metablock_contents_function; // array over TASK_TYPES
+  output_task_type_run_stats_t *output_task_run_stats_function;          // array over TASK_TYPES
   set_up_task_function_t *set_up_task_function; // array over TASK_TYPES
-  finish_task_execution_function_t
-      *finish_task_execution_function; // array over TASK_TYPES
-  auto_finish_task_function_t
-      *auto_finish_task_function; // array over TASK_TYPES
+  finish_task_execution_function_t *finish_task_execution_function; // array over TASK_TYPES
+  auto_finish_task_function_t *auto_finish_task_function; // array over TASK_TYPES
 
   do_accel_initialization_t *do_accel_init_function; //[MAX_ACCEL_TYPES];
   do_accel_closeout_t *do_accel_closeout_function;   //[MAX_ACCEL_TYPES];

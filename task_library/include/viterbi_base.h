@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INCLUDED_BASE_H
-#define INCLUDED_BASE_H
+#ifndef INCLUDED_VITERBI_BASE_H
+#define INCLUDED_VITERBI_BASE_H
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 // Maximum number of traceback bytes
 #define TRACEBACK_MAX 24
 
@@ -29,6 +29,7 @@
 
 int d_ntraceback;
 int d_k;
+
 static ofdm_param *d_ofdm;
 static frame_param *d_frame;
 static const unsigned char *d_depuncture_pattern;

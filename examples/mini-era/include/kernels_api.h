@@ -39,7 +39,7 @@ typedef struct {
   float return_data[2 * MAX_RADAR_N];
 } radar_dict_entry_t;
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 typedef struct {
   unsigned int msg_num;
   unsigned int msg_id;
@@ -52,7 +52,7 @@ typedef struct {
 #define VITERBI_MSG_LENGTHS     4
 #define VITERBI_MSGS_PER_STEP   3
 
-static unsigned crit_fft_samples_set = 0; // The sample set used for Critical Task FFT
+extern unsigned crit_fft_samples_set; // The sample set used for Critical Task FFT
 extern bool  output_viz_trace;
 
 extern char* lane_names[NUM_LANES];

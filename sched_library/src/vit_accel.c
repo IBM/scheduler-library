@@ -88,13 +88,13 @@ do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
     if(vitHW_fd < 0) {
       fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
-      cleanup_and_exit(sptr, EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
 
     vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
     if (vitHW_lmem[vi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
-      cleanup_and_exit(sptr, EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
     vitHW_li_mem[vi] = &(vitHW_lmem[vi][0]);
     vitHW_lo_mem[vi] = &(vitHW_lmem[vi][vitHW_out_offset[vi]]);
@@ -115,7 +115,7 @@ void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_
 {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("ERROR : do_decoding_in_hw : IOCTL:");
-    cleanup_and_exit(sptr, EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 }
 #endif

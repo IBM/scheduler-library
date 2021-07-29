@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_BASE_TASK_TYPES_H
-#define H_BASE_TASK_TYPES_H
+#ifndef INCLUDED_BASE_TASK_TYPES_H
+#define INCLUDED_BASE_TASK_TYPES_H
 #include <stdbool.h>
 
 /* Types definitions */
@@ -34,7 +34,21 @@ typedef enum {
   NUM_OBJECTS
 } label_t;
 
-
+#if (BUILD_WITH_N_LANES == 9)
+/* The potential (horizontal) positions of any object (i.e. lane indications) */
+typedef enum {
+  lhazard = 0,
+  far_left,
+  left,
+  l_center,
+  center,
+  r_center,
+  right,
+  far_right,
+  rhazard,
+  NUM_LANES
+} lane_t;
+#else
 /* The potential (horizontal) positions of any object (i.e. lane indications) */
 typedef enum {
   lhazard = 0, 
@@ -44,6 +58,7 @@ typedef enum {
   rhazard,
   NUM_LANES
 } lane_t;
+#endif
 
 /* These are some global type defines, etc. */
 typedef struct
@@ -74,19 +89,15 @@ typedef enum {
 
 /* These are GLOBAL and affect the underlying world, etc. */
 
-#define MAX_DISTANCE     500.0  // Max resolution distance of radar is < 500.0m
-#define DIST_STEP_SIZE    50.0
-#define INF_DISTANCE     (MAX_DISTANCE + DIST_STEP_SIZE)
-#define RADAR_BUCKET_DISTANCE  DIST_STEP_SIZE  // The radar is in steps of 50
 
 /* These thresholds (in meters) are used by the plan_and_control()
  * function to make plan and control decisions.
  */
-#define PNC_THRESHOLD_1 155.0
-#define PNC_THRESHOLD_2 205.0
-#define PNC_THRESHOLD_3 305.0
+extern distance_t PNC_THRESHOLD_1;
+extern distance_t PNC_THRESHOLD_2;
+extern distance_t PNC_THRESHOLD_3;
 
-#define VIT_CLEAR_THRESHOLD  THRESHOLD_1
+extern distance_t VIT_CLEAR_THRESHOLD;
 
 extern float IMPACT_DISTANCE; // Minimum distance at which an obstacle "impacts" MyCar (collision case)
 

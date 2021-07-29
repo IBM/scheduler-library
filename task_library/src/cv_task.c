@@ -30,7 +30,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 //#define VERBOSE
 #include "verbose.h"
 
@@ -375,7 +375,7 @@ void set_up_cv_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     cv_profile[ai] = ACINFPROF;
   }
- #ifndef CONFIG_CV_OoNLY_HWR
+ #ifndef CONFIG_CV_ONLY_HWR
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
   cv_profile[SCHED_CPU_ACCEL_T] = cv_cpu_run_time_in_usec; // Specified in the run - was 5000000
   DEBUG(printf("CV_PROFILE: NOT_HW_ONLY : cv_profile[CPU] = %lu\n", cv_profile[SCHED_CPU_ACCEL_T]));
@@ -435,7 +435,7 @@ set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   DEBUG(printf("MB%u In set_up_cv_task\n", cv_mb_ptr->block_id));
 
   if (use_auto_finish) {
-    cv_mb_ptr->atFinish = sptr->auto_finish_task_function[cv_task_type]; // get_auto_finish_routine(sptr, cv_task_type);
+    cv_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[cv_task_type]); // get_auto_finish_routine(sptr, cv_task_type);
   } else {
     cv_mb_ptr->atFinish = NULL;
   }
@@ -478,16 +478,13 @@ void finish_cv_execution(/*task_metadata_block_t*/ void *cv_metadata_block_ptr, 
   va_list var_list;
   va_copy(var_list, *(va_list*)args);
   // va_start(var_list, cv_metadata_block_ptr);
-  task_metadata_block_t *cv_metadata_block =
-      (task_metadata_block_t *)cv_metadata_block_ptr;
+  task_metadata_block_t *cv_metadata_block = (task_metadata_block_t *)cv_metadata_block_ptr;
   // label_t *obj_label)
   label_t *obj_label = va_arg(var_list, label_t *);
 
   int tidx = cv_metadata_block->accelerator_type;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(
-      cv_metadata_block->task_timings[cv_metadata_block->task_type]);
-  cv_data_struct_t *cv_data_p =
-      (cv_data_struct_t *)(cv_metadata_block->data_space);
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(cv_metadata_block->task_timings[cv_metadata_block->task_type]);
+  cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(cv_metadata_block->data_space);
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
@@ -498,8 +495,7 @@ void finish_cv_execution(/*task_metadata_block_t*/ void *cv_metadata_block_ptr, 
   *obj_label = cv_data_p->object_label;
 
   // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
-               cv_metadata_block->block_id));
+  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
   free_task_metadata_block(cv_metadata_block);
   va_end(var_list);
 }

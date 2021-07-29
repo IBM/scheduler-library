@@ -7,7 +7,7 @@
 #include "verbose.h"
 
 #include "viterbi_base.h"
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 #include "viterbi_standalone.h"
 
 #ifdef COMPILE_TO_ESP

@@ -112,14 +112,14 @@ do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr)
     fftHW_fd[fi] = open(fftAccelName[fi], O_RDWR, 0);
     if (fftHW_fd[fi] < 0) {
       fprintf(stderr, "Error: cannot open %s", fftAccelName[fi]);
-      cleanup_and_exit(sptr, EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
 
     printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
     fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
     if (fftHW_lmem[fi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
-      cleanup_and_exit(sptr, EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
 
     fftHW_li_mem[fi] = &(fftHW_lmem[fi][0]);
@@ -157,7 +157,7 @@ void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *
 {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("ERROR : fft_in_hw : IOCTL:");
-    cleanup_and_exit(sptr, EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 }
 #endif

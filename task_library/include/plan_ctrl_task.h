@@ -25,17 +25,14 @@
 #include "base_task_types.h"
 #include "scheduler.h"
 
-// This is a structure that defines the "PLAN_CTRL" task's "view" of the data
-// (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting
-//  the data space.
-typedef struct {              // The "Plan-and-Control" Task view of "data"
-  unsigned time_step;         // The current time-step of the simulation
-  unsigned repeat_factor;     // The number of repeated computations to do
-  label_t object_label;       // The determined label of the object in the image
-  distance_t object_distance; // The distance to the closest vehicle in our lane
-  message_t safe_lanes_msg;   // The message indicating which lanes are safe to
-                              // change into
+// This is a structure that defines the "PLAN_CTRL" task's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "Plan-and-Control" Task view of "data"
+  unsigned        time_step;         // The current time-step of the simulation
+  unsigned        repeat_factor;     // The number of repeated computations to do
+  label_t         object_label;      // The determined label of the object in the image
+  distance_t      object_distance;   // The distance to the closest vehicle in our lane
+  message_t       safe_lanes_msg;    // The message indicating which lanes are safe to change into
   vehicle_state_t vehicle_state;     // The current (input) vehicle state
   vehicle_state_t new_vehicle_state; // The new (oputput) vehicle state
 } plan_ctrl_data_struct_t;
@@ -63,9 +60,6 @@ void *set_up_plan_ctrl_task(void *sptr, task_type_t plan_ctrl_task_type,
                             int32_t dag_id, void *var_list);
 
 void plan_ctrl_auto_finish_routine(void *mb);
-void finish_plan_ctrl_execution(
-    void *plan_ctrl_metadata_block,
-     void *var_list); // vehicle_state_t* new_vehicle_state);
-    //...);
+void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block, void *var_list); // vehicle_state_t* new_vehicle_state);
 
 #endif

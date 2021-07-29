@@ -18,7 +18,7 @@
 #ifndef INCLUDED_BASE_H
 #define INCLUDED_BASE_H
 
-#include "viterbi_utils.h"
+#include "viterbi_types.h"
 // Maximum number of traceback bytes
 #define TRACEBACK_MAX 24
 

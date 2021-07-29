@@ -28,11 +28,9 @@
 // Some Profiling Data:
 //#define usecHwrCV   150000
 
-// This is a structure that defines the "CV" task's "view" of the data (in the
-// metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting
-//  the data space.
-typedef struct {        // The "CV" Task view of "data"
+// This is a structure that defines the "CV" task's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "CV" Task view of "data"
   label_t object_label; // The deteremined label of the object in the image
 } cv_data_struct_t;
 
@@ -56,8 +54,7 @@ extern unsigned cv_fake_hwr_run_time_in_usec;
 
 void print_cv_metadata_block_contents(void *mb);
 
-void output_cv_task_type_run_stats(void *sptr, unsigned my_task_type,
-                                   unsigned total_accel_types);
+void output_cv_task_type_run_stats(void *sptr, unsigned my_task_type, unsigned total_accel_types);
 
 void execute_hwr_cv_accelerator(void *task_metadata_block);
 void execute_cpu_cv_accelerator(void *task_metadata_block);
@@ -66,10 +63,9 @@ void set_up_cv_task_on_accel_profile_data();
 
 void *set_up_cv_task(void *sptr, task_type_t cv_task_type,
                      task_criticality_t crit_level, bool use_auto_finish,
-                     int32_t dag_id, void *); // label_t in_label);
+                     int32_t dag_id, void *args); // label_t in_label);
 
 void cv_auto_finish_routine(void *mb);
-void finish_cv_execution(void *fft_metadata_block,
-                         void *); // label_t* out_label);
+void finish_cv_execution(void *fft_metadata_block, void *args); // label_t* out_label);
 
 #endif

@@ -265,7 +265,7 @@ set_up_test_task(/*scheduler_datastate_block_t*/void* sptr_ptr,
     exit (-4);
   }
   if (use_auto_finish) {
-    test_mb_ptr->atFinish = sptr->auto_finish_task_function[test_task_type]; // get_auto_finish_routine(sptr, test_task_type);
+    test_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[test_task_type]); // get_auto_finish_routine(sptr, test_task_type);
   } else {
     test_mb_ptr->atFinish = NULL;
   }

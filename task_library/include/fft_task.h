@@ -24,7 +24,6 @@
 
 #include "base_task_types.h"
 #include "scheduler.h"
-//#include "kernels_api.h"
 
 //// This is the number of fft samples (the log of the samples, e.g. 10 = 1024
 //// samples, 14 = 16k-samples)
@@ -67,7 +66,7 @@ typedef struct {
   uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
-void print_fft_metadata_block_contents(void *mb);
+void print_fft_metadata_block_contents(/*task_metadata_block_t*/ void* mb);
 
 void set_up_fft_task_on_accel_profile_data();
 

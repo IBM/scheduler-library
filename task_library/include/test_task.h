@@ -32,11 +32,9 @@ extern unsigned test_on_hwr_fft_run_time_in_usec;
 extern unsigned test_on_hwr_vit_run_time_in_usec;
 extern unsigned test_on_hwr_cv_run_time_in_usec;
 
-// This is a structure that defines the "TEST" task's "view" of the data (in the
-// metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting
-//  the data space.
-typedef struct {        // The "TEST" Task view of "data"
+// This is a structure that defines the "TEST" task's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+typedef struct { // The "TEST" Task view of "data"
   label_t object_label; // The determined label of the object in the image
 } test_data_struct_t;
 
@@ -53,8 +51,7 @@ extern unsigned test_on_hwr_vit_run_time_in_usec;
 
 void print_test_metadata_block_contents(void *mb);
 
-void output_test_task_type_run_stats(void *sptr, unsigned my_task_type,
-                                     unsigned total_accel_types);
+void output_test_task_type_run_stats(void *sptr, unsigned my_task_type, unsigned total_accel_types);
 
 void execute_on_cpu_test_accelerator(void *task_metadata_block);
 void execute_on_hwr_vit_test_accelerator(void *task_metadata_block);

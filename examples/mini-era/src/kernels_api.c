@@ -140,7 +140,10 @@ unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the f
 unsigned total_test_tasks = 0;  // Total test tasks executed during the full run
 unsigned bad_test_task_res = 0; // Total test task "bad-resutls" during the full run
 
-
+distance_t PNC_THRESHOLD_1 = 155.0;
+distance_t PNC_THRESHOLD_2 = 205.0;
+distance_t PNC_THRESHOLD_3 = 305.0;
+distance_t VIT_CLEAR_THRESHOLD = 155.0;
 
 #ifdef ENABLE_NVDLA
  extern void initNVDLA();
@@ -734,7 +737,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 {
   printf("In the plan_and_control routine...\n");
   DEBUG(printf("In the plan_and_control routine : label %u %s distance %.1f (T1 %.1f T1 %.1f T3 %.1f) message %u\n", 
-	       label, object_names[label], distance, THRESHOLD_1, THRESHOLD_2, THRESHOLD_3, message));
+	       label, object_names[label], distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, message));
   vehicle_state_t new_vehicle_state = vehicle_state;
   if (!vehicle_state.active) {
     // Our car is broken and burning, no plan-and-control possible.
@@ -742,9 +745,9 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
   }
   
   if (//(label != no_label) && // For safety, assume every return is from SOMETHING we should not hit!
-      ((distance <= THRESHOLD_1)
+      ((distance <= PNC_THRESHOLD_1)
        #ifdef USE_SIM_ENVIRON
-       || ((vehicle_state.speed < car_goal_speed) && (distance <= THRESHOLD_2))
+       || ((vehicle_state.speed < car_goal_speed) && (distance <= PNC_THRESHOLD_2))
        #endif
        )) {
     if (distance <= IMPACT_DISTANCE) {

@@ -26,10 +26,8 @@
 #include "scheduler.h"
 #include "viterbi_base.h"
 
-// This is a structure that defines the "Viterbi" job's "view" of the data (in
-// the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting
-//  the data space.
+// This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
+//  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Viterbi" view of "data"
   int32_t n_data_bits;
   int32_t n_cbps;
@@ -60,8 +58,7 @@ void print_viterbi_metadata_block_contents(void *mb);
 
 void init_vit_parameters(int vn);
 
-void output_vit_task_type_run_stats(void *sptr, unsigned my_task_type,
-                                    unsigned total_accel_types);
+void output_vit_task_type_run_stats(void *sptr, unsigned my_task_type, unsigned total_accel_types);
 
 void exec_vit_task_on_vit_hwr_accel(void *task_metadata_block);
 void exec_vit_task_on_cpu_accel(void *task_metadata_block);
@@ -73,8 +70,6 @@ void *set_up_vit_task(void *sptr, task_type_t vit_task_type,
                       int32_t dag_id, void *);
 
 void viterbi_auto_finish_routine(void *mb);
-void finish_viterbi_execution(
-    void *vit_metadata_block,
-    void * args); // message_t* message_id, char* out_msg_txt);
+void finish_viterbi_execution(void *vit_metadata_block, void * args); // message_t* message_id, char* out_msg_txt);
 
 #endif
