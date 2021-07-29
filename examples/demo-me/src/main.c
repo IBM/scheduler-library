@@ -63,6 +63,7 @@ char rad_dict[256];
 char vit_dict[256];
 
 unsigned crit_fft_samples_set = 0;
+unsigned vit_profile_num = 0;
 
 //#include "cpu_accel.h"
 //#include "cv_accel.h"
@@ -1204,7 +1205,7 @@ int main(int argc, char *argv[]) {
     task_metadata_block_t *viterbi_mb_ptr = NULL;
     viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
-				 vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
+				 vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
@@ -1259,32 +1260,11 @@ int main(int argc, char *argv[]) {
 
       // for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       if (i < additional_vit_tasks_per_time_step) {
-        vit_dict_entry_t *vdentry2_p;
-        int base_msg_size;
-        if (task_size_variability == 0) {
-          base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
-          int m_id = vdentry_p->msg_num % NUM_MESSAGES;
-          if (m_id != vdentry_p->msg_id) {
-            printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
-                   vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-          }
-          if (base_msg_size != vit_msgs_size) {
-            printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
-                   vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-          }
-          vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
-	  SDEBUG(printf("Got Matching Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES, vdentry_p));
-        } else {
-          DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
-          vdentry2_p = select_random_vit_input();
-          base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
-	  SDEBUG(printf("Got Random Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES, vdentry_p));
-        }
         task_metadata_block_t* viterbi_mb_ptr_2;
-	DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p), vdentry2_p->in_bits));
+	DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits));
 	viterbi_mb_ptr_2 = set_up_task(sptr, vit_task_type, BASE_TASK,
 				       true, time_step,
-				       vit_msgs_size, &(vdentry2_p->ofdm_p), sizeof(ofdm_param), &(vdentry2_p->frame_p), sizeof(frame_param), vdentry2_p->in_bits, sizeof(uint8_t));
+				       vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t));
 	DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
 	request_execution(viterbi_mb_ptr_2);
       } // if (i < Additional VIT tasks)
@@ -1446,7 +1426,7 @@ int main(int argc, char *argv[]) {
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_msgs_size, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
+    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_profile_num, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {

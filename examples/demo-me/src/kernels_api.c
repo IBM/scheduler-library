@@ -111,8 +111,7 @@ unsigned hist_distances[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 char*    hist_pct_err_label[5] = {"   0%", "<  1%", "< 10%", "<100%", ">100%"};
 unsigned radar_inputs_histogram[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 
-#define VITERBI_LENGTHS  4
-unsigned viterbi_messages_histogram[VITERBI_LENGTHS][NUM_MESSAGES];
+unsigned viterbi_messages_histogram[1502];
 
 uint8_t descramble[1600]; // I think this covers our max use cases
 uint8_t actual_msg[1600];
@@ -120,13 +119,10 @@ uint8_t actual_msg[1600];
 unsigned int      num_viterbi_dictionary_items = 0;
 vit_dict_entry_t* the_viterbi_trace_dict;
 
-unsigned vit_msgs_size;
 unsigned vit_msgs_per_step;
-const char* vit_msgs_size_str[VITERBI_MSG_LENGTHS] = {"SHORT", "MEDIUM", "LONG", "MAXIMUM"};
 const char* vit_msgs_per_step_str[VITERBI_MSGS_PER_STEP] = {"One message per time step",
 							    "One message per obstacle per time step",
 							    "One msg per obstacle + 1 per time step" };
-unsigned viterbi_messages_histogram[VITERBI_MSG_LENGTHS][NUM_MESSAGES];
 
 unsigned total_msgs = 0; // Total messages decoded during the full run
 unsigned bad_decode_msgs = 0; // Total messages decoded incorrectly during the full run
@@ -372,29 +368,6 @@ radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs)
 }
 
 
-/*void start_execution_of_radar_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
-{
-  DEBUG(printf("MB%u In start_execution_of_radar_kernel\n", mb_ptr->block_id));
-  //DEBUG(printf("  MB%u Calling start_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
-  start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
-  }*/
-
- /*
-distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr)
-{
-  DEBUG(printf("MB%u In finish_execution_of_radar_kernel\n", mb_ptr->block_id));
-  DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
-  distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
-
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u fin_rad Calling free_task_metadata_block\n", mb_ptr->block_id));
-  free_task_metadata_block(mb_ptr);
-
-  DEBUG(printf("  MB%u Returning distance = %.1f\n", mb_ptr->block_id, dist));
-  return dist;
-  }*/
-
-
 void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
 {
   // Get an error estimate (Root-Squared?)
@@ -548,18 +521,6 @@ uint8_t fused_occ_grid[OCC_GRID_X_DIM][OCC_GRID_Y_DIM];
 status_t init_vit_kernel(char* dict_fn)
 {
   DEBUG(printf("In init_vit_kernel...\n"));
-  if (vit_msgs_size >= VITERBI_LENGTHS) {
-    printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
-    exit(-1);
-  }
-  // Read in the object images dictionary file
-  FILE *dictF = fopen(dict_fn,"r");
-  if (!dictF)
-  {
-    printf("Error: unable to open viterbi dictionary definition file %s\n", dict_fn);
-    return error;
-  }
-
   distance_t IMPACT_DISTANCE = MAX_DIST_STEP_SIZE; // Minimum distance at which a
  
   // Set up some globals to be used in the run...
@@ -627,11 +588,10 @@ status_t init_vit_kernel(char* dict_fn)
     }
   }
 
-  if (vit_msgs_size >= VITERBI_LENGTHS) {
-    printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
-    exit(-1);
+  //Clear the messages (injected) histogram
+  for (int i = 0; i < 1502; i++) {
+    viterbi_messages_histogram[i] = 0;
   }
-
   DEBUG(printf("DONE with init_vit_kernel -- returning success\n"));
   return success;
 }
@@ -945,8 +905,10 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs, message_t* tr_message)
       }
     }
     DEBUG(printf("Total length is %lu\n", sizeof(xmit_msg_t)));
+    viterbi_messages_histogram[sizeof(xmit_msg_t)]++;
   }
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
+
 
   unsigned xfer_bytes = sizeof(xmit_msg_t);
   snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
@@ -1092,21 +1054,6 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs, message_t* tr_message)
   return &temp_vit_dict_entry;
 }
 
-// These routines are used to select a random (non-critical?) Viterbi message input
-//  to support variable message sizes per iteration
-vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num)
-{
-  viterbi_messages_histogram[l_num][m_num]++;
-  return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
-}
-
-vit_dict_entry_t* select_random_vit_input()
-{
-  int l_num = (rand() % (VITERBI_LENGTHS)); // Return a value from [0,VITERBI_LENGTHS)
-  int m_num = (rand() % (NUM_MESSAGES)); // Return a value from [0,NUM_MESSAGES)
-  viterbi_messages_histogram[l_num][m_num]++;
-  return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
-}
 
 extern void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
 extern uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);
@@ -1268,10 +1215,10 @@ void closeout_vit_kernel()
   printf("There were %u bad decodes of the %u messages\n", bad_decode_msgs, total_msgs);
 
   printf("\nHistogram of Viterbi Messages:\n");
-  printf("    %3s | %3s | %9s \n", "Len", "Msg", "NumOccurs");
-  for (int li = 0; li < VITERBI_LENGTHS; li++) {
-    for (int mi = 0; mi < NUM_MESSAGES; mi++) {
-      printf("    %3u | %3u | %9u \n", li, mi, viterbi_messages_histogram[li][mi]);
+  printf("    %4s | %9s \n", "MLen", "NumOccurs");
+  for (int li = 0; li < 1502; li++) {
+    if (viterbi_messages_histogram[li] != 0) {
+      printf("    %4u | %9u \n", li, viterbi_messages_histogram[li]);
     }
   }
   printf("\n");
