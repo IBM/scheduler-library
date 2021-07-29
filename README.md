@@ -22,7 +22,6 @@ This project has been successfully built and executed on the following linux pla
  - Centos7 (on x86-64 hardware)
  
 Other platforms and Linux distributions should also work.
-```
 
 For the utilization of the HPVM compilation, one must conform to the HPVM requirements.
 
