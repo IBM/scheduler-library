@@ -1,2 +1,0 @@
-include ./build_epochs0.config
-include Makefile.base
