@@ -1,3 +1,3 @@
-include ../hardware.config
+include ../../../hardware.config
 include ./grid.config
 include Makefile.base

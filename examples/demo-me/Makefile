@@ -1,4 +1,4 @@
-include ./hardware.config
+include ../../hardware.config
 
 CPU ?= ariane
 ARCH ?= riscv

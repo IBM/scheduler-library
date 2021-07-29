@@ -793,6 +793,9 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
       }
     }
     break;
+  default:
+    printf("ERROR : car is in lane %u (outside legal lanes)\n", vs.lane);
+    break;
   }
   DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], msg_val));
   return msg_val;
@@ -1108,53 +1111,6 @@ vit_dict_entry_t* select_random_vit_input()
 extern void start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
 extern uint8_t* finish_decode(task_metadata_block_t* mb_ptr, int* n_dec_char);
 
-/*void start_execution_of_vit_kernel(task_metadata_block_t*  mb_ptr, vit_dict_entry_t* trace_msg)
-{
-  DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", mb_ptr->block_id));
-  // Send each message (here they are all the same) through the viterbi decoder
-  //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
-  start_decode(mb_ptr, &(trace_msg->ofdm_p), &(trace_msg->frame_p), &(trace_msg->in_bits[0]));
-  }
-*/
-/*
-message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr)
-{
-  // Send each message (here they are all the same) through the viterbi decoder
-  message_t msg = num_message_t;
-  uint8_t *result;
-  char     msg_text[1600]; // Big enough to hold largest message (1500?)
-
-  int psdusize; // set by finish_decode call...
-  DEBUG(printf("  MB%u Calling the finish_decode routine\n", mb_ptr->block_id));
-  result = finish_decode(mb_ptr, &psdusize);
-  // descramble the output - put it in result
-  DEBUG(printf("  MB%u Calling the viterbi descrambler routine; psdusize = %u\n", mb_ptr->block_id, psdusize));
-  descrambler(result, psdusize, msg_text, NULL /*descram_ref*, NULL /*msg*);
-
- #if(0)
-  printf("MB%u PSDU %u : Msg : = `", mb_ptr->block_id, psdusize);
-  for (int ci = 0; ci < (psdusize - 26); ci++) {
-    printf("%c", msg_text[ci]);
-  }
-  printf("'\n");
- #endif
-  // Here we look at the message string and select proper message_t
-  switch(msg_text[3]) {
-  case '0' : msg = safe_to_move_right_or_left; break;
-  case '1' : msg = safe_to_move_right_only; break;
-  case '2' : msg = safe_to_move_left_only; break;
-  case '3' : msg = unsafe_to_move_left_or_right; break;
-  default  : msg = num_message_t; break;
-  }
-
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u fin_vit Calling free_task_metadata_block\n", mb_ptr->block_id));
-  free_task_metadata_block(mb_ptr);
-  
-  DEBUG(printf("MB%u The execute_vit_kernel is returning msg %u\n", mb_ptr->block_id, msg));
-  return msg;
-}
-*/
 void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
 {
   total_msgs++;
