@@ -18,8 +18,8 @@
 #ifndef H_PLAN_CTRL2_TASK_INCLUDE_H
 #define H_PLAN_CTRL2_TASK_INCLUDE_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 #include "base_task_types.h"
@@ -47,22 +47,23 @@ typedef struct {
 } plan_ctrl2_timing_data_t;
 
 
-void print_plan_ctrl2_metadata_block_contents(task_metadata_block_t* mb);
+void print_plan_ctrl2_metadata_block_contents(void *mb);
 
-void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_plan_ctrl2_task_type_run_stats(void *sptr, unsigned my_task_type,
+                                          unsigned total_accel_types);
 
-void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_vit_plan_ctrl2_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_fft_plan_ctrl2_accelerator(task_metadata_block_t* task_metadata_block);
-void execute_on_hwr_cv_plan_ctrl2_accelerator(task_metadata_block_t* task_metadata_block);
+void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block);
+void execute_on_hwr_vit_plan_ctrl2_accelerator(void *task_metadata_block);
+void execute_on_hwr_fft_plan_ctrl2_accelerator(void *task_metadata_block);
+void execute_on_hwr_cv_plan_ctrl2_accelerator(void *task_metadata_block);
 
 void set_up_plan_ctrl2_task_on_accel_profile_data();
 
-task_metadata_block_t* set_up_plan_ctrl2_task(scheduler_datastate_block_t* sptr,
-					     task_type_t plan_ctrl2_task_type, task_criticality_t crit_level,
-					     bool use_auto_finish, int32_t dag_id, va_list var_list);
+void *set_up_plan_ctrl2_task(void *sptr, task_type_t plan_ctrl2_task_type,
+                            task_criticality_t crit_level, bool use_auto_finish,
+                            int32_t dag_id, void *var_list);
 
-void plan_ctrl2_auto_finish_routine(task_metadata_block_t* mb);
-void finish_plan_ctrl2_execution(task_metadata_block_t* plan_ctrl2_metadata_block, va_list var_list); //vehicle_state_t* new_vehicle_state);
+void plan_ctrl2_auto_finish_routine(void *mb);
+void finish_plan_ctrl2_execution(void *plan_ctrl2_metadata_block, void *var_list); // vehicle_state_t* new_vehicle_state);
 
 #endif

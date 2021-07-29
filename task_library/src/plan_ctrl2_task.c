@@ -16,9 +16,9 @@
  */
 
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,7 +36,10 @@
 #include "plan_ctrl2_task.h"
 #include "scheduler.h"
 
-void print_plan_ctrl2_metadata_block_contents(task_metadata_block_t *mb) {
+uint64_t plan_ctrl2_profile[SCHED_MAX_ACCEL_TYPES];
+
+void print_plan_ctrl2_metadata_block_contents(void *mb_ptr) {
+  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   print_base_metadata_block_contents(mb);
   plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(mb->data_space);
   printf("  PLAN_CTRL: in_object     = %u\n", plan_ctrl2_data_p->object_label);
@@ -44,20 +47,16 @@ void print_plan_ctrl2_metadata_block_contents(task_metadata_block_t *mb) {
   printf("  PLAN_CTRL: in_message    = %u\n", plan_ctrl2_data_p->safe_lanes_msg);
   printf("  PLAN_CTRL: in_rem_data_p = %p\n", plan_ctrl2_data_p->remote_data);
   printf("  PLAN_CTRL: in_veh_state  : Active %u Lane %u Speed %.1f\n",
-         plan_ctrl2_data_p->vehicle_state.active,
-         plan_ctrl2_data_p->vehicle_state.lane,
-         plan_ctrl2_data_p->vehicle_state.speed);
+         plan_ctrl2_data_p->vehicle_state.active, plan_ctrl2_data_p->vehicle_state.lane, plan_ctrl2_data_p->vehicle_state.speed);
   printf("  PLAN_CTRL: out_veh_state : Active %u Lane %u Speed %.1f\n",
-         plan_ctrl2_data_p->new_vehicle_state.active,
-         plan_ctrl2_data_p->new_vehicle_state.lane,
-         plan_ctrl2_data_p->new_vehicle_state.speed);
+         plan_ctrl2_data_p->new_vehicle_state.active, plan_ctrl2_data_p->new_vehicle_state.lane, plan_ctrl2_data_p->new_vehicle_state.speed);
 }
 
-void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
-                                          unsigned my_task_type,
-                                          unsigned total_accel_types) {
+void output_plan_ctrl2_task_type_run_stats(void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
+	 my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The PLAN_CTRL/CNN Task Timing Info
   unsigned total_plan_ctrl2_comp_by[total_accel_types + 1];
   uint64_t total_plan_ctrl2_call_usec[total_accel_types + 1];
@@ -67,30 +66,17 @@ void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
   }
   for (int ai = 0; ai < total_accel_types; ai++) {
     if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u "
-             "%s\n",
-             my_task_type, sptr->task_name_str[my_task_type], ai,
-             sptr->accel_name_str[ai]);
+      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type, sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      plan_ctrl2_timing_data_t *plan_ctrl2_timings_p =
-          (plan_ctrl2_timing_data_t *)&(
-              sptr->master_metadata_pool[bi].task_timings[my_task_type]);
-      unsigned this_comp_by =
-          (unsigned)(sptr->master_metadata_pool[bi]
-                         .task_computed_on[ai][my_task_type]);
-      uint64_t this_plan_ctrl2_call_usec =
-          (uint64_t)(plan_ctrl2_timings_p->call_sec[ai]) * 1000000 +
-          (uint64_t)(plan_ctrl2_timings_p->call_usec[ai]);
+      plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *)&(sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+      unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
+      uint64_t this_plan_ctrl2_call_usec = (uint64_t)(plan_ctrl2_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(plan_ctrl2_timings_p->call_usec[ai]);
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-        printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi,
-               ai, sptr->accel_name_str[ai], this_comp_by,
-               this_plan_ctrl2_call_usec);
+        printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_plan_ctrl2_call_usec);
       } else {
         if ((this_comp_by + this_plan_ctrl2_call_usec) != 0) {
-          printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi,
-                 ai, sptr->accel_name_str[ai], this_comp_by,
-                 this_plan_ctrl2_call_usec);
+          printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi, ai, sptr->accel_name_str[ai], this_comp_by, this_plan_ctrl2_call_usec);
         }
       }
       // Per acceleration (CPU, HWR)
@@ -102,36 +88,27 @@ void output_plan_ctrl2_task_type_run_stats(scheduler_datastate_block_t *sptr,
     } // for (bi = 1 .. numMetatdataBlocks)
   }   // for (ai = 0 .. total_accel_types)
 
-  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
-         sptr->task_name_str[my_task_type]);
-  printf("     CNN-call  run time   ");
+  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type, sptr->task_name_str[my_task_type]);
+  printf("    PnC2-call  run time\n                          ");
   for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_plan_ctrl2_call_usec[ai] /
-                 (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_plan_ctrl2_comp_by[ai],
-           total_plan_ctrl2_call_usec[ai], avg);
+    double avg = (double)total_plan_ctrl2_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_plan_ctrl2_comp_by[ai], total_plan_ctrl2_call_usec[ai], avg);
   }
   {
-    double avg = (double)total_plan_ctrl2_call_usec[total_accel_types] /
-                 (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_plan_ctrl2_comp_by[total_accel_types],
-           total_plan_ctrl2_call_usec[total_accel_types], avg);
+    double avg = (double)total_plan_ctrl2_call_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_plan_ctrl2_comp_by[total_accel_types], total_plan_ctrl2_call_usec[total_accel_types], avg);
   }
 }
 
-/* #undef DEBUG */
-/* #define DEBUG(x) x */
-
-void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_block) {
+void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block_ptr) {
+  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
   DEBUG(printf("In execute_on_cpu_plan_ctrl2_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(task_metadata_block->data_space);
   plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the plan_and_control task : lane %u %s label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n",
+  DEBUG(printf("In the plan_and_control2 task : lane %u %s label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n",
 	       plan_ctrl2_data_p->vehicle_state.lane, lane_names[plan_ctrl2_data_p->vehicle_state.lane],
                plan_ctrl2_data_p->object_label, object_names[plan_ctrl2_data_p->object_label],
                plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, plan_ctrl2_data_p->safe_lanes_msg));
@@ -146,14 +123,11 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   plan_ctrl2_data_p->new_vehicle_state = plan_ctrl2_data_p->vehicle_state;
   //DEBUG(printf("obj_dist = %.1f vs %.1f\n", plan_ctrl2_data_p->object_distance, PNC_THRESHOLD_1));
   if (!plan_ctrl2_data_p->vehicle_state.active) {
-    // Our car is broken and burning, no plan-and-control possible -- nothing to
-    // do
-  } else if ( //(plan_ctrl2_data_p->object_label != no_object) && // For safety,
-              //assume every return is from SOMETHING we should not hit!
+    // Our car is broken and burning, no plan-and-control possible -- nothing too
+  } else if ( //(plan_ctrl2_data_p->object_label != no_object) && // For safety, assume every return is from SOMETHING we should not hit!
       ((plan_ctrl2_data_p->object_distance <= PNC_THRESHOLD_1)
 #ifdef USE_SIM_ENVIRON
-       || ((plan_ctrl2_data_p->vehicle_state.speed < car_goal_speed) &&
-           (plan_ctrl2_data_p->object_distance <= PNC_THRESHOLD_2))
+       || ((plan_ctrl2_data_p->vehicle_state.speed < car_goal_speed) && (plan_ctrl2_data_p->object_distance <= PNC_THRESHOLD_2))
 #endif
        )) {
     // This covers all cases where we have an obstacle "too close" ahead of us
@@ -161,8 +135,7 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
     if (plan_ctrl2_data_p->object_distance <= IMPACT_DISTANCE) {
       // We've crashed into an obstacle...
       printf("WHOOPS: Time %u Lane %u : We've suffered a collision -- STOP\n", plan_ctrl2_data_p->time_step, plan_ctrl2_data_p->vehicle_state.lane);
-      // fprintf(stderr, "WHOOPS: We've suffered a collision on time_step
-      // %u!\n", plan_ctrl2_data_p->time_step);
+      // fprintf(stderr, "WHOOPS: We've suffered a collision on time_step %u!\n", plan_ctrl2_data_p->time_step);
       plan_ctrl2_data_p->new_vehicle_state.speed = 0.0;
       plan_ctrl2_data_p->new_vehicle_state.active = false;
     } else {
@@ -211,7 +184,7 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
         break; /* Stop!!! */
       default:
         printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane], plan_ctrl2_data_p->safe_lanes_msg);
-        // cleanup_and_exit(sptr, -6);
+        // exit(-6);
       }
     } // end of "we have some obstacle too close ahead of us"
   } else {
@@ -233,10 +206,7 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
 
    #ifdef USE_SIM_ENVIRON
     if ((plan_ctrl2_data_p->vehicle_state.speed < car_goal_speed) && // We are going slower than we want to, and
-	//((plan_ctrl2_data_p->object_label == no_object) ||
-	//// There is no object ahead of us -- don't need;
-	//NOTHING is at
-	//INF_PLAN_CTRL2_DATA_P->OBJECT_DISTANCE
+        //((plan_ctrl2_data_p->object_label == no_object) || // There is no object ahead of us -- don't need;
         (plan_ctrl2_data_p->object_distance >= PNC_THRESHOLD_2)) { // Any object is far enough away
       if (plan_ctrl2_data_p->vehicle_state.speed <= (car_goal_speed - car_accel_rate)) {
         plan_ctrl2_data_p->new_vehicle_state.speed += 15.0;
@@ -255,16 +225,12 @@ void execute_on_cpu_plan_ctrl2_accelerator(task_metadata_block_t *task_metadata_
   plan_ctrl2_timings_p->call_usec[aidx] += stop_time.tv_usec - plan_ctrl2_timings_p->call_start.tv_usec;
  #endif
 
-  DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", plan_ctrl2_data_p->new_vehicle_state.active, plan_ctrl2_data_p->new_vehicle_state.lane, plan_ctrl2_data_p->new_vehicle_state.speed));
+  DEBUG(printf("Plan-Ctrl2:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", plan_ctrl2_data_p->new_vehicle_state.active, plan_ctrl2_data_p->new_vehicle_state.lane, plan_ctrl2_data_p->new_vehicle_state.speed));
 
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
 
-/* #undef DEBUG */
-/* #define DEBUG(x) */
-
-uint64_t plan_ctrl2_profile[SCHED_MAX_ACCEL_TYPES];
 void set_up_plan_ctrl2_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
     plan_ctrl2_profile[ai] = ACINFPROF;
@@ -280,24 +246,38 @@ void set_up_plan_ctrl2_task_on_accel_profile_data() {
         printf("\n"));
 }
 
-task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
-					      task_type_t plan_ctrl2_task_type, task_criticality_t crit_level,
-					      bool use_auto_finish, int32_t dag_id, va_list var_list)
-{
-//unsigned time_step, unsigned repeat_factor,
-//  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
-//  vehicle_state_t vehicle_state) {
- #ifdef TIME
+void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
+                            task_criticality_t crit_level, bool use_auto_finish,
+                            int32_t dag_id, void *args) {
+  va_list var_list;
+  va_copy(var_list, *(va_list *)args);
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+  // unsigned time_step, unsigned repeat_factor,
+  //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
+  //  vehicle_state_t vehicle_state) {
+#ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
- #endif
-  unsigned   time_step = va_arg(var_list, unsigned);
-  unsigned   repeat_factor = va_arg(var_list, unsigned);
-  label_t    object_label = va_arg(var_list, label_t);
-  double     xfer_object_dist = va_arg(var_list, double);
+#endif
+  unsigned time_step = va_arg(var_list, unsigned);
+  unsigned repeat_factor = va_arg(var_list, unsigned);
+  label_t* object_label_ptr = va_arg(var_list, label_t*);
+  label_t object_label = *object_label_ptr; 
+  size_t object_label_size = va_arg(var_list, size_t);
+  // double* xfer_object_dist_ptr = va_arg(var_list, double*);
+  distance_t* xfer_object_dist_ptr = va_arg(var_list, distance_t*);
+  distance_t xfer_object_dist = *xfer_object_dist_ptr; 
+  size_t dist_size = va_arg(var_list, size_t);
   distance_t object_dist = xfer_object_dist;
-  message_t  safe_lanes_msg = va_arg(var_list, message_t);
-  lane_t     preferred_lane =  va_arg(var_list, lane_t);
-  vehicle_state_t vehicle_state = va_arg(var_list, vehicle_state_t);
+  message_t* safe_lanes_msg_ptr = va_arg(var_list, message_t*);
+  message_t safe_lanes_msg = *safe_lanes_msg_ptr;
+  size_t safe_lanes_msg_size = va_arg(var_list, size_t);
+  lane_t preferred_lane =  va_arg(var_list, lane_t);
+  vehicle_state_t* vehicle_state_ptr = va_arg(var_list, vehicle_state_t*);
+
+  vehicle_state_t vehicle_state = *vehicle_state_ptr;
+
+
+  DEBUG(printf("SetUp-PNC2: label %u, xfer_dist: %.3f,,distance: %.3f\n", object_label, xfer_object_dist,object_dist));
 
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *plan_ctrl2_mb_ptr = NULL;
@@ -362,13 +342,12 @@ task_metadata_block_t *set_up_plan_ctrl2_task(scheduler_datastate_block_t *sptr,
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void plan_ctrl2_auto_finish_routine(task_metadata_block_t *mb) {
+void plan_ctrl2_auto_finish_routine(void *mb_ptr) {
+  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
   TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
-                mb->block_id, sptr->task_name_str[mb->task_type],
-                sptr->task_criticality_str[mb->crit_level],
-                sptr->accel_name_str[mb->accelerator_type],
-                mb->accelerator_id));
+                mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level],
+                sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
@@ -379,8 +358,12 @@ void plan_ctrl2_auto_finish_routine(task_metadata_block_t *mb) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_plan_ctrl2_execution(task_metadata_block_t *plan_ctrl2_metadata_block, va_list var_list)
+void finish_plan_ctrl2_execution(void *metadata_block_ptr, void *args)
 {
+  va_list var_list;
+  va_copy(var_list, *(va_list *)args);
+  // va_start(var_list, plan_ctrl_metadata_block_ptr);
+  task_metadata_block_t *plan_ctrl2_metadata_block = (task_metadata_block_t *)metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
 

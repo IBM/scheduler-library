@@ -696,7 +696,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 }
 
 void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
-  printf("-- CV Leaf Node --\n");
+  DEBUG(printf("-- CV Leaf Node --\n"));
   __hpvm__hint(DEVICE);
   __hpvm__attributes(1, obj_label, 1, obj_label);
   __hpvm__task(CV_TASK);
@@ -978,7 +978,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
       break;
     case center:
       // No need to alter, already in the center
-      printf("No need to alter, already in the center\n");
+      DEBUG(printf("No need to alter, already in the center\n"));
       break;
     case right:
     case rhazard:
@@ -1728,7 +1728,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
 }
 
 void cv_leaf_base(label_t in_label, label_t *obj_label, size_t obj_label_size) {
-  printf("-- CV Leaf Node --\n");
+  DEBUG(printf("-- CV Leaf Node Base --\n"));
   __hpvm__hint(DEVICE);
   __hpvm__attributes(1, obj_label, 1, obj_label);
   __hpvm__task(CV_TASK);

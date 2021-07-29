@@ -29,7 +29,7 @@ NC='\033[0m'
 
 
 
-INCDIR ?=
+#INCDIR ?=
 INCDIR += -I./include -I../../sched_library/include -I../../task_library/include
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
@@ -224,7 +224,8 @@ $(info $$NVDLA_MODULE is [${NVDLA_MODULE}])
 all: $(TARGET)
 
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
-hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+#hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
@@ -232,7 +233,8 @@ hpvm-epochs: BACKEND_FLAG = -dfg2llvm-epochs -sched-lib-path=$(SCHED_MODULE) -sc
 hpvm-epochs: HPVM = hpvm
 
 hpvm-cpu: CFLAGS += -DHPVM -DDEVICE=CPU_TARGET
-hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+#hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
 hpvm-cpu: BACKEND_LOAD = -load LLVMDFG2LLVM_CPU.so
 hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu 
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
@@ -287,6 +289,7 @@ endif
 
 $(info $$ALLMODULE_OBJS is [${ALLMODULE_OBJS}])
 $(info $$MODULE_OBJS is [${MODULE_OBJS}])
+$(info $$CFLAGS is [${CFLAGS}])
 #-----------------------------------------------------------------------------------------------
 
 $(NVDLA_MODULE):

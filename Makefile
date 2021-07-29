@@ -1,7 +1,7 @@
 STARGET=libscheduler.a
 TTARGET=libtasks.a
 
-EXAMPLES=mini-era
+EXAMPLES=mini-era demo-me
 
 #$(info $$TARGET is [${TARGET}])
 #$(info $$EXAMPLES is [${EXAMPLES}])
@@ -25,6 +25,9 @@ hpvm-epochs: libscheduler.a libtasks.a
 
 mini-era: $(TARGET)
 	(cd examples ; make mini-era-build)
+
+demo-me: $(TARGET)
+	(cd examples ; make demo-me-build)
 
 clean:
 	(cd sched_library; $(MAKE) clean)
