@@ -57,10 +57,8 @@ static void reset(ofdm_param *d_ofdm) {
 
   int polys[2] = {0x6d, 0x4f};
   for (i = 0; i < 32; i++) {
-    d_branchtab27_generic[0].c[i] =
-        (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
-    d_branchtab27_generic[1].c[i] =
-        (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
   }
 
   switch (d_ofdm->encoding) {
@@ -961,8 +959,9 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
         new_vehicle_state->speed = 0.0;
 #endif
         break; /* Stop!!! */
+      default:
         printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state->lane], safe_lanes_msg);
-        // cleanup_and_exit(sptr, -6);
+        exit(-90);
       }
     } // end of "we have some obstacle too close ahead of us"
   } else {
@@ -988,6 +987,9 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
         new_vehicle_state->lane -= 1;
       }
       break;
+    default:
+      printf("Unknown vehicle_state->lane value of %u\n", vehicle_state->lane);
+      exit(-91);
     }
 #ifdef USE_SIM_ENVIRON
     if ((vehicle_state->speed <

@@ -30,7 +30,8 @@ NC='\033[0m'
 
 
 INCDIR ?=
-INCDIR += -I./include -I./socket/include -I../../sched_library/include -I../../task_library/include
+INCDIR += -I./include -I../../sched_library/include -I../../task_library/include 
+INCDIR += -I./socket/include 
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -222,7 +223,23 @@ STARGET2_W=sim-car2-scheduler$(EXE_EXTENSION)-W-$(SW_STR)$(FA_STR)$(VA_STR)$(CA_
 
 #$(info $$EXE_EXTENSION is [${EXE_EXTENSION}])
 #$(info $$TARGET1 is [${TARGET1}])
-#$(info $$STARGET1 is [${STARGET1}])
+#$(info $$TARGET1_W is [${TARGET1_W}])
+
+HPVMTARGET1=hpvm-$(TARGET1)
+HPVMTARGET2=hpvm-$(TARGET2)
+HPVMTARGET1_W=hpvm-$(TARGET1_W)
+HPVMTARGET2_W=hpvm-$(TARGET2_W)
+$(info $$HPVMTARGET1 is [${HPVMTARGET1}])
+$(info $$HPVMTARGET1_W is [${HPVMTARGET1_W}])
+
+OBJ_H1 = obj_hpvm1/hpvm_tasks.host.ll
+OBJ_LINKED1 = obj_hpvm1/hpvm_tasks.linked.ll
+OBJ_H2 = obj_hpvm2/hpvm_tasks.host.ll
+OBJ_LINKED2 = obj_hpvm2/hpvm_tasks.linked.ll
+OBJ_H1_W = obj_hpvm1_W/hpvm_tasks.host.ll
+OBJ_LINKED1_W = obj_hpvm1_W/hpvm_tasks.linked.ll
+OBJ_H2_W = obj_hpvm2_W/hpvm_tasks.host.ll
+OBJ_LINKED2_W = obj_hpvm2_W/hpvm_tasks.linked.ll
 
 
 #all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) $(TARGET1_W) $(STARGET1_W) $(TARGET2_W) $(STARGET2_W) sockets gen_new_trace gen_new_wide_trace
@@ -286,15 +303,6 @@ $(STARGET2_W): $(TASK_LIB) $(SCHED_LIB) obj_s2w $(OBJ_S2_W) $(NVDLA_MODULE) $(AL
 	$(RM) -f wnvdla_test.o
 
 
-$(SCHED_LIB):
-	(cd ../../sched_library; $(MAKE))
-
-$(TASK_LIB):
-	(cd ../../task_library; $(MAKE))
-
-$(TASK_LIB_W):
-	(cd ../../task_library; $(MAKE))
-
 sockets:
 	(cd socket; $(MAKE))
 
@@ -306,36 +314,9 @@ gen_new_wide_trace: obj_uw $(OBJ_U_W)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_U_W) -o $@ $(MYLIBS_W) $(LDFLAGS)
 
 
-clean:
-	$(RM) $(OBJ_T1) $(OBJ_S1)
-	$(RM) $(OBJ_T2) $(OBJ_S2)
-	$(RM) $(OBJ_T1_W) $(OBJ_S1_W)
-	$(RM) $(OBJ_T2_W) $(OBJ_S2_W)
-	$(RM) $(OBJ_U)
-	$(RM) $(OBJ_U_W)
-	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
-	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
-	(cd socket; make clean)
-
-clobber: clean
-	$(RM) -r obj_t1 obj_s1
-	$(RM) -r obj_t2 obj_s2
-	$(RM) -r obj_u
-	$(RM) -r obj_t1w obj_s1w
-	$(RM) -r obj_t2w obj_s2w
-	$(RM) -r obj_uw
-	$(RM) -r obj_hpvm
-	$(RM) $(TARGET1) $(TARGET2)
-	$(RM) $(STARGET1) $(STARGET2)
-	$(RM) $(TARGET1_W) $(TARGET2_W)
-	$(RM) $(STARGET1_W) $(STARGET2_W)
-	$(RM) gen_new_trace
-	$(RM) gen_new_wide_trace
-	$(RM) $(HPVMTARGET)
-	(cd socket; make clobber)
-
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
-hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+#hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include , $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
@@ -343,15 +324,16 @@ hpvm-epochs: BACKEND_FLAG = -dfg2llvm-epochs -sched-lib-path=$(SCHED_MODULE) -sc
 hpvm-epochs: HPVM = hpvm
 
 hpvm-cpu: CFLAGS += -DHPVM -DDEVICE=CPU_TARGET
-hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+#hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
+hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include , $(CFLAGS))
 hpvm-cpu: BACKEND_LOAD = -load LLVMDFG2LLVM_CPU.so
 hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu 
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
 
-hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
-hpvm-cpu: check_env obj_hpvm $(HPVMTARGET_CPU)
+hpvm-epochs: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
+hpvm-cpu: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
 
 
 #------------------------------------------------------------------------------------------
@@ -406,6 +388,14 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
 	cd $(NVDLA_MAKE_DIR) && ln -sf $(CUR_DIR)/user_scripts/gen_me_hpvm_mod.py . && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+
+#-----------------------------------------------------------------------------------------------
+
+$(HPVMTARGET1): $(OBJ_LINKED1) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o dme_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	rm dme_test.o wnvdla_test.o
 
 #-----------------------------------------------------------------------------------------------
 
@@ -475,6 +465,141 @@ obj_s2w:
 
 obj_uw:
 	mkdir $@
+
+obj_hpvm1:
+	mkdir $@
+
+obj_hpvm2:
+	mkdir $@
+
+obj_hpvm1_W:
+	mkdir $@
+
+obj_hpvm2_W:
+	mkdir $@
+
+obj_hpvm1/hpvm_tasks.ll : src/hpvm_tasks.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+obj_hpvm1/hpvm_tasks.hpvm.ll : obj_hpvm1/hpvm_tasks.ll
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
+
+obj_hpvm2/hpvm_tasks.ll : src/hpvm_tasks.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+obj_hpvm2/hpvm_tasks.hpvm.ll : obj_hpvm2/hpvm_tasks.ll
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
+
+obj_hpvm1_W/hpvm_tasks.ll : src/hpvm_tasks.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+obj_hpvm1_W/hpvm_tasks.hpvm.ll : obj_hpvm1_W/hpvm_tasks.ll
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
+
+obj_hpvm2_w/hpvm_tasks.ll : src/hpvm_tasks.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+obj_hpvm2_w/hpvm_tasks.hpvm.ll : obj_hpvm2_W/hpvm_tasks.ll
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
+
+$(OBJ_H1) : obj_hpvm1/hpvm_tasks.hpvm.ll
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
+
+$(OBJ_LL1):obj_hpvm1/%.ll : src/%.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+$(OBJ_H2) : obj_hpvm2/hpvm_tasks.hpvm.ll
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
+
+$(OBJ_LL2):obj_hpvm2/%.ll : src/%.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+$(OBJ_LINKED1) : $(OBJ_H1) $(OBJ_LL1) $(HPVM_RT_LIB)
+	$(LLVM_LINK) $^ -S -o $@
+
+$(OBJ_LINKED2) : $(OBJ_H2) $(OBJ_LL2) $(HPVM_RT_LIB)
+	$(LLVM_LINK) $^ -S -o $@
+
+
+$(OBJ_H1_W) : obj_hpvm1_W/hpvm_tasks.hpvm.ll
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
+
+$(OBJ_LL1_W):obj_hpvm1_W/%.ll : src/%.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+$(OBJ_H2_W) : obj_hpvm2_W/hpvm_tasks.hpvm.ll
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
+
+$(OBJ_LL2_W):obj_hpvm2_W/%.ll : src/%.c
+	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+
+$(OBJ_LINKED1_W) : $(OBJ_H1_W) $(OBJ_LL1_W) $(HPVM_RT_LIB)
+	$(LLVM_LINK) $^ -S -o $@
+
+$(OBJ_LINKED2_W) : $(OBJ_H2_W) $(OBJ_LL2_W) $(HPVM_RT_LIB)
+	$(LLVM_LINK) $^ -S -o $@
+
+
+$(SCHED_LIB) $(SCHED_MODULE):
+	@echo "***********************************"
+	@echo "*** Compiling Scheduler Library ***"
+	@echo "***********************************"
+	(cd ../../sched_library; $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+$(TASK_LIB) $(TASK_MODULE):
+	@echo "***********************************"
+	@echo "****** Compiling Task Library *****"
+	@echo "***********************************"
+	(cd ../../task_library; $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+$(TASK_LIB_W) $(TASK_MODULE_W):
+	@echo "***********************************"
+	@echo "****** Compiling Task Library *****"
+	@echo "***********************************"
+	(cd ../../task_library; $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+clean:
+	$(RM) $(OBJ_T1) $(OBJ_S1)
+	$(RM) $(OBJ_T2) $(OBJ_S2)
+	$(RM) $(OBJ_T1_W) $(OBJ_S1_W)
+	$(RM) $(OBJ_T2_W) $(OBJ_S2_W)
+	$(RM) $(OBJ_U)
+	$(RM) $(OBJ_U_W)
+	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
+	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
+	(cd socket; make clean)
+
+clobber: clean
+	$(RM) -r obj_t1 obj_s1
+	$(RM) -r obj_t2 obj_s2
+	$(RM) -r obj_u
+	$(RM) -r obj_t1w obj_s1w
+	$(RM) -r obj_t2w obj_s2w
+	$(RM) -r obj_uw
+	$(RM) -r obj_hpvm
+	$(RM) $(TARGET1) $(TARGET2)
+	$(RM) $(STARGET1) $(STARGET2)
+	$(RM) $(TARGET1_W) $(TARGET2_W)
+	$(RM) $(STARGET1_W) $(STARGET2_W)
+	$(RM) gen_new_trace
+	$(RM) gen_new_wide_trace
+	$(RM) $(HPVMTARGET)
+	(cd socket; make clobber)
+
+
+check_env:
+ifndef HPVM_DIR
+	$(error HPVM_DIR is undefined! setup_paths.sh needs to be sourced before running make!)
+endif
 
 
 .PHONY: all clean

@@ -17,10 +17,12 @@ libtasks.a:
 
 hpvm-cpu: libscheduler.a libtasks.a 
 	(cd examples/mini-era/ ; make hpvm-cpu)
+	(cd examples/demo-me/ ; make hpvm-cpu)
 	#(cd examples/mini-era/ ; make CONFIG_VERBOSE=y hpvm-cpu)
 
 hpvm-epochs: libscheduler.a libtasks.a
 	(cd examples/mini-era/ ; make hpvm-epochs)
+	(cd examples/demo-me/ ; make hpvm-epochs)
 	#(cd examples/mini-era/ ; make CONFIG_VERBOSE=y hpvm-epochs)
 
 mini-era: $(TARGET)

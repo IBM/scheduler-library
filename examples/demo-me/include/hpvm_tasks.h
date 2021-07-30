@@ -81,11 +81,10 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
 
 void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
-              message_t *message_id, size_t msg_id_size, vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
+              message_t *message_id, size_t msg_id_size, lane_t preferred_lane,
+              vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
               vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size
               );
- 
-
 
 
 void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,

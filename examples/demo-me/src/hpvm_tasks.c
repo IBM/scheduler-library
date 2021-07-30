@@ -7,7 +7,7 @@
 #include "verbose.h"
 
 #include "viterbi_base.h"
-#include "viterbi_types:.h"
+#include "viterbi_types.h"
 #include "viterbi_standalone.h"
 
 #ifdef COMPILE_TO_ESP
@@ -57,10 +57,8 @@ static void reset(ofdm_param *d_ofdm) {
 
   int polys[2] = {0x6d, 0x4f};
   for (i = 0; i < 32; i++) {
-    d_branchtab27_generic[0].c[i] =
-        (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
-    d_branchtab27_generic[1].c[i] =
-        (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
   }
 
   switch (d_ofdm->encoding) {
