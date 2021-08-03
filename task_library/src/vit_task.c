@@ -86,9 +86,9 @@ unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 
 // Forward Declarations:
 void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);
-void reset();
-void start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
-uint8_t *finish_decode(task_metadata_block_t *mb_ptr, int *n_dec_char);
+void vit_task_reset();
+void vit_task_start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
+uint8_t *vit_task_finish_decode(task_metadata_block_t *mb_ptr, int *n_dec_char);
 
 void print_viterbi_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
   task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
@@ -725,7 +725,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 // This routine "depunctures" the input data stream according to the 
 //  relevant encoding parameters, etc. and returns the depunctured data.
 
-uint8_t* depuncture(uint8_t *in) {
+uint8_t* vit_task_depuncture(uint8_t *in) {
   int count;
   int n_cbps = d_ofdm->n_cbps;
   uint8_t *depunctured;
@@ -758,7 +758,7 @@ uint8_t* depuncture(uint8_t *in) {
   return depunctured;
 }
 
-void reset() {
+void vit_task_reset() {
   int i, j;
 
   int polys[2] = { 0x6d, 0x4f };
@@ -802,17 +802,17 @@ void reset() {
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
 void
-start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in)
+vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in)
 {
   d_ofdm = ofdm;
   d_frame = frame;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
-  reset();
+  vit_task_reset();
 
  #ifdef INT_TIME
   gettimeofday(&vit_timings_p->depunc_start, NULL);
  #endif
-  uint8_t *depunctured = depuncture(in);
+  uint8_t *depunctured = vit_task_depuncture(in);
  #ifdef INT_TIME
   struct timeval depunc_stop;
   gettimeofday(&vit_timings_p->depunc_stop, NULL);
@@ -881,7 +881,7 @@ start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_
 
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
-uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out)
+uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out)
 {
   // Set up the Viterbit Data view of the metatdata block data
   int aidx = vit_metadata_block->accelerator_type;
@@ -907,7 +907,7 @@ uint8_t* finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size
   //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
  #endif
 
-  DEBUG(printf("MB%u is in finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
+  DEBUG(printf("MB%u is in vit_task_finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
 	  print_viterbi_metadata_block_contents(vit_metadata_block));
   SDEBUG(printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
@@ -1008,8 +1008,8 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   DEBUG(printf("MB%u In start_execution_of_vit_kernel\n", vit_mb_ptr->block_id));
   // Send each message (here they are all the same) through the viterbi decoder
   //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
-  // NOTE: start_decode ends in the request_execution (for now)
-  start_decode(vit_mb_ptr, ofdm_ptr, frame_ptr, in_bits);
+  // NOTE: vit_task_start_decode ends in the request_execution (for now)
+  vit_task_start_decode(vit_mb_ptr, ofdm_ptr, frame_ptr, in_bits);
   va_end(var_list);
 
   // This now ends this block -- we've kicked off execution
@@ -1057,9 +1057,9 @@ void finish_viterbi_execution(
   message_t msg = NUM_MESSAGES;
   uint8_t *result;
 
-  int psdusize; // set by finish_decode call...
-  DEBUG(printf("  MB%u Calling the finish_decode routine\n", vit_metadata_block->block_id));
-  result = finish_decode(vit_metadata_block, &psdusize);
+  int psdusize; // set by vit_task_finish_decode call...
+  DEBUG(printf("  MB%u Calling the vit_task_finish_decode routine\n", vit_metadata_block->block_id));
+  result = vit_task_finish_decode(vit_metadata_block, &psdusize);
   // descramble the output - put it in result
   DEBUG(printf("  MB%u Calling the viterbi descrambler routine; psdusize = %u\n", vit_metadata_block->block_id, psdusize));
   descrambler(result, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);

@@ -76,7 +76,7 @@ static const unsigned char PUNCTURE_1_2[2] = {1, 1};
 static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
 static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
 
-void reset();
-uint8_t* depuncture(uint8_t *in);
+void vit_task_reset();
+uint8_t* vit_task_depuncture(uint8_t *in);
 
 #endif
