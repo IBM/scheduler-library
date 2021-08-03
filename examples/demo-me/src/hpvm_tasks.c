@@ -901,7 +901,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
 
   distance_t obj_distance = *distance_ptr;
   DEBUG(printf("In the plan_and_control2 task : label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n", *obj_label, object_names[*obj_label], obj_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, safe_lanes_msg));
-  DEBUG(printf( "Plan-Ctrl2: current Vehicle-State : Active %u Lane %u Speed %.1f Start-Lane %u\n", vehicle_state->active, vehicle_state->lane, vehicle_state->speed, starting_lane)); 
+  DEBUG(printf( "Plan-Ctrl2: current Vehicle-State : Active %u Lane %u Speed %.1f Start-Lane %u\n", vehicle_state->active, vehicle_state->lane, vehicle_state->speed, preferred_lane)); 
 
   // Start with output vehicle state is a copy of input vehicle state...
   // plan_ctrl_data_p->new_vehicle_state = plan_ctrl_data_p->vehicle_state;
@@ -964,19 +964,20 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
         new_vehicle_state->speed = 0.0;
 #endif
         break; /* Stop!!! */
+      default:
         printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state->lane], safe_lanes_msg);
         // cleanup_and_exit(sptr, -6);
       }
     } // end of "we have some obstacle too close ahead of us"
   } else {
     // No obstacle-inspired lane change, so try now to occupy the center lane
-    if (vehicle_state->lane < starting_lane) {
+    if (vehicle_state->lane < preferred_lane) {
       // We want to move to the right
       if ((safe_lanes_msg == safe_to_move_right_or_left) || (safe_lanes_msg == safe_to_move_right_only)) {
         DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state->lane]));
         new_vehicle_state->lane += 1;
       }
-    } else if (vehicle_state->lane > starting_lane) {
+    } else if (vehicle_state->lane > preferred_lane) {
       if ((safe_lanes_msg == safe_to_move_right_or_left) || (safe_lanes_msg == safe_to_move_left_only)) {
         DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state->lane]));
         new_vehicle_state->lane -= 1;
