@@ -32,7 +32,7 @@ static unsigned cv_fake_hwr_run_time_in_usec = 1000;
 
 #define RADAR_c 300000000.0 // Speed of Light in Meters/Sec
 
-static unsigned int _rev(unsigned int v) {
+static unsigned int hpvm_rev(unsigned int v) {
   unsigned int r = v;
   int s = sizeof(v) * CHAR_BIT - 1;
 
@@ -50,15 +50,15 @@ typedef union branchtab27_u {
   unsigned char c[32];
 } t_branchtab27;
 
-t_branchtab27 d_branchtab27_generic[2];
+t_branchtab27 hpvm_d_branchtab27_generic[2];
 
 static void reset(ofdm_param *d_ofdm) {
   int i, j;
 
   int polys[2] = {0x6d, 0x4f};
   for (i = 0; i < 32; i++) {
-    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
-    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
+    hpvm_d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
+    hpvm_d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
   }
 
   switch (d_ofdm->encoding) {
@@ -85,7 +85,7 @@ static void reset(ofdm_param *d_ofdm) {
   }
 }
 
-static uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame) {
+static uint8_t *hpvm_depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame) {
   int count;
   int n_cbps = d_ofdm->n_cbps;
   uint8_t *depunctured;
@@ -118,7 +118,7 @@ static uint8_t *depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_frame
   return depunctured;
 }
 
-void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg) //definition
+void hpvm_descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg) //definition
 {
 	uint32_t output_length = (psdusize)+2; //output is 2 more bytes than psdu_size
 	uint32_t msg_length = (psdusize)-28;
@@ -173,17 +173,17 @@ void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t
 	    {
 	      if (out[i] != *(ref+i))
 		{
-		  printf(">>>>>> Miscompare: descrambler[%d] = %u vs %u = EXPECTED_VALUE[%d]\n", i, out[i], *(ref+i), i);
+		  printf(">>>>>> Miscompare: hpvm_descrambler[%d] = %u vs %u = EXPECTED_VALUE[%d]\n", i, out[i], *(ref+i), i);
 		  des_error_count++;
 		}
 	    }
 	  if (des_error_count !=0)
 	    {
-	      printf(">>>>>> Mismatch in the descrambler block, please check the inputs and algorithm one last time. >>>>>> \n");
+	      printf(">>>>>> Mismatch in the hpvm_descrambler block, please check the inputs and algorithm one last time. >>>>>> \n");
 	    }
 	  else
 	    {
-	      printf("!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! \n");
+	      printf("!!!!!! Great Job, hpvm_descrambler algorithm works fine for the given configuration. !!!!!! \n");
 	    }
 	  printf("\n");
 	  printf(">>>>>> Decoded text message is here: >>>>>> \n");
@@ -231,7 +231,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 
   reset(ofdm_ptr);
 
-  uint8_t *depunctured = depuncture(in_bits, ofdm_ptr, frame_ptr);
+  uint8_t *depunctured = hpvm_depuncture(in_bits, ofdm_ptr, frame_ptr);
   /*
   DO_VERBOSE({
           printf("VBS: depunctured = [\n");
@@ -261,7 +261,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     int imi = 0;
     for (int ti = 0; ti < 2; ti++) {
       for (int tj = 0; tj < 32; tj++) {
-        in_Mem[imi++] = d_branchtab27_generic[ti].c[tj];
+        in_Mem[imi++] = hpvm_d_branchtab27_generic[ti].c[tj];
       }
     }
     if (imi != 64) {
@@ -662,7 +662,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     });*/
 
   // descramble the output - put it in result
-  descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
+  hpvm_descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
 
   // Here we look at the message string and select proper message_t
   switch (out_msg_text[3]) {
@@ -707,7 +707,7 @@ void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
   __hpvm__return(1, obj_label);
 }
 
-static float *bit_reverse(float *w, unsigned int N, unsigned int bits) {
+static float *hpvm_bit_reverse(float *w, unsigned int N, unsigned int bits) {
   unsigned int i, s, shift;
   s = sizeof(i) * CHAR_BIT - 1;
   shift = s - bits + 1;
@@ -715,7 +715,7 @@ static float *bit_reverse(float *w, unsigned int N, unsigned int bits) {
   for (i = 0; i < N; i++) {
     unsigned int r;
     float t_real, t_imag;
-    r = _rev(i);
+    r = hpvm_rev(i);
     r >>= shift;
 
     if (i < r) {
@@ -773,7 +773,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
   transform_length = 1;
 
   /* bit reversal */
-  bit_reverse(data, N, fft_log_nsamples);
+  hpvm_bit_reverse(data, N, fft_log_nsamples);
 
   /* calculation */
   for (bit = 0; bit < fft_log_nsamples; bit++) {
@@ -1256,7 +1256,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
 
   reset(ofdm_ptr);
 
-  uint8_t *depunctured = depuncture(in_bits, ofdm_ptr, frame_ptr);
+  uint8_t *depunctured = hpvm_depuncture(in_bits, ofdm_ptr, frame_ptr);
   /*
   DO_VERBOSE({
           printf("VBS: depunctured = [\n");
@@ -1286,7 +1286,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
     int imi = 0;
     for (int ti = 0; ti < 2; ti++) {
       for (int tj = 0; tj < 32; tj++) {
-        in_Mem[imi++] = d_branchtab27_generic[ti].c[tj];
+        in_Mem[imi++] = hpvm_d_branchtab27_generic[ti].c[tj];
       }
     }
     if (imi != 64) {
@@ -1687,7 +1687,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
     });*/
 
   // descramble the output - put it in result
-  descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
+  hpvm_descrambler(d_decoded, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
 
   // Here we look at the message string and select proper message_t
   switch (out_msg_text[3]) {
@@ -1774,7 +1774,7 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
   transform_length = 1;
 
   /* bit reversal */
-  bit_reverse(data, N, fft_log_nsamples);
+  hpvm_bit_reverse(data, N, fft_log_nsamples);
 
   /* calculation */
   for (bit = 0; bit < fft_log_nsamples; bit++) {

@@ -97,40 +97,40 @@ unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 
 extern void closeout_and_exit(int rval);
 
-// This routine "depunctures" the input data stream according to the 
-//  relevant encoding parameters, etc. and returns the depunctured data.
+// This routine "sdr_depunctures" the input data stream according to the 
+//  relevant encoding parameters, etc. and returns the sdr_depunctured data.
 
-uint8_t* depuncture(uint8_t *in) {
+uint8_t* sdr_depuncture(uint8_t *in) {
   int count;
   int n_cbps = d_ofdm->n_cbps;
-  uint8_t *depunctured;
+  uint8_t *sdr_depunctured;
   //printf("Depunture call...\n");
   if (d_ntraceback == 5) {
     count = d_frame->n_sym * n_cbps;
-    depunctured = in;
+    sdr_depunctured = in;
   } else {
-    depunctured = d_depunctured;
+    sdr_depunctured = d_depunctured;
     count = 0;
     for(int i = 0; i < d_frame->n_sym; i++) {
       for(int k = 0; k < n_cbps; k++) {
 	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
-	  depunctured[count] = 2;
+	  sdr_depunctured[count] = 2;
 	  count++;
 	}
 
 	// Insert received bits
-	depunctured[count] = in[i * n_cbps + k];
+	sdr_depunctured[count] = in[i * n_cbps + k];
 	count++;
 
 	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
-	  depunctured[count] = 2;
+	  sdr_depunctured[count] = 2;
 	  count++;
 	}
       }
     }
   }
-  //printf("  depuncture count = %u\n", count);
-  return depunctured;
+  //printf("  sdr_depuncture count = %u\n", count);
+  return sdr_depunctured;
 }
 
 
@@ -230,8 +230,8 @@ static void do_sdr_decoding_hw(int *fd, struct vitdodec_access *desc)
 //    in_ntraceback         : INPUT  :     X  : int = 4 bytes (REGISTER)
 //    in_n_data_bits        : INPUT  :     X  : int = 4 bytes (REGISTER)
 //    d_branchtab27_generic : INPUT  :     0  : uint8_t[2][32] = 64 bytes
-//    in_depuncture_pattern : INPUT  :    64  : uint8_t[8] (max is 6 bytes + 2 padding bytes)
-//    depd_data             : INPUT  :    72  : uint8_t[MAX_ENCODED_BITS == 24780] (depunctured data)
+//    in_sdr_depuncture_pattern : INPUT  :    64  : uint8_t[8] (max is 6 bytes + 2 padding bytes)
+//    depd_data             : INPUT  :    72  : uint8_t[MAX_ENCODED_BITS == 24780] (sdr_depunctured data)
 //    <return_val>          : OUTPUT : 24852  : uint8_t[MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
 /* THESE ARE JUST USED LOCALLY IN THIS FUNCTION NOW  */
@@ -254,7 +254,7 @@ void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigne
 
   unsigned char* d_brtab27[2]        = { &(inMemory[    0]), 
                                          &(inMemory[   32]) };
-  unsigned char* in_depuncture_pattern = &(inMemory[   64]);
+  unsigned char* in_sdr_depuncture_pattern = &(inMemory[   64]);
   uint8_t* depd_data                   = &(inMemory[   72]);
   uint8_t* l_decoded                   = &(outMemory[   0]);
 
@@ -276,7 +276,7 @@ void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigne
 
     printf(" depunct_ptn = ");
     for (int li = 0; li < 6; li++) {
-      printf("%u,", in_depuncture_pattern[li]);
+      printf("%u,", in_sdr_depuncture_pattern[li]);
     }
     printf("\n");
 
@@ -323,10 +323,10 @@ void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigne
 	}
 	printf(" ]\n");
       }
-      printf("VBS: in_depuncture_pattern = [ ");
+      printf("VBS: in_sdr_depuncture_pattern = [ ");
       for (int ti = 0; ti < 6; ti ++) {
 	if (ti > 0) { printf(", "); }
-	printf("%02x", in_depuncture_pattern[ti]);
+	printf("%02x", in_sdr_depuncture_pattern[ti]);
       }
       printf("]\n");
       printf("\nVBS: depd_data : \n %6u : ", 0);
@@ -381,7 +381,7 @@ void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigne
     if ((in_count % 4) == 0) { //0 or 3
       //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, in_n_data_bits, in_count, (in_count & 0xfffffffc));
 
-      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], l_metric0_generic, l_metric1_generic, l_path0_generic, l_path1_generic);
+      //CALL viterbi_butterfly2_generic(&sdr_depunctured[in_count & 0xfffffffc], l_metric0_generic, l_metric1_generic, l_path0_generic, l_path1_generic);
       /* The basic Viterbi decoder operation, called a "butterfly"
        * operation because of the way it looks on a trellis diagram. Each
        * butterfly involves an Add-Compare-Select (ACS) operation on the two nodes
@@ -759,7 +759,7 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 #ifdef INT_TIME
   gettimeofday(&depunc_start, NULL);
 #endif
-  uint8_t *depunctured = depuncture(in);
+  uint8_t *sdr_depunctured = sdr_depuncture(in);
 #ifdef INT_TIME
   gettimeofday(&depunc_stop, NULL);
   depunc_sec  += depunc_stop.tv_sec  - depunc_start.tv_sec;
@@ -767,12 +767,12 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 #endif
 
   DEBUG({
-      printf("VBS: depunctured = [\n %6u : ", 0);
+      printf("VBS: sdr_depunctured = [\n %6u : ", 0);
       for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
 	if (ti > 0) { printf(", "); }
 	if ((ti > 0) && ((ti % 8) == 0)) { printf("\n %6u : ", ti); }
 	//if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
-	printf("%02x", depunctured[ti]);
+	printf("%02x", sdr_depunctured[ti]);
       }
       printf("\n");
   });
@@ -804,7 +804,7 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
     int max_ins = frame->n_encoded_bits + 100; // Not sure why I need +100; +8 too small...
     if (max_ins > MAX_ENCODED_BITS) { max_ins = MAX_ENCODED_BITS; }
     for (int ti = 0; ti < max_ins /*frame->n_encoded_bits*/ /*MAX_ENCODED_BITS*/; ti ++) {
-      inMemory[imi++] = depunctured[ti];
+      inMemory[imi++] = sdr_depunctured[ti];
     }
     //if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
     DEBUG(printf("NOTE: imi = %u vs MAX %u\n", imi, MAX_ENCODED_BITS));
