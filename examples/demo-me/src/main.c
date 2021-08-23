@@ -1426,7 +1426,7 @@ int main(int argc, char *argv[]) {
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_profile_num, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
+    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_profile_num, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor, starting_lane);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {

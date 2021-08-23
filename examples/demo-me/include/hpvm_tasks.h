@@ -35,6 +35,7 @@ typedef struct __attribute__((__packed__)) {
   size_t current_vehicle_state_size;
   vehicle_state_t *new_vehicle_state;
   size_t new_vehicle_state_size;
+  lane_t preferred_lane;
 } RootIn;
 
 void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
@@ -61,7 +62,7 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  vehicle_state_t *current_vehicle_state,
                  size_t current_vehicle_state_size,
                  vehicle_state_t *new_vehicle_state,
-                 size_t new_vehicle_state_size);
+                 size_t new_vehicle_state_size, lane_t preferred_lane);
 
 void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  size_t ofdm_size, frame_param *frame_ptr,
@@ -76,14 +77,14 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  vehicle_state_t *current_vehicle_state,
                  size_t current_vehicle_state_size,
                  vehicle_state_t *new_vehicle_state,
-                 size_t new_vehicle_state_size);
+                 size_t new_vehicle_state_size, lane_t preferred_lane);
 
 
 void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
-              message_t *message_id, size_t msg_id_size, lane_t preferred_lane,
+              message_t *message_id, size_t msg_id_size,
               vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
-              vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size
+              vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size, lane_t preferred_lane
               );
 
 
@@ -93,7 +94,7 @@ void hpvm_launch(RootIn *DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  vit_dict_entry_t *vdentry_p, message_t *message,
                  char *out_msg_text, vehicle_state_t *vehicle_state,
                  vehicle_state_t *new_vehicle_state,
-                 unsigned pandc_repeat_factor);
+                 unsigned pandc_repeat_factor, lane_t preferred_lane);
 
 RootIn *hpvm_initialize();
 
