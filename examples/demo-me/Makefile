@@ -350,9 +350,11 @@ hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
 
-hpvm-epochs: check_env $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) obj_hpvm1 $(HPVMTARGET1) 
-#hpvm-epochs: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
-hpvm-cpu: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
+hpvm-epochs: check_env $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) obj_hpvm1 $(HPVMTARGET1) obj_hpvm2 $(HPVMTARGET2) obj_hpvm1_W $(HPVMTARGET1_W) obj_hpvm2_W $(HPVMTARGET2_W) 
+
+#hpvm-cpu: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
+hpvm-cpu: 
+	@echo This workload does not utilize/support hpvm-cpu mode compilation yet!
 
 
 #------------------------------------------------------------------------------------------
@@ -414,6 +416,24 @@ $(HPVMTARGET1): $(OBJ_LINKED1) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS)
+	rm dme_test.o wnvdla_test.o
+
+$(HPVMTARGET2): $(OBJ_LINKED2) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS)
+	rm dme_test.o wnvdla_test.o
+
+$(HPVMTARGET1_W): $(OBJ_LINKED1_W) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS)
+	rm dme_test.o wnvdla_test.o
+
+$(HPVMTARGET2_W): $(OBJ_LINKED2_W) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS)
 	rm dme_test.o wnvdla_test.o
 
 #-----------------------------------------------------------------------------------------------
@@ -515,10 +535,10 @@ obj_hpvm1_W/hpvm_tasks.ll : src/hpvm_tasks.c
 obj_hpvm1_W/hpvm_tasks.hpvm.ll : obj_hpvm1_W/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
-obj_hpvm2_w/hpvm_tasks.ll : src/hpvm_tasks.c
+obj_hpvm2_W/hpvm_tasks.ll : src/hpvm_tasks.c
 	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=9 -emit-llvm -S -o $@ $<
 
-obj_hpvm2_w/hpvm_tasks.hpvm.ll : obj_hpvm2_W/hpvm_tasks.ll
+obj_hpvm2_W/hpvm_tasks.hpvm.ll : obj_hpvm2_W/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
 $(OBJ_H1) : obj_hpvm1/hpvm_tasks.hpvm.ll
@@ -591,12 +611,9 @@ clean:
 	$(RM) $(OBJ_T2) $(OBJ_S2)
 	$(RM) $(OBJ_T1_W) $(OBJ_S1_W)
 	$(RM) $(OBJ_T2_W) $(OBJ_S2_W)
-	$(RM) $(OBJ_H1)
-	$(RM) $(OBJ_H2)
-	$(RM) $(OBJ_H1_W)
-	$(RM) $(OBJ_H2_W)
-	$(RM) $(OBJ_U)
-	$(RM) $(OBJ_U_W)
+	$(RM) $(OBJ_H1) $(OBJ_H2)
+	$(RM) $(OBJ_H1_W) $(OBJ_H2_W)
+	$(RM) $(OBJ_U) $(OBJ_U_W)
 	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
 	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
 	(cd socket; make clean)
@@ -608,7 +625,8 @@ clobber: clean
 	$(RM) -r obj_t1w obj_s1w
 	$(RM) -r obj_t2w obj_s2w
 	$(RM) -r obj_uw
-	$(RM) -r obj_hpvm1 obj_hpvm1_W obj_hpvm2 obj_hpvm2_w
+	$(RM) -r obj_hpvm1 obj_hpvm1_W
+	$(RM) -r obj_hpvm2 obj_hpvm2_W
 	$(RM) $(TARGET1) $(TARGET2)
 	$(RM) $(STARGET1) $(STARGET2)
 	$(RM) $(TARGET1_W) $(TARGET2_W)
@@ -617,7 +635,6 @@ clobber: clean
 	$(RM) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
 	$(RM) gen_new_trace
 	$(RM) gen_new_wide_trace
-	$(RM) $(HPVMTARGET)
 	(cd socket; make clobber)
 
 

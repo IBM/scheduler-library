@@ -383,6 +383,7 @@ clobber: clean
 	$(RM) $(TARGET)
 	$(RM) $(STARGET)
 	$(RM) $(HPVMTARGET)
+	$(RM) $(HPVMTARGET_CPU)
 
 check_env:
 ifndef HPVM_DIR
