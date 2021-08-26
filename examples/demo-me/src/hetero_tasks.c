@@ -5,7 +5,7 @@
 #include "hpvm_tasks.h"
 #include "base_types.h"
 #include "verbose.h"
-
+#include "hetero_tasks.h"
 #include "viterbi_base.h"
 #include "viterbi_types.h"
 #include "viterbi_standalone.h"
@@ -217,7 +217,7 @@ void hpvm_descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, ui
 
 
 
-void inline vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
+void inline __attribute__((always_inline))  vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
               frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
               size_t in_bit_size, message_t *message_id, size_t msg_id_size,
               char *out_msg_text, size_t out_msg_text_size) {
@@ -692,7 +692,7 @@ void inline vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_
   // __hpvm__return(2, message_id, out_msg_text);
 }
 
-void inline cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
+void inline __attribute__((always_inline)) cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
   printf("-- CV Leaf Node --\n");
   __hpvm__hint(DEVICE);
   __hpvm__task(CV_TASK);
@@ -729,7 +729,7 @@ static float *hpvm_bit_reverse(float *w, unsigned int N, unsigned int bits) {
   return w;
 }
 
-void inline radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
+void inline __attribute__((always_inline)) radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
                 distance_t *distance_ptr, size_t distance_ptr_size
                 ) {
 
@@ -876,7 +876,7 @@ void inline radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_pt
   // __hpvm__return(1, distance_ptr);
 }
 
-void inline pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
+void inline __attribute__((always_inline)) pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
               message_t *message_id, size_t msg_id_size, 
 	      vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
@@ -1016,20 +1016,54 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
                  size_t new_vehicle_state_size, lane_t preferred_lane) {
 
     void* Section = __hpvm_parallel_section_begin();
+    {
 
-    void* VIT = __hpvm_task_begin(6, msg_size, ofdm_param, ofdm_size,
-            frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
-            out_msg_text, out_msg_text_size,
-            2, message_id, msg_id_size, out_msg_text, out_msg_text_size
-            );
+        void* VIT = __hpvm_task_begin(6, msg_size, ofdm_ptr, ofdm_size,
+                frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
+                out_msg_text, out_msg_text_size,
+                2, message_id, msg_id_size, out_msg_text, out_msg_text_size
+                );
 
-    // Body will be inlined into task
-    vit_leaf(msg_size, ofdm_param, ofdm_size,
-            frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
-            out_msg_text, out_msg_text_size);
+            // Body will be inlined into task
+            vit_leaf(msg_size, ofdm_ptr, ofdm_size,
+                    frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
+                    out_msg_text, out_msg_text_size);
 
-    __hpvm_task_end(VIT);
+        __hpvm_task_end(VIT);
 
+        void* RADAR = __hpvm_task_begin(3,log_nsamples, inputs_ptr,inputs_ptr_size,
+                distance_ptr, distance_ptr_size,
+                1, distance_ptr, distance_ptr_size);
+
+            // Body will be inlined into task
+            radar_leaf(log_nsamples, inputs_ptr,inputs_ptr_size,
+                distance_ptr, distance_ptr_size);
+
+        __hpvm_task_end(RADAR);
+
+        void* CV = __hpvm_task_begin(2, in_label, obj_label, obj_label_size,
+                1, obj_label, obj_label_size);
+
+            // Body will be inlined into task
+            cv_leaf(in_label, obj_label, obj_label_size);
+
+        __hpvm_task_end(CV);
+
+
+        void* PNC = __hpvm_task_begin(9,time_step, repeat_factor, obj_label, obj_label_size,
+                distance_ptr, distance_ptr_size, message_id, msg_id_size, current_vehicle_state, current_vehicle_state_size, new_vehicle_state, new_vehicle_state_size,
+                out_msg_text, out_msg_text_size, preferred_lane, 1, new_vehicle_state, new_vehicle_state_size);
+
+            // Body will be inlined into task
+            pnc_leaf(time_step, repeat_factor, obj_label, obj_label_size,
+                distance_ptr, distance_ptr_size, message_id, msg_id_size, current_vehicle_state, current_vehicle_state_size, new_vehicle_state, new_vehicle_state_size,
+                out_msg_text, out_msg_text_size, preferred_lane);
+
+        __hpvm_task_end(PNC);
+
+
+
+    }
     __hpvm_parallel_section_end(Section);
 
 }

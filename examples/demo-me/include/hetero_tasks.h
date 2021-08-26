@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef HPVM
-extern "C" {
+//extern "C" {
     extern void* __hpvm_launch(void*, ...);
     extern void __hpvm_wait(void*);
     extern void* __hpvm_parallel_section_begin();
@@ -13,5 +13,5 @@ extern "C" {
     extern void __hpvm_launch_end(void*);
     extern void __hpvm_priv(unsigned, ...);
     extern void __hpvm__isNonZeroLoop(long, ...);
-}
+//}
 #endif
