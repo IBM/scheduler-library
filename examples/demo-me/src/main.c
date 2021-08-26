@@ -1380,6 +1380,7 @@ int main(int argc, char *argv[]) {
 
 
    #ifdef HPVM_BASE_CRIT
+    /**
     // Launch a specific number of base criticality instances on the particular tasks through hpvm.
 
     DEBUG(printf("Launching %d base criticality instances of VIT\n", additional_vit_tasks_per_time_step));
@@ -1415,11 +1416,11 @@ int main(int argc, char *argv[]) {
             base_rdentry = select_random_radar_input();
         }
         int base_radar_samples_set = base_rdentry->set;
-        float *base_addl_radar_inputs = base_rdentry->return_data;
+        float *base_addl_radar_inputs = base_rdentry->radar_return_data;
         hpvm_launch_base_RADAR(radar_log_nsamples_per_dict_set[base_radar_samples_set], base_addl_radar_inputs);
       }
     }
-
+    **/
    #endif
     
     DEBUG(printf("Launching HPVM graph!\n"));

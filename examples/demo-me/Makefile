@@ -190,9 +190,9 @@ ifndef CONFIG_KERAS_CV_BYPASS
  LDFLAGS += -lpython2.7
 endif
 
-SRC_B = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
-SRC_T = $(SRC_B) read_trace.c
-SRC_S = $(SRC_B) sim_environs.c
+SRC = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_T = $(filter-out sim_environs.c, $(SRC))
+SRC_S = $(filter-out read_trace.c, $(SRC))
 SRC_U = sim_environs.c gen_trace.c
 SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
@@ -206,6 +206,25 @@ OBJ_T2_W = $(SRC_T:%.c=obj_t2w/%.o)
 OBJ_S2_W = $(SRC_S:%.c=obj_s2w/%.o)
 OBJ_U = $(SRC_U:%.c=obj_u/%.o)
 OBJ_U_W = $(SRC_U:%.c=obj_uw/%.o)
+
+$(info $$SRC is [${SRC}])
+$(info $$SRC_T is [${SRC_T}])
+
+OBJ_LL1 = $(filter-out obj_hpvm1/hpvm_tasks.ll, $(SRC_T:%.c=obj_hpvm1/%.ll))
+OBJ_H1 = obj_hpvm1/hpvm_tasks.host.ll
+OBJ_LINKED1 = obj_hpvm1/hpvm_tasks.linked.ll
+
+OBJ_LL2 = $(filter-out obj_hpvm2/hpvm_tasks.ll, $(SRC_T:%.c=obj_hpvm2/%.ll))
+OBJ_H2 = obj_hpvm2/hpvm_tasks.host.ll
+OBJ_LINKED2 = obj_hpvm2/hpvm_tasks.linked.ll
+
+OBJ_LL1_W = $(filter-out obj_hpvm1_W/hpvm_tasks.ll, $(SRC_T:%.c=obj_hpvm1_W/%.ll))
+OBJ_H1_W = obj_hpvm1_W/hpvm_tasks.host.ll
+OBJ_LINKED1_W = obj_hpvm1_W/hpvm_tasks.linked.ll
+
+OBJ_LL2_W = $(filter-out obj_hpvm2_W/hpvm_tasks.ll, $(SRC_T:%.c=obj_hpvm2_W/%.ll))
+OBJ_H2_W = obj_hpvm2_W/hpvm_tasks.host.ll
+OBJ_LINKED2_W = obj_hpvm2_W/hpvm_tasks.linked.ll
 
 VPATH = ./src ./src/readers ./src/utils
 
@@ -232,14 +251,14 @@ HPVMTARGET2_W=hpvm-$(TARGET2_W)
 $(info $$HPVMTARGET1 is [${HPVMTARGET1}])
 $(info $$HPVMTARGET1_W is [${HPVMTARGET1_W}])
 
-OBJ_H1 = obj_hpvm1/hpvm_tasks.host.ll
-OBJ_LINKED1 = obj_hpvm1/hpvm_tasks.linked.ll
-OBJ_H2 = obj_hpvm2/hpvm_tasks.host.ll
-OBJ_LINKED2 = obj_hpvm2/hpvm_tasks.linked.ll
-OBJ_H1_W = obj_hpvm1_W/hpvm_tasks.host.ll
-OBJ_LINKED1_W = obj_hpvm1_W/hpvm_tasks.linked.ll
-OBJ_H2_W = obj_hpvm2_W/hpvm_tasks.host.ll
-OBJ_LINKED2_W = obj_hpvm2_W/hpvm_tasks.linked.ll
+#OBJ_H1 = obj_hpvm1/hpvm_tasks.host.ll
+#OBJ_LINKED1 = obj_hpvm1/hpvm_tasks.linked.ll
+#OBJ_H2 = obj_hpvm2/hpvm_tasks.host.ll
+#OBJ_LINKED2 = obj_hpvm2/hpvm_tasks.linked.ll
+#OBJ_H1_W = obj_hpvm1_W/hpvm_tasks.host.ll
+#OBJ_LINKED1_W = obj_hpvm1_W/hpvm_tasks.linked.ll
+#OBJ_H2_W = obj_hpvm2_W/hpvm_tasks.host.ll
+#OBJ_LINKED2_W = obj_hpvm2_W/hpvm_tasks.linked.ll
 
 
 #all: $(TARGET1) $(STARGET1) $(TARGET2) $(STARGET2) $(TARGET1_W) $(STARGET1_W) $(TARGET2_W) $(STARGET2_W) sockets gen_new_trace gen_new_wide_trace
@@ -316,7 +335,6 @@ gen_new_wide_trace: obj_uw $(OBJ_U_W)
 
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
-hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include , $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
@@ -332,7 +350,8 @@ hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
 hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
 
 
-hpvm-epochs: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
+hpvm-epochs: check_env $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) obj_hpvm1 $(HPVMTARGET1) 
+#hpvm-epochs: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
 hpvm-cpu: check_env obj_hpvm1 obj_hpvm2 obj_hpvm1_W obj_hpvm2_W $(HPVMTARGET1) $(HPVMTARGET2) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
 
 
@@ -392,9 +411,9 @@ $(NVDLA_MODULE):
 #-----------------------------------------------------------------------------------------------
 
 $(HPVMTARGET1): $(OBJ_LINKED1) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
-	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o dme_test.o
+	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS)
 	rm dme_test.o wnvdla_test.o
 
 #-----------------------------------------------------------------------------------------------
@@ -479,25 +498,25 @@ obj_hpvm2_W:
 	mkdir $@
 
 obj_hpvm1/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -emit-llvm -S -o $@ $<
 
 obj_hpvm1/hpvm_tasks.hpvm.ll : obj_hpvm1/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
 obj_hpvm2/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=5 -emit-llvm -S -o $@ $<
 
 obj_hpvm2/hpvm_tasks.hpvm.ll : obj_hpvm2/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
 obj_hpvm1_W/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=9 -emit-llvm -S -o $@ $<
 
 obj_hpvm1_W/hpvm_tasks.hpvm.ll : obj_hpvm1_W/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
 
 obj_hpvm2_w/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=9 -emit-llvm -S -o $@ $<
 
 obj_hpvm2_w/hpvm_tasks.hpvm.ll : obj_hpvm2_W/hpvm_tasks.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
@@ -506,13 +525,13 @@ $(OBJ_H1) : obj_hpvm1/hpvm_tasks.hpvm.ll
 	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL1):obj_hpvm1/%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -emit-llvm -S -o $@ $<
 
 $(OBJ_H2) : obj_hpvm2/hpvm_tasks.hpvm.ll
 	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL2):obj_hpvm2/%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=5 -emit-llvm -S -o $@ $<
 
 $(OBJ_LINKED1) : $(OBJ_H1) $(OBJ_LL1) $(HPVM_RT_LIB)
 	$(LLVM_LINK) $^ -S -o $@
@@ -525,13 +544,13 @@ $(OBJ_H1_W) : obj_hpvm1_W/hpvm_tasks.hpvm.ll
 	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL1_W):obj_hpvm1_W/%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=9 -emit-llvm -S -o $@ $<
 
 $(OBJ_H2_W) : obj_hpvm2_W/hpvm_tasks.hpvm.ll
 	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL2_W):obj_hpvm2_W/%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCC) $(CFLAGS) -DXMIT_PORT=5560 -DRECV_PORT=5561 -DBUILD_WITH_N_LANES=9 -emit-llvm -S -o $@ $<
 
 $(OBJ_LINKED1_W) : $(OBJ_H1_W) $(OBJ_LL1_W) $(HPVM_RT_LIB)
 	$(LLVM_LINK) $^ -S -o $@
@@ -572,6 +591,10 @@ clean:
 	$(RM) $(OBJ_T2) $(OBJ_S2)
 	$(RM) $(OBJ_T1_W) $(OBJ_S1_W)
 	$(RM) $(OBJ_T2_W) $(OBJ_S2_W)
+	$(RM) $(OBJ_H1)
+	$(RM) $(OBJ_H2)
+	$(RM) $(OBJ_H1_W)
+	$(RM) $(OBJ_H2_W)
 	$(RM) $(OBJ_U)
 	$(RM) $(OBJ_U_W)
 	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
@@ -585,11 +608,13 @@ clobber: clean
 	$(RM) -r obj_t1w obj_s1w
 	$(RM) -r obj_t2w obj_s2w
 	$(RM) -r obj_uw
-	$(RM) -r obj_hpvm
+	$(RM) -r obj_hpvm1 obj_hpvm1_W obj_hpvm2 obj_hpvm2_w
 	$(RM) $(TARGET1) $(TARGET2)
 	$(RM) $(STARGET1) $(STARGET2)
 	$(RM) $(TARGET1_W) $(TARGET2_W)
 	$(RM) $(STARGET1_W) $(STARGET2_W)
+	$(RM) $(HPVMTARGET1) $(HPVMTARGET2)
+	$(RM) $(HPVMTARGET1_W) $(HPVMTARGET2_W)
 	$(RM) gen_new_trace
 	$(RM) gen_new_wide_trace
 	$(RM) $(HPVMTARGET)
