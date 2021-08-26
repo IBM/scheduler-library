@@ -1077,86 +1077,15 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  unsigned pandc_repeat_factor, lane_t preferred_lane) {
   DEBUG(printf("In hpvm_launch()\n"));
 
+  size_t radar_inputs_size = 2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
 
+  void* DFG = __hpvm_launch(MiniERARoot, 16 ,vit_msgs_size, &vdentry_p->ofdm_p , sizeof(ofdm_param), &vdentry_p->frame_p, sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t),
+          message, sizeof(message_t), out_msg_text, 1600, *cv_tr_label, cv_tr_label,
+          sizeof(label_t), log_nsamples, radar_inputs, radar_inputs_size, distance, sizeof(distance_t), time_step, pandc_repeat_factor, vehicle_state, sizeof(vehicle_state_t),
+          new_vehicle_state, sizeof(vehicle_state_t), preferred_lane, 1, new_vehicle_state, sizeof(vehicle_state_t)
+          );
+  __hpvm_wait(DFG);
 
-  RootIn* DFGArgs = (RootIn*) malloc(sizeof(RootIn));
-
-  /* -- HPVM Host Code -- */
-  
-  DFGArgs->in_label = *cv_tr_label;
-  DFGArgs->obj_label = cv_tr_label;
-  DFGArgs->obj_label_size = sizeof(label_t);
-
-  DFGArgs->time_step = time_step;
-  DFGArgs->log_nsamples = log_nsamples;
-  DFGArgs->inputs_ptr = radar_inputs;// copy in radar_inputs explicitly.
-  // described in base_types.h
-  DFGArgs->inputs_ptr_size = 2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
-
-
-
-  DFGArgs->distance_ptr = distance;
-  DFGArgs->distance_ptr_size = sizeof(distance_t);
-
-  DFGArgs->msg_size = vit_msgs_size;
-  DFGArgs->ofdm_ptr = &vdentry_p->ofdm_p;
-  DFGArgs->ofdm_size = sizeof(ofdm_param);
-  DFGArgs->frame_ptr = &vdentry_p->frame_p;
-  DFGArgs->frame_ptr_size = sizeof(frame_param);
-  DFGArgs->in_bits = vdentry_p->in_bits;
-  DFGArgs->in_bit_size = sizeof(uint8_t);
-  DFGArgs->message_id = message;
-  DFGArgs->msg_id_size = sizeof(message_t);
-  DFGArgs->out_msg_text = out_msg_text;
-  DFGArgs->out_msg_text_size = 1600;
-
-  DFGArgs->current_vehicle_state = vehicle_state;
-  DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
-  DFGArgs->new_vehicle_state = new_vehicle_state;
-  DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
-  DFGArgs->repeat_factor = pandc_repeat_factor;
-  DFGArgs->preferred_lane = preferred_lane;
-
-  // Add relavent memory to memory tracker
-  llvm_hpvm_track_mem(distance, sizeof(distance_t));
-  llvm_hpvm_track_mem(DFGArgs->inputs_ptr, 2 * (1 << MAX_RADAR_LOGN));
-  llvm_hpvm_track_mem(cv_tr_label, sizeof(label_t));
-  llvm_hpvm_track_mem(&vdentry_p->ofdm_p, sizeof(ofdm_param));
-  llvm_hpvm_track_mem(&vdentry_p->frame_p, sizeof(frame_param));
-  llvm_hpvm_track_mem(vdentry_p->in_bits, sizeof(uint8_t));
-  llvm_hpvm_track_mem(message, sizeof(message_t));
-  llvm_hpvm_track_mem(out_msg_text, 1600);
-  llvm_hpvm_track_mem(vehicle_state, sizeof(new_vehicle_state));
-  llvm_hpvm_track_mem(new_vehicle_state, sizeof(new_vehicle_state));
-
-  DEBUG(printf("\n\nLaunching ERA pipeline!\n"));
-
-  void *ERADFG = __hpvm__launch(0, MiniERARoot, (void *)DFGArgs);
-  __hpvm__wait(ERADFG);
-
-  DEBUG(printf("\n\nFinished executing ERA pipeline!\n"));
-  DEBUG(printf("\n\nRequesting Memory!\n"));
-
-  // Requesting memory back from DFG
-  llvm_hpvm_request_mem(new_vehicle_state, sizeof(vehicle_state_t));
-
-  // Remove relavent memory from memory tracker
-  
-  llvm_hpvm_untrack_mem(cv_tr_label);
-  llvm_hpvm_untrack_mem(DFGArgs->inputs_ptr);
-  llvm_hpvm_untrack_mem(distance);
-  llvm_hpvm_untrack_mem(&vdentry_p->ofdm_p);
-  llvm_hpvm_untrack_mem(&vdentry_p->frame_p);
-  llvm_hpvm_untrack_mem(vdentry_p->in_bits);
-  llvm_hpvm_untrack_mem(message);
-  llvm_hpvm_untrack_mem(out_msg_text);
-  llvm_hpvm_untrack_mem(new_vehicle_state);
-  llvm_hpvm_untrack_mem(vehicle_state);
-
-  DEBUG(printf("[ HPVM ] New vehicle state: lane %u speed %.1f\n\n", new_vehicle_state->lane, new_vehicle_state->speed));
-
-
-  free(DFGArgs);
 }
 
 RootIn *hpvm_initialize() {
