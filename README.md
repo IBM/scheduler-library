@@ -6,9 +6,9 @@ Rather than explicit management of the accelerators in the application, the appl
 The application therefore generates a series of requests to the Scheduler to execute these various tasks, 
 and the Scheduler will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
 The Scheduler determines a "best-fit" accelerator (for the current status of the system, etc.) using a policy; several policies are provided, and  new policies can be generated in simple C code and are compiled into dynamically-shared libraries, so the scheduler policy to employ can be specifed at run time.
-Upon the task finishing on an accelerator, the Scheduler releases the accelerator back into the "available accelerators" pool, and the applicaiton will be xwable to determine that the task is finisheddetermine 
-Calls pplication can then read out the outputs, etc.
-to execute the FFT or Viterbi (accelerator functions) are now turned into requests for the Scheduler to execute the task, and the Scheduler will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
+Calls to execute the FFT or Viterbi (or other accelerator functions) are now turned into requests for the Scheduler to execute the task, and the Scheduler will then schedule these tasks across the available function-execution hardware (e.g. on a CPU via a pthread, or on a hardware accelerator where those are implemented).
+Upon the task finishing on an accelerator, the Scheduler releases the accelerator back into the "available accelerators" pool, and the applicaiton will be able to determine that the task is finished.
+The application can then read out the outputs, etc.
 
 The Scheduler code is in the ```sched_library``` subdir, the Task library code is in the ```task_library``` subdir, and the Mini-ERA example driver application is under ```examples/mini-era```.
 This code also supports compilation using the UIUC HPVM compiler framework, which has provided an intefgrated EPOCHS back-end that automatically implements the use of the task and scheduler library code for properly labeled portions of the code.  
@@ -33,13 +33,18 @@ For the most basic build (e.g. using the native C compiler to generate the defau
 git clone -b hpvm-integration https://github.com/IBM/scheduler-library.git
 cd scheduler-library
 ```
-At this point you should have all the viles you need, but note that there is a file named ```setup_paths.sh``` which contains the definitions of three paths that may need to be set up for your system.
+At this point you should have all the files you need, but note that there is a file named ```setup_paths.sh``` which contains the definitions of three paths that may need to be set up for your system.
 These three paths are:
  - HPVM_DIR : This is the root directory of the HPVM compiler distribution/installation.  This path must be set if you intend to use the HPVM compiler. More details on setting up the appropriate HPVM environment are at the bottom of this README file.
  - RISCV_BIN_DIR : This should be set to the ```bin``` directory of your RISC-V toolchain.  This path is require if you intend to cross-compile to RISC-V targets.
  - ESP_ROOT : This shoudl point to the root of your ESP environment; this path is required to interface to the ESP interface for hardware accelerators, adn thus is required if you intend to compile to target hardware accelerators.
 
-Once these paths are set, you shoudl ```source ./setup_paths.sh``` to make them active in your shell environment.
+Once these paths are set, you should ```source ./setup_paths.sh``` to make them active in your shell environment.
+
+There is another file called ```hardware.config``` which is used to identify the hardwre configuration for which the code should be compiled. 
+There are several examples of hardware configurations given in the subdirectory ```hw_config_files``` as well. 
+The defaul is set up to build the "local" version (i.e. all-software on teh current compilation platform).
+
 Then it is a simple matter to call ```make``` at the top-level (```scheduler-library```) to make all the required components.
 
 There is a `make clean` that can be used to ensure that all code is re-built, i.e. in case there are odd time-stamps on the files, etc. There is also a `make clobber` which removes the object-file directories, executables, etc. 
