@@ -2079,9 +2079,9 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
 
   printf("\nAccelerator Usage Statistics:\n");
   {
-    unsigned totals[sptr->inparms->max_accel_types - 1][sptr->max_accel_of_any_type];
-    unsigned top_totals[sptr->inparms->max_accel_types - 1];
-    for (int ti = 0; ti < sptr->inparms->max_accel_types - 1; ti++) {
+    unsigned totals[sptr->inparms->max_accel_types][sptr->max_accel_of_any_type];
+    unsigned top_totals[sptr->inparms->max_accel_types];
+    for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
       top_totals[ti] = 0;
       for (int ai = 0; ai < sptr->max_accel_of_any_type; ai++) {
         totals[ti][ai] = 0;
@@ -2091,7 +2091,7 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
       }
     }
     printf("\nPer-Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < sptr->inparms->max_accel_types - 1; ti++) {
+    for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
       for (int ai = 0; ai < sptr->max_accel_of_any_type; ai++) {
         if (ai < sptr->num_accelerators_of_type[ti]) {
           printf(" Acc_Type %u %s : Accel %2u Allocated %6u times\n", ti, sptr->accel_name_str[ti], ai, totals[ti][ai]);
@@ -2105,11 +2105,11 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
       }
     }
     printf("\nPer-Accelerator-Type allocation/usage statistics:\n");
-    for (int ti = 0; ti < sptr->inparms->max_accel_types - 1; ti++) {
+    for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
       printf(" Acc_Type %u %s Allocated %6u times\n", ti, sptr->accel_name_str[ti], top_totals[ti]);
     }
     printf("\nPer-Meta-Block Accelerator allocation/usage statistics:\n");
-    for (int ti = 0; ti < sptr->inparms->max_accel_types - 1; ti++) {
+    for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
       for (int ai = 0; ai < sptr->num_accelerators_of_type[ti]; ai++) {
         for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
           if (sptr->master_metadata_pool[bi].accelerator_allocated_to_MB[ti][ai] != 0) {

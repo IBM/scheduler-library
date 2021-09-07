@@ -486,6 +486,7 @@ int main(int argc, char *argv[]) {
 #ifndef HPVM
 #ifdef FAKE_HW_CV
       cv_fake_hwr_run_time_in_usec = atoi(optarg);
+      //printf("Set cv_fake_hwr_run_time_in_usec = %u\n", cv_fake_hwr_run_time_in_usec);
 #else
       printf("ERROR : I don't understand option '-d'\n");
       print_usage(argv[0]);
@@ -496,6 +497,7 @@ int main(int argc, char *argv[]) {
     case 'D':
 #ifndef HPVM
       cv_cpu_run_time_in_usec = atoi(optarg);
+      //printf("Set cv_cpu_run_time_in_usec = %u\n", cv_cpu_run_time_in_usec);
 #endif
       break;
     case 'G':
@@ -705,8 +707,7 @@ int main(int argc, char *argv[]) {
   printf("Run is using ONLY-CPU-FFT\n");
 #endif
 #ifdef HW_VIT
-  printf("Run has enabled Hardware-Viterbi : Device base is %s\n",
-         VIT_DEV_BASE);
+  printf("Run has enabled Hardware-Viterbi : Device base is %s\n", VIT_DEV_BASE);
 #else
   printf("Run is using ONLY-CPU-Viterbi\n");
 #endif
@@ -1074,6 +1075,10 @@ int main(int argc, char *argv[]) {
       DEBUG(printf("CV/CNN task Block-ID = MB%u\n", cv_mb_ptr->block_id));
     }
 
+#ifdef TIME
+    gettimeofday(&start_exec_rad, NULL);
+#endif
+
     task_metadata_block_t *radar_mb_ptr = NULL;
     radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
 			       false, time_step,
@@ -1243,7 +1248,9 @@ int main(int argc, char *argv[]) {
     DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
 
     DEBUG(printf("PRE-Set-Up-PnC: label %u, distance: %.3f\n", label, distance));
-
+#ifdef TIME
+    gettimeofday(&start_exec_pandc, NULL);
+#endif
     pnc_mb_ptr = set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
 			     false, time_step,
 			     time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state);

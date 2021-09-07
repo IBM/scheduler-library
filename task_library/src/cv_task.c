@@ -63,12 +63,14 @@ char *python_func_load = "loadmodel";
 
 #ifdef COMPILE_TO_ESP
  // This is using the hardware (RISC-V FPGA) numbers
- unsigned cv_cpu_run_time_in_usec = 5000000;
- unsigned cv_fake_hwr_run_time_in_usec = 150000;
+ unsigned cv_cpu_run_time_in_usec = 3500000;
+ unsigned cv_fake_hwr_run_time_in_usec = 320000;
 #else
  // This is using the local (presume X86) numbers
- unsigned cv_cpu_run_time_in_usec = 10000;
- unsigned cv_fake_hwr_run_time_in_usec = 1000;
+ //unsigned cv_cpu_run_time_in_usec = 10000;
+ //unsigned cv_fake_hwr_run_time_in_usec = 1000;
+ unsigned cv_cpu_run_time_in_usec = 3500000;
+ unsigned cv_fake_hwr_run_time_in_usec = 320000;
 #endif
 
 uint64_t cv_profile[SCHED_MAX_ACCEL_TYPES];
