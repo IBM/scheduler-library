@@ -131,18 +131,30 @@ void print_usage(char *pname) {
   printf("    -f <N>      : defines which Radar Dictionary Set is used for Critical FFT Tasks\n");
   printf("                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
 
-  printf("    -N <N>      : Adds <N> additional (non-critical) CV/CNN tasks per time step.\n");
+#ifndef HPVM
+  printf("    -N <N>      : Adds <N> additional CV/CNN tasks per time step; (neg val for BASE criticality, pos val for critical tasks).\n");
+#else
+  printf("    -N <N>      : Adds <N> additional Non-Critical CV/CNN tasks per time step.\n");
+#endif
   printf("    -D <N>      : Delay (in usec) of CPU CV Tasks (faked execution)\n");
 #ifdef FAKE_HW_CV
   printf("    -d <N>      : Delay (in usec) of HWR CV Tasks (faked execution)\n");
 #endif
-  printf("    -F <N>      : Adds <N> additional (non-critical) FFT tasks per time step.\n");
+#ifndef HPVM
+  printf("    -F <N>      : Adds <N> additional FFT tasks per time step; (neg val for BASE criticality, pos val for critical tasks).\n");
+#else
+  printf("    -F <N>      : Adds <N> additional Non-Critical FFT tasks per time step.\n");
+#endif
   printf("    -v <N>      : defines Viterbi message size:\n");
   printf("                :      0 = Short messages (4 characters)\n");
   printf("                :      1 = Medium messages (500 characters)\n");
   printf("                :      2 = Long messages (1000 characters)\n");
   printf("                :      3 = Max-sized messages (1500 characters)\n");
-  printf("    -M <N>      : Adds <N> additional (non-critical) Viterbi message tasks per time step.\n");
+#ifndef HPVM
+  printf("    -M <N>      : Adds <N> additional Viterbi message tasks per time step; (neg val for BASE criticality, pos val for critical tasks).\n");
+#else
+  printf("    -M <N>      : Adds <N> additional Non-Critical Viterbi tasks per time step.\n");
+#endif
   printf("    -S <N>      : Task-Size Variability: Varies the sizes of input tasks where appropriate\n");
   printf("                :      0 = No variability (e.g. all messages same size, etc.)\n");
   printf("    -u <N>      : Sets the hold-off usec for checks on work in the scheduler queue\n");
@@ -361,6 +373,10 @@ int main(int argc, char *argv[]) {
   unsigned additional_vit_tasks_per_time_step = 0;
   unsigned max_additional_tasks_per_time_step = 0;
 
+  unsigned additional_cv_tasks_criticality = 0;
+  unsigned additional_fft_tasks_criticality = 0;
+  unsigned additional_vit_tasks_criticality = 0;
+
 #ifndef HPVM
   unsigned sched_holdoff_usec = 0;
   char policy[256];
@@ -453,26 +469,50 @@ int main(int argc, char *argv[]) {
       snprintf(world_desc_file_name, 255, "%s", optarg);
      #endif
       break;
-    case 'F':
+    case 'F': {
      #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
-      additional_fft_tasks_per_time_step = atoi(optarg);
+      int addl_fft_tasks_and_crit = atoi(optarg);
+      if (addl_fft_tasks_and_crit < 0) {
+        additional_fft_tasks_per_time_step = -addl_fft_tasks_and_crit;
+        additional_fft_tasks_criticality = BASE_TASK;
+      } else {
+        additional_fft_tasks_per_time_step = addl_fft_tasks_and_crit;
+        additional_fft_tasks_criticality = CRITICAL_TASK;
+      }
      #else
       printf("ERROR: Cannot use '-F' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
      #endif
+      }
       break;
-    case 'M':
+    case 'M': {
      #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
-      additional_vit_tasks_per_time_step = atoi(optarg);
+      int addl_vit_tasks_and_crit = atoi(optarg);
+      if (addl_vit_tasks_and_crit < 0) {
+        additional_vit_tasks_per_time_step = -addl_vit_tasks_and_crit;
+        additional_vit_tasks_criticality = BASE_TASK;
+      } else {
+        additional_vit_tasks_per_time_step = addl_vit_tasks_and_crit;
+        additional_vit_tasks_criticality = CRITICAL_TASK;
+      }
      #else
       printf("ERROR: Cannot use '-M' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
      #endif
+      }
       break;
-    case 'N':
+    case 'N': {
      #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
-      additional_cv_tasks_per_time_step = atoi(optarg);
+      int addl_cv_tasks_and_crit = atoi(optarg);
+      if (addl_cv_tasks_and_crit < 0) {
+        additional_cv_tasks_per_time_step = -addl_cv_tasks_and_crit;
+        additional_cv_tasks_criticality = BASE_TASK;
+      } else {
+        additional_cv_tasks_per_time_step = addl_cv_tasks_and_crit;
+        additional_cv_tasks_criticality = CRITICAL_TASK;
+      }
      #else
       printf("ERROR: Cannot use '-N' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
      #endif
+      }
       break;
     case 'P':
      #ifndef HPVM
@@ -810,8 +850,10 @@ int main(int argc, char *argv[]) {
   printf("   Radar  : %s\n", rad_dict);
   printf("   Viterbi: %s\n", vit_dict);
 
-  printf("\n There are %u additional FFT, %u addtional Viterbi and %u Additional CV/CNN tasks per time step\n",
-         additional_fft_tasks_per_time_step, additional_vit_tasks_per_time_step, additional_cv_tasks_per_time_step);
+  printf("\n There are %d additional %s FFT, %d addtional %s Viterbi and %d Additional %s CV/CNN tasks per time step\n",
+         additional_fft_tasks_per_time_step, sptr->task_criticality_str[additional_fft_tasks_criticality],
+	 additional_vit_tasks_per_time_step, sptr->task_criticality_str[additional_vit_tasks_criticality],
+	 additional_cv_tasks_per_time_step, sptr->task_criticality_str[additional_cv_tasks_criticality]);
   max_additional_tasks_per_time_step = additional_fft_tasks_per_time_step;
   if (additional_vit_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_vit_tasks_per_time_step;
@@ -819,6 +861,9 @@ int main(int argc, char *argv[]) {
   if (additional_cv_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_cv_tasks_per_time_step;
   }
+
+  // Set up a place to record a list of added (critical) task metablock id's to wait on...
+  task_metadata_block_t** the_crit_tasks_mb_ptrs = calloc(sizeof(task_metadata_block_t *), (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step));
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
@@ -1060,6 +1105,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     // EXECUTE the kernels using the now known inputs
+    unsigned added_crit_task_idx = 0;
 #ifdef TIME
     gettimeofday(&start_exec_cv, NULL);
 #endif
@@ -1071,6 +1117,7 @@ int main(int argc, char *argv[]) {
       cv_mb_ptr = set_up_task(sptr, cv_task_type, CRITICAL_TASK,
 			      false, time_step,
 			      cv_tr_label); // Critical CV task
+      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr;
       request_execution(cv_mb_ptr);
       DEBUG(printf("CV/CNN task Block-ID = MB%u\n", cv_mb_ptr->block_id));
     }
@@ -1083,6 +1130,7 @@ int main(int argc, char *argv[]) {
     radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
 			       false, time_step,
 			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
+    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr;
     DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
     request_execution(radar_mb_ptr);
 
@@ -1098,6 +1146,7 @@ int main(int argc, char *argv[]) {
     viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
 				 vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
+    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr;
     DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
@@ -1105,6 +1154,7 @@ int main(int argc, char *argv[]) {
     if (num_Crit_test_tasks > 0) {
       test_mb_ptr = set_up_task(sptr, test_task_type, CRITICAL_TASK,
 				false, time_step); // Critical TEST task
+      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = test_mb_ptr;
       DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
       request_execution(test_mb_ptr);
     }
@@ -1124,10 +1174,13 @@ int main(int argc, char *argv[]) {
       // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
 	task_metadata_block_t *cv_mb_ptr_2 = NULL;
-        cv_mb_ptr_2 = set_up_task(sptr, cv_task_type, BASE_TASK,
+        cv_mb_ptr_2 = set_up_task(sptr, cv_task_type, additional_cv_tasks_criticality, //BASE_TASK,
 				  true, time_step,
 				  cv_tr_label); // NON-Critical CV task
-        DEBUG(printf("non-crit CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
+	if (additional_cv_tasks_criticality == CRITICAL_TASK) {
+	  the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr_2;
+	} 
+        DEBUG(printf("added CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
 	request_execution(cv_mb_ptr_2);
       } // if (i < additional CV tasks)
       // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
@@ -1143,10 +1196,13 @@ int main(int argc, char *argv[]) {
         int base_fft_samples_set = rdentry_p2->set;
         float *addl_radar_inputs = rdentry_p2->return_data;
         task_metadata_block_t *radar_mb_ptr_2 = NULL;
-	radar_mb_ptr_2 = set_up_task(sptr, radar_task_type, BASE_TASK,
+	radar_mb_ptr_2 = set_up_task(sptr, radar_task_type, additional_fft_tasks_criticality, //BASE_TASK,
 				     true, time_step,
 				     radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
-        DEBUG(printf("non-crit RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
+	if (additional_fft_tasks_criticality == CRITICAL_TASK) {
+	  the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr_2;
+	} 
+        DEBUG(printf("added RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
 	request_execution(radar_mb_ptr_2);
       } // if (i < additional FFT tasks)
 
@@ -1175,9 +1231,12 @@ int main(int argc, char *argv[]) {
         }
         task_metadata_block_t* viterbi_mb_ptr_2;
 	DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p), vdentry2_p->in_bits));
-	viterbi_mb_ptr_2 = set_up_task(sptr, vit_task_type, BASE_TASK,
+	viterbi_mb_ptr_2 = set_up_task(sptr, vit_task_type, additional_vit_tasks_criticality, //BASE_TASK,
 				       true, time_step,
 				       vit_msgs_size, &(vdentry2_p->ofdm_p), sizeof(ofdm_param), &(vdentry2_p->frame_p), sizeof(frame_param), vdentry2_p->in_bits, sizeof(uint8_t)); //         DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
+	if (additional_vit_tasks_criticality == CRITICAL_TASK) {
+	  the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr_2;
+	} 
 	request_execution(viterbi_mb_ptr_2);
       } // if (i < Additional VIT tasks)
 
@@ -1197,14 +1256,15 @@ int main(int argc, char *argv[]) {
 #endif
 
     DEBUG(printf("MAIN: Calling wait_all_critical\n"));
-    // wait_all_critical(sptr);
+    //wait_all_critical(sptr);
+    /**
     if (num_Crit_test_tasks > 0) {
-      wait_on_tasklist(sptr, 4, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr,
-                       test_mb_ptr);
+      wait_on_tasklist(sptr, 4+2, added_crit_task_idx, the_crit_tasks_mb_ptrs, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr, test_mb_ptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
     } else {
-      wait_on_tasklist(sptr, 3, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr);
+      wait_on_tasklist(sptr, 3+2, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
     }
-
+    **/
+    wait_on_tasklist_list(sptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
 #endif
 
 #ifdef TIME
@@ -1213,8 +1273,13 @@ int main(int argc, char *argv[]) {
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
 #endif
 
-#ifndef HPVM
+    // Clean pu this time step's added critical tasks MB_ptr list
+    for (int addidx = 0; addidx < added_crit_task_idx; addidx++) {
+      the_crit_tasks_mb_ptrs[addidx] = NULL;
+    }
+    added_crit_task_idx = 0;
 
+#ifndef HPVM
     finish_task_execution(radar_mb_ptr, &distance);
     char out_msg_text[1600]; // more than large enough to hold max-size message
     finish_task_execution(viterbi_mb_ptr, &message, out_msg_text);

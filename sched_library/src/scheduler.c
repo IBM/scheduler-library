@@ -1854,12 +1854,68 @@ void wait_on_tasklist(/* scheduler_datastate_block_t */ void *_sptr, int num_tas
       // This task is finished move on to the next task
       idx++;
     } else {
-      // I think perhaps we should add a short delay here to avoid this being
-      // such a busy spin loop...
+      // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
       //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
-      usleep(sptr->inparms
-                 ->scheduler_holdoff_usec); // This defaults to 1 usec (about 78
-                                            // FPGA clock cycles)
+      usleep(sptr->inparms ->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
+    }
+  }
+  gettimeofday(&stop_wait_tasklist, NULL);
+  wait_tasklist_sec  += stop_wait_tasklist.tv_sec - start_wait_tasklist.tv_sec;
+  wait_tasklist_usec += stop_wait_tasklist.tv_usec - start_wait_tasklist.tv_usec;
+  if (sptr->visualizer_output_started &&
+      ((sptr->inparms->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->inparms->visualizer_task_stop_count))) {
+    int64_t wait_start = 1000000 * start_wait_tasklist.tv_sec + start_wait_tasklist.tv_usec - sptr->visualizer_start_time_usec;
+    int64_t wait_stop = 1000000 * stop_wait_tasklist.tv_sec + stop_wait_tasklist.tv_usec - sptr->visualizer_start_time_usec;
+    if (wait_start < 0) {
+      wait_start = 0;
+    }
+    pthread_mutex_lock(&(sptr->sl_viz_out_mutex));
+    fprintf( sptr->sl_viz_fp, "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
+	     wait_start, //  sim_time,   ( pretend this was reported at start_time)
+	     (sptr->next_avail_DAG_id - 1), // task_dag_id
+	     0, // task_tid (This is a "fake" one, as there is no real single task
+	     // here)
+	     "Waiting", 0,
+	     0, // dag_dtime
+	     sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
+	     "Wait_Crit", // accelerator_type ?,
+	     "nan",       // task_parent_ids
+	     wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
+	     wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
+	     wait_stop); // curr_job_end_time
+    pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
+  }
+}
+
+void wait_on_tasklist_list(/*scheduler_datastate_block_t **/ void* in_sptr, int num_tasks, task_metadata_block_t** tlist) {
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*)in_sptr;
+  struct timeval stop_wait_tasklist, start_wait_tasklist;
+  uint64_t wait_tasklist_sec = 0LL;
+  uint64_t wait_tasklist_usec = 0LL;
+
+  gettimeofday(&start_wait_tasklist, NULL);
+  // Loop through the critical tasks list and check whether they are all in status "done"
+  int task_block_ids[num_tasks];
+  for (int i = 0; i < num_tasks; i++) {
+    task_metadata_block_t *mb_ptr = tlist[i];
+    if (mb_ptr == NULL) {
+      printf("ERROR: wait_on_tasklist provided a NULL task pointer\n");
+      exit( -30);
+    }
+    task_block_ids[i] = mb_ptr->block_id;
+  }
+  int idx = 0;
+  while (idx < num_tasks) {
+    int bid = task_block_ids[idx];
+    task_status_t status = sptr->master_metadata_pool[bid].status;
+
+    if ((status == TASK_DONE) || (status == TASK_FREE)) {
+      // This task is finished move on to the next task
+      idx++;
+    } else {
+      // I think perhaps we should add a short delay here to avoid this being such a busy spin loop...
+      //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
+      usleep(sptr->inparms ->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     }
   }
   gettimeofday(&stop_wait_tasklist, NULL);
