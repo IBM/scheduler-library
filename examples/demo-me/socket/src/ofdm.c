@@ -1,4 +1,4 @@
-#include <complex.h>
+#include <complex>
 //#include <cmath>
 #include <stdlib.h>
 #include <stdio.h>
@@ -64,12 +64,12 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
  #endif
   // map to the nearest one
   for(unsigned i = 0; i < num_inputs /*DECODE_IN_SIZE_MAX*/;i++) {
-    if( crealf(constellation[i]) > 0 ) {
+    if( real(constellation[i]) > 0 ) {
       bit_r[i] = 1;
     } else {
       bit_r[i] = 0;
     }
-    DEBUG(printf(" OFDM_BIT_R %5u : CONS %12.8f %12.8f : BIT_R %u\n", i, crealf(constellation[i]), cimagf(constellation[i]), bit_r[i]));
+    DEBUG(printf(" OFDM_BIT_R %5u : CONS %12.8f %12.8f : BIT_R %u\n", i, real(constellation[i]), imag(constellation[i]), bit_r[i]));
   }
  #ifdef INT_TIME
   gettimeofday(&rdec_map_bitr_stop, NULL);
@@ -105,7 +105,7 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
   DEBUG(printf("     at the call to our decode...\n"));
   unsigned num_out_bits = num_inputs/2; // for BPSK_1_2
   {
-    ofdm_param ofdm = {   d_frame_encoding, //  encoding   : 0 = BPSK_1_2
+    ofdm_param ofdm = {  (Encoding) d_frame_encoding, //  encoding   : 0 = BPSK_1_2
 			    13,       //             : rate field of SIGNAL header //Taken constant
 			    1,        //  n_bpsc     : coded bits per subcarrier
 			    48,       //  n_cbps     : coded bits per OFDM symbol
@@ -159,12 +159,12 @@ void get_viterbi_decoder_inputs( unsigned num_inputs, fx_pt constellation[DECODE
  #endif
   // map to the nearest one
   for(unsigned i = 0; i < num_inputs /*DECODE_IN_SIZE_MAX*/;i++) {
-    if( crealf(constellation[i]) > 0 ) {
+    if( real(constellation[i]) > 0 ) {
       bit_r[i] = 1;
     } else {
       bit_r[i] = 0;
     }
-    DEBUG(printf(" OFDM_BIT_R %5u : CONS %12.8f %12.8f : BIT_R %u\n", i, crealf(constellation[i]), cimagf(constellation[i]), bit_r[i]));
+    DEBUG(printf(" OFDM_BIT_R %5u : CONS %12.8f %12.8f : BIT_R %u\n", i, real(constellation[i]), imag(constellation[i]), bit_r[i]));
   }
  #ifdef INT_TIME
   gettimeofday(&rdec_map_bitr_stop, NULL);
@@ -199,7 +199,7 @@ void get_viterbi_decoder_inputs( unsigned num_inputs, fx_pt constellation[DECODE
   DEBUG(printf("     at the call to our decode...\n"));
   unsigned num_out_bits = num_inputs/2; // for BPSK_1_2
   // Set up the FRAME and OFDM parameters (OFDM are constant in this implementation?)
-  ofdm->encoding = d_frame_encoding;   //  encoding   : 0 = BPSK_1_2
+  ofdm->encoding = (Encoding) d_frame_encoding;   //  encoding   : 0 = BPSK_1_2
   ofdm->rate_field = 13;               //             : rate field of SIGNAL header //Taken constant
   ofdm->n_bpsc = 1;                    //  n_bpsc     : coded bits per subcarrier
   ofdm->n_cbps = 48;                   //  n_cbps     : coded bits per OFDM symbol

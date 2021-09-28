@@ -1,4 +1,4 @@
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -12,8 +12,11 @@
 // typedef ap_fixed<64,13> fx_pt1_ext2;
 typedef float fx_pt1_ext1;
 typedef float fx_pt1_ext2;
-typedef float complex fx_pt_ext1;
-typedef float complex fx_pt_ext2;
+// typedef float complex fx_pt_ext1;
+// typedef float complex fx_pt_ext2;
+
+using fx_pt_ext1 = std::complex<float>;
+using fx_pt_ext2 = std::complex<float>;
 
 #ifdef INT_TIME
 /* This is RECV-Synch-Long internal Timing information (gathering resources) */
@@ -117,70 +120,70 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
 					  fx_pt_ext( fx_pt1_ext(-0.0455),fx_pt1_ext(1.0679) ),
 					  fx_pt_ext( fx_pt1_ext(1.3868), fx_pt1_ext(0) ) }; **/
 
-  const float complex rev_coeff[COEFF_LENGTH] = {  1.3868  + 0 * I ,
-						   -0.0455 + 1.0679 * I, 
-						   0.3528  + 0.9865 * I, 
-						   0.8594  - 0.7348 * I, 
-						   0.1874  - 0.2475 * I, 
-						   0.5309  + 0.7784 * I, 
-						   -1.0218 + 0.4897 * I, 
-						   -0.3401 + 0.9423 * I, 
-						   0.8657  + 0.2298 * I, 
-						   0.4734  - 0.0362 * I, 
-						   0.0088  + 1.0207 * I, 
-						   -1.2142 + 0.4205 * I, 
-						   0.2172  + 0.5195 * I, 
-						   0.5207  + 0.1326 * I, 
-						   -0.1995 - 1.4259 * I, 
-						   1.0583  + 0.0363 * I, 
-						   0.5547  + 0.5547 * I, 
-						   0.3277  - 0.8728 * I, 
-						   -0.5077 - 0.3488 * I, 
-						   -1.165  - 0.5789 * I, 
-						   0.7297  - 0.8197 * I, 
-						   0.6173  - 0.1253 * I, 
-						   -0.5353 - 0.7214 * I, 
-						   -0.5011 + 0.1935 * I, 
-						   -0.311  + 1.3392 * I, 
-						   -1.0818 + 0.147 * I, 
-						   -1.13   + 0.182 * I, 
-						   0.6663  + 0.6571 * I, 
-						   -0.0249 - 0.4773 * I, 
-						   -0.8155 - 1.0218 * I, 
-						   0.814   - 0.9396 * I, 
-						   0.109   - 0.8662 * I, 
-						   -1.3868 + 0 * I, 
-						   0.109   + 0.8662 * I, 
-						   0.814   + 0.9396 * I, 
-						   -0.8155 + 1.0218 * I, 
-						   -0.0249 + 0.4773 * I, 
-						   0.6663  - 0.6571 * I, 
-						   -1.13   - 0.182 * I, 
-						   -1.0818 - 0.147 * I, 
-						   -0.311  - 1.3392 * I, 
-						   -0.5011 - 0.1935 * I, 
-						   -0.5353 + 0.7214 * I, 
-						   0.6173  + 0.1253 * I, 
-						   0.7297  + 0.8197 * I, 
-						   -1.165  + 0.5789 * I, 
-						   -0.5077 + 0.3488 * I, 
-						   0.3277  + 0.8728 * I, 
-						   0.5547  - 0.5547 * I, 
-						   1.0583  - 0.0363 * I, 
-						   -0.1995 + 1.4259 * I, 
-						   0.5207  - 0.1326 * I, 
-						   0.2172  - 0.5195 * I, 
-						   -1.2142 - 0.4205 * I, 
-						   0.0088  - 1.0207 * I, 
-						   0.4734  + 0.0362 * I, 
-						   0.8657  - 0.2298 * I, 
-						   -0.3401 - 0.9423 * I, 
-						   -1.0218 - 0.4897 * I, 
-						   0.5309  - 0.7784 * I, 
-						   0.1874  + 0.2475 * I, 
-						   0.8594  + 0.7348 * I, 
-						   0.3528  - 0.9865 * I, 
-						   -0.0455 - 1.0679 * I };
+  const std::complex<float> rev_coeff[COEFF_LENGTH] = {  fx_pt_ext1(1.3868,0) ,
+						   fx_pt_ext1(-0.0455 ,+ 1.0679), 
+						   fx_pt_ext1(0.3528  ,+ 0.9865), 
+						   fx_pt_ext1(0.8594  ,- 0.7348), 
+						   fx_pt_ext1(0.1874  ,- 0.2475), 
+						   fx_pt_ext1(0.5309  ,+ 0.7784), 
+						   fx_pt_ext1(-1.0218 ,+ 0.4897), 
+						   fx_pt_ext1(-0.3401 ,+ 0.9423), 
+						   fx_pt_ext1(0.8657  ,+ 0.2298), 
+						   fx_pt_ext1(0.4734  ,- 0.0362), 
+						   fx_pt_ext1(0.0088  ,+ 1.0207), 
+						   fx_pt_ext1(-1.2142 ,+ 0.4205), 
+						   fx_pt_ext1(0.2172  ,+ 0.5195), 
+						   fx_pt_ext1(0.5207  ,+ 0.1326), 
+						   fx_pt_ext1(-0.1995 ,- 1.4259), 
+						   fx_pt_ext1(1.0583  ,+ 0.0363), 
+						   fx_pt_ext1(0.5547  ,+ 0.5547), 
+						   fx_pt_ext1(0.3277  ,- 0.8728), 
+						   fx_pt_ext1(-0.5077 ,- 0.3488), 
+						   fx_pt_ext1(-1.165  ,- 0.5789), 
+						   fx_pt_ext1(0.7297  ,- 0.8197), 
+						   fx_pt_ext1(0.6173  ,- 0.1253), 
+						   fx_pt_ext1(-0.5353 ,- 0.7214), 
+						   fx_pt_ext1(-0.5011 ,+ 0.1935), 
+						   fx_pt_ext1(-0.311  ,+ 1.3392), 
+						   fx_pt_ext1(-1.0818 ,+ 0.147), 
+						   fx_pt_ext1(-1.13   ,+ 0.182), 
+						   fx_pt_ext1(0.6663  ,+ 0.6571), 
+						   fx_pt_ext1(-0.0249 ,- 0.4773), 
+						   fx_pt_ext1(-0.8155 ,- 1.0218), 
+						   fx_pt_ext1(0.814   ,- 0.9396), 
+						   fx_pt_ext1(0.109   ,- 0.8662), 
+						   fx_pt_ext1(-1.3868 ,+ 0), 
+						   fx_pt_ext1(0.109   ,+ 0.8662), 
+						   fx_pt_ext1(0.814   ,+ 0.9396), 
+						   fx_pt_ext1(-0.8155 ,+ 1.0218), 
+						   fx_pt_ext1(-0.0249 ,+ 0.4773), 
+						   fx_pt_ext1(0.6663  ,- 0.6571), 
+						   fx_pt_ext1(-1.13   ,- 0.182), 
+						   fx_pt_ext1(-1.0818 ,- 0.147), 
+						   fx_pt_ext1(-0.311  ,- 1.3392), 
+						   fx_pt_ext1(-0.5011 ,- 0.1935), 
+						   fx_pt_ext1(-0.5353 ,+ 0.7214), 
+						   fx_pt_ext1(0.6173  ,+ 0.1253), 
+						   fx_pt_ext1(0.7297  ,+ 0.8197), 
+						   fx_pt_ext1(-1.165  ,+ 0.5789), 
+						   fx_pt_ext1(-0.5077 ,+ 0.3488), 
+						   fx_pt_ext1(0.3277  ,+ 0.8728), 
+						   fx_pt_ext1(0.5547  ,- 0.5547), 
+						   fx_pt_ext1(1.0583  ,- 0.0363), 
+						   fx_pt_ext1(-0.1995 ,+ 1.4259), 
+						   fx_pt_ext1(0.5207  ,- 0.1326), 
+						   fx_pt_ext1(0.2172  ,- 0.5195), 
+						   fx_pt_ext1(-1.2142 ,- 0.4205), 
+						   fx_pt_ext1(0.0088  ,- 1.0207), 
+						   fx_pt_ext1(0.4734  ,+ 0.0362), 
+						   fx_pt_ext1(0.8657  ,- 0.2298), 
+						   fx_pt_ext1(-0.3401 ,- 0.9423), 
+						   fx_pt_ext1(-1.0218 ,- 0.4897), 
+						   fx_pt_ext1(0.5309  ,- 0.7784), 
+						   fx_pt_ext1(0.1874  ,+ 0.2475), 
+						   fx_pt_ext1(0.8594  ,+ 0.7348), 
+						   fx_pt_ext1(0.3528  ,- 0.9865), 
+						   fx_pt_ext1(-0.0455 ,- 1.0679) };
 
 
   unsigned d_frame_start = 0;
@@ -192,7 +195,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
 
   DEBUG(printf("\nIn sync_long\n");
 	for (unsigned i = 0; i < 500; i++) {
-	  printf(" S_L_IN %5u : IN %12.8f %12.8f : IN_D %12.8f %12.8f\n", i, crealf(input[i]), cimagf(input[i]), crealf(input_delayed[i]), cimagf(input_delayed[i]));
+	  printf(" S_L_IN %5u : IN %12.8f %12.8f : IN_D %12.8f %12.8f\n", i, real(input[i]), imag(input[i]), real(input_delayed[i]), imag(input_delayed[i]));
 	});
 
   if ( num_inputs < SYNC_LENGTH) {
@@ -206,7 +209,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
     toBfiltered[i] = input[i];
   }
   for (unsigned i = SYNC_LENGTH; i < SYNC_LENGTH + COEFF_LENGTH; i++) {
-    toBfiltered[i] = 0 + 0 * I;
+    toBfiltered[i] = fx_pt_ext1(0,0);
   }
 
   // If we have more than the "SYNC_LENGTH" (320 in this case) samples, we can search for the start of the frames (must be in there)
@@ -221,7 +224,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
   sylg_firG_usec += sylg_firG_stop.tv_usec - sylg_firG_start.tv_usec;
  #endif
   DEBUG(for (int ti = 0; ti < SYNC_LENGTH; ti++) {
-      printf(" CMP_VOLK_FIRG_FIN %2u : IN_2BFILT %12.8f + %12.8f i : CORR_FILT %12.8f %12.8f\n", ti, crealf(toBfiltered[ti]), cimagf(toBfiltered[ti]), crealf(filtered[ti]), cimagf(filtered[ti]));
+      printf(" CMP_VOLK_FIRG_FIN %2u : IN_2BFILT %12.8f + %12.8f i : CORR_FILT %12.8f %12.8f\n", ti, real(toBfiltered[ti]), imag(toBfiltered[ti]), real(filtered[ti]), imag(filtered[ti]));
     });
 
   // This code corresponds to the search_frame_start method
@@ -243,7 +246,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
   for (unsigned i = 1; i < SYNC_LENGTH; i++) { // Scan the first SYNCH_LENGTH entries
     fx_pt1_ext comp1 = (fx_pt1_ext)abs_c(first_pick)  - (fx_pt1_ext)abs_c(filtered[i]);  // compare the correlations
     fx_pt1_ext comp2 = (fx_pt1_ext)abs_c(second_pick) - (fx_pt1_ext)abs_c(filtered[i] ); // compare the correlations
-    DEBUG(printf(" S_L : Corr_Sort %5u : f_p %5u %12.8f %12.8f : s_p %5u %12.8f %12.8f : flt  %5u %12.8f %12.8f : C1 %12.8f C2 %12.8f\n", i, idx1, crealf(first_pick), cimagf(first_pick), idx2, crealf(second_pick), cimagf(second_pick), i, crealf(filtered[i]), cimagf(filtered[i]), comp1, comp2));
+    DEBUG(printf(" S_L : Corr_Sort %5u : f_p %5u %12.8f %12.8f : s_p %5u %12.8f %12.8f : flt  %5u %12.8f %12.8f : C1 %12.8f C2 %12.8f\n", i, idx1, real(first_pick), imag(first_pick), idx2, real(second_pick), imag(second_pick), i, real(filtered[i]), imag(filtered[i]), comp1, comp2));
     if (comp1 < 0) {  // if Cor(i) > Cor(fp)
       second_pick = first_pick;   // demote firt-pick to second-pick
       first_pick  = filtered[i];  // set first-pick as the higher correlation
@@ -261,8 +264,8 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
   sylg_search_usec += sylg_search_stop.tv_usec - sylg_search_start.tv_usec;
  #endif
 
-  fx_pt first  = 0 + 0 * I;
-  fx_pt second = 0 + 0 * I;
+  fx_pt first  = fx_pt_ext1(0,0);
+  fx_pt second = fx_pt_ext1(0,0);
   if (idx1 > idx2) { // if the best-pick index > scond-best pick index
     first = filtered[idx2];  // make the second-best pick the first choice
     second = filtered[idx1]; //  and the first-best pick the second choice
@@ -272,12 +275,12 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
     second = filtered[idx2];
     d_frame_start = idx1;
   }
-  DEBUG(printf("\n S_L : Sort_Done : idx1 %u idx2 %u d_frame_start %u : first %12.8f %12.8f : second %12.8f %12.8f\n", idx1, idx2, d_frame_start, crealf(first), cimagf(first), crealf(second), cimagf(second)));
+  DEBUG(printf("\n S_L : Sort_Done : idx1 %u idx2 %u d_frame_start %u : first %12.8f %12.8f : second %12.8f %12.8f\n", idx1, idx2, d_frame_start, real(first), imag(first), real(second), imag(second)));
 
   // This code assumes now that first corresponds to the d_frame_start
-  fx_pt_ext1 arg  = (fx_pt_ext1)(first) * conjf(second);
-  fx_pt1_ext1 x   = (fx_pt1_ext1) crealf(arg);
-  fx_pt1_ext1 y   = (fx_pt1_ext1) cimagf(arg);
+  fx_pt_ext1 arg  = (fx_pt_ext1)(first) * std::conj(second);
+  fx_pt1_ext1 x   = (fx_pt1_ext1) real(arg);
+  fx_pt1_ext1 y   = (fx_pt1_ext1) imag(arg);
   fx_pt1_ext1 raz = y/x ;
 
   d_freq_offset = atan( raz  )/64;
@@ -307,11 +310,11 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
     d_offset_ui++;
     // This appears to state we should take the first 128 samples, then repeatedly skip 16 and take the next (80-16 = 64)
     if( (rel >= 0) && ((rel < 128) || (((rel - 128) % 80) > 15)) ) {
-      fx_pt_ext2 esp = (fx_pt_ext2)( cosf(d_freq_offset*d_offset_ui) + I * sinf(d_freq_offset*d_offset_ui));
+      fx_pt_ext2 esp = fx_pt_ext2( cosf(d_freq_offset*d_offset_ui), sinf(d_freq_offset*d_offset_ui));
       fx_pt_ext2 num = (fx_pt_ext2)(input[i]);
       fx_pt_ext2 dsampl= esp*num;
       output[out_idx] = (fx_pt)dsampl;
-      DEBUG(printf("     output[%5u : %5u : %6d : %4d ] = %12.8f %12.8f\n", out_idx, i, rel, ((rel-128)%80), crealf(output[out_idx]), cimagf(output[out_idx])));
+      DEBUG(printf("     output[%5u : %5u : %6d : %4d ] = %12.8f %12.8f\n", out_idx, i, rel, ((rel-128)%80), real(output[out_idx]), imag(output[out_idx])));
       out_idx++;
     } // end if (rel >= 0 && ...
     DEBUG(else { printf("  no_output[ %4s : %5u : %6d : %4d ]\n", "-X- ", i, rel, ((rel-128)%80) ); });

@@ -45,7 +45,7 @@
 #include "calc_fmcw_dist.h"
 #include "fft-1d.h"
 
-uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k
+// uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k
 
 void print_fft_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
   task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;

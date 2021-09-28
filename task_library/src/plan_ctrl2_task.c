@@ -146,27 +146,27 @@ void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block_ptr) {
         /* Bias is move toward our preferred lane */
         if (plan_ctrl2_data_p->vehicle_state.lane < plan_ctrl2_data_p->preferred_lane) {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-          plan_ctrl2_data_p->new_vehicle_state.lane += 1;
+          plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) + 1);
         } else if (plan_ctrl2_data_p->vehicle_state.lane > plan_ctrl2_data_p->preferred_lane) {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-          plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
+          plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) - 1);
         } else { // We are in our preferred lane
 	  if (plan_ctrl2_data_p->preferred_lane >= center) { // If we prefer to stay to the right-hand side
 	    DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-	    plan_ctrl2_data_p->new_vehicle_state.lane += 1;
+	    plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) + 1);
 	  } else if (plan_ctrl2_data_p->preferred_lane < center) { // or the left-hand side.
 	    DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-	    plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
+	    plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) - 1);
 	  }
 	}
         break; // prefer right lane
       case safe_to_move_right_only:
         DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-        plan_ctrl2_data_p->new_vehicle_state.lane += 1;
+        plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) + 1);
         break;
       case safe_to_move_left_only:
         DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-        plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
+        plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) - 1);
         break;
       case unsafe_to_move_left_or_right:
        #ifdef USE_SIM_ENVIRON
@@ -194,13 +194,13 @@ void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block_ptr) {
       // We want to move to the right
       if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) || (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_only)) {
         DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-        plan_ctrl2_data_p->new_vehicle_state.lane += 1;
+        plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) + 1);
       } 
     } else if (plan_ctrl2_data_p->vehicle_state.lane > plan_ctrl2_data_p->preferred_lane) {
       // We want to move to the left
       if ((plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_right_or_left) || (plan_ctrl2_data_p->safe_lanes_msg == safe_to_move_left_only)) {
         DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[plan_ctrl2_data_p->vehicle_state.lane]));
-        plan_ctrl2_data_p->new_vehicle_state.lane -= 1;
+        plan_ctrl2_data_p->new_vehicle_state.lane = (lane_t) ((int) (plan_ctrl2_data_p->new_vehicle_state.lane) - 1);
       }
     }
 
@@ -271,7 +271,7 @@ void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
   message_t* safe_lanes_msg_ptr = va_arg(var_list, message_t*);
   message_t safe_lanes_msg = *safe_lanes_msg_ptr;
   size_t safe_lanes_msg_size = va_arg(var_list, size_t);
-  lane_t preferred_lane =  va_arg(var_list, lane_t);
+  lane_t preferred_lane = (lane_t) va_arg(var_list, int);
   vehicle_state_t* vehicle_state_ptr = va_arg(var_list, vehicle_state_t*);
 
   vehicle_state_t vehicle_state = *vehicle_state_ptr;

@@ -1,7 +1,7 @@
 #ifndef INC_TYPE_H
 #define INC_TYPE_H
 
-#include <complex.h>
+#include <complex>
 
 #define Nbit 32
 #define Nbit_integer 10
@@ -22,7 +22,7 @@
 
 #define SYNC_LENGTH  320
 
-typedef float complex fc_test;
+using fc_test = std::complex<float>;
 
 // JDW : Consider adding CNL::fixed_point library for C++ fixed-point types...? 
 /* typedef ap_fixed<Nbit,Nbit_integer> T_type; */
@@ -30,8 +30,11 @@ typedef float complex fc_test;
 /* typedef float T_type; */
 /* typedef float T_type_ext; */
 
-typedef float complex fx_pt;
-typedef float complex fx_pt_ext;
+using fx_pt = std::complex<float>;
+using fx_pt_ext = std::complex<float>;
+
+// typedef float complex fx_pt;
+// typedef float complex fx_pt_ext;
 typedef float fx_pt1;
 typedef float fx_pt1_ext;
 

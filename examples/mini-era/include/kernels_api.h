@@ -67,7 +67,7 @@ extern const char* vit_msgs_per_step_str[VITERBI_MSGS_PER_STEP];
 extern unsigned total_obj; // Total non-'N' obstacle objects across all lanes this time step
 extern unsigned obj_in_lane[NUM_LANES]; // Number of obstacle objects in each lane this time step (at least one, 'n')
 extern unsigned lane_dist[NUM_LANES][MAX_OBJ_IN_LANE]; // The distance to each obstacle object in each lane
-char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
+extern char     lane_obj[NUM_LANES][MAX_OBJ_IN_LANE]; // The type of each obstacle object in each lane
 
 extern char  nearest_obj[NUM_LANES];
 extern float nearest_dist[NUM_LANES];

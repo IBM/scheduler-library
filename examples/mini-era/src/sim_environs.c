@@ -430,7 +430,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
         // Create a new object (car) and add it to the lane at position [in_lane][0]
         object_state_t* no_p = (object_state_t*)calloc(1, sizeof(object_state_t));
 	no_p->obj_id = global_object_id++;
-	no_p->lane = in_lane;
+	no_p->lane = (lane_t) in_lane;
 	//no_p->object = car; break;
 	int objn = (rand() % 100); // Return a value from [0,99]
 	int spdn = (rand() % 100); // Return a value from [0,99]

@@ -25,7 +25,8 @@ HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
 HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 
 
-CC = gcc -std=c99
+CC = g++ -std=c++11
+#CC = gcc -std=c99
 
 SCHED_ROOT = $(realpath ../sched_library)
 INCDIR ?=

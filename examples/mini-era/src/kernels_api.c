@@ -107,7 +107,7 @@ char*    hist_pct_err_label[5] = {"   0%", "<  1%", "< 10%", "<100%", ">100%"};
 unsigned radar_inputs_histogram[MAX_RDICT_SAMPLE_SETS][MAX_RDICT_ENTRIES];
 
 #define VITERBI_LENGTHS  4
-unsigned viterbi_messages_histogram[VITERBI_LENGTHS][NUM_MESSAGES];
+// unsigned viterbi_messages_histogram[VITERBI_LENGTHS][NUM_MESSAGES];
 
 /* These are some top-level defines needed for VITERBI */
 /* typedef struct { */
@@ -466,7 +466,7 @@ status_t init_vit_kernel(char* dict_fn)
     }
 
     DEBUG(printf("  OFDM: %d %d %d %d %d\n", in_bpsc, in_cbps, in_dbps, in_encoding, in_rate));
-    the_viterbi_trace_dict[i].ofdm_p.encoding   = in_encoding;
+    the_viterbi_trace_dict[i].ofdm_p.encoding   = (Encoding) in_encoding;
     the_viterbi_trace_dict[i].ofdm_p.n_bpsc     = in_bpsc;
     the_viterbi_trace_dict[i].ofdm_p.n_cbps     = in_cbps;
     the_viterbi_trace_dict[i].ofdm_p.n_dbps     = in_dbps;
@@ -720,19 +720,19 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 	/* Bias is move right, UNLESS we are in the Right lane and would then head into the RHazard Lane */
 	if (vehicle_state.lane < right) { 
 	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state.lane]));
-	  new_vehicle_state.lane += 1;
+	  new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
 	} else {
 	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state.lane]));
-	  new_vehicle_state.lane -= 1;
+	  new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
 	}	  
 	break; // prefer right lane
       case safe_to_move_right_only      :
 	DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane += 1;
+	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
 	break;
       case safe_to_move_left_only       :
 	DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane -= 1;
+	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
 	break;
       case unsafe_to_move_left_or_right :
 	#ifdef USE_SIM_ENVIRON
@@ -759,7 +759,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
       if ((message == safe_to_move_right_or_left) ||
 	  (message == safe_to_move_right_only)) {
 	DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane += 1;
+	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
       }
       break;
     case center:
@@ -770,7 +770,7 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
       if ((message == safe_to_move_right_or_left) ||
 	  (message == safe_to_move_left_only)) {
 	DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane -= 1;
+	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
       }
       break;
     default:

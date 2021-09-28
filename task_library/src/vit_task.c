@@ -49,6 +49,9 @@ typedef union branchtab27_u {
   unsigned char c[32];
 } t_branchtab27;
 
+int d_ntraceback;
+int d_k;
+
 #ifdef INT_TIME
 extern uint64_t call_sec;
 extern uint64_t dodec_sec;
@@ -66,7 +69,7 @@ uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
 
 t_branchtab27 d_branchtab27_generic[2];
 
-ofdm_param ofdm = {   0,   //  encoding   : 0 = BPSK_1_2
+ofdm_param ofdm = { (Encoding) 0,   //  encoding   : 0 = BPSK_1_2
 		     13,   //  rate_field : rate field ofSIGNAL header
 		      1,   //  n_bpsc     : coded bits per subcarrier
 		     48,   //  n_cbps     : coded bits per OFDM symbol
@@ -970,7 +973,7 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   va_copy(var_list, *(va_list *)args);
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr,
   // uint8_t* in_bits)
-  message_size_t msize = va_arg(var_list, message_size_t);
+  message_size_t msize = (message_size_t) va_arg(var_list, int);
   ofdm_param *ofdm_ptr = va_arg(var_list, ofdm_param *);
   size_t ofdm_param_size = va_arg(var_list, size_t);
   frame_param *frame_ptr = va_arg(var_list, frame_param *);

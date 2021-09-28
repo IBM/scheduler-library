@@ -15,7 +15,8 @@ ifdef COMPILE_TO_ESP
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 endif
 
-CC = gcc -std=c99
+CC = g++ -std=c++11
+#CC = gcc -std=c99
 
 HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
 OPT = $(HPVM_BIN_PATH)/opt

@@ -14,7 +14,8 @@ $(info $$ESP_DRV_LINUX is [${ESP_DRV_LINUX}])
 endif
 
 
-CC = gcc -std=c99
+CC = g++ -std=c++11
+#CC = gcc -std=c99
 
 
 INCDIR ?=

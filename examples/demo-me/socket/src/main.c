@@ -339,7 +339,7 @@ int main(int argc, char *argv[])
      #ifdef INT_TIME
       gettimeofday(&start_pd_wifi_recv_wait, NULL);
      #endif
-      char r_buffer[10] = "\0\0\0\0\0\0\0\0\0\0";;
+      char r_buffer[] = "\0\0\0\0\0\0\0\0\0\0";;
       int valread = read_all(recv_sock, r_buffer, 8);
       DEBUG2(printf("  RECV got %d bytes :'%s'\n", valread, r_buffer));
       if (valread < 1) {
@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
          #ifdef INT_TIME
 	  gettimeofday(&start_pd_wifi_pipe, NULL);
          #endif	
-	  do_xmit_pipeline(xfer_in_bytes, recvd_in.raw_occ_grid, &n_xmit_out, xmit_out_real, xmit_out_imag);
+	  do_xmit_pipeline(xfer_in_bytes, (char *) recvd_in.raw_occ_grid, &n_xmit_out, xmit_out_real, xmit_out_imag);
          #ifdef INT_TIME
 	  gettimeofday(&stop_pd_wifi_pipe, NULL);
 	  pd_wifi_pipe_sec   += stop_pd_wifi_pipe.tv_sec  - start_pd_wifi_pipe.tv_sec;

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include <sys/time.h>
 
@@ -28,8 +28,10 @@ typedef float fx_pt1_ext1;
 typedef float fx_pt1_ext2;
 /* typedef complex< fx_pt1_ext1 > fx_pt_ext1; */
 /* typedef complex< fx_pt1_ext2 > fx_pt_ext2; */
-typedef float complex fx_pt_ext1;
-typedef float complex fx_pt_ext2;
+// typedef float complex fx_pt_ext1;
+// typedef float complex fx_pt_ext2;
+using fx_pt_ext1 = std::complex<float>;
+using fx_pt_ext2 = std::complex<float>;
 
 const fx_pt LONG_ref[] = { 0 ,  0,  0,  0,  0,  0,  1,  1, -1, -1,
 			   1 ,  1, -1,  1, -1,  1,  1,  1,  1,  1,
@@ -267,10 +269,10 @@ static inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bit
       if((i == 32) || (i < 6) || ( i > 58)) {
 	continue;
       }
-      noise += pow(cabs(d_H[i] - in[i]), 2);
-      signal += pow(cabs(d_H[i] + in[i]), 2);
+      noise += pow(abs(d_H[i] - in[i]), 2);
+      signal += pow(abs(d_H[i] + in[i]), 2);
       d_H[i] += in[i];
-      d_H[i] /= LONG_ref[i] * (fx_pt)(2 + 0 * I);
+      d_H[i] /= LONG_ref[i] * fx_pt(2,0);
     }
     d_snr = 10 * log10(signal / noise / 2);
   } else {
@@ -280,14 +282,14 @@ static inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bit
 	continue;
       } else {
 	symbols[c] = in[ii] / d_H[ii];
-	//printf("do_LS_eq : symbols[%u] = in[%u] / d_H[%u] = %12.8f %12.8f / %12.8f %12.8f = %12.8f %12.8f \n", c, ii, ii, crealf(in[ii]), cimagf(in[ii]), crealf(d_H[ii]), cimagf(d_H[ii]), crealf(symbols[c]), cimagf(symbols[c])); 
+	//printf("do_LS_eq : symbols[%u] = in[%u] / d_H[%u] = %12.8f %12.8f / %12.8f %12.8f = %12.8f %12.8f \n", c, ii, ii, real(in[ii]), imag(in[ii]), real(d_H[ii]), imag(d_H[ii]), real(symbols[c]), imag(symbols[c])); 
 	// decision_maker is from constellation for BPSK
 	//bits[c] = mod->decision_maker(&symbols[c]);
 	// unsigned int
 	//   constellation_bpsk_impl::decision_maker(const fx_pt *sample) {
 	//   return (real(*sample) > 0);
 	// }
-	bits[c] = (crealf(symbols[c]) > 0);
+	bits[c] = (real(symbols[c]) > 0);
 	c++;
       }
     }
@@ -334,7 +336,7 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
   double d_epsilon0 = wifi_start * d_bw / (2 * M_PI * d_freq);
   double d_er = 0;  // is this double?
 
-  fx_pt d_prev_pilots[4] = { (0 + 0*I), (0 + 0*I), (0 + 0*I), (0 + 0*I) };
+  fx_pt d_prev_pilots[4] = { fx_pt(0,0), fx_pt(0,0), fx_pt(0,0), fx_pt(0,0) };
 
   //UNUSED: DEBUG(printf(" GR_FREQ : d_freq_offset_from_synclong = %12.8f\n", d_freq_offset_from_synclong));
   DEBUG(printf(" GR_FREQ : d_epsilon0 = %12.8f\n", d_epsilon0));
@@ -347,8 +349,8 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     gettimeofday(&reql_symset_start, NULL);
    #endif
     for (int ii = 0; ii < 64; ii++) {
-      current_symbol[ii] = inputs[64*inp_sym + ii] * exp((fx_pt)(0 + I * 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(ii-32)/64));
-      DEBUG(printf(" compensate: sym %2u from %5u : %12.8f %12.8f -> %12.8f %12.8f \n", ii, (64*inp_sym + ii), crealf(inputs[64*inp_sym + ii]), cimagf(inputs[64*inp_sym + ii]), crealf(current_symbol[ii]), cimagf(current_symbol[ii])));
+      current_symbol[ii] = inputs[64*inp_sym + ii] * exp(fx_pt(0,2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(ii-32)/64));
+      DEBUG(printf(" compensate: sym %2u from %5u : %12.8f %12.8f -> %12.8f %12.8f \n", ii, (64*inp_sym + ii), real(inputs[64*inp_sym + ii]), imag(inputs[64*inp_sym + ii]), real(current_symbol[ii]), imag(current_symbol[ii])));
     }
 
     fx_pt p = POLARITY[(d_current_symbol - 2) % 127];
@@ -356,12 +358,12 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
 
     float beta;
     if(d_current_symbol < 2) {
-      beta = cargf( current_symbol[11] - current_symbol[25] + current_symbol[39] + current_symbol[53]);
+      beta = arg( current_symbol[11] - current_symbol[25] + current_symbol[39] + current_symbol[53]);
     } else {
-      beta = cargf( (current_symbol[11] *  p) + (current_symbol[39] *  p) + (current_symbol[25] *  p) + (current_symbol[53] * -p));
+      beta = arg( (current_symbol[11] *  p) + (current_symbol[39] *  p) + (current_symbol[25] *  p) + (current_symbol[53] * -p));
     }
 
-    float er = cargf( (conj(d_prev_pilots[0]) * current_symbol[11] *  p) +  (conj(d_prev_pilots[1]) * current_symbol[25] *  p) +
+    float er = arg( (conj(d_prev_pilots[0]) * current_symbol[11] *  p) +  (conj(d_prev_pilots[1]) * current_symbol[25] *  p) +
 		      (conj(d_prev_pilots[2]) * current_symbol[39] *  p) +  (conj(d_prev_pilots[3]) * current_symbol[53] * -p));
 
     er *= d_bw / (2 * M_PI * d_freq * 80);
@@ -373,7 +375,7 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     
     // compensate residual frequency offset
     for(int ii = 0; ii < 64; ii++) {
-      current_symbol[ii] *= exp((fx_pt)(0 - beta * I ));
+      current_symbol[ii] *= exp(fx_pt(0,-beta));
     }
 
     // update estimate of residual frequency offset
@@ -413,7 +415,7 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
       // Just put this into the output stream...
       for (int ii = 0; ii < 48; ii++) {
 	out_symbols[48*out_sym + ii] = symbols[ii];
-	DEBUG(printf("Set out_symbols[%d] = %12.8f %12.8f\n", 48*out_sym + ii, crealf(symbols[ii]), cimagf(symbols[ii])));
+	DEBUG(printf("Set out_symbols[%d] = %12.8f %12.8f\n", 48*out_sym + ii, real(symbols[ii]), imag(symbols[ii])));
       }
       DEBUG(printf("\n"));
       out_sym++;

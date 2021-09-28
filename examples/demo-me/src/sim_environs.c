@@ -32,7 +32,7 @@ object_state_t my_car;
 
 extern bool output_source_trace;
 
-unsigned time_step;            // The number of elapsed time steps
+unsigned sim_time_step;            // The number of elapsed time steps
 
 // This controls whether we can have multiple obstacles in a lane at a time
 bool   one_obstacle_per_lane = false; // false = unlimited
@@ -330,7 +330,7 @@ init_sim_environs(char* wdesc_fn, vehicle_state_t* vehicle_state)
     the_objects[i] = NULL;
   }
 
-  time_step = 0;
+  sim_time_step = 0;
 
   srand(rand_seed);
   printf("Using rand seed: %u\n", rand_seed);
@@ -359,7 +359,7 @@ init_sim_environs(char* wdesc_fn, vehicle_state_t* vehicle_state)
 bool
 iterate_sim_environs(vehicle_state_t vehicle_state) 
 {
-  DEBUG(printf("In iterate_sim_environments with %u time_step\n", time_step));
+  DEBUG(printf("In iterate_sim_environments with %u sim_time_step\n", sim_time_step));
   // Clear the global object-in-lane information state
   total_obj = 0;
   for (int i = 0; i < NUM_LANES; i++) {
@@ -428,7 +428,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
         // Create a new object (car) and add it to the lane at position [in_lane][0]
         object_state_t* no_p = (object_state_t*)calloc(1, sizeof(object_state_t));
 	no_p->obj_id = global_object_id++;
-	no_p->lane = in_lane;
+	no_p->lane = (lane_t) in_lane;
 	//no_p->object = car; break;
 	int objn = (rand() % 100); // Return a value from [0,99]
 	int spdn = (rand() % 100); // Return a value from [0,99]
@@ -518,7 +518,7 @@ iterate_sim_environs(vehicle_state_t vehicle_state)
   }
   if (output_source_trace) { printf("\n"); }
   DEBUG(visualize_world());
-  time_step++; // Iterate the count of time_step so far
+  sim_time_step++; // Iterate the count of sim_time_step so far
   return true;
 }
 

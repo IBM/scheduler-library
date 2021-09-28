@@ -146,7 +146,7 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
  #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
  #endif
-  lane_t lane = va_arg(var_list, lane_t);
+  lane_t lane = (lane_t) va_arg(var_list, int);
   unsigned in_data_size = va_arg(var_list, unsigned);
   uint8_t* in_data   = va_arg(var_list, uint8_t*);
   unsigned occ_x_dim = va_arg(var_list, unsigned);

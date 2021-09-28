@@ -24,7 +24,7 @@
 //  This taeks in a generic pointer (e.g. to a policy-defined structure, etc.)
 // and sets internal policy-required parameters, etc.
 
-void 
+extern "C" void 
 initialize_assign_task_to_pe(void * in_parm_ptr)
 {
   ; // Nothing to do
@@ -35,7 +35,7 @@ initialize_assign_task_to_pe(void * in_parm_ptr)
 //    execute this type of task, AND the proposed accelerator's finish time is earlier than any
 //    prior (selected) accelerator, then it prefers that accelerator.
 
-ready_mb_task_queue_entry_t *
+extern "C" ready_mb_task_queue_entry_t *
 assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue

@@ -95,6 +95,9 @@ unsigned char d_mmresult[64] __attribute__((aligned(16)));
 // Paths for each state
 unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 
+int d_ntraceback;
+int d_k;
+
 extern void closeout_and_exit(int rval);
 
 // This routine "sdr_depunctures" the input data stream according to the 

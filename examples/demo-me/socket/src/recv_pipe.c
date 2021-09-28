@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/time.h>
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include <unistd.h>
 #include <assert.h>
@@ -147,7 +147,7 @@ uint8_t  decoded_message[MAX_PAYLOAD_SIZE];   // Holds the resulting decodede me
 fx_pt*   input_data = &delay16_out[16]; // [2*(RAW_DATA_IN_MAX_SIZE + 16)];  // Holds the input data (plus a "front-pad" of 16 0's for delay16
 
 
-void compute(unsigned num_inputs, fx_pt *inbuff, int* vit_msg_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *outbuff);
+void compute(unsigned num_inputs, fx_pt *inbuff, unsigned * vit_msg_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *outbuff);
 
 
 /********************************************************************************
@@ -325,8 +325,8 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
         fx_pt fftSample;
         //printf("    RECV: jidx %u : fftSample = d_sync_long_out_frames[64* %u + %u] = [ %u ] = %f\n", jidx, i, j, 64*i+j, d_sync_long_out_frames[64*i + j]); fflush(stdout);
         fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
-        recv_fftHW_lmem[fn][jidx++] = float2fx((float)crealf(fftSample), FX_IL);
-        recv_fftHW_lmem[fn][jidx++] = float2fx((float)cimagf(fftSample), FX_IL);
+        recv_fftHW_lmem[fn][jidx++] = float2fx((float)real(fftSample), FX_IL);
+        recv_fftHW_lmem[fn][jidx++] = float2fx((float)imag(fftSample), FX_IL);
       }
     }
   } // scope for jidx
@@ -384,19 +384,19 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	for (unsigned j = 0; j < 32; j++) {
 	  fx_pt fftSample;
 	  fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
-	  fft_in_real[32 + j] = (float)creal(fftSample);
-	  fft_in_imag[32 + j] = (float)cimagf(fftSample);
+	  fft_in_real[32 + j] = (float)real(fftSample);
+	  fft_in_imag[32 + j] = (float)imag(fftSample);
 
 	  fftSample = d_sync_long_out_frames[64*i + 32 + j]; // 64 * invocations + offset_j
-	  fft_in_real[j] = (float)crealf(fftSample);
-	  fft_in_imag[j] = (float)cimagf(fftSample);
+	  fft_in_real[j] = (float)real(fftSample);
+	  fft_in_imag[j] = (float)imag(fftSample);
 	}
       } else {
 	for (unsigned j = 0; j < 64; j++) {
 	  fx_pt fftSample;
 	  fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
-	  fft_in_real[j] = (float)crealf(fftSample);
-	  fft_in_imag[j] = (float)cimagf(fftSample);
+	  fft_in_real[j] = (float)real(fftSample);
+	  fft_in_imag[j] = (float)imag(fftSample);
 	  DO_LIMITS_ANALYSIS(if (fft_in_real[j] < min_input) { min_input = fft_in_real[j]; } 
 			     if (fft_in_real[j] > max_input) { max_input = fft_in_real[j]; }
 			     if (fft_in_imag[j] < min_input) { min_input = fft_in_imag[j]; } 
@@ -437,11 +437,11 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
  * This routine manages the transmit pipeline functions and components
  ********************************************************************************/
 void
-do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t* vit_bits)
+do_recv_pipeline(unsigned num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, unsigned * vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t* vit_bits)
 {
   DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
   for (int i = 0; i < num_recvd_vals; i++) {
-    input_data[i] = recvd_in_real[i] + I * recvd_in_imag[i];
+    input_data[i] = fx_pt(recvd_in_real[i],recvd_in_imag[i]);
   }
   DEBUG(printf("Calling compute\n"));
  #ifdef INT_TIME
@@ -457,10 +457,10 @@ do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag,
 }
 
 
-void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *vit_bits) {
+void compute(unsigned num_inputs, fx_pt *input_data, unsigned * vit_bits_len, ofdm_param* ofdm_parms, frame_param* frame_parms, uint8_t *vit_bits) {
   uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
   DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
-	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, crealf(input_data[ti]), cimagf(input_data[ti]));
+	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, real(input_data[ti]), imag(input_data[ti]));
 	});
 
   unsigned num_del16_vals = num_inputs + 16;
@@ -468,7 +468,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   // We don't need to make this call now -- we've done the effect in the memory array already
   // delay(delay16_out, num_inputs, input_data);  
   DEBUG(for (int ti = 0; ti < num_del16_vals; ti++) {
-      printf(" DEL16 %5u : TMPBUF %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, crealf(delay16_out[ti]), cimagf(delay16_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
+      printf(" DEL16 %5u : TMPBUF %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, real(delay16_out[ti]), imag(delay16_out[ti]), real(input_data[ti]), imag(input_data[ti]));
     });
   
   unsigned num_cconj_vals = num_del16_vals;
@@ -478,7 +478,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
  #endif
   complex_conjugate(cmpx_conj_out, num_del16_vals, delay16_out);
   DEBUG(for (int ti = 0; ti < num_cconj_vals; ti++) {
-      printf("  CMP_CONJ %5u : CONJ_OUT %12.8f %12.8f : DEL16_IN %12.8f %12.8f\n", ti, crealf(cmpx_conj_out[ti]), cimagf(cmpx_conj_out[ti]), crealf(delay16_out[ti]), cimagf(delay16_out[ti]));
+      printf("  CMP_CONJ %5u : CONJ_OUT %12.8f %12.8f : DEL16_IN %12.8f %12.8f\n", ti, real(cmpx_conj_out[ti]), imag(cmpx_conj_out[ti]), real(delay16_out[ti]), imag(delay16_out[ti]));
     });
   
   unsigned num_cmult_vals = num_cconj_vals;
@@ -490,7 +490,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
  #endif
   complex_multiply(cmpx_mult_out, num_cconj_vals, cmpx_conj_out, input_data);
   DEBUG(for (int ti = 0; ti < num_cmult_vals; ti++) {
-      printf("  CMP_MULT %5u : MULT_OUT %12.8f %12.8f : CMP_CONJ %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]), crealf(cmpx_conj_out[ti]), cimagf(cmpx_conj_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
+      printf("  CMP_MULT %5u : MULT_OUT %12.8f %12.8f : CMP_CONJ %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, real(cmpx_mult_out[ti]), imag(cmpx_mult_out[ti]), real(cmpx_conj_out[ti]), imag(cmpx_conj_out[ti]), real(input_data[ti]), imag(input_data[ti]));
     });
   
   unsigned num_cmpcorr_vals = num_cmult_vals;
@@ -503,7 +503,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   //firc(correlation_complex, cmpx_mult_out);
   ffirc(correlation_complex, num_cmult_vals, cmpx_mult_out);
   DEBUG(for (int ti = 0; ti < num_cmpcorr_vals; ti++) {
-      printf("  MV_AVG48 %5u : CORR_CMP %12.8f %12.8f : MULT_OUT %12.8f %12.8f\n", ti, crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]));
+      printf("  MV_AVG48 %5u : CORR_CMP %12.8f %12.8f : MULT_OUT %12.8f %12.8f\n", ti, real(correlation_complex[ti]), imag(correlation_complex[ti]), real(cmpx_mult_out[ti]), imag(cmpx_mult_out[ti]));
     });
   
   unsigned num_cmag_vals = num_cmpcorr_vals;
@@ -515,7 +515,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
  #endif
   complex_to_magnitude(correlation, num_cmpcorr_vals, correlation_complex);
   DEBUG(for (unsigned ti = 0; ti < num_cmag_vals; ti++) {
-      printf("  MAGNITUDE %5u : CORR %12.8f : CORR_CMP %12.8f %12.8f\n", ti, correlation[ti], crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]));
+      printf("  MAGNITUDE %5u : CORR %12.8f : CORR_CMP %12.8f %12.8f\n", ti, correlation[ti], real(correlation_complex[ti]), imag(correlation_complex[ti]));
     });
   
   unsigned num_cmag2_vals = num_inputs;
@@ -527,7 +527,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
  #endif
   complex_to_mag_squared(signal_power, num_inputs, input_data);
   DEBUG(for (int ti = 0; ti < num_cmag2_vals; ti++) {
-      printf("  MAG^2 %5u : SIGN_PWR %12.8f : INBUF %12.8f %12.8f\n", ti, signal_power[ti], crealf(input_data[ti]), cimagf(input_data[ti]));
+      printf("  MAG^2 %5u : SIGN_PWR %12.8f : INBUF %12.8f %12.8f\n", ti, signal_power[ti], real(input_data[ti]), imag(input_data[ti]));
     });
     
   DEBUG(printf("\nCalling fir (Moving Average 64)...\n"));
@@ -582,14 +582,14 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   DO_NUM_IOS_ANALYSIS(printf("Back from sync_short: OUT num_sync_short_vals = %u\n", num_sync_short_vals));
   DEBUG(printf(" ss_freq_offset = %12.8f  and num sync_short_values = %u\n", ss_freq_offset, num_sync_short_vals);
 	for (int ti = 0; ti < num_sync_short_vals; ti++) {
-	  printf(" S_S_OUT %5u : TMPBUF %12.8f %12.8f : CORR_CMP %12.8f %12.8f : CORRZ %12.8f : SS_FRAME %12.8f %12.8f\n", ti, crealf(delay16_out[ti]), cimagf(delay16_out[ti]), crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), the_correlation[ti], crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti])); 
+	  printf(" S_S_OUT %5u : TMPBUF %12.8f %12.8f : CORR_CMP %12.8f %12.8f : CORRZ %12.8f : SS_FRAME %12.8f %12.8f\n", ti, real(delay16_out[ti]), imag(delay16_out[ti]), real(correlation_complex[ti]), imag(correlation_complex[ti]), the_correlation[ti], real(sync_short_out_frames[ti]), imag(sync_short_out_frames[ti])); 
 	});
 
   DO_NUM_IOS_ANALYSIS(printf("Calling delay320: IN %u OUT %u\n", num_sync_short_vals, 320+num_sync_short_vals));
   // We've used a similar memory-placement trick to avoid having to do the delay320 function; sync_short_out_frames = &(frame_d[320])
   //delay320(frame_d, synch_short_out_frames);
   DEBUG(for (int ti = 0; ti < 320+num_sync_short_vals; ti++) {
-      printf("  DELAY_320 %5u : FRAME_D %12.8f %12.8f : FRAME %12.8f %12.8f\n", ti, crealf(frame_d[ti]), cimagf(frame_d[ti]), crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti]));
+      printf("  DELAY_320 %5u : FRAME_D %12.8f %12.8f : FRAME %12.8f %12.8f\n", ti, real(frame_d[ti]), imag(frame_d[ti]), real(sync_short_out_frames[ti]), imag(sync_short_out_frames[ti]));
     });
   
 
@@ -605,7 +605,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   DO_NUM_IOS_ANALYSIS(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", num_sync_long_vals));
   DEBUG(printf(" sl_freq_offset = %12.8f\n", sl_freq_offset);
 	for (int ti = 0; ti < 32619; ti++) {
-	  printf("  SYNC_LONG_OUT %5u  %12.8f %12.8f : FR_D %12.8f %12.8f : D_FR_L %12.8f %12.8f\n", ti, crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti]), crealf(frame_d[ti]), cimagf(frame_d[ti]), crealf(d_sync_long_out_frames[ti]), cimagf(d_sync_long_out_frames[ti])); 
+	  printf("  SYNC_LONG_OUT %5u  %12.8f %12.8f : FR_D %12.8f %12.8f : D_FR_L %12.8f %12.8f\n", ti, real(sync_short_out_frames[ti]), imag(sync_short_out_frames[ti]), real(frame_d[ti]), imag(frame_d[ti]), real(d_sync_long_out_frames[ti]), imag(d_sync_long_out_frames[ti])); 
 	});
 
   fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE];
@@ -630,7 +630,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
 
   // NOTE: The 509 == FFT_OUT_SIZE / 64
   for(unsigned i = 0; i < num_fft_frames /*509*/ * 64; i++) {
-    toBeEqualized[i] = (fx_pt)(fft_ar_r[i] + fft_ar_i[i] * I);
+    toBeEqualized[i] = fx_pt(fft_ar_r[i],fft_ar_i[i]);
   }
   float wifi_start = ss_freq_offset - sl_freq_offset;
   uint8_t equalized_bits[FRAME_EQ_OUT_MAX_SIZE];
@@ -650,7 +650,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   DEBUG(printf("GR_FR_EQ : fft_outs = %u items %u ffts : num_eq_out_bits = %u %u : num_eq_out_sym = %u\n", num_fft_outs, num_fft_outs/64, num_eq_out_bits, num_eq_out_bits/48, num_eq_out_sym));
   DO_NUM_IOS_ANALYSIS(printf("Back from gr_equalize : OUT %u\n", num_eq_out_bits));
   DEBUG(for (int ti = 0; ti < num_eq_out_bits; ti++) {
-      printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti, crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), crealf(equalized[ti]), cimagf(equalized[ti]), equalized_bits[ti]);
+      printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti, real(toBeEqualized[ti]), imag(toBeEqualized[ti]), real(equalized[ti]), imag(equalized[ti]), equalized_bits[ti]);
     });
   
   // get viterbi decoder inputs
@@ -665,7 +665,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* vit_bits_len, ofdm_par
   DEBUG(printf("Calling get_viterbi_decoder_inputs for %u EQ-out bits\n", num_eq_out_bits));
   get_viterbi_decoder_inputs(num_eq_out_bits, equalized, ofdm_parms, frame_parms, vit_bits_len, vit_bits);
   DEBUG(printf(" Back from get_viterbi_decoder_inputs with %u Vit In-Bits\n", *vit_bits_len));
-  SDEBUG(for (int ti = 0; ti < *vit_bits_len; ti++) {
+  SDEBUG(for (unsigned ti = 0; ti < *vit_bits_len; ti++) {
       printf(" VIT_INBITS %5u : %u\n", ti, vit_bits[ti]);
     });
 

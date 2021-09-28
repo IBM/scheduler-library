@@ -29,6 +29,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string>
 
 //#include "utils.h"
 //#define VERBOSE
@@ -685,7 +686,7 @@ void *metadata_thread_wait_for_task(void *void_parm_ptr) {
 /* Input parameters: */
 scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
   scheduler_get_datastate_in_parms_t *pptr =
-      malloc(sizeof(scheduler_get_datastate_in_parms_t));
+     (scheduler_get_datastate_in_parms_t*) malloc(sizeof(scheduler_get_datastate_in_parms_t));
   if (pptr == NULL) {
     printf("ERROR: Couldn't allocate the sched_inparms memory\n");
     exit(-99);
@@ -722,7 +723,7 @@ scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
 
 scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t *inp)
 {
-  scheduler_datastate_block_t *sptr = malloc(sizeof(scheduler_datastate_block_t));
+  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*) malloc(sizeof(scheduler_datastate_block_t));
   on_exit(cleanup_and_exit, sptr);
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
   if (sptr == NULL) {
@@ -753,13 +754,13 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
   DEBUG(printf("max_of_any_type = %u\n", sptr->max_accel_of_any_type));
 
   // Allocate the scheduler_datastate_block_t dynamic (per-task-type) elements
-  sptr->allocated_metadata_blocks = malloc(inp->max_task_types * sizeof(uint32_t));
+  sptr->allocated_metadata_blocks = (uint32_t*) malloc(inp->max_task_types * sizeof(uint32_t));
   sched_state_size += inp->max_task_types * sizeof(uint32_t);
   if (sptr->allocated_metadata_blocks == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->allocated_metadata_blocks\n");
     exit(-99);
   }
-  sptr->freed_metadata_blocks = malloc(inp->max_task_types * sizeof(uint32_t));
+  sptr->freed_metadata_blocks = (uint32_t*) malloc(inp->max_task_types * sizeof(uint32_t));
   sched_state_size += inp->max_task_types * sizeof(uint32_t);
   if (sptr->freed_metadata_blocks == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->freed_metadata_blocks\n");
@@ -767,13 +768,13 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
   }
 
   { // Set up the accelerator name and description strings
-    sptr->accel_name_str = calloc(inp->max_accel_types, sizeof(char *)); //[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
+    sptr->accel_name_str = (char**) calloc(inp->max_accel_types, sizeof(char *)); //[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
     sched_state_size += inp->max_accel_types * sizeof(char *);
     if (sptr->accel_name_str == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accel_name_str\n");
       exit(-99);
     }
-    char *tptr = malloc(inp->max_accel_types * MAX_ACCEL_NAME_LEN);
+    char *tptr = (char*) malloc(inp->max_accel_types * MAX_ACCEL_NAME_LEN);
     sched_state_size += inp->max_accel_types * MAX_ACCEL_NAME_LEN;
     if (tptr == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accel_name_str char-pool\n");
@@ -784,13 +785,13 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
       tptr += MAX_ACCEL_NAME_LEN;
     }
     // Set up the accel_desc_str
-    sptr->accel_desc_str = calloc(inp->max_accel_types, sizeof(char *)); //[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
+    sptr->accel_desc_str = (char**) calloc(inp->max_accel_types, sizeof(char *)); //[MAX_ACCEL_TYPES][MAX_ACCEL_DESC_LEN];
     sched_state_size += inp->max_accel_types * sizeof(char *);
     if (sptr->accel_desc_str == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accel_desc_str\n");
       exit(-99);
     }
-    tptr = malloc(inp->max_accel_types * MAX_ACCEL_DESC_LEN);
+    tptr = (char*) malloc(inp->max_accel_types * MAX_ACCEL_DESC_LEN);
     sched_state_size += inp->max_accel_types * MAX_ACCEL_DESC_LEN;
     if (tptr == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accel_desc_str char-pool\n");
@@ -802,14 +803,14 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     }
   }
 
-  sptr->scheduler_execute_task_function = malloc(inp->max_accel_types * sizeof(sched_execute_task_function_t));
+  sptr->scheduler_execute_task_function = (sched_execute_task_function_t **) malloc(inp->max_accel_types * sizeof(sched_execute_task_function_t));
   sched_state_size += inp->max_accel_types * sizeof(sched_execute_task_function_t);
   if (sptr->scheduler_execute_task_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function\n");
     exit(-99);
   }
   for (int ai = 0; ai < inp->max_accel_types; ai++) {
-    sptr->scheduler_execute_task_function[ai] = calloc( inp->max_task_types, sizeof(sched_execute_task_function_t)); //[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
+    sptr->scheduler_execute_task_function[ai] = (sched_execute_task_function_t *) calloc( inp->max_task_types, sizeof(sched_execute_task_function_t)); //[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
     sched_state_size += inp->max_task_types * sizeof(sched_execute_task_function_t);
     if (sptr->scheduler_execute_task_function[ai] == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function[%u]\n", ai);
@@ -817,21 +818,21 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     }
   }
 
-  sptr->do_accel_init_function = malloc(inp->max_accel_types * sizeof(do_accel_initialization_t));
+  sptr->do_accel_init_function = (do_accel_initialization_t *) malloc(inp->max_accel_types * sizeof(do_accel_initialization_t));
   sched_state_size += inp->max_accel_types * sizeof(do_accel_initialization_t);
   if (sptr->do_accel_init_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function\n");
     exit(-99);
   }
 
-  sptr->do_accel_closeout_function = malloc(inp->max_accel_types * sizeof(do_accel_closeout_t));
+  sptr->do_accel_closeout_function = (do_accel_closeout_t *) malloc(inp->max_accel_types * sizeof(do_accel_closeout_t));
   sched_state_size += inp->max_accel_types * sizeof(do_accel_closeout_t);
   if (sptr->do_accel_closeout_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function\n");
     exit(-99);
   }
 
-  sptr->output_accel_run_stats_function = malloc(inp->max_accel_types * sizeof(output_accel_run_stats_t));
+  sptr->output_accel_run_stats_function = (output_accel_run_stats_t *) malloc(inp->max_accel_types * sizeof(output_accel_run_stats_t));
   sched_state_size += inp->max_accel_types * sizeof(output_accel_run_stats_t);
   if (sptr->output_accel_run_stats_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function\n");
@@ -840,13 +841,13 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
 
   { // Set up task name and description strings
     // Set up the task_name_str
-    sptr->task_name_str = calloc(inp->max_task_types, sizeof(char *)); //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
+    sptr->task_name_str = (char **) calloc(inp->max_task_types, sizeof(char *)); //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
     sched_state_size += inp->max_task_types * sizeof(char *);
     if (sptr->task_name_str == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->task_name_str\n");
       exit(-99);
     }
-    char *tptr = malloc(inp->max_task_types * MAX_TASK_NAME_LEN);
+    char *tptr = (char *) malloc(inp->max_task_types * MAX_TASK_NAME_LEN);
     sched_state_size += inp->max_task_types * MAX_TASK_NAME_LEN;
     if (tptr == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->task_name_str char-pool\n");
@@ -857,13 +858,13 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
       tptr += MAX_TASK_NAME_LEN;
     }
     // Set up the task_desc_str
-    sptr->task_desc_str = calloc(inp->max_task_types, sizeof(char *)); //[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
+    sptr->task_desc_str = (char **) calloc(inp->max_task_types, sizeof(char *)); //[MAX_TASK_TYPES][MAX_TASK_DESC_LEN];
     sched_state_size += inp->max_task_types * sizeof(char *);
     if (sptr->task_desc_str == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->task_desc_str\n");
       exit(-99);
     }
-    tptr = malloc(inp->max_task_types * MAX_TASK_DESC_LEN);
+    tptr = (char *) malloc(inp->max_task_types * MAX_TASK_DESC_LEN);
     sched_state_size += inp->max_task_types * MAX_TASK_DESC_LEN;
     if (tptr == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->task_desc_str char-pool\n");
@@ -875,31 +876,31 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     }
   }
 
-  sptr->print_metablock_contents_function = malloc(inp->max_task_types * sizeof(print_metadata_block_contents_t));
+  sptr->print_metablock_contents_function = (print_metadata_block_contents_t *) malloc(inp->max_task_types * sizeof(print_metadata_block_contents_t));
   sched_state_size += inp->max_task_types * sizeof(print_metadata_block_contents_t);
   if (sptr->print_metablock_contents_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->print_metablock_contents_function\n");
     exit(-99);
   }
-  sptr->output_task_run_stats_function = malloc(inp->max_task_types * sizeof(output_task_type_run_stats_t));
+  sptr->output_task_run_stats_function = (output_task_type_run_stats_t *) malloc(inp->max_task_types * sizeof(output_task_type_run_stats_t));
   sched_state_size += inp->max_task_types * sizeof(output_task_type_run_stats_t);
   if (sptr->output_task_run_stats_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->output_task_run_stats_function\n");
     exit(-99);
   }
-  sptr->set_up_task_function = malloc(inp->max_task_types * sizeof(set_up_task_function_t));
+  sptr->set_up_task_function = (set_up_task_function_t *) malloc(inp->max_task_types * sizeof(set_up_task_function_t));
   sched_state_size += inp->max_task_types * sizeof(set_up_task_function_t);
   if (sptr->set_up_task_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->set_up_task_function\n");
     exit(-99);
   }
-  sptr->finish_task_execution_function = malloc(inp->max_task_types * sizeof(finish_task_execution_function_t));
+  sptr->finish_task_execution_function = (finish_task_execution_function_t *) malloc(inp->max_task_types * sizeof(finish_task_execution_function_t));
   sched_state_size += inp->max_task_types * sizeof(finish_task_execution_function_t);
   if (sptr->finish_task_execution_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->finish_task_execution_function\n");
     exit(-99);
   }
-  sptr->auto_finish_task_function = malloc(inp->max_task_types * sizeof(auto_finish_task_function_t));
+  sptr->auto_finish_task_function = (auto_finish_task_function_t *) malloc(inp->max_task_types * sizeof(auto_finish_task_function_t));
   sched_state_size += inp->max_task_types * sizeof(auto_finish_task_function_t);
   if (sptr->auto_finish_task_function == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->auto_finish_task_function\n");
@@ -908,14 +909,14 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
 
   // sptr->accelerator_in_use_by = malloc(MAX_ACCEL_TYPES
   // /*inp->max_accel_types*/ * sizeof(volatile int*));
-  sptr->accelerator_in_use_by = malloc(inp->max_accel_types * sizeof(volatile int *));
+  sptr->accelerator_in_use_by = (volatile int **) malloc(inp->max_accel_types * sizeof(volatile int *));
   sched_state_size += inp->max_accel_types * sizeof(volatile int *);
   if (sptr->accelerator_in_use_by == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accelerator_in_use_by\n");
     exit(-99);
   }
   for (int ti = 0; ti < inp->max_accel_types; ti++) {
-    sptr->accelerator_in_use_by[ti] = malloc(sptr->max_accel_of_any_type * sizeof(volatile int));
+    sptr->accelerator_in_use_by[ti] = (volatile int *) malloc(sptr->max_accel_of_any_type * sizeof(volatile int));
     sched_state_size += sptr->max_accel_of_any_type * sizeof(volatile int);
     if (sptr->accelerator_in_use_by[ti] == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->accelerator_in_use_by[%u]\n", ti);
@@ -923,38 +924,38 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     }
   }
 
-  sptr->num_accelerators_of_type = malloc(inp->max_accel_types * sizeof(int));
+  sptr->num_accelerators_of_type = (int *) malloc(inp->max_accel_types * sizeof(int));
   sched_state_size += inp->max_accel_types * sizeof(int);
   if (sptr->num_accelerators_of_type == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->num_accelerators_of_type\n");
     exit(-99);
   }
 
-  sptr->free_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
+  sptr->free_metadata_pool = (int *) calloc(inp->max_metadata_pool_blocks, sizeof(int));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sptr->free_metadata_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->free_metadata_pool\n");
     exit(-99);
   }
-  sptr->ready_mb_task_queue_pool = calloc(inp->max_metadata_pool_blocks, sizeof(ready_mb_task_queue_entry_t));
+  sptr->ready_mb_task_queue_pool = (ready_mb_task_queue_entry_t *) calloc(inp->max_metadata_pool_blocks, sizeof(ready_mb_task_queue_entry_t));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(ready_mb_task_queue_entry_t);
   if (sptr->ready_mb_task_queue_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->ready_mb_task_queue_pool\n");
     exit(-99);
   }
-  sptr->metadata_threads = calloc(inp->max_metadata_pool_blocks, sizeof(pthread_t));
+  sptr->metadata_threads = (pthread_t *) calloc(inp->max_metadata_pool_blocks, sizeof(pthread_t));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(pthread_t);
   if (sptr->metadata_threads == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->metadata_threads\n");
     exit(-99);
   }
-  sptr->critical_live_tasks_list = calloc(inp->max_metadata_pool_blocks, sizeof(blockid_linked_list_t));
+  sptr->critical_live_tasks_list = (blockid_linked_list_t *) calloc(inp->max_metadata_pool_blocks, sizeof(blockid_linked_list_t));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(blockid_linked_list_t);
   if (sptr->critical_live_tasks_list == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->critical_live_tasks_list\n");
     exit(-99);
   }
-  sptr->free_critlist_pool = calloc(inp->max_metadata_pool_blocks, sizeof(int));
+  sptr->free_critlist_pool = (int *) calloc(inp->max_metadata_pool_blocks, sizeof(int));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
   if (sptr->free_critlist_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->free_critlist_pool\n");
@@ -962,7 +963,7 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
   }
 
   // Now allocate the metadata block entries...
-  sptr->master_metadata_pool = calloc(inp->max_metadata_pool_blocks, sizeof(task_metadata_block_t));
+  sptr->master_metadata_pool = (task_metadata_block_t *) calloc(inp->max_metadata_pool_blocks, sizeof(task_metadata_block_t));
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(task_metadata_block_t);
   if (sptr->master_metadata_pool == NULL) {
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool\n");
@@ -970,22 +971,22 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
   }
 
   for (int mi = 0; mi < inp->max_metadata_pool_blocks; mi++) {
-    sptr->master_metadata_pool[mi].gets_by_task_type = malloc(inp->max_task_types * sizeof(uint32_t));
+    sptr->master_metadata_pool[mi].gets_by_task_type = (uint32_t *) malloc(inp->max_task_types * sizeof(uint32_t));
     sched_state_size += inp->max_task_types * sizeof(uint32_t);
     if (sptr->master_metadata_pool[mi].gets_by_task_type == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].gets_by_task_type\n", mi);
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].frees_by_task_type = malloc(inp->max_task_types * sizeof(uint32_t));
+    sptr->master_metadata_pool[mi].frees_by_task_type = (uint32_t *) malloc(inp->max_task_types * sizeof(uint32_t));
     sched_state_size += inp->max_task_types * sizeof(uint32_t);
     if (sptr->master_metadata_pool[mi].frees_by_task_type == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].frees_by_task_type\n", mi);
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].sched_timings.running_sec = calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
-    sptr->master_metadata_pool[mi].sched_timings.running_usec = calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
+    sptr->master_metadata_pool[mi].sched_timings.running_sec = (uint64_t *) calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
+    sptr->master_metadata_pool[mi].sched_timings.running_usec = (uint64_t *) calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
     sched_state_size += inp->max_accel_types * 2 * sizeof(uint64_t);
     if (sptr->master_metadata_pool[mi].sched_timings.running_sec == NULL) {
       printf(
@@ -997,21 +998,21 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].task_on_accel_profile = calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
+    sptr->master_metadata_pool[mi].task_on_accel_profile = (uint64_t *) calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
     sched_state_size += inp->max_accel_types * sizeof(uint64_t);
     if (sptr->master_metadata_pool[mi].task_on_accel_profile == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_on_accel_profile\n", mi);
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].task_computed_on = calloc(inp->max_accel_types, sizeof(uint64_t)); //[MAX_ACCEL_TYPES]
-    sched_state_size += inp->max_accel_types * sizeof(uint64_t);
+    sptr->master_metadata_pool[mi].task_computed_on = (uint32_t **) calloc(inp->max_accel_types, sizeof(uint32_t *)); //[MAX_ACCEL_TYPES]
+    sched_state_size += inp->max_accel_types * sizeof(uint32_t *);
     if (sptr->master_metadata_pool[mi].task_computed_on == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_computed_on\n", mi);
       exit(-99);
     }
     for (int ai = 0; ai < inp->max_accel_types; ai++) {
-      sptr->master_metadata_pool[mi].task_computed_on[ai] = malloc(inp->max_task_types * sizeof(uint32_t));
+      sptr->master_metadata_pool[mi].task_computed_on[ai] = (uint32_t *) malloc(inp->max_task_types * sizeof(uint32_t));
       sched_state_size += inp->max_task_types * sizeof(uint32_t);
       if (sptr->master_metadata_pool[mi].task_computed_on[ai] == NULL) {
         printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_computed_on[%u]\n", mi, ai);
@@ -1019,21 +1020,21 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
       }
     }
 
-    sptr->master_metadata_pool[mi].task_timings = calloc(inp->max_task_types, sizeof(task_timing_data_t));
+    sptr->master_metadata_pool[mi].task_timings = (task_timing_data_t *) calloc(inp->max_task_types, sizeof(task_timing_data_t));
     sched_state_size += inp->max_task_types * sizeof(task_timing_data_t);
     if (sptr->master_metadata_pool[mi].task_timings == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].task_timings\n", mi);
       exit(-99);
     }
 
-    sptr->master_metadata_pool[mi].accelerator_allocated_to_MB = malloc(inp->max_accel_types * sizeof(uint32_t *));
+    sptr->master_metadata_pool[mi].accelerator_allocated_to_MB = (uint32_t **) malloc(inp->max_accel_types * sizeof(uint32_t *));
     sched_state_size += inp->max_accel_types * sizeof(uint32_t *);
     if (sptr->master_metadata_pool[mi].accelerator_allocated_to_MB == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].accelerator_allocated_to_MB\n", mi);
       exit(-99);
     }
     for (int ti = 0; ti < inp->max_accel_types; ti++) {
-      sptr->master_metadata_pool[mi].accelerator_allocated_to_MB[ti] = malloc(sptr->max_accel_of_any_type * sizeof(uint32_t));
+      sptr->master_metadata_pool[mi].accelerator_allocated_to_MB[ti] = (uint32_t *) malloc(sptr->max_accel_of_any_type * sizeof(uint32_t));
       sched_state_size += sptr->max_accel_of_any_type * sizeof(uint32_t);
       if (sptr->master_metadata_pool[mi].accelerator_allocated_to_MB[ti] == NULL) {
         printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].accelerator_allocated_to_MB[%u]\n", mi, ti);
@@ -1041,7 +1042,7 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
       }
     }
 
-    sptr->master_metadata_pool[mi].data_space = malloc(inp->max_data_space_bytes);
+    sptr->master_metadata_pool[mi].data_space = (uint8_t *) malloc(inp->max_data_space_bytes);
     sched_state_size += inp->max_data_space_bytes;
     if (sptr->master_metadata_pool[mi].data_space == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].data_space\n", mi);
@@ -1126,10 +1127,10 @@ initialize_scheduler_from_config_file(char *config_file_name) {
       snprintf(sched_inparms->sl_viz_fname, 255, "%s", setting);
       printf("  Set inparms->sl_viz_fname = %s\n", sched_inparms->sl_viz_fname);
     } else {
-      char *search_str = "MAX_ACCEL_TO_USE_FROM_POOL_";
-      if (strncmp(parm_id, search_str, strlen(search_str)) == 0) {
+      std::string search_str = "MAX_ACCEL_TO_USE_FROM_POOL_";
+      if (strncmp(parm_id, search_str.c_str(), strlen(search_str.c_str())) == 0) {
         for (int i = 0; i < SCHED_MAX_ACCEL_TYPES; i++) {
-          if (strncmp(&(parm_id[strlen(search_str)]), sched_accel_enum_names[i], 64) == 0) {
+          if (strncmp(&(parm_id[strlen(search_str.c_str())]), sched_accel_enum_names[i], 64) == 0) {
             sched_inparms->max_accel_to_use_from_pool[i] = atoi(setting);
             printf("  Set inparms->max_accel_to_use_from_pool[%d] = %d\n", i, sched_inparms->max_accel_to_use_from_pool[i]);
             i = SCHED_MAX_ACCEL_TYPES;
@@ -1163,8 +1164,8 @@ void set_up_scheduler() {
   sprintf(global_hardware_state_block.accel_name_str[SCHED_CPU_ACCEL_T], "CPU-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_CPU_ACCEL_T], "Run task on a RISC-V CPU thread");
   global_hardware_state_block.num_accelerators_of_type[SCHED_CPU_ACCEL_T] = NUM_CPU_ACCEL;
-  global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] = &do_cpu_accel_type_initialization;
-  global_hardware_state_block.do_accel_closeout_function[SCHED_CPU_ACCEL_T] = &do_cpu_accel_type_closeout;
+  global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] = (do_accel_initialization_t) &do_cpu_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_CPU_ACCEL_T] = (do_accel_closeout_t) &do_cpu_accel_type_closeout;
   global_hardware_state_block.output_accel_run_stats_function[SCHED_CPU_ACCEL_T] = &output_cpu_accel_type_run_stats;
   // Now initialize this accelerator
   if (global_hardware_state_block.do_accel_init_function[SCHED_CPU_ACCEL_T] != NULL) {
@@ -1180,8 +1181,8 @@ void set_up_scheduler() {
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "VIT-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_VITDEC_ACCEL_T], "Run task on the Viterbi-Decode Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_VITDEC_ACCEL_T] = NUM_VIT_ACCEL;
-  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &do_vit_accel_type_initialization;
-  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &do_vit_accel_type_closeout;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = (do_accel_initialization_t) &do_vit_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = (do_accel_closeout_t) &do_vit_accel_type_closeout;
   global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_VITDEC_ACCEL_T] = &output_vit_accel_type_run_stats;
   // Now initialize this accelerator
   if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_VITDEC_ACCEL_T] != NULL) {
@@ -1196,8 +1197,8 @@ void set_up_scheduler() {
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "FFT-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_1D_FFT_ACCEL_T], "Run task on the 1-D FFT Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_1D_FFT_ACCEL_T] = NUM_FFT_ACCEL;
-  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &do_fft_accel_type_initialization;
-  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &do_fft_accel_type_closeout;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = (do_accel_initialization_t) &do_fft_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = (do_accel_closeout_t) &do_fft_accel_type_closeout;
   global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] = &output_fft_accel_type_run_stats;
   // Now initialize this accelerator
   if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_1D_FFT_ACCEL_T] != NULL) {
@@ -1212,8 +1213,8 @@ void set_up_scheduler() {
   sprintf(global_hardware_state_block.accel_name_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "CV-HW-Acc");
   sprintf(global_hardware_state_block.accel_desc_str[SCHED_EPOCHS_CV_CNN_ACCEL_T], "Run task on the CV/CNN NVDLA Hardware Accelerator");
   global_hardware_state_block.num_accelerators_of_type[SCHED_EPOCHS_CV_CNN_ACCEL_T] = NUM_CV_ACCEL;
-  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &do_cv_accel_type_initialization;
-  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &do_cv_accel_type_closeout;
+  global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = (do_accel_initialization_t) &do_cv_accel_type_initialization;
+  global_hardware_state_block.do_accel_closeout_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = (do_accel_closeout_t) &do_cv_accel_type_closeout;
   global_hardware_state_block.output_accel_run_stats_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] = &output_cv_accel_type_run_stats;
   // Now initialize this accelerator
   if (global_hardware_state_block.do_accel_init_function[SCHED_EPOCHS_CV_CNN_ACCEL_T] != NULL) {
@@ -1291,7 +1292,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   }
 
   sptr->initialize_assign_task_to_pe =
-      dlsym(sptr->policy_handle, "initialize_assign_task_to_pe");
+      (void (*)(void*)) dlsym(sptr->policy_handle, "initialize_assign_task_to_pe");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_assign_task_to_pe() not found in scheduling "
@@ -1300,7 +1301,9 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     exit( -1);
   }
 
-  sptr->assign_task_to_pe = dlsym(sptr->policy_handle, "assign_task_to_pe");
+  sptr->assign_task_to_pe = 
+      (ready_mb_task_queue_entry_t* (*)(scheduler_datastate_block_struct*, ready_mb_task_queue_entry_t*))
+      dlsym(sptr->policy_handle, "assign_task_to_pe");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n",
@@ -2300,7 +2303,7 @@ task_type_t register_task_type(/*scheduler_datastate_block_t*/ void *sptr_ptr, c
   va_list var_list;
   va_start(var_list, num_accel_task_exec_descriptions);
   for (int i = 0; i < num_accel_task_exec_descriptions; i++) {
-    scheduler_accelerator_type sched_accel = va_arg(var_list, scheduler_accelerator_type);
+    scheduler_accelerator_type sched_accel = (scheduler_accelerator_type) va_arg(var_list, int);
     sched_execute_task_function_t exec_fptr = va_arg(var_list, sched_execute_task_function_t);
     printf(" Call %d to Register Accel %u for task %u with fptr %p\n", i, sched_accel, tid, exec_fptr);
     register_accel_can_exec_task(sptr, sched_accel, tid, exec_fptr);
@@ -2344,7 +2347,7 @@ set_up_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   va_list args;
   va_start(args, dag_id);
 
-  task_metadata_block_t *task_mb = sptr->set_up_task_function[the_task_type](
+  task_metadata_block_t *task_mb = (task_metadata_block_t*) sptr->set_up_task_function[the_task_type](
       sptr, the_task_type, crit_level, use_auto_finish, dag_id, &args);
 
   va_end(args);

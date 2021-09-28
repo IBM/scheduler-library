@@ -1,6 +1,6 @@
 
 #include <math.h>
-#include <complex.h>
+#include <complex>
 
 #include "complex_ops.h"
 //#include "hls_math.h"
@@ -18,8 +18,8 @@ void complex_to_mag_squared(fx_pt1 out[CMP2MAGSQ_MAX_SIZE], unsigned num_ins, fx
   fx_pt1 a,b;
   /*power:*/
   for (unsigned i = 0; i < num_ins /*CMP2MAGSQ_MAX_SIZE*/; i++) {
-    a = crealf(data[i]);
-    b = cimagf(data[i]);
+    a = real(data[i]);
+    b = imag(data[i]);
     out[i] = a*a + b*b;
   }
 }
@@ -30,8 +30,8 @@ void complex_to_magnitude(fx_pt1 out[CMP2MAG_MAX_SIZE], unsigned num_ins, fx_pt 
   
   /*magn:*/
   for (unsigned i = 0; i < num_ins /*CMP2MAG_MAX_SIZE*/; i++) {
-    a = (fx_pt1_ext) crealf(data[i]);
-    b = (fx_pt1_ext) cimagf(data[i]);
+    a = (fx_pt1_ext) real(data[i]);
+    b = (fx_pt1_ext) imag(data[i]);
     tmp = a*a+b*b;
     out[i] = (fx_pt1)sqrt(tmp);
     //printf("a=%f; b=%f; -> %f\n",a.to_float(),b.to_float(), out[i].to_float() );
@@ -43,8 +43,8 @@ fx_pt1 abs_c(fx_pt data)
   fx_pt1_ext tmp,a,b;
   
   /*magn:*/
-  a = (fx_pt1_ext) crealf(data);
-  b = (fx_pt1_ext) cimagf(data);
+  a = (fx_pt1_ext) real(data);
+  b = (fx_pt1_ext) imag(data);
   tmp = a*a+b*b;
   return (fx_pt1)sqrt(tmp);
 }

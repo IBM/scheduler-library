@@ -22,7 +22,7 @@
 
 unsigned** HW_THRESHOLD;
 
-void 
+extern "C" void 
 initialize_assign_task_to_pe(void * in_parm_ptr)
 {
   HW_THRESHOLD = (unsigned**)in_parm_ptr;
@@ -32,7 +32,7 @@ initialize_assign_task_to_pe(void * in_parm_ptr)
 //   This one selects an accelerator type (HWR or CPU) randomly
 //   If an accelerators of that type is not available, it waits until it is.
 
-ready_mb_task_queue_entry_t *
+extern "C" ready_mb_task_queue_entry_t *
 assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)
 {
   //TODO: Make function to get task block from head of ready queue

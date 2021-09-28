@@ -1,4 +1,6 @@
-CC = gcc -std=c99
+
+CC = g++ -std=c++11
+#CC = gcc -std=c99
 
 CFLAGS = -pedantic -Wall -O0 -g
 ##CFLAGS += -L/usr/lib/python2.7/config-x86_64-linux-gnu -L/usr/lib -lpython2.7 -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions

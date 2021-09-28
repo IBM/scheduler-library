@@ -146,19 +146,19 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
          * head into the RHazard Lane */
         if (plan_ctrl_data_p->vehicle_state.lane < right) {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-          plan_ctrl_data_p->new_vehicle_state.lane += 1;
+          plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane + 1);
         } else {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-          plan_ctrl_data_p->new_vehicle_state.lane -= 1;
+          plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane - 1);
         }
         break; // prefer right lane
       case safe_to_move_right_only:
         DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-        plan_ctrl_data_p->new_vehicle_state.lane += 1;
+        plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane + 1);
         break;
       case safe_to_move_left_only:
         DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-        plan_ctrl_data_p->new_vehicle_state.lane -= 1;
+        plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane - 1);
         break;
       case unsafe_to_move_left_or_right:
 #ifdef USE_SIM_ENVIRON
@@ -187,7 +187,7 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
       if ((plan_ctrl_data_p->safe_lanes_msg == safe_to_move_right_or_left) ||
           (plan_ctrl_data_p->safe_lanes_msg == safe_to_move_right_only)) {
         DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-        plan_ctrl_data_p->new_vehicle_state.lane += 1;
+        plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane + 1);
       }
       break;
     case center:
@@ -198,7 +198,7 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
       if ((plan_ctrl_data_p->safe_lanes_msg == safe_to_move_right_or_left) ||
           (plan_ctrl_data_p->safe_lanes_msg == safe_to_move_left_only)) {
         DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[plan_ctrl_data_p->vehicle_state.lane]));
-        plan_ctrl_data_p->new_vehicle_state.lane -= 1;
+        plan_ctrl_data_p->new_vehicle_state.lane = (lane_t) ((int) plan_ctrl_data_p->new_vehicle_state.lane - 1);
       }
       break;
     }

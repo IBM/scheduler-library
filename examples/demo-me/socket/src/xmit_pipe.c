@@ -235,7 +235,7 @@ void interleave(const char *in, char *out, int in_sym, /*frame_param* frame,*/ i
 void
 init_ofdm_parms(ofdm_param* ofdm, int enc)
 {
-  ofdm->encoding = enc;
+  ofdm->encoding = (Encoding) enc;
 
   switch(enc) {
   case BPSK_1_2:

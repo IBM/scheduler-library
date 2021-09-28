@@ -149,8 +149,8 @@ task_metadata_block_t *set_up_fuse_grids_task(scheduler_datastate_block_t *sptr,
  #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
  #endif
-  lane_t my_lane = va_arg(var_list, lane_t);
-  lane_t your_lane = va_arg(var_list, lane_t);
+  lane_t my_lane = (lane_t) va_arg(var_list, int);
+  lane_t your_lane = (lane_t) va_arg(var_list, int);
   unsigned occ_x_dim = va_arg(var_list, unsigned);
   unsigned occ_y_dim = va_arg(var_list, unsigned);
   uint8_t* my_occ_grid = va_arg(var_list, uint8_t*);

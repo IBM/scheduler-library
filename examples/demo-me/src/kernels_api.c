@@ -758,7 +758,7 @@ message_t get_safe_dir_message_from_fused_occ_map(vehicle_state_t vs)
     break;
   }
   DEBUG(printf("Viterbi final message for lane %u %s = %u\n", vs.lane, lane_names[vs.lane], msg_val));
-  return msg_val;
+  return (message_t) msg_val;
 }
 /* #undef  DEBUG */
 /* #define DEBUG(x) */
@@ -967,7 +967,7 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs, message_t* tr_message)
   int n_recvd_in;
   DEBUG(printf("\nNow calling read_all to receive the remote-input header...\n"));
   DO_INTERACTIVE({printf("** press a key **"); char c = getc(stdin); });
-  char r_buffer[10] = "\0\0\0\0\0\0\0\0\0\0";
+  char r_buffer[] = "\0\0\0\0\0\0\0\0\0\0";
   int valread = read_all(recv_sock, r_buffer, 8);
   DEBUG(printf("  RECV done\n"));
   DEBUG(printf("  RECV got %d bytes\n", valread));

@@ -62,7 +62,7 @@ void ffir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], unsigned num_inputs, fx_pt1 input_
   //for (unsigned n = COEFF_LENGTH; n < (FIR_MAVG64_MAX_SIZE + COEFF_LENGTH); n++) {
   for (unsigned n = COEFF_LENGTH; n < (num_inputs + COEFF_LENGTH); n++) {
     curr_sum= (fx_pt)(curr_sum - input_sample[n-COEFF_LENGTH] + input_sample[n]);
-    output[n] = curr_sum;
+    output[n] = abs(curr_sum);
   } //end for every sample
 } //end function
 
@@ -77,7 +77,7 @@ void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], unsigned num_inputs, fx_pt input_s
   if(init) {
     /* init: */
     for (unsigned i = 0; i < COMPLEX_COEFF_LENGTH; i++) {
-      buffer[i] = 0 + 0 * I;
+      buffer[i] = fx_pt(0,0);
     }
     init = false;
   }
@@ -86,7 +86,7 @@ void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], unsigned num_inputs, fx_pt input_s
   //for (unsigned n = 0; n < FIRC_MAVG48_MAX_SIZE; n++) {
   for (unsigned n = 0; n < num_inputs; n++) {
     //fx_pt_ext t_output[COMPLEX_COEFF_LENGTH];
-    fx_pt_ext t_output_t = 0 + 0 * I;
+    fx_pt_ext t_output_t = fx_pt(0,0);
     /* data_shift: */
     for(int i = COMPLEX_COEFF_LENGTH-1; i >= 0; i--) {
       if (i == 0) {
@@ -135,12 +135,12 @@ void convlv(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH], const fx
   for (int n = 0; n < (SYNC_LENGTH + COEFF_LENGTH - 1); n++) {
     int kmin = (n >= COEFF_LENGTH - 1) ? n - (COEFF_LENGTH - 1) : 0;
     int kmax = (n < SYNC_LENGTH - 1) ? n : SYNC_LENGTH - 1;
-    output[n] = 0 + 0 * I;
+    output[n] = fx_pt(0,0);
     for (int k = kmin; k <= kmax; k++) {
       output[n] += input_sample[k] * coefficient[n - k];
-      DEBUG(printf("    Calc_CONVLV %5u %2u %2u : IN %12.8f %12.8f : COEFF %12.8f %12.8f : SUM %12.8f %12.8f\n", n, k, n-k, crealf(input_sample[n]), cimagf(input_sample[n]), crealf(coefficient[n-k]), cimagf(coefficient[n-k]), creal(output[n]), cimagf(output[n])));
+      DEBUG(printf("    Calc_CONVLV %5u %2u %2u : IN %12.8f %12.8f : COEFF %12.8f %12.8f : SUM %12.8f %12.8f\n", n, k, n-k, real(input_sample[n]), imag(input_sample[n]), real(coefficient[n-k]), imag(coefficient[n-k]), creal(output[n]), imag(output[n])));
     }
-    DEBUG(printf("  Out_CONVLV    %5u -- -- : IN %12.8f %12.8f :                                   OUT %12.8f %12.8f\n", n, crealf(input_sample[n]), cimagf(input_sample[n]), crealf(output[n]), cimagf(output[n])));
+    DEBUG(printf("  Out_CONVLV    %5u -- -- : IN %12.8f %12.8f :                                   OUT %12.8f %12.8f\n", n, real(input_sample[n]), imag(input_sample[n]), real(output[n]), imag(output[n])));
   }
 }
 
@@ -160,7 +160,7 @@ void firG(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH + COEFF_LENG
   if (init) {
     /* init: */
     for (unsigned i = 0; i < COEFF_LENGTH; i++) {
-      buffer[i] = 0 + 0 * I;
+      buffer[i] = fx_pt(0,0);
     }
     init = false;
   }
@@ -168,7 +168,7 @@ void firG(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH + COEFF_LENG
   /* loop_filter_data: */
   for(unsigned n = 0; n < SYNC_LENGTH; n++) {
     fx_pt_ext t_output[COEFF_LENGTH];
-    fx_pt_ext t_output_t = 0 + 0 * I;
+    fx_pt_ext t_output_t = fx_pt(0,0);
     /* data_shift: */
     for (int i = COEFF_LENGTH-1; i >= 0; i--) {
       if (i==0) {
@@ -181,18 +181,18 @@ void firG(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH + COEFF_LENG
     for (int i = COEFF_LENGTH-1; i >= 0; i--) {
       t_output[i] = buffer[i] * coefficient[i];
       DEBUG(if (n == 0) {
-	  printf("FIRG_MULT %5u i %2u : BUF %15.8f %12.8f : COEFF %12.8f %12.8f : T_OUT %12.8f %12.8f\n", n, i, crealf(buffer[i]), cimagf(buffer[i]), crealf(coefficient[i]), cimagf(coefficient[i]), crealf(t_output[i]), cimagf(t_output[i]));
+	  printf("FIRG_MULT %5u i %2u : BUF %15.8f %12.8f : COEFF %12.8f %12.8f : T_OUT %12.8f %12.8f\n", n, i, real(buffer[i]), imag(buffer[i]), real(coefficient[i]), imag(coefficient[i]), real(t_output[i]), imag(t_output[i]));
 	});
     }
     /* ACC: */
     for (int i = COEFF_LENGTH-1; i >= 0; i--) {
       t_output_t += t_output[i];
       DEBUG(if (n == 0) {
-	  printf("FIRG_ADD %5u i %2u : T_OUT %15.8f %12.8f : SUM %12.8f %12.8f\n", n, i, crealf(t_output[i]), cimagf(t_output[i]), crealf(t_output_t), cimagf(t_output_t));
+	  printf("FIRG_ADD %5u i %2u : T_OUT %15.8f %12.8f : SUM %12.8f %12.8f\n", n, i, real(t_output[i]), imag(t_output[i]), real(t_output_t), imag(t_output_t));
 	});
     }
     output[n] = (fx_pt)t_output_t;
-    DEBUG(printf("FIRG_OUT %5u : IN %15.8f %12.8f : OUT %12.8f %12.8f\n", n, crealf(input_sample[n]), cimagf(input_sample[n]), crealf(output[n]), cimagf(output[n])));
+    DEBUG(printf("FIRG_OUT %5u : IN %15.8f %12.8f : OUT %12.8f %12.8f\n", n, real(input_sample[n]), imag(input_sample[n]), real(output[n]), imag(output[n])));
   } //end for every sample
 
 } //end function
@@ -242,12 +242,12 @@ firG_using_my_volk(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH+COE
     float t_in[2*(COEFF_LENGTH+1)];
     for (int ti = 0; ti < COEFF_LENGTH+1; ti++) {
       int idx = 2*ti;
-      t_in[idx] = crealf(input_sample[i + ti]);
-      t_in[idx+1] = cimagf(input_sample[i + ti]);
+      t_in[idx] = real(input_sample[i + ti]);
+      t_in[idx+1] = imag(input_sample[i + ti]);
     }
     my_volk_32fc_x2_dot_prod_32fc_generic(t_out, t_in, taps_coeff);
-    output[i] = t_out[0] + t_out[1] * I;
-    DEBUG(printf("MY_VOLK_OUT %5lu : IN %12.8f %12.8f : OUT %12.8f, %12.8f : OUTPUT %12.8f %12.8f \n", i, t_in[0], t_in[1], t_out[0], t_out[1], crealf(output[i]), cimagf(output[i])));
+    output[i] = fx_pt(t_out[0],t_out[1]);
+    DEBUG(printf("MY_VOLK_OUT %5lu : IN %12.8f %12.8f : OUT %12.8f, %12.8f : OUTPUT %12.8f %12.8f \n", i, t_in[0], t_in[1], t_out[0], t_out[1], real(output[i]), imag(output[i])));
   }
 }
 
@@ -259,14 +259,14 @@ void my_cmp_volk_32fc_x2_dot_prod_32fc_generic(fx_pt* result, const fx_pt* input
   unsigned int n_2_ccomplex_blocks = (COEFF_LENGTH/2); //num_points/2;
   // unsigned int isodd = COEFF_LENGTH & 1;
 
-  fx_pt sum0 = 0 + 0 * I;
-  fx_pt sum1 = 0 + 0 * I;
+  fx_pt sum0 = fx_pt(0,0);
+  fx_pt sum1 = fx_pt(0,0);
   unsigned int i = 0;
   for(i = 0; i < n_2_ccomplex_blocks; ++i) {
     sum0 += in[0] * tp[0];
     sum1 += in[1] * tp[1];
-    DEBUG(printf("CMP_VOLK_KERNEL %5u : 0 : IN %12.8f %12.8f : TAP %12.8f %12.8f : SUM0 %12.8f %12.8f\n", i, crealf(in[0]), cimagf(in[0]), crealf(tp[0]), cimagf(tp[0]), crealf(sum0), cimagf(sum0));
-	  printf("                %5u : 1 : IN %12.8f %12.8f : TAP %12.8f %12.8f : SUM1 %12.8f %12.8f\n", i, crealf(in[1]), cimagf(in[1]), crealf(tp[1]), cimagf(tp[1]), crealf(sum1), cimagf(sum1)));
+    DEBUG(printf("CMP_VOLK_KERNEL %5u : 0 : IN %12.8f %12.8f : TAP %12.8f %12.8f : SUM0 %12.8f %12.8f\n", i, real(in[0]), imag(in[0]), real(tp[0]), imag(tp[0]), real(sum0), imag(sum0));
+	  printf("                %5u : 1 : IN %12.8f %12.8f : TAP %12.8f %12.8f : SUM1 %12.8f %12.8f\n", i, real(in[1]), imag(in[1]), real(tp[1]), imag(tp[1]), real(sum1), imag(sum1)));
     in += 2;
     tp += 2;
   }
@@ -285,7 +285,7 @@ firG_using_cmp_volk(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH+CO
 {
   for(unsigned long i = 0; i < SYNC_LENGTH; i++) {
     my_cmp_volk_32fc_x2_dot_prod_32fc_generic(&(output[i]), &input_sample[i], rev_coeff);
-    DEBUG(printf("CMP_VOLK_OUT %5lu : IN %12.8f %12.8f : OUTPUT %12.8f %12.8f \n", i, crealf(input_sample[0]), cimagf(input_sample[0]), crealf(output[i]), cimagf(output[i])));
+    DEBUG(printf("CMP_VOLK_OUT %5lu : IN %12.8f %12.8f : OUTPUT %12.8f %12.8f \n", i, real(input_sample[0]), imag(input_sample[0]), real(output[i]), imag(output[i])));
   }
 }
 

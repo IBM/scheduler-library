@@ -1,6 +1,6 @@
 #ifndef INC_SYNC_LONG
 #define INC_SYNC_LONG
-#include <complex.h>
+#include <complex>
 
 #include "sdr_type.h"
 #include "sdr_base.h"

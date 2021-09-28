@@ -413,7 +413,7 @@ set_up_cv_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 #ifdef TIME
   gettimeofday(&start_exec_cv, NULL);
 #endif
-  label_t in_label = va_arg(var_list, label_t);
+  label_t in_label = (label_t) va_arg(var_list, int);
 
   // Request a MetadataBlock (for an CV task at Critical Level)
   task_metadata_block_t *cv_mb_ptr = NULL;

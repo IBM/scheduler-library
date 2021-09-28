@@ -1,4 +1,4 @@
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -40,14 +40,14 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
   gettimeofday(&sysh_total_start, NULL);
  #endif
   for (unsigned i = 0; i < num_inputs /*SYNC_S_MAX_COR_SIZE*/; i++) {
-    DEBUG2(printf("S_S_IN %5u : IN %12.8f %12.8f ABS %12.8f %12.8f CORR %12.8f : CP %u\n", i, crealf(input_sample[i]), cimagf(input_sample[i]), crealf(input_abs[i]), cimagf(input_abs[i]), correlation[i], c_plateau));
+    DEBUG2(printf("S_S_IN %5u : IN %12.8f %12.8f ABS %12.8f %12.8f CORR %12.8f : CP %u\n", i, real(input_sample[i]), imag(input_sample[i]), real(input_abs[i]), imag(input_abs[i]), correlation[i], c_plateau));
     if ( correlation[i] > (fx_pt1)0.56 ) { // 0.56 == d_threshold == "sensitivity" parameter
       if (c_plateau < MIN_PLATEAU) {
 	c_plateau++;
       } else {
 	// We found the start-point of a frame
-	fx_pt1_ext1 x = (fx_pt1_ext1) crealf(input_abs[i]);
-	fx_pt1_ext1 y = (fx_pt1_ext1) cimagf(input_abs[i]);
+	fx_pt1_ext1 x = (fx_pt1_ext1) real(input_abs[i]);
+	fx_pt1_ext1 y = (fx_pt1_ext1) imag(input_abs[i]);
 	fx_pt1_ext1 raz = y/x ;
 	d_freq_offset = atan( raz )/16;  // d_freq_offset
 	*freq_offset_out = d_freq_offset;
@@ -77,7 +77,7 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
     for (unsigned k = frame_start; (k < num_inputs /*SYNC_S_MAX_ABS_SIZE*/) && (out_idx < MAX_SAMPLES); k++) {
       fx_pt1_ext2 mult = -(fx_pt1_ext2)d_freq_offset * k; // pos_ext;
       
-      fx_pt_ext esp = (fx_pt_ext)(cos((fx_pt1_ext1)mult) + sin((fx_pt1_ext1)mult) * I);
+      fx_pt_ext esp = fx_pt_ext(cos((fx_pt1_ext1)mult),sin((fx_pt1_ext1)mult));
       DEBUG2(printf("  -d_freq_offset * k = %12.8f * %5u = %12.8f :  %12.8f %12.8f\n", d_freq_offset, k, mult, esp.real(), esp.imag() ));
       //DEBUG2(printf("  -d_freq_offset * pos_ext = %12.8f * %12.8f = %12.8f :  %12.8f %12.8f\n", d_freq_offset, pos_ext, mult, esp.real(), esp.imag() ));
       fx_pt_ext prod= (fx_pt_ext)(input_sample[k] *  esp);

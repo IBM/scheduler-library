@@ -57,7 +57,7 @@ typedef struct xmit_msg_struct {
 } xmit_msg_t;
 
 typedef struct vit_msg_struct { 
-  int             len;
+  unsigned             len;
   vehicle_state_t car_state;
   ofdm_param      ofdm;
   frame_param     frame;

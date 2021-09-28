@@ -1,7 +1,7 @@
 #ifndef INC_GR_EQUALIZER
 #define INC_GR_EQUALIZER
 
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include "sdr_type.h"
 #include "sdr_base.h"

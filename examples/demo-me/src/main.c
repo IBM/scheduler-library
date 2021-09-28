@@ -101,11 +101,11 @@ unsigned **p0_hw_threshold;
 #endif
 
 // These are defined by the task-type
-uint64_t fft_profile[2][MY_APP_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
-uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
-uint64_t cv_profile[MY_APP_ACCEL_TYPES];
-uint64_t test_profile[MY_APP_ACCEL_TYPES];
-uint64_t plan_ctrl2_profile[MY_APP_ACCEL_TYPES];
+// uint64_t fft_profile[2][MY_APP_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
+// uint64_t vit_profile[4][MY_APP_ACCEL_TYPES]; // Vit messages can by short, medium, long, or max
+// uint64_t cv_profile[MY_APP_ACCEL_TYPES];
+// uint64_t test_profile[MY_APP_ACCEL_TYPES];
+// uint64_t plan_ctrl2_profile[MY_APP_ACCEL_TYPES];
 
 bool all_obstacle_lanes_mode = false;
 bool no_crit_cnn_task = false;
@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
   vehicle_state_t vehicle_state;
   label_t label = NUM_OBJECTS;
   distance_t distance;
-  message_t message = 0;
+  message_t message = (message_t) 0;
   test_res_t test_res;
 #ifdef USE_SIM_ENVIRON
   char world_desc_file_name[256] = "default_world.desc";
@@ -758,13 +758,13 @@ int main(int argc, char *argv[]) {
          sptr->inparms->max_task_timing_sets, sptr->max_accel_of_any_type);
 
   // Set up the task_on_accel profiles...
-  p0_hw_threshold = calloc(num_maxTasks_to_use, sizeof(unsigned *));
+  p0_hw_threshold = (unsigned **) calloc(num_maxTasks_to_use, sizeof(unsigned *));
   if (p0_hw_threshold == NULL) {
     printf("ERROR: main couldn't allocate memory for p0_hw_threshold\n");
     exit(-1);
   }
   for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
-    p0_hw_threshold[ti] = malloc(MY_APP_ACCEL_TYPES * sizeof(unsigned));
+    p0_hw_threshold[ti] = (unsigned *) malloc(MY_APP_ACCEL_TYPES * sizeof(unsigned));
     if (p0_hw_threshold[ti] == NULL) {
       printf("ERROR: main couldn't allocate memory for p0_hw_threshold[%u]\n", ti);
       exit(-1);
@@ -1180,7 +1180,7 @@ int main(int argc, char *argv[]) {
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
     task_metadata_block_t *cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      cv_mb_ptr = set_up_task(sptr, cv_task_type, CRITICAL_TASK,
+      cv_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
 			      false, time_step,
 			      cv_tr_label); // Critical CV task
       request_execution(cv_mb_ptr);
@@ -1188,7 +1188,7 @@ int main(int argc, char *argv[]) {
     }
 
     task_metadata_block_t *radar_mb_ptr = NULL;
-    radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
+    radar_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
 			       false, time_step,
 			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
     DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
@@ -1203,7 +1203,7 @@ int main(int argc, char *argv[]) {
 #ifndef HPVM
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t *viterbi_mb_ptr = NULL;
-    viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
+    viterbi_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
 				 false, time_step,
 				 vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
@@ -1211,7 +1211,7 @@ int main(int argc, char *argv[]) {
 
     task_metadata_block_t *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-      test_mb_ptr = set_up_task(sptr, test_task_type, CRITICAL_TASK,
+      test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
 				false, time_step); // Critical TEST task
       DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
       request_execution(test_mb_ptr);
@@ -1232,7 +1232,7 @@ int main(int argc, char *argv[]) {
       // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
 	task_metadata_block_t *cv_mb_ptr_2 = NULL;
-        cv_mb_ptr_2 = set_up_task(sptr, cv_task_type, BASE_TASK,
+        cv_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, BASE_TASK,
 				  true, time_step,
 				  cv_tr_label); // NON-Critical CV task
         DEBUG(printf("non-crit CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
@@ -1251,7 +1251,7 @@ int main(int argc, char *argv[]) {
         int base_fft_samples_set = rdentry_p2->set;
         float *addl_radar_inputs = rdentry_p2->radar_return_data;
         task_metadata_block_t *radar_mb_ptr_2 = NULL;
-	radar_mb_ptr_2 = set_up_task(sptr, radar_task_type, BASE_TASK,
+	radar_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, BASE_TASK,
 				     true, time_step,
 				     radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // NON-Critical RADAR task
         DEBUG(printf("non-crit RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
@@ -1262,7 +1262,7 @@ int main(int argc, char *argv[]) {
       if (i < additional_vit_tasks_per_time_step) {
         task_metadata_block_t* viterbi_mb_ptr_2;
 	DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits));
-	viterbi_mb_ptr_2 = set_up_task(sptr, vit_task_type, BASE_TASK,
+	viterbi_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, BASE_TASK,
 				       true, time_step,
 				       vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t));
 	DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[]) {
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) {
         task_metadata_block_t *test_mb_ptr_2 = NULL;
-        test_mb_ptr = set_up_task(sptr, test_task_type, CRITICAL_TASK,
+        test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
 				  true, time_step); // Critical TEST task
         DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
 	request_execution(test_mb_ptr_2);
@@ -1338,7 +1338,7 @@ int main(int argc, char *argv[]) {
 
     DEBUG(printf("PRE-Set-Up-PnC: label %u, distance: %.3f\n", label, distance));
 
-    pnc_mb_ptr = set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
+    pnc_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
 			     false, time_step,
 			     time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t), starting_lane, &vehicle_state);
     DEBUG(printf(" MB%u Back from set_up_plan_ctrl2_task\n", pnc_mb_ptr->block_id));
@@ -1349,7 +1349,7 @@ int main(int argc, char *argv[]) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
     post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
-    post_execute_vit_kernel(vdentry_p->msg_id, message);
+    post_execute_vit_kernel((message_t) vdentry_p->msg_id, message);
     if (num_Crit_test_tasks > 0) {
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
     }

@@ -36,15 +36,15 @@
 
 /* Types definitions */
 
-typedef struct mac_header_struct {
-	//protocol version, type, subtype, to_ds, from_ds, ...
-	uint16_t frame_control;
-	uint16_t duration;
-	uint8_t addr1[6];
-	uint8_t addr2[6];
-	uint8_t addr3[6];
-	uint16_t seq_nr;
-} mac_header; // __attribute__((packed));
+// typedef struct mac_header_struct {
+// 	//protocol version, type, subtype, to_ds, from_ds, ...
+// 	uint16_t frame_control;
+// 	uint16_t duration;
+// 	uint8_t addr1[6];
+// 	uint8_t addr2[6];
+// 	uint8_t addr3[6];
+// 	uint16_t seq_nr;
+// } mac_header; // __attribute__((packed));
 
 
 // The folowing are some "MAX SIZE" definitions (used to allocate memory arrays right now)
