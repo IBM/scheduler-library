@@ -39,8 +39,7 @@
 #include "test_task.h"
 #include "create_grid_task.h"
 
-void initialize_task_lib()
-{
+void initialize_task_lib() {
   set_up_vit_task_on_accel_profile_data();
   set_up_fft_task_on_accel_profile_data();
   set_up_radar_task_on_accel_profile_data();

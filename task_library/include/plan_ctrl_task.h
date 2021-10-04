@@ -46,7 +46,7 @@ typedef struct {
 void print_plan_ctrl_metadata_block_contents(void *mb);
 
 void output_plan_ctrl_task_type_run_stats(void *sptr, unsigned my_task_type,
-                                          unsigned total_accel_types);
+    unsigned total_accel_types);
 
 void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block);
 void execute_on_hwr_vit_plan_ctrl_accelerator(void *task_metadata_block);

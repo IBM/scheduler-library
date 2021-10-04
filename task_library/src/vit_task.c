@@ -70,16 +70,18 @@ uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
 t_branchtab27 d_branchtab27_generic[2];
 
 ofdm_param ofdm = { (Encoding) 0,   //  encoding   : 0 = BPSK_1_2
-		     13,   //  rate_field : rate field ofSIGNAL header
-		      1,   //  n_bpsc     : coded bits per subcarrier
-		     48,   //  n_cbps     : coded bits per OFDM symbol
-		     24 }; //  n_dbps     : data bits per OFDM symbol
+                    13,   //  rate_field : rate field ofSIGNAL header
+                    1,   //  n_bpsc     : coded bits per subcarrier
+                    48,   //  n_cbps     : coded bits per OFDM symbol
+                    24
+                  }; //  n_dbps     : data bits per OFDM symbol
 
-frame_param frame = {  1528,    // psdu_size      : PSDU size in bytes 
-		        511,    // n_sym          : number of OFDM symbols
-		         18,    // n_pad          : number of padding bits in DATA field
-		      24528,    // n_encoded_bits : number of encoded bits
-		      12264 };  // n_data_bits    : number of data bits, including service and padding
+frame_param frame = {  1528,    // psdu_size      : PSDU size in bytes
+                       511,    // n_sym          : number of OFDM symbols
+                       18,    // n_pad          : number of padding bits in DATA field
+                       24528,    // n_encoded_bits : number of encoded bits
+                       12264
+                    };  // n_data_bits    : number of data bits, including service and padding
 
 
 // Metrics for each state
@@ -139,7 +141,7 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type, sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&( sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+      vit_timing_data_t *vit_timings_p = (vit_timing_data_t *) & ( sptr->master_metadata_pool[bi].task_timings[my_task_type]);
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
       uint64_t this_call_usec = (uint64_t)(vit_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->call_usec[ai]);
       uint64_t this_depunc_usec = (uint64_t)(vit_timings_p->depunc_sec[ai]) * 1000000 + (uint64_t)(vit_timings_p->depunc_usec[ai]);
@@ -194,7 +196,8 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
   }
   {
     double avg = (double)total_dodec_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types], total_dodec_usec[total_accel_types], avg);
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                            ", total_accel_types, "TOTAL", total_vit_comp_by[total_accel_types],
+           total_dodec_usec[total_accel_types], avg);
   }
 }
 
@@ -203,9 +206,10 @@ void exec_vit_task_on_vit_hwr_accel( /*task_metadata_block_t*/ void *task_metada
   scheduler_datastate_block_t *sptr = task_metadata_block->scheduler_datastate_pointer;
   int aidx = task_metadata_block->accelerator_type;
   int vn = task_metadata_block->accelerator_id;
-  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
+  vit_timing_data_t *vit_timings_p = (vit_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on VIT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id, task_metadata_block->crit_level));
+  DEBUG(printf("EHVA: In exec_vit_task_on_vit_hwr_accel on VIT_HWR Accel %u : MB%d  CL %d\n", vn, task_metadata_block->block_id,
+               task_metadata_block->crit_level));
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
@@ -239,26 +243,26 @@ void exec_vit_task_on_vit_hwr_accel( /*task_metadata_block_t*/ void *task_metada
     out_Data[ti] = 0;
   }
 
- #ifdef INT_TIME
+#ifdef INT_TIME
   gettimeofday(&(vit_timings_p->dodec_start), NULL);
- #endif
+#endif
   DEBUG(printf("EHVA:   calling do_decoding_hw for HW_VIT[%u]\n", vn));
   do_decoding_hw(sptr, &(vitHW_fd[vn]), &(vitHW_desc[vn]));
- #ifdef INT_TIME
+#ifdef INT_TIME
   struct timeval dodec_stop;
   gettimeofday(&(dodec_stop), NULL);
   vit_timings_p->dodec_sec[aidx]  += dodec_stop.tv_sec  - vit_timings_p->dodec_start.tv_sec;
   vit_timings_p->dodec_usec[aidx] += dodec_stop.tv_usec - vit_timings_p->dodec_start.tv_usec;
- #endif
+#endif
   // Copy output data from HWR memory to Metadata Block Memory.
   DEBUG(printf("EHVA:   copying out the HW_VIT result data\n"));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) {
     out_Data[ti] = hwrOutMem[ti];
   }
   SDEBUG(printf("EHVA: MB%u at end of HWR VITERBI:\n    out_Data : ", task_metadata_block->block_id);
-	for (int ti = 0; ti < 80 /*(MAX_ENCODED_BITS * 3 / 4)*/; ti ++) {
-	  printf("%u ", out_Data[ti]);
-	});
+  for (int ti = 0; ti < 80 /*(MAX_ENCODED_BITS * 3 / 4)*/; ti ++) {
+  printf("%u ", out_Data[ti]);
+  });
 
   DEBUG(printf("EHVA: MB%u VIT_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
@@ -285,7 +289,7 @@ void exec_vit_task_on_cpu_accel(/*task_metadata_block_t*/ void *task_metadata_bl
   uint8_t* out_Data = &(vdata->theData[outData_offset]);
   int aidx = task_metadata_block->accelerator_type;
 
-  vit_timing_data_t* vit_timings_p = (vit_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
+  vit_timing_data_t* vit_timings_p = (vit_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
 
 #ifdef INT_TIME
@@ -293,12 +297,12 @@ void exec_vit_task_on_cpu_accel(/*task_metadata_block_t*/ void *task_metadata_bl
 #endif
 
   SDEBUG(for (int i = 0; i < 20; i++) {
-      printf("CPU_VIT_PRE_RUN_INPUT %3u : ID  %3u : IM  %3u  %3u\n", i, in_Data[i], in_Mem[i+inData_offset], i+inData_offset); // cpuOutMem[i]);
-    });
+  printf("CPU_VIT_PRE_RUN_INPUT %3u : ID  %3u : IM  %3u  %3u\n", i, in_Data[i], in_Mem[i + inData_offset], i + inData_offset); // cpuOutMem[i]);
+  });
   do_cpu_viterbi_function(in_data_bits, in_cbps, in_ntraceback, in_Mem, out_Data); // cpuInMem, cpuOutMem);
   SDEBUG(for (int i = 0; i < 20; i++) {
-      printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i])); // cpuOutMem[i]);
-    });
+  printf("CPU_VIT_OUT %3u : %3u @ %p \n", i, out_Data[i], &(out_Data[i])); // cpuOutMem[i]);
+  });
 
 #ifdef INT_TIME
   struct timeval dodec_stop;
@@ -361,12 +365,11 @@ void exec_vit_task_on_cpu_accel(/*task_metadata_block_t*/ void *task_metadata_bl
 //    d_path0_generic       : INPUT  : uint8_t[64]
 //    d_path1_generic       : INPUT  : uint8_t[64]
 //    d_store_pos           : INPUT  : int (position in circular traceback buffer?)
-//    d_mmresult            : OUTPUT : uint8_t[64] 
+//    d_mmresult            : OUTPUT : uint8_t[64]
 //    d_ppresult            : OUTPUT : uint8_t[ntraceback_MAX][ 64 bytes ]
 
 
-void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory)
-{
+void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory) {
   int in_count = 0;
   int out_count = 0;
   int n_decoded = 0;
@@ -444,7 +447,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
   }
 
   int viterbi_butterfly_calls = 0;
-  while(n_decoded < in_n_data_bits) {
+  while (n_decoded < in_n_data_bits) {
     if ((in_count % 4) == 0) { //0 or 3
       /* The basic Viterbi decoder operation, called a "butterfly"
        * operation because of the way it looks on a trellis diagram. Each
@@ -457,8 +460,8 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
        * encoder state in the low two bits, such a code will have the following
        * identities for even 'n' < 64:
        *
-       * 	encode_state(n) = encode_state(n+65)
-       *	encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
+       *  encode_state(n) = encode_state(n+65)
+       *  encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
        *
        * Any convolutional code you would actually want to use will have
        * these properties, so these assumptions aren't too limiting.
@@ -471,220 +474,219 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
        * would spill over into memory.
        */
       {
-	unsigned char *mm0       = l_metric0_generic;
-	unsigned char *mm1       = l_metric1_generic;
-	unsigned char *pp0       = l_path0_generic;
-	unsigned char *pp1       = l_path1_generic;
-	unsigned char *symbols   = &depd_data[in_count & 0xfffffffc];
+        unsigned char *mm0       = l_metric0_generic;
+        unsigned char *mm1       = l_metric1_generic;
+        unsigned char *pp0       = l_path0_generic;
+        unsigned char *pp1       = l_path1_generic;
+        unsigned char *symbols   = &depd_data[in_count & 0xfffffffc];
 
-	// These are used to "virtually" rename the uses below (for symmetry; reduces code size)
-	//  Really these are functionally "offset pointers" into the above arrays....
-	unsigned char *metric0, *metric1;
-	unsigned char *path0, *path1;
+        // These are used to "virtually" rename the uses below (for symmetry; reduces code size)
+        //  Really these are functionally "offset pointers" into the above arrays....
+        unsigned char *metric0, *metric1;
+        unsigned char *path0, *path1;
 
-	// Operate on 4 symbols (2 bits) at a time
+        // Operate on 4 symbols (2 bits) at a time
 
-	unsigned char m0[16], m1[16], m2[16], m3[16], decision0[16], decision1[16], survivor0[16], survivor1[16];
-	unsigned char metsv[16], metsvm[16];
-	unsigned char shift0[16], shift1[16];
-	unsigned char tmp0[16], tmp1[16];
-	unsigned char sym0v[16], sym1v[16];
-	unsigned short simd_epi16;
-	unsigned int   first_symbol;
-	unsigned int   second_symbol;
+        unsigned char m0[16], m1[16], m2[16], m3[16], decision0[16], decision1[16], survivor0[16], survivor1[16];
+        unsigned char metsv[16], metsvm[16];
+        unsigned char shift0[16], shift1[16];
+        unsigned char tmp0[16], tmp1[16];
+        unsigned char sym0v[16], sym1v[16];
+        unsigned short simd_epi16;
+        unsigned int   first_symbol;
+        unsigned int   second_symbol;
 
-	// Set up for the first two symbols (0 and 1)
-	metric0 = mm0;
-	path0 = pp0;
-	metric1 = mm1;
-	path1 = pp1;
-	first_symbol = 0;
-	second_symbol = first_symbol+1;
-	for (int j = 0; j < 16; j++) {
-	  sym0v[j] = symbols[first_symbol];
-	  sym1v[j] = symbols[second_symbol];
-	}
+        // Set up for the first two symbols (0 and 1)
+        metric0 = mm0;
+        path0 = pp0;
+        metric1 = mm1;
+        path1 = pp1;
+        first_symbol = 0;
+        second_symbol = first_symbol + 1;
+        for (int j = 0; j < 16; j++) {
+          sym0v[j] = symbols[first_symbol];
+          sym1v[j] = symbols[second_symbol];
+        }
 
-	for (int s = 0; s < 2; s++) { // iterate across the 2 symbol groups
-	  // This is the basic viterbi butterfly for 2 symbols (we need therefore 2 passes for 4 total symbols)
-	  for (int i = 0; i < 2; i++) {
-	    if (symbols[first_symbol] == 2) {
-	      for (int j = 0; j < 16; j++) {
-		metsvm[j] = d_brtab27[1][(i*16) + j] ^ sym1v[j];
-		metsv[j] = 1 - metsvm[j];
-	      }
-	    }
-	    else if (symbols[second_symbol] == 2) {
-	      for (int j = 0; j < 16; j++) {
-		metsvm[j] = d_brtab27[0][(i*16) + j] ^ sym0v[j];
-		metsv[j] = 1 - metsvm[j];
-	      }
-	    }
-	    else {
-	      for (int j = 0; j < 16; j++) {
-		metsvm[j] = (d_brtab27[0][(i*16) + j] ^ sym0v[j]) + (d_brtab27[1][(i*16) + j] ^ sym1v[j]);
-		metsv[j] = 2 - metsvm[j];
-	      }
-	    }
+        for (int s = 0; s < 2; s++) { // iterate across the 2 symbol groups
+          // This is the basic viterbi butterfly for 2 symbols (we need therefore 2 passes for 4 total symbols)
+          for (int i = 0; i < 2; i++) {
+            if (symbols[first_symbol] == 2) {
+              for (int j = 0; j < 16; j++) {
+                metsvm[j] = d_brtab27[1][(i * 16) + j] ^ sym1v[j];
+                metsv[j] = 1 - metsvm[j];
+              }
+            } else if (symbols[second_symbol] == 2) {
+              for (int j = 0; j < 16; j++) {
+                metsvm[j] = d_brtab27[0][(i * 16) + j] ^ sym0v[j];
+                metsv[j] = 1 - metsvm[j];
+              }
+            } else {
+              for (int j = 0; j < 16; j++) {
+                metsvm[j] = (d_brtab27[0][(i * 16) + j] ^ sym0v[j]) + (d_brtab27[1][(i * 16) + j] ^ sym1v[j]);
+                metsv[j] = 2 - metsvm[j];
+              }
+            }
 
-	    for (int j = 0; j < 16; j++) {
-	      m0[j] = metric0[(i*16) + j] + metsv[j];
-	      m1[j] = metric0[((i+2)*16) + j] + metsvm[j];
-	      m2[j] = metric0[(i*16) + j] + metsvm[j];
-	      m3[j] = metric0[((i+2)*16) + j] + metsv[j];
-	    }
+            for (int j = 0; j < 16; j++) {
+              m0[j] = metric0[(i * 16) + j] + metsv[j];
+              m1[j] = metric0[((i + 2) * 16) + j] + metsvm[j];
+              m2[j] = metric0[(i * 16) + j] + metsvm[j];
+              m3[j] = metric0[((i + 2) * 16) + j] + metsv[j];
+            }
 
-	    for (int j = 0; j < 16; j++) {
-	      decision0[j] = ((m0[j] - m1[j]) > 0) ? 0xff : 0x0;
-	      decision1[j] = ((m2[j] - m3[j]) > 0) ? 0xff : 0x0;
-	      survivor0[j] = (decision0[j] & m0[j]) | ((~decision0[j]) & m1[j]);
-	      survivor1[j] = (decision1[j] & m2[j]) | ((~decision1[j]) & m3[j]);
-	    }
+            for (int j = 0; j < 16; j++) {
+              decision0[j] = ((m0[j] - m1[j]) > 0) ? 0xff : 0x0;
+              decision1[j] = ((m2[j] - m3[j]) > 0) ? 0xff : 0x0;
+              survivor0[j] = (decision0[j] & m0[j]) | ((~decision0[j]) & m1[j]);
+              survivor1[j] = (decision1[j] & m2[j]) | ((~decision1[j]) & m3[j]);
+            }
 
-	    for (int j = 0; j < 16; j += 2) {
-	      simd_epi16 = path0[(i*16) + j];
-	      simd_epi16 |= path0[(i*16) + (j+1)] << 8;
-	      simd_epi16 <<= 1;
-	      shift0[j] = simd_epi16;
-	      shift0[j+1] = simd_epi16 >> 8;
+            for (int j = 0; j < 16; j += 2) {
+              simd_epi16 = path0[(i * 16) + j];
+              simd_epi16 |= path0[(i * 16) + (j + 1)] << 8;
+              simd_epi16 <<= 1;
+              shift0[j] = simd_epi16;
+              shift0[j + 1] = simd_epi16 >> 8;
 
-	      simd_epi16 = path0[((i+2)*16) + j];
-	      simd_epi16 |= path0[((i+2)*16) + (j+1)] << 8;
-	      simd_epi16 <<= 1;
-	      shift1[j] = simd_epi16;
-	      shift1[j+1] = simd_epi16 >> 8;
-	    }
-	    for (int j = 0; j < 16; j++) {
-	      shift1[j] = shift1[j] + 1;
-	    }
+              simd_epi16 = path0[((i + 2) * 16) + j];
+              simd_epi16 |= path0[((i + 2) * 16) + (j + 1)] << 8;
+              simd_epi16 <<= 1;
+              shift1[j] = simd_epi16;
+              shift1[j + 1] = simd_epi16 >> 8;
+            }
+            for (int j = 0; j < 16; j++) {
+              shift1[j] = shift1[j] + 1;
+            }
 
-	    for (int j = 0, k = 0; j < 16; j += 2, k++) {
-	      metric1[(2*i*16) + j] = survivor0[k];
-	      metric1[(2*i*16) + (j+1)] = survivor1[k];
-	    }
-	    for (int j = 0; j < 16; j++) {
-	      tmp0[j] = (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
-	    }
+            for (int j = 0, k = 0; j < 16; j += 2, k++) {
+              metric1[(2 * i * 16) + j] = survivor0[k];
+              metric1[(2 * i * 16) + (j + 1)] = survivor1[k];
+            }
+            for (int j = 0; j < 16; j++) {
+              tmp0[j] = (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
+            }
 
-	    for (int j = 0, k = 8; j < 16; j += 2, k++) {
-	      metric1[((2*i+1)*16) + j] = survivor0[k];
-	      metric1[((2*i+1)*16) + (j+1)] = survivor1[k];
-	    }
-	    for (int j = 0; j < 16; j++) {
-	      tmp1[j] = (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
-	    }
+            for (int j = 0, k = 8; j < 16; j += 2, k++) {
+              metric1[((2 * i + 1) * 16) + j] = survivor0[k];
+              metric1[((2 * i + 1) * 16) + (j + 1)] = survivor1[k];
+            }
+            for (int j = 0; j < 16; j++) {
+              tmp1[j] = (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
+            }
 
-	    for (int j = 0, k = 0; j < 16; j += 2, k++) {
-	      path1[(2*i*16) + j] = tmp0[k];
-	      path1[(2*i*16) + (j+1)] = tmp1[k];
-	    }
-	    for (int j = 0, k = 8; j < 16; j += 2, k++) {
-	      path1[((2*i+1)*16) + j] = tmp0[k];
-	      path1[((2*i+1)*16) + (j+1)] = tmp1[k];
-	    }
-	  }
+            for (int j = 0, k = 0; j < 16; j += 2, k++) {
+              path1[(2 * i * 16) + j] = tmp0[k];
+              path1[(2 * i * 16) + (j + 1)] = tmp1[k];
+            }
+            for (int j = 0, k = 8; j < 16; j += 2, k++) {
+              path1[((2 * i + 1) * 16) + j] = tmp0[k];
+              path1[((2 * i + 1) * 16) + (j + 1)] = tmp1[k];
+            }
+          }
 
-	  // Set up for the second two symbols (2 and 3)
-	  metric0 = mm1;
-	  path0 = pp1;
-	  metric1 = mm0;
-	  path1 = pp0;
-	  first_symbol = 2;
-	  second_symbol = first_symbol+1;
-	  for (int j = 0; j < 16; j++) {
-	    sym0v[j] = symbols[first_symbol];
-	    sym1v[j] = symbols[second_symbol];
-	  }
-	}
+          // Set up for the second two symbols (2 and 3)
+          metric0 = mm1;
+          path0 = pp1;
+          metric1 = mm0;
+          path1 = pp0;
+          first_symbol = 2;
+          second_symbol = first_symbol + 1;
+          for (int j = 0; j < 16; j++) {
+            sym0v[j] = symbols[first_symbol];
+            sym1v[j] = symbols[second_symbol];
+          }
+        }
       } // END of call to viterbi_butterfly2_generic
       viterbi_butterfly_calls++; // Do not increment until after the comparison code.
 
       if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
-	unsigned char c;
-	//  Find current best path
-	//
-	// INPUTS/OUTPUTS:
-	//    RET_VAL     : (ignored)
-	//    mm0         : INPUT/OUTPUT  : Array [ 64 ]
-	//    mm1         : INPUT/OUTPUT  : Array [ 64 ]
-	//    pp0         : INPUT/OUTPUT  : Array [ 64 ]
-	//    pp1         : INPUT/OUTPUT  : Array [ 64 ]
-	//    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
-	//    outbuf      : OUTPUT        : 1 byte
-	//    l_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
+        unsigned char c;
+        //  Find current best path
+        //
+        // INPUTS/OUTPUTS:
+        //    RET_VAL     : (ignored)
+        //    mm0         : INPUT/OUTPUT  : Array [ 64 ]
+        //    mm1         : INPUT/OUTPUT  : Array [ 64 ]
+        //    pp0         : INPUT/OUTPUT  : Array [ 64 ]
+        //    pp1         : INPUT/OUTPUT  : Array [ 64 ]
+        //    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
+        //    outbuf      : OUTPUT        : 1 byte
+        //    l_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
 
-	//    l_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ]
-	//    l_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
+        //    l_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ]
+        //    l_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
 
-	// CALL : viterbi_get_output_generic(l_metric0_generic, l_path0_generic, in_ntraceback, &c);
-	// unsigned char viterbi_get_output_generic(unsigned char *mm0, unsigned char *pp0, int ntraceback, unsigned char *outbuf)
-	{
-	  unsigned char *mm0       = l_metric0_generic;
-	  unsigned char *pp0       = l_path0_generic;
-	  int ntraceback = in_ntraceback;
-	  unsigned char *outbuf = &c;
+        // CALL : viterbi_get_output_generic(l_metric0_generic, l_path0_generic, in_ntraceback, &c);
+        // unsigned char viterbi_get_output_generic(unsigned char *mm0, unsigned char *pp0, int ntraceback, unsigned char *outbuf)
+        {
+          unsigned char *mm0       = l_metric0_generic;
+          unsigned char *pp0       = l_path0_generic;
+          int ntraceback = in_ntraceback;
+          unsigned char *outbuf = &c;
 
-	  int i;
-	  int bestmetric, minmetric;
-	  int beststate = 0;
-	  int pos = 0;
-	  int j;
+          int i;
+          int bestmetric, minmetric;
+          int beststate = 0;
+          int pos = 0;
+          int j;
 
-	  // circular buffer with the last ntraceback paths
-	  l_store_pos = (l_store_pos + 1) % ntraceback;
+          // circular buffer with the last ntraceback paths
+          l_store_pos = (l_store_pos + 1) % ntraceback;
 
-	  for (i = 0; i < 4; i++) {
-	    for (j = 0; j < 16; j++) {
-	      l_mmresult[(i*16) + j] = mm0[(i*16) + j];
-	      l_ppresult[l_store_pos][(i*16) + j] = pp0[(i*16) + j];
-	    }
-	  }
+          for (i = 0; i < 4; i++) {
+            for (j = 0; j < 16; j++) {
+              l_mmresult[(i * 16) + j] = mm0[(i * 16) + j];
+              l_ppresult[l_store_pos][(i * 16) + j] = pp0[(i * 16) + j];
+            }
+          }
 
-	  // Find out the best final state
-	  bestmetric = l_mmresult[beststate];
-	  minmetric = l_mmresult[beststate];
+          // Find out the best final state
+          bestmetric = l_mmresult[beststate];
+          minmetric = l_mmresult[beststate];
 
-	  for (i = 1; i < 64; i++) {
-	    if (l_mmresult[i] > bestmetric) {
-	      bestmetric = l_mmresult[i];
-	      beststate = i;
-	    }
-	    if (l_mmresult[i] < minmetric) {
-	      minmetric = l_mmresult[i];
-	    }
-	  }
+          for (i = 1; i < 64; i++) {
+            if (l_mmresult[i] > bestmetric) {
+              bestmetric = l_mmresult[i];
+              beststate = i;
+            }
+            if (l_mmresult[i] < minmetric) {
+              minmetric = l_mmresult[i];
+            }
+          }
 
-	  // Trace back
-	  for (i = 0, pos = l_store_pos; i < (ntraceback - 1); i++) {
-	    // Obtain the state from the output bits
-	    // by clocking in the output bits in reverse order.
-	    // The state has only 6 bits
-	    beststate = l_ppresult[pos][beststate] >> 2;
-	    pos = (pos - 1 + ntraceback) % ntraceback;
-	  }
+          // Trace back
+          for (i = 0, pos = l_store_pos; i < (ntraceback - 1); i++) {
+            // Obtain the state from the output bits
+            // by clocking in the output bits in reverse order.
+            // The state has only 6 bits
+            beststate = l_ppresult[pos][beststate] >> 2;
+            pos = (pos - 1 + ntraceback) % ntraceback;
+          }
 
-	  // Store output byte
-	  *outbuf = l_ppresult[pos][beststate];
+          // Store output byte
+          *outbuf = l_ppresult[pos][beststate];
 
-	  for (i = 0; i < 4; i++) {
-	    for (j = 0; j < 16; j++) {
-	      pp0[(i*16) + j] = 0;
-	      mm0[(i*16) + j] = mm0[(i*16) + j] - minmetric;
-	    }
-	  }
+          for (i = 0; i < 4; i++) {
+            for (j = 0; j < 16; j++) {
+              pp0[(i * 16) + j] = 0;
+              mm0[(i * 16) + j] = mm0[(i * 16) + j] - minmetric;
+            }
+          }
 
-	  //return bestmetric;
-	}
+          //return bestmetric;
+        }
 
-	//std::cout << "OUTPUT: " << (unsigned int)c << std::endl; 
-	if (out_count >= in_ntraceback) {
-	  for (int i= 0; i < 8; i++) {
-	    l_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
-	    SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i, l_decoded[(out_count - in_ntraceback) * 8 + i]));
-	    n_decoded++;
-	  }
-	}
-	out_count++;
+        //std::cout << "OUTPUT: " << (unsigned int)c << std::endl;
+        if (out_count >= in_ntraceback) {
+          for (int i = 0; i < 8; i++) {
+            l_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
+            SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n", (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i,
+                          l_decoded[(out_count - in_ntraceback) * 8 + i]));
+            n_decoded++;
+          }
+        }
+        out_count++;
       }
     }
     in_count++;
@@ -725,7 +727,7 @@ void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 /* #undef DO_VERBOSE */
 /*  #define DO_VERBOSE(x) x */
 
-// This routine "depunctures" the input data stream according to the 
+// This routine "depunctures" the input data stream according to the
 //  relevant encoding parameters, etc. and returns the depunctured data.
 
 uint8_t* vit_task_depuncture(uint8_t *in) {
@@ -739,21 +741,21 @@ uint8_t* vit_task_depuncture(uint8_t *in) {
   } else {
     depunctured = d_depunctured;
     count = 0;
-    for(int i = 0; i < d_frame->n_sym; i++) {
-      for(int k = 0; k < n_cbps; k++) {
-	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
-	  depunctured[count] = 2;
-	  count++;
-	}
+    for (int i = 0; i < d_frame->n_sym; i++) {
+      for (int k = 0; k < n_cbps; k++) {
+        while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+          depunctured[count] = 2;
+          count++;
+        }
 
-	// Insert received bits
-	depunctured[count] = in[i * n_cbps + k];
-	count++;
+        // Insert received bits
+        depunctured[count] = in[i * n_cbps + k];
+        count++;
 
-	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
-	  depunctured[count] = 2;
-	  count++;
-	}
+        while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+          depunctured[count] = 2;
+          count++;
+        }
       }
     }
   }
@@ -765,12 +767,12 @@ void vit_task_reset() {
   int i, j;
 
   int polys[2] = { 0x6d, 0x4f };
-  for(i=0; i < 32; i++) {
-    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2*i) & abs(polys[0])] ? 1 : 0;
-    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
+  for (i = 0; i < 32; i++) {
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
   }
 
-  switch(d_ofdm->encoding) {
+  switch (d_ofdm->encoding) {
   case BPSK_1_2:
   case QPSK_1_2:
   case QAM16_1_2:
@@ -797,7 +799,7 @@ void vit_task_reset() {
 /* This is the main "decode" function; it prepares data and repeatedly
  * calls the viterbi butterfly2 routine to do steps of decoding.
  */
-// INPUTS/OUTPUTS:  
+// INPUTS/OUTPUTS:
 //    ofdm   : INPUT  : Struct (see utils.h) [enum, char, int, int, int]
 //    frame  : INPUT  : Struct (see utils.h) [int, int, int, int]
 //    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
@@ -805,31 +807,30 @@ void vit_task_reset() {
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
 void
-vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in)
-{
+vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   d_ofdm = ofdm;
   d_frame = frame;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*) & (vit_metadata_block->task_timings[vit_metadata_block->task_type]);
   vit_task_reset();
 
- #ifdef INT_TIME
+#ifdef INT_TIME
   gettimeofday(&vit_timings_p->depunc_start, NULL);
- #endif
+#endif
   uint8_t *depunctured = vit_task_depuncture(in);
- #ifdef INT_TIME
+#ifdef INT_TIME
   struct timeval depunc_stop;
   gettimeofday(&vit_timings_p->depunc_stop, NULL);
- #endif
+#endif
   DO_VERBOSE({
-      printf("VBS: depunctured = [\n");
-      for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
-	if (ti > 0) { printf(", "); }
-	if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
-	if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
-	printf("%02x", depunctured[ti]);
-      }
-      printf("\n");
-    });
+    printf("VBS: depunctured = [\n");
+    for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+      if (ti > 0) { printf(", "); }
+      if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
+      if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+      printf("%02x", depunctured[ti]);
+    }
+    printf("\n");
+  });
 
   // Set up the task_metadata scope block
   vit_metadata_block->data_size = 43365; // MAX size?
@@ -843,7 +844,7 @@ vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofd
   vdsptr->psdu_size   = frame->psdu_size;
   vdsptr->inMem_size = 72; // fixed -- always (add the 2 padding bytes)
   vdsptr->inData_size = MAX_ENCODED_BITS; // Using the max value here for now/safety
-  vdsptr->outData_size = (MAX_ENCODED_BITS * 3/4); //  Using the max value here for now/safety
+  vdsptr->outData_size = (MAX_ENCODED_BITS * 3 / 4); //  Using the max value here for now/safety
   uint8_t* in_Mem   = &(vdsptr->theData[0]);
   uint8_t* in_Data  = &(vdsptr->theData[vdsptr->inMem_size]);
   uint8_t* out_Data = &(vdsptr->theData[vdsptr->inMem_size + vdsptr->inData_size]);
@@ -853,7 +854,8 @@ vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofd
         printf("      in_Mem   @ %p\n", in_Mem);
         printf("      in_Data  @ %p\n", in_Data);
         printf("      out_Data @ %p\n", out_Data));
-  { // scope block for definition of imi
+  {
+    // scope block for definition of imi
     int imi = 0;
     for (int ti = 0; ti < 2; ti++) {
       for (int tj = 0; tj < 32; tj++) {
@@ -877,18 +879,17 @@ vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofd
     // vdsptr->theData[imi++] = 0;
   }
   // Call the do_decoding routine
- #ifdef INT_TIME
+#ifdef INT_TIME
   gettimeofday(&(vit_timings_p->call_start), NULL);
- #endif
+#endif
 }
 
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
-uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out)
-{
+uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out) {
   // Set up the Viterbit Data view of the metatdata block data
   int aidx = vit_metadata_block->accelerator_type;
-  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*)&(vit_metadata_block->task_timings[vit_metadata_block->task_type]);
+  vit_timing_data_t * vit_timings_p = (vit_timing_data_t*) & (vit_metadata_block->task_timings[vit_metadata_block->task_type]);
 
   viterbi_data_struct_t* vdsptr = (viterbi_data_struct_t*)(vit_metadata_block->data_space);
   uint8_t* in_Mem   = &(vdsptr->theData[0]);
@@ -898,20 +899,20 @@ uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* 
   *psdu_size_out = vdsptr->psdu_size;
 
   // We write this timing here, since we now know the Accelerator ID to which this is accounted.
- #ifdef INT_TIME
+#ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
   vit_timings_p->call_sec[aidx]  += stop_time.tv_sec  - vit_timings_p->call_start.tv_sec;
   vit_timings_p->call_usec[aidx] += stop_time.tv_usec - vit_timings_p->call_start.tv_usec;
   //printf("VIT: call_start_usec = %lu  call_stop_usec = %lu\n", vit_timings_p->call_start.tv_usec, stop_time.tv_usec);
-  
+
   vit_timings_p->depunc_sec[aidx]  += vit_timings_p->depunc_stop.tv_sec  - vit_timings_p->depunc_start.tv_sec;
   vit_timings_p->depunc_usec[aidx] += vit_timings_p->depunc_stop.tv_usec - vit_timings_p->depunc_start.tv_usec;
   //printf("Set AIDX %u depunc_sec = %lu  depunc_sec = %lu\n", aidx, vit_timings_p->depunc_sec[aidx], vit_timings_p->depunc_usec[aidx]);
- #endif
+#endif
 
   DEBUG(printf("MB%u is in vit_task_finish_decode for VITERBI TASK:\n", vit_metadata_block->block_id);
-	  print_viterbi_metadata_block_contents(vit_metadata_block));
+        print_viterbi_metadata_block_contents(vit_metadata_block));
   SDEBUG(printf("MB%u OUTPUT: ", vit_metadata_block->block_id));
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) { // This covers the full-size OUTPUT area
     d_decoded[ti] = out_Data[ti];
@@ -919,9 +920,9 @@ uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* 
     SDEBUG(if (ti < 80) { printf("%u", out_Data[ti]); });
   }
   SDEBUG(printf("\n\n");
-	 for (int i = 0; i < 32; i++) {
-      printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
-    });
+  for (int i = 0; i < 32; i++) {
+  printf("VIT_OUT %3u : %3u \n", i, d_decoded[i]);
+  });
 
   return d_decoded;
 }
@@ -951,20 +952,20 @@ void set_up_vit_task_on_accel_profile_data() {
 
   DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "VIT-PROFILES", "CPU", "FFT-HWR", "VITT-HWR", "CV-HWR");
         printf("%15s :", "vit_profile[0]");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
-        printf("%15s :", "vit_profile[1]");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
-        printf("%15s :", "vit_profile[2]");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
-        printf("%15s :", "vit_profile[3]");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
-        printf("\n"));
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[0][ai]); } printf("\n");
+  printf("%15s :", "vit_profile[1]");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[1][ai]); } printf("\n");
+  printf("%15s :", "vit_profile[2]");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[2][ai]); } printf("\n");
+  printf("%15s :", "vit_profile[3]");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", vit_profile[3][ai]); } printf("\n");
+  printf("\n"));
 }
 
 /*task_metadata_block_t*/ void *
 set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
-                task_type_t vit_task_type, task_criticality_t crit_level,
-                bool use_auto_finish, int32_t dag_id, void *args) {
+    task_type_t vit_task_type, task_criticality_t crit_level,
+    bool use_auto_finish, int32_t dag_id, void *args) {
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_vit, NULL);
@@ -994,7 +995,7 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   gettimeofday(&got_time, NULL);
   exec_get_vit_sec  += got_time.tv_sec  - start_exec_vit.tv_sec;
   exec_get_vit_usec += got_time.tv_usec - start_exec_vit.tv_usec;
- #endif
+#endif
   //printf("VIT Crit Profile: %e %e %e %e %e\n", vit_profile[crit_vit_samples_set][0], vit_profile[crit_vit_samples_set][1], vit_profile[crit_vit_samples_set][2], vit_profile[crit_vit_samples_set][3], vit_profile[crit_vit_samples_set][4]);
   if (vit_mb_ptr == NULL) {
     // We ran out of metadata blocks -- PANIC!
@@ -1003,7 +1004,8 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    vit_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[vit_task_type]); // get_auto_finish_routine(vit_task_type);
+    vit_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+                             sptr->auto_finish_task_function[vit_task_type]); // get_auto_finish_routine(vit_task_type);
   } else {
     vit_mb_ptr->atFinish = NULL;
   }
@@ -1043,10 +1045,9 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   over-write the original input data with the VIT results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_viterbi_execution(
-    /*task_metadata_block_t*/ void *vit_metadata_block_ptr,
-    void *args) // message_t* message_id, char* out_msg_text)
-{
-  
+  /*task_metadata_block_t*/ void *vit_metadata_block_ptr,
+  void *args) { // message_t* message_id, char* out_msg_text)
+
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
   // va_start(var_list, vit_metadata_block_ptr);
@@ -1068,12 +1069,12 @@ void finish_viterbi_execution(
   descrambler(result, psdusize, out_msg_text, NULL /*descram_ref*/, NULL /*msg*/);
 
   // Here we look at the message string and select proper message_t
-  switch(out_msg_text[3]) {
-   case '0' : msg = safe_to_move_right_or_left; break;
-   case '1' : msg = safe_to_move_right_only; break;
-   case '2' : msg = safe_to_move_left_only; break;
-   case '3' : msg = unsafe_to_move_left_or_right; break;
-   default  : msg = NUM_MESSAGES; break;
+  switch (out_msg_text[3]) {
+  case '0' : msg = safe_to_move_right_or_left; break;
+  case '1' : msg = safe_to_move_right_only; break;
+  case '2' : msg = safe_to_move_left_only; break;
+  case '3' : msg = unsafe_to_move_left_or_right; break;
+  default  : msg = NUM_MESSAGES; break;
   }
   DEBUG(printf("MB%u The finish_viterbi_execution found message %u\n", vit_metadata_block->block_id, msg));
   *message_id = msg;

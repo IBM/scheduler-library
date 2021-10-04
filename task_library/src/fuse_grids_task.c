@@ -48,10 +48,11 @@ void print_fuse_grids_metadata_block_contents(task_metadata_block_t *mb) {
 }
 
 void output_fuse_grids_task_type_run_stats(scheduler_datastate_block_t *sptr,
-                                          unsigned my_task_type,
-                                          unsigned total_accel_types) {
+    unsigned my_task_type,
+    unsigned total_accel_types) {
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type],
+         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The PLAN_CTRL/CNN Task Timing Info
   unsigned total_fuse_grids_comp_by[total_accel_types + 1];
   uint64_t total_fuse_grids_call_usec[total_accel_types + 1];
@@ -64,7 +65,7 @@ void output_fuse_grids_task_type_run_stats(scheduler_datastate_block_t *sptr,
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type, sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *)&(sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+      fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *) & (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
       uint64_t this_fuse_grids_call_usec = (uint64_t)(fuse_grids_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(fuse_grids_timings_p->call_usec[ai]);
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
@@ -87,11 +88,13 @@ void output_fuse_grids_task_type_run_stats(scheduler_datastate_block_t *sptr,
   printf("     CNN-call  run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_fuse_grids_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_fuse_grids_comp_by[ai], total_fuse_grids_call_usec[ai], avg);
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_fuse_grids_comp_by[ai],
+           total_fuse_grids_call_usec[ai], avg);
   }
   {
     double avg = (double)total_fuse_grids_call_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fuse_grids_comp_by[total_accel_types], total_fuse_grids_call_usec[total_accel_types], avg);
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_fuse_grids_comp_by[total_accel_types],
+           total_fuse_grids_call_usec[total_accel_types], avg);
   }
 }
 
@@ -100,16 +103,16 @@ void execute_on_cpu_fuse_grids_accelerator(task_metadata_block_t *task_metadata_
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   fuse_grids_data_struct_t *fuse_grids_data_p = (fuse_grids_data_struct_t *)(task_metadata_block->data_space);
-  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
+  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the fuse_grids task : position %u input_data %p occ_grid %p\n", 
-               fuse_grids_data_p->position, 
+  DEBUG(printf("In the fuse_grids task : position %u input_data %p occ_grid %p\n",
+               fuse_grids_data_p->position,
                fuse_grids_data_p->input_data,
                fuse_grids_data_p->occ_grid));
-  
- #ifdef INT_TIME
+
+#ifdef INT_TIME
   gettimeofday(&(fuse_grids_timings_p->call_start), NULL);
- #endif
+#endif
 
 
 #ifdef INT_TIME
@@ -135,27 +138,26 @@ void set_up_fuse_grids_task_on_accel_profile_data() {
   DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-             ai++) { printf(" 0x%016lx", fuse_grids_profile[ai]); } printf("\n");
-        printf("\n"));
+  ai++) { printf(" 0x%016lx", fuse_grids_profile[ai]); } printf("\n");
+  printf("\n"));
 }
 
 task_metadata_block_t *set_up_fuse_grids_task(scheduler_datastate_block_t *sptr,
-					       task_type_t fuse_grids_task_type, task_criticality_t crit_level,
-					       bool use_auto_finish, int32_t dag_id, va_list var_list)
-{
+    task_type_t fuse_grids_task_type, task_criticality_t crit_level,
+    bool use_auto_finish, int32_t dag_id, va_list var_list) {
 //unsigned time_step, unsigned repeat_factor,
 //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
 //  vehicle_state_t vehicle_state) {
- #ifdef TIME
+#ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
- #endif
+#endif
   lane_t my_lane = (lane_t) va_arg(var_list, int);
   lane_t your_lane = (lane_t) va_arg(var_list, int);
   unsigned occ_x_dim = va_arg(var_list, unsigned);
   unsigned occ_y_dim = va_arg(var_list, unsigned);
   uint8_t* my_occ_grid = va_arg(var_list, uint8_t*);
   uint8_t* your_occ_grid = va_arg(var_list, uint8_t*);
-  
+
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *fuse_grids_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", fuse_grids_task_type));
@@ -176,13 +178,14 @@ task_metadata_block_t *set_up_fuse_grids_task(scheduler_datastate_block_t *sptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    fuse_grids_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[fuse_grids_task_type]); // get_auto_finish_routine(sptr, fuse_grids_task_type);
+    fuse_grids_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+                                    sptr->auto_finish_task_function[fuse_grids_task_type]); // get_auto_finish_routine(sptr, fuse_grids_task_type);
   } else {
     fuse_grids_mb_ptr->atFinish = NULL;
   }
   DEBUG(printf("MB%u In start_fuse_grids_execution\n", fuse_grids_mb_ptr->block_id));
 
-  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *)&(fuse_grids_mb_ptr->task_timings[fuse_grids_mb_ptr->task_type]);
+  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *) & (fuse_grids_mb_ptr->task_timings[fuse_grids_mb_ptr->task_type]);
   fuse_grids_data_struct_t *fuse_grids_data_p = (fuse_grids_data_struct_t *)(fuse_grids_mb_ptr->data_space);
   // Set the inputs for the plan-and-control task
   fuse_grids_data_p->my_lane = my_lane; // The current car position (mine)
@@ -193,9 +196,9 @@ task_metadata_block_t *set_up_fuse_grids_task(scheduler_datastate_block_t *sptr,
     fuse_grids_data_p->my_occ_grid[i] = my_occ_grid[i];
     fuse_grids_data_p->your_occ_grid[i] = your_occ_grid[i];
   }
-  DEBUG(printf("   Set MB%u my_lane %u your_lane %u x_dim %u y_dim %u\n", 
+  DEBUG(printf("   Set MB%u my_lane %u your_lane %u x_dim %u y_dim %u\n",
                fuse_grids_mb_ptr->block_id,
-	       fuse_grids_data_p->my_laneposition, fuse_grids_data_p->you_lane,
+               fuse_grids_data_p->my_laneposition, fuse_grids_data_p->you_lane,
                fuse_grids_data_p->occ_x_dim, fuse_grids_data_p->occ_y_dim));
 
 #ifdef INT_TIME
@@ -225,8 +228,7 @@ void fuse_grids_auto_finish_routine(task_metadata_block_t *mb) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_fuse_grids_execution(task_metadata_block_t *fuse_grids_metadata_block, va_list var_list)
-{
+void finish_fuse_grids_execution(task_metadata_block_t *fuse_grids_metadata_block, va_list var_list) {
   // vehicle_state_t *new_vehicle_state)
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
   unsigned* position = va_arg(var_list, unsigned *);
@@ -235,7 +237,7 @@ void finish_fuse_grids_execution(task_metadata_block_t *fuse_grids_metadata_bloc
   uint8_t*  occ_grid = va_arg(var_list, uint8_t *);
 
   int tidx = fuse_grids_metadata_block->accelerator_type;
-  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *)&(fuse_grids_metadata_block->task_timings[fuse_grids_metadata_block->task_type]);
+  fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *) & (fuse_grids_metadata_block->task_timings[fuse_grids_metadata_block->task_type]);
   fuse_grids_data_struct_t *fuse_grids_data_p = (fuse_grids_data_struct_t *)(fuse_grids_metadata_block->data_space);
 #ifdef INT_TIME
   struct timeval stop_time;

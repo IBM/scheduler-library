@@ -50,7 +50,7 @@ typedef struct {
 void print_plan_ctrl2_metadata_block_contents(void *mb);
 
 void output_plan_ctrl2_task_type_run_stats(void *sptr, unsigned my_task_type,
-                                          unsigned total_accel_types);
+    unsigned total_accel_types);
 
 void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block);
 void execute_on_hwr_vit_plan_ctrl2_accelerator(void *task_metadata_block);
@@ -60,8 +60,8 @@ void execute_on_hwr_cv_plan_ctrl2_accelerator(void *task_metadata_block);
 void set_up_plan_ctrl2_task_on_accel_profile_data();
 
 void *set_up_plan_ctrl2_task(void *sptr, task_type_t plan_ctrl2_task_type,
-                            task_criticality_t crit_level, bool use_auto_finish,
-                            int32_t dag_id, void *var_list);
+                             task_criticality_t crit_level, bool use_auto_finish,
+                             int32_t dag_id, void *var_list);
 
 void plan_ctrl2_auto_finish_routine(void *mb);
 void finish_plan_ctrl2_execution(void *plan_ctrl2_metadata_block, void *var_list); // vehicle_state_t* new_vehicle_state);

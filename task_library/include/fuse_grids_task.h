@@ -36,8 +36,8 @@ typedef struct { // The "Plan-and-Control" Task view of "data"
   lane_t     your_lane;
   unsigned   occ_x_dim;
   unsigned   occ_y_dim;
-  uint8_t    my_occ_grid[MAX_OCC_X*MAX_OCC_Y];
-  uint8_t    your_occ_grid[MAX_OCC_X*MAX_OCC_Y];
+  uint8_t    my_occ_grid[MAX_OCC_X * MAX_OCC_Y];
+  uint8_t    your_occ_grid[MAX_OCC_X * MAX_OCC_Y];
 } fuse_grids_data_struct_t;
 
 
@@ -60,8 +60,8 @@ void execute_on_hwr_cv_fuse_grids_accelerator(task_metadata_block_t* task_metada
 void set_up_fuse_grids_task_on_accel_profile_data();
 
 task_metadata_block_t* set_up_fuse_grids_task(scheduler_datastate_block_t* sptr,
-					     task_type_t fuse_grids_task_type, task_criticality_t crit_level,
-					     bool use_auto_finish, int32_t dag_id, va_list var_list);
+    task_type_t fuse_grids_task_type, task_criticality_t crit_level,
+    bool use_auto_finish, int32_t dag_id, va_list var_list);
 
 void fuse_grids_auto_finish_routine(task_metadata_block_t* mb);
 void finish_fuse_grids_execution(task_metadata_block_t* fuse_grids_metadata_block, va_list var_list); //vehicle_state_t* new_vehicle_state);

@@ -55,54 +55,50 @@ char *python_func_load = "loadmodel";
 #endif
 
 void
-do_cv_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
-{
- #ifndef BYPASS_KERAS_CV_CODE
-  Py_Initialize();
-  pName = PyUnicode_DecodeFSDefault(python_module);
-  pModule = PyImport_Import(pName);
-  Py_DECREF(pName);
+do_cv_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) {
+#ifndef BYPASS_KERAS_CV_CODE
+   Py_Initialize();
+   pName = PyUnicode_DecodeFSDefault(python_module);
+   pModule = PyImport_Import(pName);
+   Py_DECREF(pName);
 
-  if (pModule == NULL) {
-     PyErr_Print();
-     printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
-     return 1;
-  } else {
-    pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
+   if (pModule == NULL) {
+      PyErr_Print();
+      printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
+      return 1;
+   } else {
+      pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
 
-    if (pFunc_load && PyCallable_Check(pFunc_load)) {
-       PyObject_CallObject(pFunc_load, NULL);
-    }
-    else {
-        if (PyErr_Occurred())
-        PyErr_Print();
-        printf("Cannot find python function - loadmodel");
-    }
-    Py_XDECREF(pFunc_load);
-  }
-  DEBUG(printf("CV Kernel Init done\n"));
- #endif
+      if (pFunc_load && PyCallable_Check(pFunc_load)) {
+         PyObject_CallObject(pFunc_load, NULL);
+      } else {
+         if (PyErr_Occurred())
+            PyErr_Print();
+         printf("Cannot find python function - loadmodel");
+      }
+      Py_XDECREF(pFunc_load);
+   }
+   DEBUG(printf("CV Kernel Init done\n"));
+#endif
 
 #ifdef HW_CV
- #endif
+#endif
 }
 
 
 void
-do_cv_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
-{
- #ifndef BYPASS_KERAS_CV_CODE
-  Py_DECREF(pModule);
-  Py_Finalize();
- #endif
-  // Clean up any hardware accelerator stuff
- #ifdef HW_CV
- #endif
+do_cv_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
+#ifndef BYPASS_KERAS_CV_CODE
+   Py_DECREF(pModule);
+   Py_Finalize();
+#endif
+   // Clean up any hardware accelerator stuff
+#ifdef HW_CV
+#endif
 }
 
 
 void
-output_cv_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
-{
+output_cv_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
 }
 

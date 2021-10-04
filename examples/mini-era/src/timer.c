@@ -22,27 +22,27 @@
  *    publish, distribute, sublicense, and/or sell copies of the
  *    Software, and may permit others to do so, subject to the following
  *    conditions:
- * 
+ *
  *    * Redistributions of source code must retain the above copyright
  *      notice, this list of conditions and the following disclaimers.
- * 
+ *
  *    * Redistributions in binary form must reproduce the above copyright
  *      notice, this list of conditions and the following disclaimer in
  *      the documentation and/or other materials provided with the
  *      distribution.
- * 
+ *
  *    * Other than as used herein, neither the name Battelle Memorial
  *      Institute nor Battelle may be used in any form whatsoever without
  *      the express written consent of Battelle.
- * 
+ *
  *      Other than as used herein, neither the name Georgia Tech Research
  *      Corporation nor GTRC may not be used in any form whatsoever
  *      without the express written consent of GTRC.
- * 
+ *
  *    * Redistributions of the software in any form, and publications
  *      based on work performed using the software should include the
  *      following citation as a reference:
- * 
+ *
  *      Kevin Barker, Thomas Benson, Dan Campbell, David Ediger, Roberto
  *      Gioiosa, Adolfy Hoisie, Darren Kerbyson, Joseph Manzano, Andres
  *      Marquez, Leon Song, Nathan R. Tallent, and Antonino Tumeo.
@@ -81,44 +81,38 @@
 
 #if defined(_OPENMP)
 void
-init_timer (void)
-{
+init_timer (void) {
   /* Empty. */
 }
 
 double
-timer (void)
-{
+timer (void) {
   return omp_get_wtime ();
 }
 
 double
-timer_getres (void)
-{
+timer_getres (void) {
   return omp_get_wtick ();
 }
 
 #elif defined(__MACH__)
 
-/* tallent: quick hack to support MacOS */ 
+/* tallent: quick hack to support MacOS */
 
 #warning "MacOS timer is a nop"
 
 void
-init_timer (void)
-{
+init_timer (void) {
   /* Empty. */
 }
 
 double
-timer (void)
-{
+timer (void) {
   return 0.0;
 }
 
 double
-timer_getres (void)
-{
+timer_getres (void) {
   return 0.0;
 }
 
@@ -144,8 +138,7 @@ static clockid_t clockid;
 * @brief Initialize the system timer
 */
 void
-init_timer (void)
-{
+init_timer (void) {
   int err;
   err = clock_getcpuclockid (0, &clockid);
   if (err >= 0)
@@ -156,14 +149,13 @@ init_timer (void)
 }
 
 double
-timer (void)
-{
-/*  struct timespec tp;
-  clock_gettime (clockid, &tp);
-  return (double) tp.tv_sec + 1.0e-9 * (double) tp.tv_nsec;*/
-    struct timeval tv;
-    gettimeofday ( &tv, NULL );
-    return (tv.tv_sec +  0.0000001 * tv.tv_usec);
+timer (void) {
+  /*  struct timespec tp;
+    clock_gettime (clockid, &tp);
+    return (double) tp.tv_sec + 1.0e-9 * (double) tp.tv_nsec;*/
+  struct timeval tv;
+  gettimeofday ( &tv, NULL );
+  return (tv.tv_sec +  0.0000001 * tv.tv_usec);
 }
 
 /**
@@ -172,8 +164,7 @@ timer (void)
 * @return Clock Resolution
 */
 double
-timer_getres (void)
-{
+timer_getres (void) {
   struct timespec tp;
   clock_getres (clockid, &tp);
   return (double) tp.tv_sec + 1.0e-9 * (double) tp.tv_nsec;
@@ -187,8 +178,7 @@ static double last_tic = -1.0;
 * @brief Start the timer
 */
 void
-tic (void)
-{
+tic (void) {
   last_tic = timer ();
 }
 
@@ -198,8 +188,7 @@ tic (void)
 * @return Time since last tic()
 */
 double
-toc (void)
-{
+toc (void) {
   const double t = timer ();
   const double out = t - last_tic;
   last_tic = t;

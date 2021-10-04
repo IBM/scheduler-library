@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int write_array_to_octave (float * data, unsigned int len, char * filename, char * name)
-{
+int write_array_to_octave (float * data, unsigned int len, char * filename, char * name) {
   FILE *fp = fopen(filename, "w");
   int i;
   if (fp == NULL) {
@@ -16,7 +15,7 @@ int write_array_to_octave (float * data, unsigned int len, char * filename, char
   fprintf(fp, "# columns: %d\n", len);
 
   for (i = 0; i < len; i++) {
-    fprintf(fp, " (%.15g, %.15g)", data[2*i], data[2*i+1]);
+    fprintf(fp, " (%.15g, %.15g)", data[2 * i], data[2 * i + 1]);
   }
   fprintf(fp, "\n");
 

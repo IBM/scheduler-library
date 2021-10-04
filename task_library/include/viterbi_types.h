@@ -11,14 +11,14 @@
 
 
 enum Encoding {
-         BPSK_1_2  = 0,
-         BPSK_3_4  = 1,
-         QPSK_1_2  = 2,
-         QPSK_3_4  = 3,
-         QAM16_1_2 = 4,
-         QAM16_3_4 = 5,
-         QAM64_2_3 = 6,
-         QAM64_3_4 = 7,
+	BPSK_1_2  = 0,
+	BPSK_3_4  = 1,
+	QPSK_1_2  = 2,
+	QPSK_3_4  = 3,
+	QAM16_1_2 = 4,
+	QAM16_3_4 = 5,
+	QAM64_2_3 = 6,
+	QAM64_3_4 = 7,
 };
 
 struct mac_header {
@@ -29,7 +29,7 @@ struct mac_header {
 	uint8_t addr2[6];
 	uint8_t addr3[6];
 	uint16_t seq_nr;
-}__attribute__((packed));
+} __attribute__((packed));
 
 /**
  * WIFI parameters

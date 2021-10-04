@@ -59,7 +59,7 @@ struct global_hardware_state_block_struct {
   do_accel_initialization_t do_accel_init_function[SCHED_MAX_ACCEL_TYPES];
   do_accel_closeout_t do_accel_closeout_function[SCHED_MAX_ACCEL_TYPES];
   output_accel_run_stats_t
-      output_accel_run_stats_function[SCHED_MAX_ACCEL_TYPES];
+  output_accel_run_stats_function[SCHED_MAX_ACCEL_TYPES];
 
   int num_accelerators_of_type[SCHED_MAX_ACCEL_TYPES];
 } global_hardware_state_block;
@@ -68,26 +68,26 @@ int32_t global_task_id_counter = 0;
 int32_t global_finished_task_id_counter = 0;
 
 scheduler_get_datastate_in_parms_t sched_state_default_parms = {
-    .max_task_types = 8, // MAX_TASK_TYPES,
-    .max_accel_types = SCHED_MAX_ACCEL_TYPES,
+  .max_task_types = 8, // MAX_TASK_TYPES,
+  .max_accel_types = SCHED_MAX_ACCEL_TYPES,
 
-    //.max_accel_of_any_type = 4, // Some random initial value - was
-    // MAX_ACCEL_OF_ANY_TYPE,
+  //.max_accel_of_any_type = 4, // Some random initial value - was
+  // MAX_ACCEL_OF_ANY_TYPE,
 
-    .max_metadata_pool_blocks =
-        32, // Some default value - was GLOBAL_METADATA_POOL_BLOCKS,
-    .max_data_space_bytes =
-        (256 * 1024), // Some default value - was MAX_DATA_SPACE_BYTES,
+  .max_metadata_pool_blocks =
+  32, // Some default value - was GLOBAL_METADATA_POOL_BLOCKS,
+  .max_data_space_bytes =
+  (256 * 1024), // Some default value - was MAX_DATA_SPACE_BYTES,
 
-    .max_task_timing_sets =
-        16, // Some default value - was MAX_TASK_TIMING_SETS,
+  .max_task_timing_sets =
+  16, // Some default value - was MAX_TASK_TIMING_SETS,
 
-    .scheduler_holdoff_usec = 1,
+  .scheduler_holdoff_usec = 1,
 
-    .visualizer_output_enabled = 0,
-    .visualizer_task_start_count = -1,
-    .visualizer_task_stop_count = 0,
-    .visualizer_task_enable_type = -1,
+  .visualizer_output_enabled = 0,
+  .visualizer_task_start_count = -1,
+  .visualizer_task_stop_count = 0,
+  .visualizer_task_enable_type = -1,
 };
 
 // This now will hold all the state for an instance of the scheduler.
@@ -111,9 +111,9 @@ void print_ready_tasks_queue(scheduler_datastate_block_t *sptr) {
   ready_mb_task_queue_entry_t *t_te = sptr->ready_mb_task_queue_head;
   while (t_te != NULL) {
     printf(
-        " RTQ: Ready_Task_Entry %2u of %2u : ID %2u MB%d P: %p T: %p N: %p\n",
-        ti, sptr->num_tasks_in_ready_queue, t_te->unique_id, t_te->block_id,
-        t_te->prev, t_te, t_te->next);
+      " RTQ: Ready_Task_Entry %2u of %2u : ID %2u MB%d P: %p T: %p N: %p\n",
+      ti, sptr->num_tasks_in_ready_queue, t_te->unique_id, t_te->block_id,
+      t_te->prev, t_te, t_te->next);
     ti++;
     t_te = t_te->next;
   }
@@ -214,8 +214,7 @@ void print_critical_task_list_ids(scheduler_datastate_block_t *sptr) {
 
 void do_accelerator_type_closeout(scheduler_datastate_block_t *sptr) {
   // Clean up any hardware accelerator stuff
-  DEBUG(printf("Doing accelerator type closeout for %u accelerators\n",
-               sptr->next_avail_accel_id));
+  DEBUG(printf("Doing accelerator type closeout for %u accelerators\n", sptr->next_avail_accel_id));
   for (int ai = 0; ai < sptr->next_avail_accel_id; ai++) {
     if (sptr->do_accel_closeout_function[ai] != NULL) {
       sptr->do_accel_closeout_function[ai](NULL);
@@ -231,14 +230,14 @@ void output_task_and_accel_run_stats(scheduler_datastate_block_t *sptr) {
   for (int ti = 0; ti < sptr->next_avail_task_type; ti++) {
     if (sptr->output_task_run_stats_function[ti] != NULL) {
       sptr->output_task_run_stats_function[ti](sptr, ti,
-                                               sptr->next_avail_accel_id);
+          sptr->next_avail_accel_id);
     }
   }
 
   for (int ai = 0; ai < sptr->next_avail_accel_id; ai++) {
     if (sptr->output_accel_run_stats_function[ai] != NULL) {
       sptr->output_accel_run_stats_function[ai](sptr, ai,
-                                                sptr->next_avail_task_type);
+          sptr->next_avail_task_type);
     }
   }
 }
@@ -256,7 +255,8 @@ get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t in_dag_id,
                         uint64_t *task_profile) {
   pthread_mutex_lock(&(sptr->free_metadata_mutex));
   TDEBUG(printf("in get_task_metadata_block with %u free_metadata_blocks\n",
-                sptr->free_metadata_blocks));
+                sptr->free_metadata_blocks)
+        );
   if (sptr->free_metadata_blocks < 1) {
     // Out of metadata blocks -- all in use, cannot enqueue new tasks!
     printf("No free metadata blocks: %d\n", sptr->free_metadata_blocks);
@@ -264,9 +264,10 @@ get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t in_dag_id,
   }
   int bi = sptr->free_metadata_pool[sptr->free_metadata_blocks - 1];
   TDEBUG(printf(" BEFORE_GET : MB%d : free_metadata_pool : ", bi);
-         for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
-           printf("%d ", sptr->free_metadata_pool[i]);
-         } printf("\n"));
+  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+  printf("%d ", sptr->free_metadata_pool[i]);
+  } printf("\n")
+        );
   if ((bi < 0) || (bi > sptr->total_metadata_pool_blocks)) {
     printf("ERROR : free_metadata_pool[%u -1] = %d   with %d "
            "free_metadata_blocks\n",
@@ -287,8 +288,8 @@ get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t in_dag_id,
   // but we could track get_task_metadata_block order rather than
   // request_execution order..
   sptr->master_metadata_pool[bi].task_id =
-      global_task_id_counter++; // Set a task id for this task (which is the
-                                // global request_execution order, for now)
+    global_task_id_counter++; // Set a task id for this task (which is the
+  // global request_execution order, for now)
   sptr->master_metadata_pool[bi].gets_by_task_type[in_task_type]++;
   sptr->master_metadata_pool[bi].status = TASK_ALLOCATED;
   sptr->master_metadata_pool[bi].crit_level = crit_level;
@@ -299,33 +300,35 @@ get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t in_dag_id,
   sptr->master_metadata_pool[bi].accelerator_type = NO_Accelerator;
   sptr->master_metadata_pool[bi].accelerator_id = NO_Task;
   sptr->master_metadata_pool[bi].atFinish =
-      NULL; // NO finish call-back function
+    NULL; // NO finish call-back function
 
   gettimeofday(&sptr->master_metadata_pool[bi].sched_timings.get_start, NULL);
-  sptr->master_metadata_pool[bi].sched_timings.idle_sec  += sptr->master_metadata_pool[bi].sched_timings.get_start.tv_sec  - sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_sec;
-  sptr->master_metadata_pool[bi].sched_timings.idle_usec += sptr->master_metadata_pool[bi].sched_timings.get_start.tv_usec - sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec;
+  sptr->master_metadata_pool[bi].sched_timings.idle_sec  += sptr->master_metadata_pool[bi].sched_timings.get_start.tv_sec  -
+      sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_sec;
+  sptr->master_metadata_pool[bi].sched_timings.idle_usec += sptr->master_metadata_pool[bi].sched_timings.get_start.tv_usec -
+      sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec;
 
   if (crit_level > 1) { // is this a "critical task"
     // Select the next available critical-live-task-list entry ID
     int li = sptr->free_critlist_pool[sptr->free_critlist_entries - 1];
     sptr->free_critlist_pool[sptr->free_critlist_entries - 1] =
-        -1; // clear it a(as it is no longer free)
+      -1; // clear it a(as it is no longer free)
     sptr->free_critlist_entries -= 1;
     // Now li indicates the critical_live_tasks_list[] index to use
     // Now set up the revisions to the critical live tasks list
     sptr->critical_live_tasks_list[li].clt_block_id =
-        bi; // point this entry to the sptr->master_metadata_pool block id
+      bi; // point this entry to the sptr->master_metadata_pool block id
     sptr->critical_live_tasks_list[li].next =
-        sptr->critical_live_task_head; // Insert as head of critical tasks list
+      sptr->critical_live_task_head; // Insert as head of critical tasks list
     sptr->critical_live_task_head = &(sptr->critical_live_tasks_list[li]);
     sptr->total_critical_tasks += 1;
   }
   DEBUG(printf("  returning block %u\n", bi);
         print_critical_task_list_ids(sptr));
   TDEBUG(printf(" AFTER_GET : MB%u : free_metadata_pool : ", bi);
-         for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
-           printf("%d ", sptr->free_metadata_pool[i]);
-         } printf("\n"));
+  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+  printf("%d ", sptr->free_metadata_pool[i]);
+  } printf("\n"));
   sptr->allocated_metadata_blocks[in_task_type]++;
   // printf("MB%u got allocated : %u %u\n", bi, task_type, crit_level);
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
@@ -343,9 +346,9 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
                 "free_metadata_blocks\n",
                 bi, sptr->free_metadata_blocks); //);
          printf(" BEFORE_FREE : MB%u : free_metadata_pool : ", bi);
-         for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
-           printf("%d ", sptr->free_metadata_pool[i]);
-         } printf("\n"));
+  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+  printf("%d ", sptr->free_metadata_pool[i]);
+  } printf("\n"));
 
   if (sptr->free_metadata_blocks < sptr->total_metadata_pool_blocks) {
     sptr->master_metadata_pool[bi].frees_by_task_type[mb->task_type]++;
@@ -373,11 +376,11 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
       // printf(" freeing critlist_pool %u to %u\n", free_critlist_entries - 1,
       // cti);
       sptr->free_critlist_pool[sptr->free_critlist_entries] =
-          cti; // Enable this crit-list entry for new use
+        cti; // Enable this crit-list entry for new use
       sptr->free_critlist_entries +=
-          1; // Update the count of available critlist entries in the pool
+        1; // Update the count of available critlist entries in the pool
       cli->clt_block_id =
-          -1; // clear the clt_block_id indicator (we're done with it)
+        -1; // clear the clt_block_id indicator (we're done with it)
       // And remove the cli entry from the critical_lvet_tasks linked list
       if (lcli == NULL) {
         sptr->critical_live_task_head = cli->next;
@@ -388,7 +391,7 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
       sptr->total_critical_tasks -= 1;
     }
     sptr->master_metadata_pool[bi].atFinish =
-        NULL; // Ensure this is now set to NULL (safety safety)
+      NULL; // Ensure this is now set to NULL (safety safety)
     // For neatness (not "security") we'll clear the meta-data in the block (not
     // the data data, though)
     sptr->freed_metadata_blocks[sptr->master_metadata_pool[bi].task_type]++;
@@ -396,8 +399,10 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
     sptr->master_metadata_pool[bi].status = TASK_FREE;  // free
     gettimeofday(&sptr->master_metadata_pool[bi].sched_timings.idle_start,
                  NULL);
-    sptr->master_metadata_pool[bi].sched_timings.done_sec  += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_sec  - sptr->master_metadata_pool[bi].sched_timings.done_start.tv_sec;
-    sptr->master_metadata_pool[bi].sched_timings.done_usec += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec - sptr->master_metadata_pool[bi].sched_timings.done_start.tv_usec;
+    sptr->master_metadata_pool[bi].sched_timings.done_sec  += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_sec  -
+        sptr->master_metadata_pool[bi].sched_timings.done_start.tv_sec;
+    sptr->master_metadata_pool[bi].sched_timings.done_usec += sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec -
+        sptr->master_metadata_pool[bi].sched_timings.done_start.tv_usec;
     sptr->master_metadata_pool[bi].crit_level = BASE_TASK; // lowest/free?
     sptr->master_metadata_pool[bi].data_size = 0;
   } else {
@@ -411,9 +416,9 @@ void free_task_metadata_block(task_metadata_block_t *mb) {
     exit( -5);
   }
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
-         for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
-           printf("%d ", sptr->free_metadata_pool[i]);
-         } printf("\n"));
+  for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
+  printf("%d ", sptr->free_metadata_pool[i]);
+  } printf("\n"));
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
 }
 
@@ -424,8 +429,10 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
 
   gettimeofday(&task_metadata_block->sched_timings.done_start, NULL);
   int idx = task_metadata_block->accelerator_type;
-  task_metadata_block->sched_timings.running_sec[idx]  += task_metadata_block->sched_timings.done_start.tv_sec  - task_metadata_block->sched_timings.running_start.tv_sec;
-  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec - task_metadata_block->sched_timings.running_start.tv_usec;
+  task_metadata_block->sched_timings.running_sec[idx]  += task_metadata_block->sched_timings.done_start.tv_sec  -
+      task_metadata_block->sched_timings.running_start.tv_sec;
+  task_metadata_block->sched_timings.running_usec[idx] += task_metadata_block->sched_timings.done_start.tv_usec -
+      task_metadata_block->sched_timings.running_start.tv_usec;
   DEBUG(printf("Set MB%u sched_timings.done_start to %lu %lu\n",
                task_metadata_block->block_id, task_metadata_block->sched_timings.done_start.tv_sec, task_metadata_block->sched_timings.done_start.tv_usec));
 
@@ -471,19 +478,19 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
       if (start_logging) {
         sptr->visualizer_output_started = true;
         sptr->visualizer_start_time_usec =
-            1000000 * task_metadata_block->sched_timings.queued_start.tv_sec +
-            task_metadata_block->sched_timings.queued_start.tv_usec;
+          1000000 * task_metadata_block->sched_timings.queued_start.tv_sec +
+          task_metadata_block->sched_timings.queued_start.tv_usec;
         if (sptr->inparms->visualizer_task_stop_count >= 0) {
           sptr->inparms->visualizer_task_stop_count +=
-              global_finished_task_id_counter; // This means we get stop_count
-                                               // starting from here...
+            global_finished_task_id_counter; // This means we get stop_count
+          // starting from here...
           DEBUG(printf("Starting SL_VIZ logging at %d .. stop at count %d\n",
                        global_finished_task_id_counter,
                        sptr->inparms->visualizer_task_stop_count));
         } else {
           DEBUG(printf(
-              "Starting SL_VIZ logging at %d .. stop at count end of run\n",
-              global_finished_task_id_counter));
+                  "Starting SL_VIZ logging at %d .. stop at count end of run\n",
+                  global_finished_task_id_counter));
         }
       }
     }
@@ -493,17 +500,17 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
          (global_finished_task_id_counter <
           sptr->inparms->visualizer_task_stop_count))) {
       int64_t curr_time =
-          (1000000 * task_metadata_block->sched_timings.done_start.tv_sec +
-           task_metadata_block->sched_timings.done_start.tv_usec) -
-          sptr->visualizer_start_time_usec;
+        (1000000 * task_metadata_block->sched_timings.done_start.tv_sec +
+         task_metadata_block->sched_timings.done_start.tv_usec) -
+        sptr->visualizer_start_time_usec;
       int64_t arr_time =
-          (1000000 * task_metadata_block->sched_timings.queued_start.tv_sec +
-           task_metadata_block->sched_timings.queued_start.tv_usec) -
-          sptr->visualizer_start_time_usec;
+        (1000000 * task_metadata_block->sched_timings.queued_start.tv_sec +
+         task_metadata_block->sched_timings.queued_start.tv_usec) -
+        sptr->visualizer_start_time_usec;
       int64_t start_time =
-          (1000000 * task_metadata_block->sched_timings.running_start.tv_sec +
-           task_metadata_block->sched_timings.running_start.tv_usec) -
-          sptr->visualizer_start_time_usec;
+        (1000000 * task_metadata_block->sched_timings.running_start.tv_sec +
+         task_metadata_block->sched_timings.running_start.tv_usec) -
+        sptr->visualizer_start_time_usec;
       if (curr_time < 0) {
         curr_time = 0;
       }
@@ -515,15 +522,15 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
       }
       uint64_t end_time = curr_time;
       DEBUG(
-          printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n",
-                 task_metadata_block->block_id, task_metadata_block->task_type,
-                 sptr->task_name_str[task_metadata_block->task_type],
-                 task_metadata_block->accelerator_type,
-                 task_metadata_block->accelerator_id,
-                 sptr->accel_name_str[task_metadata_block->accelerator_type]);
-          printf(
-              "     MB%u : arr_time = %lu start_time = %lu curr_time = %lu\n",
-              task_metadata_block->block_id, arr_time, start_time, curr_time));
+        printf("   printing SL_VIZ line for MB%u Task %d %s on %d %d %s\n",
+               task_metadata_block->block_id, task_metadata_block->task_type,
+               sptr->task_name_str[task_metadata_block->task_type],
+               task_metadata_block->accelerator_type,
+               task_metadata_block->accelerator_id,
+               sptr->accel_name_str[task_metadata_block->accelerator_type]);
+        printf(
+          "     MB%u : arr_time = %lu start_time = %lu curr_time = %lu\n",
+          task_metadata_block->block_id, arr_time, start_time, curr_time));
       // First a line for the "Queue" PE
       /*printf(" MB%u 4_SL_VIZ: full MB:\n", task_metadata_block->block_id);
         print_base_metadata_block_contents(task_metadata_block);
@@ -557,49 +564,49 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
         into the actual PE) printf(" MB%u 4_SL_VIZ: sl_viz_fp  : %p\n",
         task_metadata_block->block_id, sptr->sl_viz_fp);*/
       fprintf(
-          sptr->sl_viz_fp, "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
-          start_time, //  sim_time,   ( pretend this was reported at start_time)
-          task_metadata_block->dag_id,                         // task_dag_id
-          task_metadata_block->task_id,                        // task_tid
-          sptr->task_name_str[task_metadata_block->task_type], // task_type ?,
-          task_metadata_block->crit_level,                     // task_tid
-          0,                                                   // dag_dtime
-          sptr->inparms->max_accel_types +
-              1,       // accelerator_id  - use a number that cannot be a legal
-                       // accel_id,
-          "Rdy_Que",   // accelerator_type ?,
-          "nan",       // task_parent_ids
-          arr_time,    // task_arrival_time
-          start_time,  // curr_job_start_time  (Should chart only the "Arraival"
-                       // period
-          start_time); // curr_job_end_time    up to the start time, at which
-                       // point it is moved into the actual PE)
+        sptr->sl_viz_fp, "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
+        start_time, //  sim_time,   ( pretend this was reported at start_time)
+        task_metadata_block->dag_id,                         // task_dag_id
+        task_metadata_block->task_id,                        // task_tid
+        sptr->task_name_str[task_metadata_block->task_type], // task_type ?,
+        task_metadata_block->crit_level,                     // task_tid
+        0,                                                   // dag_dtime
+        sptr->inparms->max_accel_types +
+        1,       // accelerator_id  - use a number that cannot be a legal
+        // accel_id,
+        "Rdy_Que",   // accelerator_type ?,
+        "nan",       // task_parent_ids
+        arr_time,    // task_arrival_time
+        start_time,  // curr_job_start_time  (Should chart only the "Arraival"
+        // period
+        start_time); // curr_job_end_time    up to the start time, at which
+      // point it is moved into the actual PE)
       fprintf(
-          sptr->sl_viz_fp, "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
-          curr_time,                                           //  sim_time,
-          task_metadata_block->dag_id,                         // task_dag_id
-          task_metadata_block->task_id,                        // task_tid
-          sptr->task_name_str[task_metadata_block->task_type], // task_type ?,
-          task_metadata_block->crit_level,                     // task_tid
-          0,                                                   // dag_dtime
-          task_metadata_block->accelerator_id, // accelerator_id ?,
-          sptr->accel_name_str[task_metadata_block
-                                   ->accelerator_type], // accelerator_type
-                                                        // ?,
-          "nan",                                        // task_parent_ids
-          start_time, // task_arrival_time  (now this is in the Rdy_Que above)
-          start_time, // curr_job_start_time
-          end_time);  // curr_job_end_time
+        sptr->sl_viz_fp, "%lu,%d,%d,%s,%u,%d,%d,%s,%s,%lu,%lu,%lu\n",
+        curr_time,                                           //  sim_time,
+        task_metadata_block->dag_id,                         // task_dag_id
+        task_metadata_block->task_id,                        // task_tid
+        sptr->task_name_str[task_metadata_block->task_type], // task_type ?,
+        task_metadata_block->crit_level,                     // task_tid
+        0,                                                   // dag_dtime
+        task_metadata_block->accelerator_id, // accelerator_id ?,
+        sptr->accel_name_str[task_metadata_block
+                             ->accelerator_type], // accelerator_type
+        // ?,
+        "nan",                                        // task_parent_ids
+        start_time, // task_arrival_time  (now this is in the Rdy_Que above)
+        start_time, // curr_job_start_time
+        end_time);  // curr_job_end_time
       pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
     } else {
       DEBUG(
-          printf("          skip : NOT printing SL_VIZ line for MB%u Task %d "
-                 "%s on %d %d %s\n",
-                 task_metadata_block->block_id, task_metadata_block->task_type,
-                 sptr->task_name_str[task_metadata_block->task_type],
-                 task_metadata_block->accelerator_type,
-                 task_metadata_block->accelerator_id,
-                 sptr->accel_name_str[task_metadata_block->accelerator_type]));
+        printf("          skip : NOT printing SL_VIZ line for MB%u Task %d "
+               "%s on %d %d %s\n",
+               task_metadata_block->block_id, task_metadata_block->task_type,
+               sptr->task_name_str[task_metadata_block->task_type],
+               task_metadata_block->accelerator_type,
+               task_metadata_block->accelerator_id,
+               sptr->accel_name_str[task_metadata_block->accelerator_type]));
     }
     pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
   }
@@ -621,7 +628,7 @@ void mark_task_done(task_metadata_block_t *task_metadata_block) {
 // NOTE: This is executed by a metadata_block pthread
 void execute_task_on_accelerator(task_metadata_block_t *task_metadata_block) {
   scheduler_datastate_block_t *sptr =
-      task_metadata_block->scheduler_datastate_pointer;
+    task_metadata_block->scheduler_datastate_pointer;
   DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and "
                "Number %u\n",
                task_metadata_block->block_id,
@@ -631,15 +638,15 @@ void execute_task_on_accelerator(task_metadata_block_t *task_metadata_block) {
     if ((task_metadata_block->task_type != NO_Task) &&
         (task_metadata_block->task_type < sptr->inparms->max_task_types)) {
       DEBUG(
-          printf("Executing Task for MB%d : Type %u %s on %u %s\n",
-                 task_metadata_block->block_id, task_metadata_block->task_type,
-                 sptr->task_name_str[task_metadata_block->task_type],
-                 task_metadata_block->accelerator_type,
-                 sptr->accel_name_str[task_metadata_block->accelerator_type]));
+        printf("Executing Task for MB%d : Type %u %s on %u %s\n",
+               task_metadata_block->block_id, task_metadata_block->task_type,
+               sptr->task_name_str[task_metadata_block->task_type],
+               task_metadata_block->accelerator_type,
+               sptr->accel_name_str[task_metadata_block->accelerator_type]));
       sptr->scheduler_execute_task_function[task_metadata_block
-                                                ->accelerator_type]
-                                           [task_metadata_block->task_type](
-                                               task_metadata_block);
+                                            ->accelerator_type]
+      [task_metadata_block->task_type](
+        task_metadata_block);
     } else {
       printf("ERROR: execute_task_on_accelerator called for unknown task type: "
              "%u\n",
@@ -654,7 +661,7 @@ void execute_task_on_accelerator(task_metadata_block_t *task_metadata_block) {
     exit( -11);
   }
   TDEBUG(
-      printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
+    printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
 }
 
 void *metadata_thread_wait_for_task(void *void_parm_ptr) {
@@ -686,7 +693,7 @@ void *metadata_thread_wait_for_task(void *void_parm_ptr) {
 /* Input parameters: */
 scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
   scheduler_get_datastate_in_parms_t *pptr =
-     (scheduler_get_datastate_in_parms_t*) malloc(sizeof(scheduler_get_datastate_in_parms_t));
+    (scheduler_get_datastate_in_parms_t*) malloc(sizeof(scheduler_get_datastate_in_parms_t));
   if (pptr == NULL) {
     printf("ERROR: Couldn't allocate the sched_inparms memory\n");
     exit(-99);
@@ -696,22 +703,22 @@ scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
   // pptr->max_accel_of_any_type     =
   // sched_state_default_parms.max_accel_of_any_type;
   pptr->max_metadata_pool_blocks =
-      sched_state_default_parms.max_metadata_pool_blocks;
+    sched_state_default_parms.max_metadata_pool_blocks;
   pptr->max_task_timing_sets = sched_state_default_parms.max_task_timing_sets;
   pptr->max_data_space_bytes = sched_state_default_parms.max_data_space_bytes;
 
   pptr->scheduler_holdoff_usec =
-      sched_state_default_parms.scheduler_holdoff_usec;
+    sched_state_default_parms.scheduler_holdoff_usec;
   pptr->policy[0] = '\0';
 
   pptr->visualizer_output_enabled =
-      sched_state_default_parms.visualizer_output_enabled;
+    sched_state_default_parms.visualizer_output_enabled;
   pptr->visualizer_task_start_count =
-      sched_state_default_parms.visualizer_task_start_count;
+    sched_state_default_parms.visualizer_task_start_count;
   pptr->visualizer_task_stop_count =
-      sched_state_default_parms.visualizer_task_stop_count;
+    sched_state_default_parms.visualizer_task_stop_count;
   pptr->visualizer_task_enable_type =
-      sched_state_default_parms.visualizer_task_enable_type;
+    sched_state_default_parms.visualizer_task_enable_type;
   pptr->sl_viz_fname[0] = '\0';
 
   // Note: the default here is '0' so one only needs to set those that are used.
@@ -721,8 +728,7 @@ scheduler_get_datastate_in_parms_t *get_scheduler_datastate_input_parms() {
   return pptr;
 }
 
-scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t *inp)
-{
+scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(scheduler_get_datastate_in_parms_t *inp) {
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t*) malloc(sizeof(scheduler_datastate_block_t));
   on_exit(cleanup_and_exit, sptr);
   size_t sched_state_size = sizeof(scheduler_datastate_block_t);
@@ -767,7 +773,8 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     exit(-99);
   }
 
-  { // Set up the accelerator name and description strings
+  {
+    // Set up the accelerator name and description strings
     sptr->accel_name_str = (char**) calloc(inp->max_accel_types, sizeof(char *)); //[MAX_ACCEL_TYPES][MAX_ACCEL_NAME_LEN];
     sched_state_size += inp->max_accel_types * sizeof(char *);
     if (sptr->accel_name_str == NULL) {
@@ -810,7 +817,8 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     exit(-99);
   }
   for (int ai = 0; ai < inp->max_accel_types; ai++) {
-    sptr->scheduler_execute_task_function[ai] = (sched_execute_task_function_t *) calloc( inp->max_task_types, sizeof(sched_execute_task_function_t)); //[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
+    sptr->scheduler_execute_task_function[ai] = (sched_execute_task_function_t *) calloc( inp->max_task_types,
+        sizeof(sched_execute_task_function_t)); //[MAX_ACCEL_TYPES][MAX_TASK_TYPES];
     sched_state_size += inp->max_task_types * sizeof(sched_execute_task_function_t);
     if (sptr->scheduler_execute_task_function[ai] == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->scheduler_execute_task_function[%u]\n", ai);
@@ -839,7 +847,8 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     exit(-99);
   }
 
-  { // Set up task name and description strings
+  {
+    // Set up task name and description strings
     // Set up the task_name_str
     sptr->task_name_str = (char **) calloc(inp->max_task_types, sizeof(char *)); //[MAX_TASK_TYPES][MAX_TASK_NAME_LEN];
     sched_state_size += inp->max_task_types * sizeof(char *);
@@ -990,7 +999,7 @@ scheduler_datastate_block_t *initialize_scheduler_and_return_datastate_pointer(s
     sched_state_size += inp->max_accel_types * 2 * sizeof(uint64_t);
     if (sptr->master_metadata_pool[mi].sched_timings.running_sec == NULL) {
       printf(
-          "ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].sched_timings.running_sec\n", mi);
+        "ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->master_metadata_pool[%u].sched_timings.running_sec\n", mi);
       exit(-99);
     }
     if (sptr->master_metadata_pool[mi].sched_timings.running_usec == NULL) {
@@ -1227,8 +1236,7 @@ void set_up_scheduler() {
 }
 
 status_t
-initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
-{
+initialize_scheduler(scheduler_datastate_block_t *sptr) { //, char* sl_viz_fname)
   DEBUG(printf("In initialize...\n"));
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = sptr->inparms->max_metadata_pool_blocks;
@@ -1292,7 +1300,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   }
 
   sptr->initialize_assign_task_to_pe =
-      (void (*)(void*)) dlsym(sptr->policy_handle, "initialize_assign_task_to_pe");
+    (void (*)(void*)) dlsym(sptr->policy_handle, "initialize_assign_task_to_pe");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_assign_task_to_pe() not found in scheduling "
@@ -1301,9 +1309,9 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     exit( -1);
   }
 
-  sptr->assign_task_to_pe = 
-      (ready_mb_task_queue_entry_t* (*)(scheduler_datastate_block_struct*, ready_mb_task_queue_entry_t*))
-      dlsym(sptr->policy_handle, "assign_task_to_pe");
+  sptr->assign_task_to_pe =
+    (ready_mb_task_queue_entry_t* (*)(scheduler_datastate_block_struct*, ready_mb_task_queue_entry_t*))
+    dlsym(sptr->policy_handle, "assign_task_to_pe");
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n",
@@ -1323,7 +1331,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
     sptr->master_metadata_pool[i].scheduler_datastate_pointer = sptr;
     sptr->master_metadata_pool[i].block_id =
-        i; // Set the master pool's block_ids
+      i; // Set the master pool's block_ids
     for (int ji = 0; ji < sptr->inparms->max_task_types; ji++) {
       sptr->master_metadata_pool[i].gets_by_task_type[ji] = 0;
       sptr->master_metadata_pool[i].frees_by_task_type[ji] = 0;
@@ -1372,13 +1380,13 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     sptr->ready_mb_task_queue_pool[i].block_id = -1; // id -1 = unassigned
     if (i > 0) {
       sptr->ready_mb_task_queue_pool[i].prev =
-          &(sptr->ready_mb_task_queue_pool[i - 1]);
+        &(sptr->ready_mb_task_queue_pool[i - 1]);
     } else {
       sptr->ready_mb_task_queue_pool[i].prev = NULL;
     }
     if (i < (sptr->total_metadata_pool_blocks - 1)) {
       sptr->ready_mb_task_queue_pool[i].next =
-          &(sptr->ready_mb_task_queue_pool[i + 1]);
+        &(sptr->ready_mb_task_queue_pool[i + 1]);
     } else {
       sptr->ready_mb_task_queue_pool[i].next = NULL;
     }
@@ -1423,7 +1431,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   for (int i = 0; i < sptr->inparms->max_accel_types; i++) {
     for (int j = 0; j < sptr->max_accel_of_any_type; j++) {
       sptr->accelerator_in_use_by[i][j] =
-          -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
+        -1; // NOT a valid metadata block ID; -1 indicates "Not in Use"
     }
   }
 
@@ -1441,7 +1449,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   for (int i = 0; i < sptr->inparms->max_task_types; i++) {
     for (int j = 0; j < sptr->inparms->max_accel_types; j++) {
       sptr->scheduler_execute_task_function[j][i] =
-          NULL; // Set all to default to NULL
+        NULL; // Set all to default to NULL
     }
     sptr->print_metablock_contents_function[i] = NULL;
     sptr->output_task_run_stats_function[i] = NULL;
@@ -1471,9 +1479,11 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
     if (desired_num != 0) {
       if (global_hardware_state_block.num_accelerators_of_type[i] == 0) {
         if (desired_num < 0) {
-          printf("WARNING: Requested all-avail Accel for empty Pool %u : %s %s\n", i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
+          printf("WARNING: Requested all-avail Accel for empty Pool %u : %s %s\n", i, global_hardware_state_block.accel_name_str[i],
+                 global_hardware_state_block.accel_desc_str[i]);
         } else {
-          printf("WARNING: Requested %u Accel for empty Pool %u : %s %s\n", desired_num, i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
+          printf("WARNING: Requested %u Accel for empty Pool %u : %s %s\n", desired_num, i, global_hardware_state_block.accel_name_str[i],
+                 global_hardware_state_block.accel_desc_str[i]);
         }
       }
       accelerator_type_t acid = sptr->next_avail_accel_id;
@@ -1486,11 +1496,13 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
       sptr->next_avail_accel_id += 1;
       printf("sptr->next_avail_accel_id now = %u\n", sptr->next_avail_accel_id);
       if (desired_num > global_hardware_state_block.num_accelerators_of_type[i]) {
-        printf("ERROR: Specified desired number of accelerators ( %u ) is more than available in the hardware ( %u )\n", desired_num, global_hardware_state_block.num_accelerators_of_type[i]);
+        printf("ERROR: Specified desired number of accelerators ( %u ) is more than available in the hardware ( %u )\n", desired_num,
+               global_hardware_state_block.num_accelerators_of_type[i]);
         exit( -33);
       }
       if (desired_num > sptr->max_accel_of_any_type) {
-        printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num, sptr->max_accel_of_any_type);
+        printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num,
+               sptr->max_accel_of_any_type);
         exit( -34);
       }
       unsigned alloc_num;
@@ -1503,7 +1515,8 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
       }
       sptr->num_accelerators_of_type[acid] = alloc_num;
       total_accelerators_allocated += alloc_num;
-      printf("Setting to use %d from Accelerator Pool %u : SL Accel %u %s : %s\n", alloc_num, acid, i, global_hardware_state_block.accel_name_str[i], global_hardware_state_block.accel_desc_str[i]);
+      printf("Setting to use %d from Accelerator Pool %u : SL Accel %u %s : %s\n", alloc_num, acid, i, global_hardware_state_block.accel_name_str[i],
+             global_hardware_state_block.accel_desc_str[i]);
       sptr->do_accel_init_function[acid] = global_hardware_state_block.do_accel_init_function[i];
       sptr->do_accel_closeout_function[acid] = global_hardware_state_block.do_accel_closeout_function[i];
       sptr->output_accel_run_stats_function[acid] = global_hardware_state_block.output_accel_run_stats_function[i];
@@ -1529,7 +1542,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
 
 void release_accelerator_for_task(task_metadata_block_t *task_metadata_block) {
   scheduler_datastate_block_t *sptr =
-      task_metadata_block->scheduler_datastate_pointer;
+    task_metadata_block->scheduler_datastate_pointer;
   unsigned mdb_id = task_metadata_block->block_id;
   unsigned accel_type = task_metadata_block->accelerator_type;
   unsigned accel_id = task_metadata_block->accelerator_id;
@@ -1539,11 +1552,11 @@ void release_accelerator_for_task(task_metadata_block_t *task_metadata_block) {
   // accel_type, accel_id, accelerator_in_use_by[accel_type][accel_id],
   // task_metadata_block->crit_level);
   DEBUG(
-      printf(" RELEASE accelerator %u  %u  = %d  : ", accel_type, accel_id,
-             sptr->accelerator_in_use_by[accel_type][accel_id]);
-      for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type]; ai++) {
-        printf("%u %d : ", ai, sptr->accelerator_in_use_by[accel_type][ai]);
-      } printf("\n"));
+    printf(" RELEASE accelerator %u  %u  = %d  : ", accel_type, accel_id,
+           sptr->accelerator_in_use_by[accel_type][accel_id]);
+  for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type]; ai++) {
+  printf("%u %d : ", ai, sptr->accelerator_in_use_by[accel_type][ai]);
+  } printf("\n"));
   if (sptr->accelerator_in_use_by[accel_type][accel_id] != mdb_id) {
     printf("ERROR - in release_accelerator_for_task for ACCEL %s Num %d but "
            "BLOCK_ID Mismatch: %d vs %d\n",
@@ -1559,7 +1572,7 @@ void release_accelerator_for_task(task_metadata_block_t *task_metadata_block) {
   } else {
     account_accelerators_in_use_interval(sptr);
     sptr->accelerator_in_use_by[accel_type][accel_id] =
-        -1; // Indicates "Not in Use"
+      -1; // Indicates "Not in Use"
   }
   pthread_mutex_unlock(&(sptr->accel_alloc_mutex));
 }
@@ -1582,16 +1595,16 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
                    sptr->num_tasks_in_ready_queue);
             int ti = 0;
             ready_mb_task_queue_entry_t *t_te = sptr->ready_mb_task_queue_head;
-            while (t_te != NULL) {
-              printf("SCHED:    Ready_Task_Entry %2u : MB%u  %p %p\n", ti,
-                     t_te->block_id, t_te->prev, t_te->next);
-              ti++;
-              t_te = t_te->next;
-            });
+      while (t_te != NULL) {
+      printf("SCHED:    Ready_Task_Entry %2u : MB%u  %p %p\n", ti,
+             t_te->block_id, t_te->prev, t_te->next);
+        ti++;
+        t_te = t_te->next;
+      });
 
       // Get pointer to the first task on the ready queue
       ready_mb_task_queue_entry_t *ready_task_entry =
-          sptr->ready_mb_task_queue_head;
+        sptr->ready_mb_task_queue_head;
       ready_mb_task_queue_entry_t *selected_task_entry = NULL;
       task_metadata_block_t *task_metadata_block = NULL;
 
@@ -1604,7 +1617,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
         continue;
       } else {
         task_metadata_block =
-            &(sptr->master_metadata_pool[selected_task_entry->block_id]);
+          &(sptr->master_metadata_pool[selected_task_entry->block_id]);
       }
       unsigned int accel_type = task_metadata_block->accelerator_type;
       unsigned int accel_id = task_metadata_block->accelerator_id;
@@ -1631,17 +1644,16 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
         int bi = task_metadata_block->block_id; // short name for the block_id
         sptr->accelerator_in_use_by[accel_type][accel_id] = bi;
         sptr->master_metadata_pool[bi]
-            .accelerator_allocated_to_MB[accel_type][accel_id] += 1;
+        .accelerator_allocated_to_MB[accel_type][accel_id] += 1;
         // Okay -- we can allocate to the accelerator -- remove from the queue
         // printf("MB%u ALLOCATE accelerator %u %u to  %d cl %u\n", bi,
         // accel_type, accel_id, bi, task_metadata_block->crit_level);
         DEBUG(printf("SCHED: MB%u ALLOC accelerator %u  %u to %d  : ", bi,
                      accel_type, accel_id, bi);
-              for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type];
-                   ai++) {
-                printf("%u %d : ", ai,
-                       sptr->accelerator_in_use_by[accel_type][ai]);
-              } printf("\n"));
+        for (int ai = 0; ai < sptr->num_accelerators_of_type[accel_type]; ai++) {
+        printf("%u %d : ", ai,
+               sptr->accelerator_in_use_by[accel_type][ai]);
+        } printf("\n"));
         // Update the ready task queue... Connect selected_task_entry.prev->next
         // = selected_task_entry.next
 
@@ -1678,7 +1690,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
           selected_task_entry->next = sptr->free_ready_mb_task_queue_entries;
         }
         selected_task_entry->prev =
-            NULL; // As head of the list, the prev should be NULL
+          NULL; // As head of the list, the prev should be NULL
         sptr->free_ready_mb_task_queue_entries = selected_task_entry;
         sptr->num_free_task_queue_entries++;
         DEBUG(printf("SCHED:   Prepended to FREE ready task queue, with %u "
@@ -1696,14 +1708,16 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
         task_metadata_block->status = TASK_RUNNING; // running
 
         gettimeofday(&sptr->master_metadata_pool[bi].sched_timings.running_start, NULL);
-        sptr->master_metadata_pool[bi].sched_timings.queued_sec  += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec  - sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
-	sptr->master_metadata_pool[bi].sched_timings.queued_usec += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec - sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
+        sptr->master_metadata_pool[bi].sched_timings.queued_sec  += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_sec  -
+            sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_sec;
+        sptr->master_metadata_pool[bi].sched_timings.queued_usec += sptr->master_metadata_pool[bi].sched_timings.running_start.tv_usec -
+            sptr->master_metadata_pool[bi].sched_timings.queued_start.tv_usec;
 
         TDEBUG(printf("Kicking off accelerator task for Metadata Block %u : Task %s %s on Accel %s %u\n",
-                   bi, sptr->task_name_str[task_metadata_block->task_type],
-                   sptr->task_criticality_str[task_metadata_block->crit_level],
-                   sptr->accel_name_str[task_metadata_block->accelerator_type],
-                   task_metadata_block->accelerator_id));
+                      bi, sptr->task_name_str[task_metadata_block->task_type],
+                      sptr->task_criticality_str[task_metadata_block->crit_level],
+                      sptr->accel_name_str[task_metadata_block->accelerator_type],
+                      task_metadata_block->accelerator_id));
 
         // Lock the mutex associated to the conditional variable
         pthread_mutex_lock(&(task_metadata_block->metadata_mutex));
@@ -1728,16 +1742,16 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
 }
 
 void request_execution(
-    /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+  /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
   task_metadata_block_t *task_metadata_block =
-      (task_metadata_block_t *)task_metadata_block_ptr;
+    (task_metadata_block_t *)task_metadata_block_ptr;
   DEBUG(printf("APP: in request_execution for MB%u\n",
                task_metadata_block->block_id));
   // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
   // task id for this task (which is the global request_execution order, for
   // now)
   scheduler_datastate_block_t *sptr =
-      task_metadata_block->scheduler_datastate_pointer;
+    task_metadata_block->scheduler_datastate_pointer;
   task_metadata_block->status = TASK_QUEUED; // queued
   gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
   task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
@@ -1812,17 +1826,17 @@ void wait_all_critical(scheduler_datastate_block_t *sptr) {
     }
     pthread_mutex_lock(&(sptr->sl_viz_out_mutex));
     fprintf(sptr->sl_viz_fp, "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
-	    wait_start, //  sim_time,   ( pretend this was reported at start_time)
-	    (sptr->next_avail_DAG_id - 1), // task_dag_id
-	    0, // task_tid (This is a "fake" one, as there is no real single task here)
-	    "Waiting", 0,
-	    0, // dag_dtime
-	    sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
-	    "Wait_Crit", // accelerator_type ?,
-	    "nan",       // task_parent_ids
-	    wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
-	    wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
-	    wait_stop); // curr_job_end_time
+            wait_start, //  sim_time,   ( pretend this was reported at start_time)
+            (sptr->next_avail_DAG_id - 1), // task_dag_id
+            0, // task_tid (This is a "fake" one, as there is no real single task here)
+            "Waiting", 0,
+            0, // dag_dtime
+            sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
+            "Wait_Crit", // accelerator_type ?,
+            "nan",       // task_parent_ids
+            wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
+            wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
+            wait_stop); // curr_job_end_time
     pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
   }
 }
@@ -1874,18 +1888,18 @@ void wait_on_tasklist(/* scheduler_datastate_block_t */ void *_sptr, int num_tas
     }
     pthread_mutex_lock(&(sptr->sl_viz_out_mutex));
     fprintf( sptr->sl_viz_fp, "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
-	     wait_start, //  sim_time,   ( pretend this was reported at start_time)
-	     (sptr->next_avail_DAG_id - 1), // task_dag_id
-	     0, // task_tid (This is a "fake" one, as there is no real single task
-	     // here)
-	     "Waiting", 0,
-	     0, // dag_dtime
-	     sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
-	     "Wait_Crit", // accelerator_type ?,
-	     "nan",       // task_parent_ids
-	     wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
-	     wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
-	     wait_stop); // curr_job_end_time
+             wait_start, //  sim_time,   ( pretend this was reported at start_time)
+             (sptr->next_avail_DAG_id - 1), // task_dag_id
+             0, // task_tid (This is a "fake" one, as there is no real single task
+             // here)
+             "Waiting", 0,
+             0, // dag_dtime
+             sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
+             "Wait_Crit", // accelerator_type ?,
+             "nan",       // task_parent_ids
+             wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
+             wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
+             wait_stop); // curr_job_end_time
     pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
   }
 }
@@ -1933,18 +1947,18 @@ void wait_on_tasklist_list(/*scheduler_datastate_block_t **/ void* in_sptr, int 
     }
     pthread_mutex_lock(&(sptr->sl_viz_out_mutex));
     fprintf( sptr->sl_viz_fp, "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
-	     wait_start, //  sim_time,   ( pretend this was reported at start_time)
-	     (sptr->next_avail_DAG_id - 1), // task_dag_id
-	     0, // task_tid (This is a "fake" one, as there is no real single task
-	     // here)
-	     "Waiting", 0,
-	     0, // dag_dtime
-	     sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
-	     "Wait_Crit", // accelerator_type ?,
-	     "nan",       // task_parent_ids
-	     wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
-	     wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
-	     wait_stop); // curr_job_end_time
+             wait_start, //  sim_time,   ( pretend this was reported at start_time)
+             (sptr->next_avail_DAG_id - 1), // task_dag_id
+             0, // task_tid (This is a "fake" one, as there is no real single task
+             // here)
+             "Waiting", 0,
+             0, // dag_dtime
+             sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
+             "Wait_Crit", // accelerator_type ?,
+             "nan",       // task_parent_ids
+             wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
+             wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
+             wait_stop); // curr_job_end_time
     pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
   }
 }
@@ -2068,25 +2082,26 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
     uint64_t total_done_usec = 0;
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
       uint64_t this_idle_usec =
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.idle_sec) *
-              1000000 +
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.idle_usec);
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.idle_sec) *
+        1000000 +
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.idle_usec);
       uint64_t this_get_usec =
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.get_sec) *
-              1000000 +
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.get_usec);
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.get_sec) *
+        1000000 +
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.get_usec);
       uint64_t this_queued_usec =
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.queued_sec) *
-              1000000 +
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.queued_usec);
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.queued_sec) *
+        1000000 +
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.queued_usec);
       uint64_t this_total_run_usec = 0;
       uint64_t this_running_usec[sptr->inparms->max_accel_types];
       for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
-        this_running_usec[ti] = (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.running_sec[ti]) * 1000000 + (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.running_usec[ti]);
+        this_running_usec[ti] = (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.running_sec[ti]) * 1000000 + (uint64_t)(
+                                  sptr->master_metadata_pool[bi].sched_timings.running_usec[ti]);
         this_total_run_usec += this_running_usec[ti];
       }
       uint64_t this_done_usec =
-          (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.done_sec) * 1000000 + (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.done_usec);
+        (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.done_sec) * 1000000 + (uint64_t)(sptr->master_metadata_pool[bi].sched_timings.done_usec);
       printf(" Block %3u : IDLE %15lu GET %15lu QUE %15lu RUN %15lu DONE %15lu usec :",
              bi, this_idle_usec, this_get_usec, this_queued_usec, this_total_run_usec, total_done_usec);
       for (int ti = 0; ti < sptr->inparms->max_accel_types; ti++) {
@@ -2124,11 +2139,11 @@ void output_run_statistics(scheduler_datastate_block_t *sptr) {
 
   /*printf("\nACU_HIST: Aggregated In-Use Accelerator Time Histogram...\n");
   {
-    printf("ACU_HIST:  CPU  FFT  VIT  CNN : TACC TFFT TVIT TCNN : Time-in-usec\n"); 
-    for (int i0 = 0; i0 <= sptr->num_accelerators_of_type[0]; i0++) { 
-    for (int i1 = 0; i1 <= sptr->num_accelerators_of_type[1]; i1++) { 
-    for (int i2 = 0; i2 <= sptr->num_accelerators_of_type[2]; i2++) { 
-    for (int i3 = 0; i3 <= sptr->num_accelerators_of_type[3]; i3++) { 
+    printf("ACU_HIST:  CPU  FFT  VIT  CNN : TACC TFFT TVIT TCNN : Time-in-usec\n");
+    for (int i0 = 0; i0 <= sptr->num_accelerators_of_type[0]; i0++) {
+    for (int i1 = 0; i1 <= sptr->num_accelerators_of_type[1]; i1++) {
+    for (int i2 = 0; i2 <= sptr->num_accelerators_of_type[2]; i2++) {
+    for (int i3 = 0; i3 <= sptr->num_accelerators_of_type[3]; i3++) {
     printf("ACU_HIST: %4u %4u %4u %4u : %4u : %lu\n", i0, i1, i2, i3, (i1+i2+i3), sptr->in_use_accel_times_array[i0][i1][i2][i3]);
     }
     }
@@ -2227,12 +2242,12 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t *sptr) {
     printf("MB%u : Status %u %s\n", mbi, sptr->master_metadata_pool[mbi].status,
            sptr->task_status_str[sptr->master_metadata_pool[mbi].status]);
     printf(
-        "  MB%u : Acc_ty %u   Acc_id %d   Job %u   Crit_Lvl %u\n", mbi,
-        sptr->master_metadata_pool[mbi].accelerator_type,
-        sptr->master_metadata_pool[mbi].accelerator_id,
-        sptr->master_metadata_pool[mbi]
-            .task_type, // task_name_str[sptr->master_metadata_pool[mbi].task_type],
-        sptr->master_metadata_pool[mbi].crit_level);
+      "  MB%u : Acc_ty %u   Acc_id %d   Job %u   Crit_Lvl %u\n", mbi,
+      sptr->master_metadata_pool[mbi].accelerator_type,
+      sptr->master_metadata_pool[mbi].accelerator_id,
+      sptr->master_metadata_pool[mbi]
+      .task_type, // task_name_str[sptr->master_metadata_pool[mbi].task_type],
+      sptr->master_metadata_pool[mbi].crit_level);
     printf("  MB%u GETS:  ", mbi);
     for (int i = 0; i < sptr->inparms->max_task_types; i++) {
       printf("( %s, %u ) ", sptr->task_name_str[i],
@@ -2249,12 +2264,12 @@ void dump_all_metadata_blocks_states(scheduler_datastate_block_t *sptr) {
 }
 
 task_type_t register_task_type(/*scheduler_datastate_block_t*/ void *sptr_ptr, char *task_name, char *task_description,
-			       set_up_task_function_t set_up_task_func, // function pointer
-			       finish_task_execution_function_t finish_task_func, // function pointer
-			       auto_finish_task_function_t auto_finish_func, // function pointer
-			       print_metadata_block_contents_t print_metadata_block_contents, // function pointer
-			       output_task_type_run_stats_t output_task_type_run_stats, // function pointer
-			       int num_accel_task_exec_descriptions, ...) {
+    set_up_task_function_t set_up_task_func, // function pointer
+    finish_task_execution_function_t finish_task_func, // function pointer
+    auto_finish_task_function_t auto_finish_func, // function pointer
+    print_metadata_block_contents_t print_metadata_block_contents, // function pointer
+    output_task_type_run_stats_t output_task_type_run_stats, // function pointer
+    int num_accel_task_exec_descriptions, ...) {
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
   DEBUG(printf("In register_task_type with inputs:\n");
         printf("  name  = %s\n", task_name);
@@ -2331,7 +2346,8 @@ void register_accel_can_exec_task(scheduler_datastate_block_t *sptr,
     exit( -37);
   }
   if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {
-    printf("In register_accel_can_exec_task for accel_type %u and task_type %u - Already have a registered execution (%p)\n", acid, tid, sptr->scheduler_execute_task_function[tid][acid]);
+    printf("In register_accel_can_exec_task for accel_type %u and task_type %u - Already have a registered execution (%p)\n", acid, tid,
+           sptr->scheduler_execute_task_function[tid][acid]);
     exit( -39);
   }
   sptr->scheduler_execute_task_function[acid][tid] = fptr;
@@ -2341,25 +2357,25 @@ void register_accel_can_exec_task(scheduler_datastate_block_t *sptr,
 
 /*task_metadata_block_t*/ void *
 set_up_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
-            task_type_t the_task_type, task_criticality_t crit_level,
-            int use_auto_finish, int32_t dag_id, ...) {
+    task_type_t the_task_type, task_criticality_t crit_level,
+    int use_auto_finish, int32_t dag_id, ...) {
   scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
   va_list args;
   va_start(args, dag_id);
 
   task_metadata_block_t *task_mb = (task_metadata_block_t*) sptr->set_up_task_function[the_task_type](
-      sptr, the_task_type, crit_level, use_auto_finish, dag_id, &args);
+                                     sptr, the_task_type, crit_level, use_auto_finish, dag_id, &args);
 
   va_end(args);
   return task_mb;
 }
 
 void finish_task_execution(
-    /*task_metadata_block_t*/ void *the_metadata_block_ptr, ...) {
+  /*task_metadata_block_t*/ void *the_metadata_block_ptr, ...) {
   task_metadata_block_t *the_metadata_block =
-      (task_metadata_block_t *)the_metadata_block_ptr;
+    (task_metadata_block_t *)the_metadata_block_ptr;
   scheduler_datastate_block_t *sptr =
-      the_metadata_block->scheduler_datastate_pointer;
+    the_metadata_block->scheduler_datastate_pointer;
   task_type_t task_type = the_metadata_block->task_type;
 
   va_list args;

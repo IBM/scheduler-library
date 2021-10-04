@@ -53,8 +53,7 @@ size_t vitHW_size[NUM_VIT_ACCEL];
 struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 
 
-void init_vit_parameters(int vn)
-{
+void init_vit_parameters(int vn) {
   size_t vitHW_in_words_adj;
   size_t vitHW_out_words_adj;
   //printf("Doing init_vit_parameters\n");
@@ -76,9 +75,8 @@ void init_vit_parameters(int vn)
 
 
 void
-do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
-{
- #ifdef HW_VIT
+do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) {
+#ifdef HW_VIT
   // This initializes the Viterbi Accelerator Pool
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
     DEBUG(printf("Init Viterbi parameters on acclerator %u\n", vi));
@@ -86,7 +84,7 @@ do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
     snprintf(vitAccelName[vi], 63, "%s.%u", VIT_DEV_BASE, vi);
     printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
-    if(vitHW_fd < 0) {
+    if (vitHW_fd < 0) {
       fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
       exit(EXIT_FAILURE);
     }
@@ -111,8 +109,7 @@ do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
 
 
 #ifdef HW_VIT
-void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc)
-{
+void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc) {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("ERROR : do_decoding_in_hw : IOCTL:");
     exit(EXIT_FAILURE);
@@ -121,8 +118,7 @@ void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_
 #endif
 
 void
-do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
-{
+do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
@@ -134,8 +130,7 @@ do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
 
 
 void
-output_vit_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
-{
+output_vit_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
 }
 
 

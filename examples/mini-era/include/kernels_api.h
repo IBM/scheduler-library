@@ -33,7 +33,7 @@ typedef struct {
   unsigned int index;          // A global index (of all radar dictionary entries
   unsigned int set;            // The set this entry is in
   unsigned int index_in_set;   // The index in the set for this entry
-  unsigned int return_id;      // An entry-defined return ID 
+  unsigned int return_id;      // An entry-defined return ID
   unsigned int log_nsamples;
   float distance;
   float return_data[2 * MAX_RADAR_N];
@@ -95,7 +95,7 @@ typedef struct {
 
 /* Input Trace Functions */
 #ifndef USE_SIM_ENVIRON
- #include "read_trace.h"
+#include "read_trace.h"
 #endif
 
 /* Kernels initialization */

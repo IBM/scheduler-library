@@ -30,7 +30,7 @@ typedef struct obj_struct {
   float       speed;
   distance_t  distance;
   distance_t  size; // Size of object in distance_t units
-  
+
   struct obj_struct* previous;  // The previous object in the list
   struct obj_struct* next;      // The next object in the list
 } object_state_t;

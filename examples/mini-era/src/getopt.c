@@ -156,7 +156,7 @@ no_more_optchars:
 [1] http://www.kernel.org/doc/man-pages/online/pages/man3/getopt.3.html
 */
 int getopt_long(int argc, char* const argv[], const char* optstring,
-  const struct option* longopts, int* longindex) {
+                const struct option* longopts, int* longindex) {
   const struct option* o = longopts;
   const struct option* match = NULL;
   int num_matches = 0;

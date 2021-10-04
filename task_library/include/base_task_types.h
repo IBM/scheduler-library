@@ -51,9 +51,9 @@ typedef enum {
 #else
 /* The potential (horizontal) positions of any object (i.e. lane indications) */
 typedef enum {
-  lhazard = 0, 
-  left, 
-  center, 
+  lhazard = 0,
+  left,
+  center,
   right,
   rhazard,
   NUM_LANES
@@ -61,8 +61,7 @@ typedef enum {
 #endif
 
 /* These are some global type defines, etc. */
-typedef struct
-{
+typedef struct {
   bool active;
   lane_t lane;
   float speed;

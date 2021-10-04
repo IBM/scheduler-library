@@ -56,27 +56,26 @@ struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 
 
 /* User-defined code */
-void init_fft_parameters(unsigned n, uint32_t log_nsamples)
-{
+void init_fft_parameters(unsigned n, uint32_t log_nsamples) {
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
   int len = 1 << log_nsamples;
   DEBUG(printf("  In init_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
- #if (USE_FFT_ACCEL_VERSION == 1) // fft_stratus
-  #ifdef HW_FFT_BITREV
+#if (USE_FFT_ACCEL_VERSION == 1) // fft_stratus
+#ifdef HW_FFT_BITREV
   fftHW_desc[n].do_bitrev  = FFTHW_DO_BITREV;
-  #else
+#else
   fftHW_desc[n].do_bitrev  = FFTHW_NO_BITREV;
-  #endif
+#endif
   fftHW_desc[n].log_len    = log_nsamples;
 
- #elif (USE_FFT_ACCEL_VERSION == 2) // fft2_stratus
+#elif (USE_FFT_ACCEL_VERSION == 2) // fft2_stratus
   fftHW_desc[n].scale_factor = 0;
   fftHW_desc[n].logn_samples = log_nsamples;
   fftHW_desc[n].num_ffts     = 1;
   fftHW_desc[n].do_inverse   = 0;
   fftHW_desc[n].do_shift     = 0;
- #endif
+#endif
 
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
     fftHW_in_words_adj  = 2 * len;
@@ -97,9 +96,8 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples)
 
 
 void
-do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr)
-{
- #ifdef HW_FFT
+do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr) {
+#ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
   printf("Initializing the %u total FFT Accelerators...\n", NUM_FFT_ACCEL);
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
@@ -133,28 +131,27 @@ do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr)
     //fftHW_desc[fi].esp.p2p_srcs = {"", "", "", ""};
     fftHW_desc[fi].esp.contig = contig_to_khandle(fftHW_mem[fi]);
 
-   #if USE_FFT_ACCEL_VERSION == 1
+#if USE_FFT_ACCEL_VERSION == 1
     // Always use BIT-REV in HW for now -- simpler interface, etc.
     fftHW_desc[fi].do_bitrev  = FFTHW_DO_BITREV;
-   #elif USE_FFT_ACCEL_VERSION == 2
+#elif USE_FFT_ACCEL_VERSION == 2
     fftHW_desc[fi].num_ffts      = 1;  // We only use one at a time in this applciation.
     fftHW_desc[fi].do_inverse    = FFTHW_NO_INVERSE;
     fftHW_desc[fi].do_shift      = FFTHW_NO_SHIFT;
     fftHW_desc[fi].scale_factor = 1;
-   #endif
-    //fftHW_desc[fi].logn_samples  = log_nsamples; 
+#endif
+    //fftHW_desc[fi].logn_samples  = log_nsamples;
     fftHW_desc[fi].src_offset = 0;
     fftHW_desc[fi].dst_offset = 0;
   }
- #endif
+#endif
 
 }
 
 
 
 #ifdef HW_FFT
-void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc)
-{
+void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc) {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("ERROR : fft_in_hw : IOCTL:");
     exit(EXIT_FAILURE);
@@ -163,21 +160,19 @@ void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *
 #endif
 
 void
-do_fft_accel_type_closeout(struct scheduler_datastate_block_struct* sptr)
-{
+do_fft_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
   // Clean up any hardware accelerator stuff
- #ifdef HW_FFT
+#ifdef HW_FFT
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
     contig_free(fftHW_mem[fi]);
     close(fftHW_fd[fi]);
   }
- #endif
+#endif
 }
 
 
 void
-output_fft_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types)
-{
+output_fft_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
   ; // Nothing to do here (yet)
 }
 

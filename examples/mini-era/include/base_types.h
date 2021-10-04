@@ -40,10 +40,10 @@ typedef struct {
   unsigned int index;          // A global index (of all radar dictionary entries
   unsigned int set;            // The set this entry is in
   unsigned int index_in_set;   // The index in the set for this entry
-  unsigned int return_id;      // An entry-defined return ID 
+  unsigned int return_id;      // An entry-defined return ID
   unsigned int log_nsamples;
   float distance;
-  float return_data[2 * (1<<MAX_RADAR_LOGN)];
+  float return_data[2 * (1 << MAX_RADAR_LOGN)];
 } radar_dict_entry_t;
 
 #include "viterbi_types.h"

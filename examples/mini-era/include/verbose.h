@@ -19,23 +19,23 @@
 #define H_VERBOSE_H
 
 #ifdef VERBOSE
- #define DEBUG(x) x
+#define DEBUG(x) x
 #else
- #define DEBUG(x)
+#define DEBUG(x)
 #endif
 
 #ifdef DBG_THREADS
- #define TDEBUG(x) x
+#define TDEBUG(x) x
 #else
- #define TDEBUG(x)
+#define TDEBUG(x)
 #endif
 
 #ifdef SUPER_VERBOSE
- #define SDEBUG(x) x
- #define DO_VERBOSE(x) x
+#define SDEBUG(x) x
+#define DO_VERBOSE(x) x
 #else
- #define SDEBUG(x)
- #define DO_VERBOSE(x)
+#define SDEBUG(x)
+#define DO_VERBOSE(x)
 #endif
 
 #endif

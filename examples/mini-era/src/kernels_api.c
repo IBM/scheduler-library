@@ -29,9 +29,9 @@
 #include "kernels_api.h"
 
 #ifdef USE_SIM_ENVIRON
- #include "sim_environs.h"
+#include "sim_environs.h"
 #else
- #include "read_trace.h"
+#include "read_trace.h"
 #endif
 
 extern unsigned time_step;
@@ -81,8 +81,8 @@ float IMPACT_DISTANCE = 50.0; // Minimum distance at which an obstacle "impacts"
 unsigned int     num_cv_dictionary_items = 0;
 cv_dict_entry_t* the_cv_object_dict;
 **/
-unsigned label_match[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0};  // Times CNN matched dictionary
-unsigned label_lookup[NUM_OBJECTS+1] = {0, 0, 0, 0, 0, 0}; // Times we used CNN for object classification
+unsigned label_match[NUM_OBJECTS + 1] = {0, 0, 0, 0, 0, 0}; // Times CNN matched dictionary
+unsigned label_lookup[NUM_OBJECTS + 1] = {0, 0, 0, 0, 0, 0}; // Times we used CNN for object classification
 unsigned label_mismatch[NUM_OBJECTS][NUM_OBJECTS] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 
 /* These are some top-level defines needed for RADAR */
@@ -128,8 +128,9 @@ unsigned vit_msgs_size;
 unsigned vit_msgs_per_step;
 const char* vit_msgs_size_str[VITERBI_MSG_LENGTHS] = {"SHORT", "MEDIUM", "LONG", "MAXIMUM"};
 const char* vit_msgs_per_step_str[VITERBI_MSGS_PER_STEP] = {"One message per time step",
-							    "One message per obstacle per time step",
-							    "One msg per obstacle + 1 per time step" };
+                                                            "One message per obstacle per time step",
+                                                            "One msg per obstacle + 1 per time step"
+                                                           };
 unsigned viterbi_messages_histogram[VITERBI_MSG_LENGTHS][NUM_MESSAGES];
 
 unsigned total_msgs = 0; // Total messages decoded during the full run
@@ -146,50 +147,47 @@ distance_t PNC_THRESHOLD_3 = 305.0;
 distance_t VIT_CLEAR_THRESHOLD = 155.0;
 
 #ifdef ENABLE_NVDLA
- extern void initNVDLA();
- extern void runImageonNVDLAWrapper(char *Image);
+extern void initNVDLA();
+extern void runImageonNVDLAWrapper(char *Image);
 #endif
 
 
-status_t init_cv_kernel(char* py_file, char* dict_fn)
-{
+status_t init_cv_kernel(char* py_file, char* dict_fn) {
   //DEBUG(
   printf("In the init_cv_kernel routine\n");//);
 
   /** The CV kernel uses a different method to select appropriate inputs; dictionary not needed **/
   // Initialization to run Keras CNN code
 
- #ifdef ENABLE_NVDLA
+#ifdef ENABLE_NVDLA
   // Initialize NVDLA
   printf("  Calling the initNVDLA routine\n");
   initNVDLA();
   printf("  Back from the initNVDLA routine\n");
- #endif
+#endif
   return success;
 }
 
 
-label_t iterate_cv_kernel(vehicle_state_t vs)
-{
+label_t iterate_cv_kernel(vehicle_state_t vs) {
   DEBUG(printf("In iterate_cv_kernel\n"));
 
   unsigned tr_val = 0; // Default nothing
-  switch(nearest_obj[vs.lane]) {
-    case 'N' : tr_val = no_label; break;
-    case 'B' : tr_val = bicycle; break;
-    case 'C' : tr_val = car; break;
-    case 'P' : tr_val = pedestrian; break;
-    case 'T' : tr_val = truck; break;
-  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]); 
-           exit(-2);
+  switch (nearest_obj[vs.lane]) {
+  case 'N' : tr_val = no_label; break;
+  case 'B' : tr_val = bicycle; break;
+  case 'C' : tr_val = car; break;
+  case 'P' : tr_val = pedestrian; break;
+  case 'T' : tr_val = truck; break;
+  default: printf("ERROR : Unknown object type in cv trace: '%c'\n", nearest_obj[vs.lane]);
+    exit(-2);
   }
   label_t d_object = (label_t)tr_val;
 
   return d_object;
 }
 
-void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
-{
+void post_execute_cv_kernel(label_t tr_val, label_t cv_object) {
   //printf("CV_POST: Compare %u to %u\n", tr_val, cv_object);
   if (cv_object == tr_val) {
     label_match[tr_val]++;
@@ -203,14 +201,12 @@ void post_execute_cv_kernel(label_t tr_val, label_t cv_object)
 }
 
 
-status_t init_radar_kernel(char* dict_fn)
-{
+status_t init_radar_kernel(char* dict_fn) {
   DEBUG(printf("In init_radar_kernel...\n"));
 
   // Read in the radar distances dictionary file
-  FILE *dictF = fopen(dict_fn,"r");
-  if (!dictF)
-  {
+  FILE *dictF = fopen(dict_fn, "r");
+  if (!dictF) {
     printf("Error: unable to open dictionary file %s\n", dict_fn);
     fclose(dictF);
     return error;
@@ -240,7 +236,7 @@ status_t init_radar_kernel(char* dict_fn)
   for (int si = 0; si < num_radar_samples_sets; si++) {
     if (fscanf(dictF, "%u\n", &(radar_log_nsamples_per_dict_set[si])) != 1) {
       printf("ERROR reading the number of Radar Dictionary samples for set %u\n", si);
-    exit(-2);
+      exit(-2);
     }
     DEBUG(printf("  Dictionary set %u entries should all have %u log_nsamples\n", si, radar_log_nsamples_per_dict_set[si]));
     for (int di = 0; di < radar_dict_items_per_set; di++) {
@@ -250,12 +246,13 @@ status_t init_radar_kernel(char* dict_fn)
       unsigned entry_dict_values = 0;
       printf("    Reading Radar dict set %u entry %u\n", si, di);
       if (fscanf(dictF, "%u %u %f", &entry_id, &entry_log_nsamples, &entry_dist) != 3) {
-	printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
+        printf("ERROR reading Radar Dictionary set %u entry %u header\n", si, di);
         exit(-2);
       }
       if (radar_log_nsamples_per_dict_set[si] != entry_log_nsamples) {
-	printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples, radar_log_nsamples_per_dict_set[si]);
-    exit(-2);
+        printf("ERROR reading Radar Dictionary set %u entry %u header : Mismatch in log2 samples : %u vs %u\n", si, di, entry_log_nsamples,
+               radar_log_nsamples_per_dict_set[si]);
+        exit(-2);
       }
 
       DEBUG(printf("  Reading rad dictionary set %u entry %u : %u %u %f\n", si, di, entry_id, entry_log_nsamples, entry_dist));
@@ -265,15 +262,15 @@ status_t init_radar_kernel(char* dict_fn)
       the_radar_return_dict[si][di].return_id = entry_id;
       the_radar_return_dict[si][di].log_nsamples = entry_log_nsamples;
       the_radar_return_dict[si][di].distance =  entry_dist;
-      for (int i = 0; i < 2*(1<<entry_log_nsamples); i++) {
-	float fin;
-	if (fscanf(dictF, "%f", &fin) != 1) {
-	  printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
-    exit(-2);
-	}
-	the_radar_return_dict[si][di].return_data[i] = fin;
-	tot_dict_values++;
-	entry_dict_values++;
+      for (int i = 0; i < 2 * (1 << entry_log_nsamples); i++) {
+        float fin;
+        if (fscanf(dictF, "%f", &fin) != 1) {
+          printf("ERROR reading Radar Dictionary set %u entry %u data entries\n", si, di);
+          exit(-2);
+        }
+        the_radar_return_dict[si][di].return_data[i] = fin;
+        tot_dict_values++;
+        entry_dict_values++;
       }
       DEBUG(printf("    Read in dict set %u entry %u with %u total values\n", si, di, entry_dict_values));
     } // for (int di across radar dictionary entries per set
@@ -282,12 +279,12 @@ status_t init_radar_kernel(char* dict_fn)
   DEBUG(printf("  Read %u sets with %u entries totalling %u values across them all\n", num_radar_samples_sets, radar_dict_items_per_set, tot_dict_values));
   if (!feof(dictF)) {
     printf("NOTE: Did not hit eof on the radar dictionary file %s\n", dict_fn);
-    while(!feof(dictF)) {
+    while (!feof(dictF)) {
       char c;
       if (fscanf(dictF, "%c", &c) != 1) {
-	printf("Couldn't read final character\n");
+        printf("Couldn't read final character\n");
       } else {
-	printf("Next char is %c = %u = 0x%x\n", c, c, c);
+        printf("Next char is %c = %u = 0x%x\n", c, c, c);
       }
     }
     //if (!feof(dictF)) { printf("and still no EOF\n"); }
@@ -299,12 +296,12 @@ status_t init_radar_kernel(char* dict_fn)
     for (int di = 0; di < radar_dict_items_per_set; di++) {
       hist_distances[si][di] = 0;
       for (int i = 0; i < 5; i++) {
-	hist_pct_errs[si][di][i] = 0;
+        hist_pct_errs[si][di][i] = 0;
       }
     }
   }
 
-    //Clear the inputs (injected) histogram
+  //Clear the inputs (injected) histogram
   for (int i = 0; i < MAX_RDICT_SAMPLE_SETS; i++) {
     for (int j = 0; j < MAX_RDICT_ENTRIES; j++) {
       radar_inputs_histogram[i][j] = 0;
@@ -316,24 +313,21 @@ status_t init_radar_kernel(char* dict_fn)
 
 // These routine selects a random FFT input (from the dictionary) or the specific Critical Radar Task FFT Input
 //  Used to support variable non-critical task sizes, and histogram stats gathering.
-radar_dict_entry_t* select_random_radar_input()
-{
+radar_dict_entry_t* select_random_radar_input() {
   int s_num = (rand() % (num_radar_samples_sets)); // Return a value from [0,num_radar_samples_sets) */
   int e_num = (rand() % (radar_dict_items_per_set)); // Return a value from [0,radar_dict_items_per_set) */
   radar_inputs_histogram[s_num][e_num]++;
   return &(the_radar_return_dict[s_num][e_num]);
 }
 
-radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p)
-{
+radar_dict_entry_t* select_critical_radar_input(radar_dict_entry_t* rdentry_p) {
   radar_inputs_histogram[rdentry_p->set][rdentry_p->index_in_set]++;
   return rdentry_p;
 }
 
 
 
-radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs)
-{
+radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs) {
   DEBUG(printf("In iterate_radar_kernel\n"));
   unsigned tr_val = nearest_dist[vs.lane] / RADAR_BUCKET_DISTANCE;  // The proper message for this time step and car-lane
   radar_inputs_histogram[crit_fft_samples_set][tr_val]++;
@@ -348,24 +342,23 @@ radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs)
   start_calculate_peak_dist_from_fmcw(mb_ptr, log_nsamples, inputs);
   }*/
 
- /*
+/*
 distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr)
 {
-  DEBUG(printf("MB%u In finish_execution_of_radar_kernel\n", mb_ptr->block_id));
-  DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
-  distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
+ DEBUG(printf("MB%u In finish_execution_of_radar_kernel\n", mb_ptr->block_id));
+ DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
+ distance_t dist = finish_calculate_peak_dist_from_fmcw(mb_ptr);
 
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u fin_rad Calling free_task_metadata_block\n", mb_ptr->block_id));
-  free_task_metadata_block(mb_ptr);
+ // We've finished the execution and lifetime for this task; free its metadata
+ DEBUG(printf("  MB%u fin_rad Calling free_task_metadata_block\n", mb_ptr->block_id));
+ free_task_metadata_block(mb_ptr);
 
-  DEBUG(printf("  MB%u Returning distance = %.1f\n", mb_ptr->block_id, dist));
-  return dist;
-  }*/
+ DEBUG(printf("  MB%u Returning distance = %.1f\n", mb_ptr->block_id, dist));
+ return dist;
+ }*/
 
 
-void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist)
-{
+void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist, distance_t dist) {
   // Get an error estimate (Root-Squared?)
   float error;
   radar_total_calc++;
@@ -378,7 +371,7 @@ void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist,
   float abs_err = fabs(error);
   float pct_err;
   if (tr_dist != 0.0) {
-    pct_err = abs_err/tr_dist;
+    pct_err = abs_err / tr_dist;
   } else {
     pct_err = abs_err;
   }
@@ -411,17 +404,15 @@ void post_execute_radar_kernel(unsigned set, unsigned index, distance_t tr_dist,
  *  m1 m2 m3 m4 m5 : FRAME parms:
  *  x1 x2 x3 ...   : The message bits (input to decode routine)
  */
-status_t init_vit_kernel(char* dict_fn)
-{
+status_t init_vit_kernel(char* dict_fn) {
   DEBUG(printf("In init_vit_kernel...\n"));
   if (vit_msgs_size >= VITERBI_LENGTHS) {
     printf("ERROR: Specified too large a vit_msgs_size (-v option): %u but max is %u\n", vit_msgs_size, VITERBI_LENGTHS);
     exit(-1);
   }
   // Read in the object images dictionary file
-  FILE *dictF = fopen(dict_fn,"r");
-  if (!dictF)
-  {
+  FILE *dictF = fopen(dict_fn, "r");
+  if (!dictF) {
     printf("Error: unable to open viterbi dictionary definition file %s\n", dict_fn);
     return error;
   }
@@ -434,16 +425,14 @@ status_t init_vit_kernel(char* dict_fn)
   }
   printf("  There are %u dictionary entries\n", num_viterbi_dictionary_items);
   the_viterbi_trace_dict = (vit_dict_entry_t*)calloc(num_viterbi_dictionary_items, sizeof(vit_dict_entry_t));
-  if (the_viterbi_trace_dict == NULL)
-  {
+  if (the_viterbi_trace_dict == NULL) {
     printf("ERROR : Cannot allocate Viterbi Trace Dictionary memory space\n");
     fclose(dictF);
     return error;
   }
 
   // Read in each dictionary item
-  for (int i = 0; i < num_viterbi_dictionary_items; i++)
-  {
+  for (int i = 0; i < num_viterbi_dictionary_items; i++) {
     printf("    Reading vit dictionary entry %u\n", i);
 
     int mnum, mid;
@@ -489,12 +478,12 @@ status_t init_vit_kernel(char* dict_fn)
     for (int ci = 0; ci < num_in_bits; ci++) {
       unsigned c;
       if (fscanf(dictF, "%u ", &c) != 1) {
-	printf("Error reading viterbi kernel dictionary entry %u data\n", i);
-  exit(-6);
+        printf("Error reading viterbi kernel dictionary entry %u data\n", i);
+        exit(-6);
       }
-      #ifdef SUPER_VERBOSE
+#ifdef SUPER_VERBOSE
       printf("%u ", c);
-      #endif
+#endif
       the_viterbi_trace_dict[i].in_bits[ci] = (uint8_t)c;
     }
     DEBUG(printf("\n"));
@@ -521,58 +510,54 @@ status_t init_vit_kernel(char* dict_fn)
  * (i.e. which message if the autonomous car is in the
  *  left, middle or right lane).
  */
-vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
-{
+vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs) {
   DEBUG(printf("In iterate_vit_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   hist_total_objs[total_obj]++;
   unsigned tr_val = 0; // set a default to avoid compiler messages
   switch (vs.lane) {
-  case lhazard:
-    {
-      unsigned nd_1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      DEBUG(printf("  Lane %u : obj in %u is %c at %u\n", vs.lane, vs.lane+1, nearest_obj[vs.lane+1], nd_1));
-      if ((nearest_obj[1] != 'N') && (nd_1 < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the left lane within threshold distance
-	tr_val = 3; // Unsafe to move from lhazard lane into the left lane
-      } else {
-	tr_val = 1;
-      }
+  case lhazard: {
+    unsigned nd_1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+    DEBUG(printf("  Lane %u : obj in %u is %c at %u\n", vs.lane, vs.lane + 1, nearest_obj[vs.lane + 1], nd_1));
+    if ((nearest_obj[1] != 'N') && (nd_1 < VIT_CLEAR_THRESHOLD)) {
+      // Some object is in the left lane within threshold distance
+      tr_val = 3; // Unsafe to move from lhazard lane into the left lane
+    } else {
+      tr_val = 1;
     }
-    break;
+  }
+  break;
   case left:
   case center:
-  case right:
-    {
-      unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane+1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane-1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      tr_val = 0;
-      DEBUG(printf("  Lane %u : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane,
-		   vs.lane-1, nearest_obj[vs.lane-1], nearest_dist[vs.lane-1],
-		   vs.lane+1, nearest_obj[vs.lane+1], nearest_dist[vs.lane+1]));
-      if ((nearest_obj[vs.lane-1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the Left lane at distance 0 or 1
-	DEBUG(printf("    Marking unsafe to move left\n"));
-	tr_val += 1; // Unsafe to move from this lane to the left.
-      }
-      if ((nearest_obj[vs.lane+1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the Right lane at distance 0 or 1
-	DEBUG(printf("    Marking unsafe to move right\n"));
-	tr_val += 2; // Unsafe to move from this lane to the right.
-      }
+  case right: {
+    unsigned ndp1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane + 1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+    unsigned ndm1 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[vs.lane - 1] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+    tr_val = 0;
+    DEBUG(printf("  Lane %u : obj in %u is %c at %.1f : obj in %u is %c at %.1f\n", vs.lane,
+                 vs.lane - 1, nearest_obj[vs.lane - 1], nearest_dist[vs.lane - 1],
+                 vs.lane + 1, nearest_obj[vs.lane + 1], nearest_dist[vs.lane + 1]));
+    if ((nearest_obj[vs.lane - 1] != 'N') && (ndm1 < VIT_CLEAR_THRESHOLD)) {
+      // Some object is in the Left lane at distance 0 or 1
+      DEBUG(printf("    Marking unsafe to move left\n"));
+      tr_val += 1; // Unsafe to move from this lane to the left.
     }
-    break;
-  case rhazard:
-    {
-      unsigned nd_3 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[3] / RADAR_BUCKET_DISTANCE); // floor by bucket...
-      DEBUG(printf("  Lane %u : obj in %u is %c at %u\n", vs.lane, vs.lane-1, nearest_obj[vs.lane-1], nd_3));
-      if ((nearest_obj[3] != 'N') && (nd_3 < VIT_CLEAR_THRESHOLD)) {
-	// Some object is in the right lane within threshold distance
-	tr_val = 3; // Unsafe to move from center lane to the right.
-      } else {
-	tr_val = 2;
-      }
+    if ((nearest_obj[vs.lane + 1] != 'N') && (ndp1 < VIT_CLEAR_THRESHOLD)) {
+      // Some object is in the Right lane at distance 0 or 1
+      DEBUG(printf("    Marking unsafe to move right\n"));
+      tr_val += 2; // Unsafe to move from this lane to the right.
     }
-    break;
+  }
+  break;
+  case rhazard: {
+    unsigned nd_3 = RADAR_BUCKET_DISTANCE * (unsigned)(nearest_dist[3] / RADAR_BUCKET_DISTANCE); // floor by bucket...
+    DEBUG(printf("  Lane %u : obj in %u is %c at %u\n", vs.lane, vs.lane - 1, nearest_obj[vs.lane - 1], nd_3));
+    if ((nearest_obj[3] != 'N') && (nd_3 < VIT_CLEAR_THRESHOLD)) {
+      // Some object is in the right lane within threshold distance
+      tr_val = 3; // Unsafe to move from center lane to the right.
+    } else {
+      tr_val = 2;
+    }
+  }
+  break;
   default:
     printf("Unknown current lane %u\n", vs.lane);
     exit(-96);
@@ -587,7 +572,7 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
   int msg_offset = vit_msgs_size * NUM_MESSAGES; // 0 = short messages, 4 = long messages
 
   viterbi_messages_histogram[vit_msgs_size][tr_val]++;
-  switch(tr_val) {
+  switch (tr_val) {
   case 0: // safe_to_move_right_or_left
     trace_msg = &(the_viterbi_trace_dict[0 + msg_offset]);
     break;
@@ -607,23 +592,20 @@ vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs)
 
 // These routines are used to select a random (non-critical?) Viterbi message input
 //  to support variable message sizes per iteration
-vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num)
-{
+vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num) {
   viterbi_messages_histogram[l_num][m_num]++;
-  return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
+  return&(the_viterbi_trace_dict[NUM_MESSAGES * l_num + m_num]);
 }
 
-vit_dict_entry_t* select_random_vit_input()
-{
+vit_dict_entry_t* select_random_vit_input() {
   int l_num = (rand() % (VITERBI_LENGTHS)); // Return a value from [0,VITERBI_LENGTHS)
   int m_num = (rand() % (NUM_MESSAGES)); // Return a value from [0,NUM_MESSAGES)
   viterbi_messages_histogram[l_num][m_num]++;
-  return&(the_viterbi_trace_dict[NUM_MESSAGES*l_num + m_num]);
+  return&(the_viterbi_trace_dict[NUM_MESSAGES * l_num + m_num]);
 }
 
 
-void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
-{
+void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg) {
   total_msgs++;
   if (dec_msg != tr_msg) {
     bad_decode_msgs++;
@@ -634,8 +616,7 @@ void post_execute_vit_kernel(message_t tr_msg, message_t dec_msg)
 // The Test Task is just a dummy task we can apply to any accelerator
 //  during a run, with a fixed execution time...
 
-status_t init_test_kernel(char* dict_fn)
-{
+status_t init_test_kernel(char* dict_fn) {
   DEBUG(printf("In init_test_kernel...\n"));
   /* Read in the object images dictionary file
      FILE *dictF = fopen(dict_fn,"r");
@@ -652,8 +633,7 @@ status_t init_test_kernel(char* dict_fn)
   return success;
 }
 
-test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs)
-{
+test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs) {
   DEBUG(printf("In iterate_test_kernel in lane %u = %s\n", vs.lane, lane_names[vs.lane]));
   test_dict_entry_t* tde = NULL; // Currently we don't have a test-dictionary
 
@@ -662,23 +642,22 @@ test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs)
 
 /*void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)*/
 /*{*/
-  /*DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));*/
-  /*request_execution(mb_ptr);*/
+/*DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));*/
+/*request_execution(mb_ptr);*/
 /*}*/
 
 /*test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)*/
 /*{*/
-  /*test_res_t tres = TEST_TASK_DONE;*/
-  /*// We've finished the execution and lifetime for this task; free its metadata*/
-  /*DEBUG(printf("  MB%u fin_test Calling free_task_metadata_block\n", mb_ptr->block_id));*/
-  /*free_task_metadata_block(mb_ptr);*/
-  
-  /*DEBUG(printf("MB%u The finish_execution_of_test_kernel is returning tres %u\n", mb_ptr->block_id, tres));*/
-  /*return tres;*/
+/*test_res_t tres = TEST_TASK_DONE;*/
+/*// We've finished the execution and lifetime for this task; free its metadata*/
+/*DEBUG(printf("  MB%u fin_test Calling free_task_metadata_block\n", mb_ptr->block_id));*/
+/*free_task_metadata_block(mb_ptr);*/
+
+/*DEBUG(printf("MB%u The finish_execution_of_test_kernel is returning tres %u\n", mb_ptr->block_id, tres));*/
+/*return tres;*/
 /*}*/
 
-void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
-{
+void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res) {
   total_test_tasks++;
   if (exec_res != gold_res) {
     bad_test_task_res++;
@@ -688,23 +667,22 @@ void post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res)
 /* #undef DEBUG */
 /* #define DEBUG(x) x */
 
-vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t message, vehicle_state_t vehicle_state)
-{
+vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t message, vehicle_state_t vehicle_state) {
   printf("In the plan_and_control routine...\n");
-  DEBUG(printf("In the plan_and_control routine : label %u %s distance %.1f (T1 %.1f T1 %.1f T3 %.1f) message %u\n", 
-	       label, object_names[label], distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, message));
+  DEBUG(printf("In the plan_and_control routine : label %u %s distance %.1f (T1 %.1f T1 %.1f T3 %.1f) message %u\n",
+               label, object_names[label], distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, message));
   vehicle_state_t new_vehicle_state = vehicle_state;
   if (!vehicle_state.active) {
     // Our car is broken and burning, no plan-and-control possible.
     return vehicle_state;
   }
-  
+
   if (//(label != no_label) && // For safety, assume every return is from SOMETHING we should not hit!
-      ((distance <= PNC_THRESHOLD_1)
-       #ifdef USE_SIM_ENVIRON
-       || ((vehicle_state.speed < car_goal_speed) && (distance <= PNC_THRESHOLD_2))
-       #endif
-       )) {
+    ((distance <= PNC_THRESHOLD_1)
+#ifdef USE_SIM_ENVIRON
+     || ((vehicle_state.speed < car_goal_speed) && (distance <= PNC_THRESHOLD_2))
+#endif
+    )) {
     if (distance <= IMPACT_DISTANCE) {
       printf("WHOOPS: We've suffered a collision on time_step %u!\n", time_step);
       //fprintf(stderr, "WHOOPS: We've suffered a collision on time_step %u!\n", time_step);
@@ -712,42 +690,43 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
       new_vehicle_state.active = false; // We should add visualizer stuff for this!
       return new_vehicle_state;
     }
-    
+
     // Some object ahead of us that needs to be avoided.
-    DEBUG(printf("  In lane %s with %c (%u) at %.1f (trace: %.1f)\n", lane_names[vehicle_state.lane], nearest_obj[vehicle_state.lane], label, distance, nearest_dist[vehicle_state.lane]));
+    DEBUG(printf("  In lane %s with %c (%u) at %.1f (trace: %.1f)\n", lane_names[vehicle_state.lane], nearest_obj[vehicle_state.lane], label, distance,
+                 nearest_dist[vehicle_state.lane]));
     switch (message) {
-      case safe_to_move_right_or_left   :
-	/* Bias is move right, UNLESS we are in the Right lane and would then head into the RHazard Lane */
-	if (vehicle_state.lane < right) { 
-	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state.lane]));
-	  new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
-	} else {
-	  DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state.lane]));
-	  new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
-	}	  
-	break; // prefer right lane
-      case safe_to_move_right_only      :
-	DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
-	break;
-      case safe_to_move_left_only       :
-	DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
-	break;
-      case unsafe_to_move_left_or_right :
-	#ifdef USE_SIM_ENVIRON
-	if (vehicle_state.speed > car_decel_rate) {
-	  new_vehicle_state.speed = vehicle_state.speed - car_decel_rate; // was / 2.0;
-	  DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state.lane], vehicle_state.speed, new_vehicle_state.speed));
-	} else {
-	  DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state.lane]));
-	  new_vehicle_state.speed = 0.0;
-	}
-	#else
-	DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.speed = 0.0;
-	#endif
-	break; /* Stop!!! */
+    case safe_to_move_right_or_left   :
+      /* Bias is move right, UNLESS we are in the Right lane and would then head into the RHazard Lane */
+      if (vehicle_state.lane < right) {
+        DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state.lane]));
+        new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
+      } else {
+        DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state.lane]));
+        new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
+      }
+      break; // prefer right lane
+    case safe_to_move_right_only      :
+      DEBUG(printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state.lane]));
+      new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
+      break;
+    case safe_to_move_left_only       :
+      DEBUG(printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state.lane]));
+      new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
+      break;
+    case unsafe_to_move_left_or_right :
+#ifdef USE_SIM_ENVIRON
+      if (vehicle_state.speed > car_decel_rate) {
+        new_vehicle_state.speed = vehicle_state.speed - car_decel_rate; // was / 2.0;
+        DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state.lane], vehicle_state.speed, new_vehicle_state.speed));
+      } else {
+        DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state.lane]));
+        new_vehicle_state.speed = 0.0;
+      }
+#else
+      DEBUG(printf("   In %s with No_Safe_Move : STOPPING\n", lane_names[vehicle_state.lane]));
+      new_vehicle_state.speed = 0.0;
+#endif
+      break; /* Stop!!! */
     default:
       printf(" ERROR  In %s with UNDEFINED MESSAGE: %u\n", lane_names[vehicle_state.lane], message);
     }
@@ -757,9 +736,9 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
     case lhazard:
     case left:
       if ((message == safe_to_move_right_or_left) ||
-	  (message == safe_to_move_right_only)) {
-	DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
+          (message == safe_to_move_right_only)) {
+        DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state.lane]));
+        new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane + 1);
       }
       break;
     case center:
@@ -768,9 +747,9 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
     case right:
     case rhazard:
       if ((message == safe_to_move_right_or_left) ||
-	  (message == safe_to_move_left_only)) {
-	DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state.lane]));
-	new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
+          (message == safe_to_move_left_only)) {
+        DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state.lane]));
+        new_vehicle_state.lane = (lane_t) ((int)new_vehicle_state.lane - 1);
       }
       break;
     default:
@@ -778,18 +757,18 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
       exit(-97);
       break;
     }
-    #ifdef USE_SIM_ENVIRON
+#ifdef USE_SIM_ENVIRON
     if ((vehicle_state.speed < car_goal_speed) &&  // We are going slower than we want to, and
-	//((label == no_label) ||      // There is no object ahead of us -- don't need; NOTHING is at INF_DISTANCE
-	(distance >= THRESHOLD_2)) { // Any object is far enough away 
+        //((label == no_label) ||      // There is no object ahead of us -- don't need; NOTHING is at INF_DISTANCE
+        (distance >= THRESHOLD_2)) { // Any object is far enough away
       if (vehicle_state.speed <= (car_goal_speed - car_accel_rate)) {
-	new_vehicle_state.speed += 15.0;
+        new_vehicle_state.speed += 15.0;
       } else {
-	new_vehicle_state.speed = car_goal_speed;
+        new_vehicle_state.speed = car_goal_speed;
       }
       DEBUG(printf("  Going %.2f : slower than target speed %.2f : Speeding up to %.2f\n", vehicle_state.speed, 50.0, new_vehicle_state.speed));
     }
-    #endif
+#endif
   } // else clause
 
 
@@ -799,13 +778,14 @@ vehicle_state_t plan_and_control(label_t label, distance_t distance, message_t m
 /* #define DEBUG(x) */
 
 
-void closeout_cv_kernel()
-{
-  float label_correct_pctg = (100.0*label_match[NUM_OBJECTS])/(1.0*label_lookup[NUM_OBJECTS]);
-  printf("\nFinal CV CNN Accuracy: %u correct labelings over %u classifications = %.2f%%\n", label_match[NUM_OBJECTS], label_lookup[NUM_OBJECTS], label_correct_pctg);
+void closeout_cv_kernel() {
+  float label_correct_pctg = (100.0 * label_match[NUM_OBJECTS]) / (1.0 * label_lookup[NUM_OBJECTS]);
+  printf("\nFinal CV CNN Accuracy: %u correct labelings over %u classifications = %.2f%%\n", label_match[NUM_OBJECTS], label_lookup[NUM_OBJECTS],
+         label_correct_pctg);
   for (int i = 0; i < NUM_OBJECTS; i++) {
-    label_correct_pctg = (100.0*label_match[i])/(1.0*label_lookup[i]);
-    printf("  CV CNN Accuracy for %10s : %u correct labelings of %u classifications = %.2f%%\n", object_names[i], label_match[i], label_lookup[i], label_correct_pctg);
+    label_correct_pctg = (100.0 * label_match[i]) / (1.0 * label_lookup[i]);
+    printf("  CV CNN Accuracy for %10s : %u correct labelings of %u classifications = %.2f%%\n", object_names[i], label_match[i], label_lookup[i],
+           label_correct_pctg);
   }
 
   unsigned errs = label_lookup[NUM_OBJECTS] - label_match[NUM_OBJECTS];
@@ -813,25 +793,24 @@ void closeout_cv_kernel()
     printf("\nAnalysis of the %u mis-identifications:\n", errs);
     for (int i = 0; i < NUM_OBJECTS; i++) {
       for (int j = 0; j < NUM_OBJECTS; j++) {
-	if (label_mismatch[i][j] != 0) {
-	  printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
-	}
+        if (label_mismatch[i][j] != 0) {
+          printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
+        }
       }
     }
 
     printf("\nAnalysis (dual-view) of the %u mis-identifications:\n", errs);
     for (int j = 0; j < NUM_OBJECTS; j++) {
       for (int i = 0; i < NUM_OBJECTS; i++) {
-	if (label_mismatch[i][j] != 0) {
-	  printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
-	}
+        if (label_mismatch[i][j] != 0) {
+          printf("  Mislabeled (real) %10s as %10s (CV) on %u occasions\n", object_names[i], object_names[j], label_mismatch[i][j]);
+        }
       }
     }
   }
 }
 
-void closeout_radar_kernel()
-{
+void closeout_radar_kernel() {
   printf("\nHistogram of Radar Distances:\n");
   printf("    %3s | %3s | %8s | %9s \n", "Set", "Idx", "Distance", "Occurs");
   for (int si = 0; si < num_radar_samples_sets; si++) {
@@ -845,10 +824,11 @@ void closeout_radar_kernel()
 
   for (int si = 0; si < num_radar_samples_sets; si++) {
     for (int di = 0; di < radar_dict_items_per_set; di++) {
-      printf("    Set %u Entry %u Id %u Distance %f Occurs %u Histogram:\n", si, di, the_radar_return_dict[si][di].index, the_radar_return_dict[si][di].distance, hist_distances[si][di]);
+      printf("    Set %u Entry %u Id %u Distance %f Occurs %u Histogram:\n", si, di, the_radar_return_dict[si][di].index, the_radar_return_dict[si][di].distance,
+             hist_distances[si][di]);
       for (int i = 0; i < 5; i++) {
-	printf("    %7s | %9u \n", hist_pct_err_label[i], hist_pct_errs[si][di][i]);
-	totals[i] += hist_pct_errs[si][di][i];
+        printf("    %7s | %9u \n", hist_pct_err_label[i], hist_pct_errs[si][di][i]);
+        totals[i] += hist_pct_errs[si][di][i];
       }
     }
   }
@@ -869,8 +849,7 @@ void closeout_radar_kernel()
   printf("\n");
 }
 
-void closeout_vit_kernel()
-{
+void closeout_vit_kernel() {
   // Nothing to do?
 
   printf("\nHistogram of Total Objects:\n");
@@ -878,12 +857,12 @@ void closeout_vit_kernel()
   for (int i = 0; i < NUM_LANES * MAX_OBJ_IN_LANE; i++) {
     if (hist_total_objs[i] != 0) {
       printf("%3u | %9u \n", i, hist_total_objs[i]);
-      sum += i*hist_total_objs[i];
+      sum += i * hist_total_objs[i];
     }
   }
-  double avg_objs = (1.0 * sum)/(1.0 * radar_total_calc); // radar_total_calc == total time steps
+  double avg_objs = (1.0 * sum) / (1.0 * radar_total_calc); // radar_total_calc == total time steps
   printf("There were %.3lf obstacles per time step (average)\n", avg_objs);
-  double avg_msgs = (1.0 * total_msgs)/(1.0 * radar_total_calc); // radar_total_calc == total time steps
+  double avg_msgs = (1.0 * total_msgs) / (1.0 * radar_total_calc); // radar_total_calc == total time steps
   printf("There were %.3lf messages per time step (average)\n", avg_msgs);
   printf("There were %u bad decodes of the %u messages\n", bad_decode_msgs, total_msgs);
 
@@ -899,8 +878,7 @@ void closeout_vit_kernel()
 
 
 
-void closeout_test_kernel()
-{
+void closeout_test_kernel() {
   // Nothing to do?
   printf("\nThere were a total of %u Test-Tasks run, with %u bad Test-Task results\n", total_test_tasks, bad_test_task_res);
   printf("\n");
@@ -914,26 +892,26 @@ void closeout_test_kernel()
 
 /*void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
 /*{*/
-  /*int tidx = mb_ptr->accelerator_type;*/
-  /*plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);*/
-  /*// Data is set up prior to call here...*/
-  /*//plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
- /*#ifdef INT_TIME*/
-  /*gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);*/
- /*#endif*/
-  /*request_execution(mb_ptr);*/
-  /*// This now ends this block -- we've kicked off execution*/
+/*int tidx = mb_ptr->accelerator_type;*/
+/*plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);*/
+/*// Data is set up prior to call here...*/
+/*//plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
+/*#ifdef INT_TIME*/
+/*gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);*/
+/*#endif*/
+/*request_execution(mb_ptr);*/
+/*// This now ends this block -- we've kicked off execution*/
 /*}*/
 
 /*vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
 /*{*/
-  /*DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));*/
-  /*plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
-  /*vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;*/
-  /*DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));*/
-  /*// We've finished the execution and lifetime for this task; free its metadata*/
-  /*free_task_metadata_block(mb_ptr);*/
+/*DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));*/
+/*plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/
+/*vehicle_state_t vehicle_state = plan_ctrl_data_p->new_vehicle_state;*/
+/*DEBUG(printf("finish PnC-Task : Vehicle State: Active %u Lane %u Speed %.1f\n", vehicle_state.active, vehicle_state.lane, vehicle_state.speed));*/
+/*// We've finished the execution and lifetime for this task; free its metadata*/
+/*free_task_metadata_block(mb_ptr);*/
 
-  /*return vehicle_state;*/
+/*return vehicle_state;*/
 /*}*/
 

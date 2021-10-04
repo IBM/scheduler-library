@@ -19,7 +19,7 @@ namespace hpvm {
 
 
 enum Target {
-  None=0,
+  None = 0,
   CPU_TARGET,
   GPU_TARGET,
   CUDNN_TARGET,
@@ -33,7 +33,7 @@ enum Target {
 };
 
 enum EPOCHS_DEVICES {
-  CPU_ACCEL=0,
+  CPU_ACCEL = 0,
   OneD_FFT_ACCEL,
   VITDEC_ACCEL,
   CV_CNN_ACCEL,
@@ -41,7 +41,7 @@ enum EPOCHS_DEVICES {
 };
 
 enum EPOCHS_TASKS {
-  FFT_TASK=0,
+  FFT_TASK = 0,
   RADAR_TASK,
   CV_TASK,
   VIT_TASK,

@@ -45,10 +45,11 @@ void print_create_grid_metadata_block_contents(task_metadata_block_t *mb) {
 }
 
 void output_create_grid_task_type_run_stats(scheduler_datastate_block_t *sptr,
-                                          unsigned my_task_type,
-                                          unsigned total_accel_types) {
+    unsigned my_task_type,
+    unsigned total_accel_types) {
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n", my_task_type, sptr->task_name_str[my_task_type],
+         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The PLAN_CTRL/CNN Task Timing Info
   unsigned total_create_grid_comp_by[total_accel_types + 1];
   uint64_t total_create_grid_call_usec[total_accel_types + 1];
@@ -61,7 +62,7 @@ void output_create_grid_task_type_run_stats(scheduler_datastate_block_t *sptr,
       printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type, sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
     }
     for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *)&(sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+      create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *) & (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
       unsigned this_comp_by = (unsigned)(sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
       uint64_t this_create_grid_call_usec = (uint64_t)(create_grid_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(create_grid_timings_p->call_usec[ai]);
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
@@ -84,11 +85,13 @@ void output_create_grid_task_type_run_stats(scheduler_datastate_block_t *sptr,
   printf("     CNN-call  run time   ");
   for (int ai = 0; ai < total_accel_types; ai++) {
     double avg = (double)total_create_grid_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_create_grid_comp_by[ai], total_create_grid_call_usec[ai], avg);
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai, sptr->accel_name_str[ai], total_create_grid_comp_by[ai],
+           total_create_grid_call_usec[ai], avg);
   }
   {
     double avg = (double)total_create_grid_call_usec[total_accel_types] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_create_grid_comp_by[total_accel_types], total_create_grid_call_usec[total_accel_types], avg);
+    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL", total_create_grid_comp_by[total_accel_types],
+           total_create_grid_call_usec[total_accel_types], avg);
   }
 }
 
@@ -97,16 +100,16 @@ void execute_on_cpu_create_grid_accelerator(task_metadata_block_t *task_metadata
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
   create_grid_data_struct_t *create_grid_data_p = (create_grid_data_struct_t *)(task_metadata_block->data_space);
-  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
+  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the create_grid task : position %u input_data %p occ_grid %p\n", 
-               create_grid_data_p->position, 
+  DEBUG(printf("In the create_grid task : position %u input_data %p occ_grid %p\n",
+               create_grid_data_p->position,
                create_grid_data_p->input_data,
                create_grid_data_p->occ_grid));
-  
- #ifdef INT_TIME
+
+#ifdef INT_TIME
   gettimeofday(&(create_grid_timings_p->call_start), NULL);
- #endif
+#endif
 
 
 #ifdef INT_TIME
@@ -132,27 +135,26 @@ void set_up_create_grid_task_on_accel_profile_data() {
   DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
-             ai++) { printf(" 0x%016lx", create_grid_profile[ai]); } printf("\n");
-        printf("\n"));
+  ai++) { printf(" 0x%016lx", create_grid_profile[ai]); } printf("\n");
+  printf("\n"));
 }
 
 task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr,
-					       task_type_t create_grid_task_type, task_criticality_t crit_level,
-					       bool use_auto_finish, int32_t dag_id, va_list var_list)
-{
+    task_type_t create_grid_task_type, task_criticality_t crit_level,
+    bool use_auto_finish, int32_t dag_id, va_list var_list) {
 //unsigned time_step, unsigned repeat_factor,
 //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
 //  vehicle_state_t vehicle_state) {
- #ifdef TIME
+#ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
- #endif
+#endif
   lane_t lane = (lane_t) va_arg(var_list, int);
   unsigned in_data_size = va_arg(var_list, unsigned);
   uint8_t* in_data   = va_arg(var_list, uint8_t*);
   unsigned occ_x_dim = va_arg(var_list, unsigned);
   unsigned occ_y_dim = va_arg(var_list, unsigned);
   uint8_t* occ_grid = va_arg(var_list, uint8_t*);
-  
+
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_block_t *create_grid_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", create_grid_task_type));
@@ -173,13 +175,14 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
     exit(-4);
   }
   if (use_auto_finish) {
-    create_grid_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[create_grid_task_type]); // get_auto_finish_routine(sptr, create_grid_task_type);
+    create_grid_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+                                     sptr->auto_finish_task_function[create_grid_task_type]); // get_auto_finish_routine(sptr, create_grid_task_type);
   } else {
     create_grid_mb_ptr->atFinish = NULL;
   }
   DEBUG(printf("MB%u In start_create_grid_execution\n", create_grid_mb_ptr->block_id));
 
-  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *)&(create_grid_mb_ptr->task_timings[create_grid_mb_ptr->task_type]);
+  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *) & (create_grid_mb_ptr->task_timings[create_grid_mb_ptr->task_type]);
   create_grid_data_struct_t *create_grid_data_p = (create_grid_data_struct_t *)(create_grid_mb_ptr->data_space);
   // Set the inputs for the plan-and-control task
   create_grid_data_p->position = lane; // The current car position (mine)
@@ -192,9 +195,9 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
   for (int i = 0; i < occ_x_dim * occ_y_dim; i++) {
     create_grid_data_p->occ_grid[i] = 0x0;
   }
-  DEBUG(printf("   Set MB%u position %u in_size %u and x_dim %u y_dim %u\n", 
+  DEBUG(printf("   Set MB%u position %u in_size %u and x_dim %u y_dim %u\n",
                create_grid_mb_ptr->block_id,
-	       create_grid_data_p->position, create_grid_data_p->in_data_size,
+               create_grid_data_p->position, create_grid_data_p->in_data_size,
                create_grid_data_p->occ_x_dim, create_grid_data_p->occ_y_dim));
 
 #ifdef INT_TIME
@@ -224,8 +227,7 @@ void create_grid_auto_finish_routine(task_metadata_block_t *mb) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_create_grid_execution(task_metadata_block_t *create_grid_metadata_block, va_list var_list)
-{
+void finish_create_grid_execution(task_metadata_block_t *create_grid_metadata_block, va_list var_list) {
   // vehicle_state_t *new_vehicle_state)
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
   unsigned* position = va_arg(var_list, unsigned *);
@@ -234,7 +236,8 @@ void finish_create_grid_execution(task_metadata_block_t *create_grid_metadata_bl
   uint8_t*  occ_grid = va_arg(var_list, uint8_t *);
 
   int tidx = create_grid_metadata_block->accelerator_type;
-  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *)&(create_grid_metadata_block->task_timings[create_grid_metadata_block->task_type]);
+  create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *) &
+      (create_grid_metadata_block->task_timings[create_grid_metadata_block->task_type]);
   create_grid_data_struct_t *create_grid_data_p = (create_grid_data_struct_t *)(create_grid_metadata_block->data_space);
 #ifdef INT_TIME
   struct timeval stop_time;

@@ -22,9 +22,8 @@
 
 unsigned** HW_THRESHOLD;
 
-extern "C" void 
-initialize_assign_task_to_pe(void * in_parm_ptr)
-{
+extern "C" void
+initialize_assign_task_to_pe(void * in_parm_ptr) {
   HW_THRESHOLD = (unsigned**)in_parm_ptr;
 }
 
@@ -33,8 +32,7 @@ initialize_assign_task_to_pe(void * in_parm_ptr)
 //   If an accelerators of that type is not available, it waits until it is.
 
 extern "C" ready_mb_task_queue_entry_t *
-assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry)
-{
+assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry) {
   //TODO: Make function to get task block from head of ready queue
   //Choose head of ready queue to be scheduled
   ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
@@ -51,11 +49,12 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
     exit( -19);
   }
 
-  DEBUG(printf("SCHED-PnWT: In pick_accel_and_wait_for_available policy for MB%u : TID %u = %s\n", task_metadata_block->block_id, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type]));
- #ifdef INT_TIME
+  DEBUG(printf("SCHED-PnWT: In pick_accel_and_wait_for_available policy for MB%u : TID %u = %s\n", task_metadata_block->block_id, task_metadata_block->task_type,
+               sptr->task_name_str[task_metadata_block->task_type]));
+#ifdef INT_TIME
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
- #endif
+#endif
   int proposed_accel = 0; // cpu_accel_t;
   int accel_type     = NO_Accelerator;
   int accel_id       = -1;
@@ -64,7 +63,9 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
 
     int num = (rand() % (100)); // Return a value from [0,99]
     for (int i = 1; i < sptr->next_avail_accel_id; i++) {
-      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u = %s][%u = %s] = %u\n", task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], i, sptr->accel_name_str[i],  HW_THRESHOLD[task_metadata_block->task_type][i]));
+      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u = %s][%u = %s] = %u\n", task_metadata_block->task_type,
+                   sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], i,
+                   sptr->accel_name_str[i],  HW_THRESHOLD[task_metadata_block->task_type][i]));
       if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
         proposed_accel = i; // hwr_accel_t;
@@ -80,11 +81,11 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
- #ifdef INT_TIME
+#ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  sptr->scheduler_decision_time_usec += 1000000*(decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
- #endif
+  sptr->scheduler_decision_time_usec += 1000000 * (decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+#endif
   sptr->scheduler_decisions++;
   do {
     int i = 0;

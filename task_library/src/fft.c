@@ -22,27 +22,27 @@
  *    publish, distribute, sublicense, and/or sell copies of the
  *    Software, and may permit others to do so, subject to the following
  *    conditions:
- * 
+ *
  *    * Redistributions of source code must retain the above copyright
  *      notice, this list of conditions and the following disclaimers.
- * 
+ *
  *    * Redistributions in binary form must reproduce the above copyright
  *      notice, this list of conditions and the following disclaimer in
  *      the documentation and/or other materials provided with the
  *      distribution.
- * 
+ *
  *    * Other than as used herein, neither the name Battelle Memorial
  *      Institute nor Battelle may be used in any form whatsoever without
  *      the express written consent of Battelle.
- * 
+ *
  *      Other than as used herein, neither the name Georgia Tech Research
  *      Corporation nor GTRC may not be used in any form whatsoever
  *      without the express written consent of GTRC.
- * 
+ *
  *    * Redistributions of the software in any form, and publications
  *      based on work performed using the software should include the
  *      following citation as a reference:
- * 
+ *
  *      Kevin Barker, Thomas Benson, Dan Campbell, David Ediger, Roberto
  *      Gioiosa, Adolfy Hoisie, Darren Kerbyson, Joseph Manzano, Andres
  *      Marquez, Leon Song, Nathan R. Tallent, and Antonino Tumeo.
@@ -73,17 +73,15 @@
 #include "fft_task.h"
 
 #ifndef M_PI
- #define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846
 #endif
 
 static unsigned int
-_rev (unsigned int v)
-{
+_rev (unsigned int v) {
   unsigned int r = v;
   int s = sizeof(v) * CHAR_BIT - 1;
 
-  for (v >>= 1; v; v >>= 1)
-  {
+  for (v >>= 1; v; v >>= 1) {
     r <<= 1;
     r |= v & 1;
     s--;
@@ -95,8 +93,7 @@ _rev (unsigned int v)
 
 
 static float *
-bit_reverse (float * w, unsigned int N, unsigned int bits)
-{
+bit_reverse (float * w, unsigned int N, unsigned int bits) {
   unsigned int i, s, shift;
   s = sizeof(i) * CHAR_BIT - 1;
   shift = s - bits + 1;
@@ -122,13 +119,12 @@ bit_reverse (float * w, unsigned int N, unsigned int bits)
 
 
 int
-fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, unsigned int logn, int sign)
-{
+fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, unsigned int logn, int sign) {
   unsigned int transform_length;
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;
   int tidx = task_metadata_block->accelerator_type;
-  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
+  fft_timing_data_t * fft_timings_p = (fft_timing_data_t*) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
   transform_length = 1;
 
   /* bit reversal */
@@ -145,9 +141,9 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
 
   /* calculation */
   //printf("\nSTART,A,B,I,J,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "2*j", "Data", "2*j+1", "Data", "2*i", "Data", "2*i+1", "Data", "t_real", "t_imag");
- #ifdef INT_TIME
+#ifdef INT_TIME
   gettimeofday(&(fft_timings_p->fft_comp_start), NULL);
- #endif
+#endif
   for (bit = 0; bit < logn; bit++) {
     w_real = 1.0;
     w_imag = 0.0;
@@ -160,22 +156,22 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
 
     for (a = 0; a < transform_length; a++) {
       for (b = 0; b < N; b += 2 * transform_length) {
-	i = b + a;
-	j = b + a + transform_length;
+        i = b + a;
+        j = b + a + transform_length;
 
-	z_real = data[2*j  ];
-	z_imag = data[2*j+1];
+        z_real = data[2 * j  ];
+        z_imag = data[2 * j + 1];
 
-	t_real = w_real * z_real - w_imag * z_imag;
-	t_imag = w_real * z_imag + w_imag * z_real;
+        t_real = w_real * z_real - w_imag * z_imag;
+        t_imag = w_real * z_imag + w_imag * z_real;
 
-	/* write the result */
-	data[2*j  ]  = data[2*i  ] - t_real;
-	data[2*j+1]  = data[2*i+1] - t_imag;
-	data[2*i  ] += t_real;
-	data[2*i+1] += t_imag;
+        /* write the result */
+        data[2 * j  ]  = data[2 * i  ] - t_real;
+        data[2 * j + 1]  = data[2 * i + 1] - t_imag;
+        data[2 * i  ] += t_real;
+        data[2 * i + 1] += t_imag;
 
-	//printf(",%u,%u,%u,%u,%u,%f,%u,%f,%u,%f,%u,%f,%f,%f\n", a, b, i, j, 2*j, data[2*j], 2*j+1, data[2*j+1], 2*i, data[2*i], 2*i+1, data[2*i+1], t_real, t_imag);
+        //printf(",%u,%u,%u,%u,%u,%f,%u,%f,%u,%f,%u,%f,%f,%f\n", a, b, i, j, 2*j, data[2*j], 2*j+1, data[2*j+1], 2*i, data[2*i], 2*i+1, data[2*i+1], t_real, t_imag);
       }
 
       /* adjust w */
@@ -189,12 +185,12 @@ fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, un
     transform_length *= 2;
   }
 
- #ifdef INT_TIME
+#ifdef INT_TIME
   struct timeval fft_comp_stop;
   gettimeofday(&fft_comp_stop, NULL);
   fft_timings_p->fft_comp_sec[tidx]  += fft_comp_stop.tv_sec  - fft_timings_p->fft_comp_start.tv_sec;
   fft_timings_p->fft_comp_usec[tidx] += fft_comp_stop.tv_usec - fft_timings_p->fft_comp_start.tv_usec;
- #endif
+#endif
 
   return 0;
 }
