@@ -1244,7 +1244,7 @@ initialize_scheduler(scheduler_datastate_block_t *sptr) //, char* sl_viz_fname)
   sptr->total_critical_tasks = 0;
 
   snprintf(sptr->task_criticality_str[0], 32, "%s", "NO-TASK");
-  snprintf(sptr->task_criticality_str[1], 32, "%s", "NBASETASK");
+  snprintf(sptr->task_criticality_str[1], 32, "%s", "BASE-TASK");
   snprintf(sptr->task_criticality_str[2], 32, "%s", "ELEVATED-TASK");
   snprintf(sptr->task_criticality_str[3], 32, "%s", "CRITICAL-TASK");
 
