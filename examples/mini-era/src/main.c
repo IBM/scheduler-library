@@ -96,6 +96,8 @@ unsigned **p0_hw_threshold;
 
 bool all_obstacle_lanes_mode = false;
 bool no_crit_cnn_task = false;
+bool no_crit_vit_task = false;
+bool no_crit_fft_task = false;
 unsigned time_step;
 unsigned pandc_repeat_factor = 1;
 unsigned task_size_variability;
@@ -132,6 +134,8 @@ void print_usage(char *pname) {
   printf("                :      Each Set of Radar Dictionary Entries Can use a different sample size, etc.\n");
 
 #ifndef HPVM
+  printf("    -c <M>      : turns off critical tasks according to Mask <M>\n");
+  printf("                :   M is 3-bits: 0x1 = CNN, 0x2 = VIT, 0x4 = FFT turned off\n");
   printf("    -N <N>      : Adds <N> additional CV/CNN tasks per time step; (neg val for BASE criticality, pos val for critical tasks).\n");
 #else
   printf("    -N <N>      : Adds <N> additional Non-Critical CV/CNN tasks per time step.\n");
@@ -403,7 +407,7 @@ int main(int argc, char *argv[]) {
   // distinguish between '?' and ':'
   while ((opt = getopt(
               argc, argv,
-              ":hcAot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) !=
+              ":hc:Aot:v:s:r:W:R:V:C:f:p:F:M:P:S:N:d:D:u:L:B:X:O:i:I:e:G:")) !=
          -1) {
     switch (opt) {
     case 'h':
@@ -412,8 +416,18 @@ int main(int argc, char *argv[]) {
     case 'A':
       all_obstacle_lanes_mode = true;
       break;
-    case 'c':
-      no_crit_cnn_task = true;
+    case 'c': {
+        unsigned no_crit_mask = atoi(optarg);
+        if (no_crit_mask & 0x1) { 
+          no_crit_cnn_task = true;
+        }
+        if (no_crit_mask & 0x2) { 
+          no_crit_vit_task = true;
+        }
+        if (no_crit_mask & 0x4) { 
+          no_crit_fft_task = true;
+        }
+      }
       break;
     case 'o':
       output_viz_trace = true;
@@ -780,7 +794,7 @@ int main(int argc, char *argv[]) {
     for (int ix = is; ix <= ie; ix++) {
       printf("%s", cv1_txt[ix]);
     }
-    printf("CV with no-crit-CV = %u\n", no_crit_cnn_task);
+    printf("CV with no-crit-CV = %u no_crit_vit = %u adn no_crit_fft = %u\n", no_crit_cnn_task, no_crit_vit_task, no_crit_fft_task);
   }
 #ifndef HW_ONLY_CV
   printf(" with cv_cpu_run_time_in_usec set to %u\n", cv_cpu_run_time_in_usec);
@@ -1127,12 +1141,14 @@ int main(int argc, char *argv[]) {
 #endif
 
     task_metadata_block_t *radar_mb_ptr = NULL;
-    radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
-			       false, time_step,
-			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
-    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr;
-    DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
-    request_execution(radar_mb_ptr);
+    if (!no_crit_fft_task) {
+      radar_mb_ptr = set_up_task(sptr, radar_task_type, CRITICAL_TASK,
+ 			         false, time_step,
+			         radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
+      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr;
+      DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
+      request_execution(radar_mb_ptr);
+    }
 
 #endif
 
@@ -1143,12 +1159,14 @@ int main(int argc, char *argv[]) {
 #ifndef HPVM
     // Request a MetadataBlock for a Viterbi Task at Critical Level
     task_metadata_block_t *viterbi_mb_ptr = NULL;
-    viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
-				 false, time_step,
-				 vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
-    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr;
-    DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
-    request_execution(viterbi_mb_ptr);
+    if (!no_crit_vit_task) {
+      viterbi_mb_ptr = set_up_task(sptr, vit_task_type, CRITICAL_TASK,
+				   false, time_step,
+				   vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
+      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr;
+      DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
+      request_execution(viterbi_mb_ptr);
+    }
 
     task_metadata_block_t *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
@@ -1280,9 +1298,18 @@ int main(int argc, char *argv[]) {
     added_crit_task_idx = 0;
 
 #ifndef HPVM
-    finish_task_execution(radar_mb_ptr, &distance);
+    if (!no_crit_fft_task) {
+      finish_task_execution(radar_mb_ptr, &distance);
+    } else {
+      distance = rdict_dist;
+    }
     char out_msg_text[1600]; // more than large enough to hold max-size message
-    finish_task_execution(viterbi_mb_ptr, &message, out_msg_text);
+    if (!no_crit_vit_task) {
+      finish_task_execution(viterbi_mb_ptr, &message, out_msg_text);
+    } else {
+      message = vdentry_p->msg_id;
+      snprintf(out_msg_text, 1500, "Msg%u", message);
+    }
     if (!no_crit_cnn_task) {
       finish_task_execution(cv_mb_ptr, &label);
     }
