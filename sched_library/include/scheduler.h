@@ -24,6 +24,12 @@
 #include <stdint.h>
 #include <sys/time.h>
 
+#include <functional>
+#include <queue>
+#include <list>
+#include <vector>
+#include <iostream>
+
 //#include "base_types.h"
 typedef enum { success, error } status_t;
 
@@ -139,12 +145,12 @@ typedef struct { // This allows each task to track up to 16 total internal task
 //  this block of data is task-dependent, and can have an over-laid structure,
 //  etc.
 
-struct scheduler_datastate_block_struct;
-
-typedef struct task_metadata_entry_struct {
+class scheduler_datastate;
+class task_metadata_entry {
+ public:
   // This points to the scheduler datastate structure (defiuned below) to which
   // this metadata block belongs.
-  struct scheduler_datastate_block_struct *scheduler_datastate_pointer;
+  scheduler_datastate *scheduler_datastate_pointer;
 
   // This portion is management, control, and scheduler stuff...
   int32_t block_id; // master-pool-index; a unique ID per metadata task
@@ -167,12 +173,15 @@ typedef struct task_metadata_entry_struct {
   int32_t dag_id;  // Indicates which DAG spawns or owns this task
   task_criticality_t
   crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
+  float rank;
+  uint64_t task_deadline_time;
+
 
   uint64_t *task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for
   //task (in usec) -- maps task projected time
   //on accelerator...
 
-  void (*atFinish)(struct task_metadata_entry_struct *); // Call-back Finish-time function
+  void (*atFinish)(task_metadata_entry *); // Call-back Finish-time function
 
   // Statistics
   uint32_t *gets_by_task_type;  // Count of times this metadata block allocated
@@ -196,40 +205,42 @@ typedef struct task_metadata_entry_struct {
   // evaluation wants to know)
   uint8_t *data_space; // The total data space for the metadata block (holds ALL
   // data for the task)
-} task_metadata_block_t;
+};
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
-typedef struct ready_mb_task_queue_entry_struct {
-  short unique_id;
+class ready_mb_task_queue_entry_t {
+ public:
+  // short unique_id;
   short block_id;
-  struct ready_mb_task_queue_entry_struct *next;
-  struct ready_mb_task_queue_entry_struct *prev;
-} ready_mb_task_queue_entry_t;
+  scheduler_datastate *sptr;
+};
+
+bool operator<(const ready_mb_task_queue_entry_t& lhs, const ready_mb_task_queue_entry_t& rhs);
 
 // This is a typedef for the call-back function, called by the scheduler at
 // finish time for a task
-typedef void (*task_finish_callback_t)(task_metadata_block_t *);
+typedef void (*task_finish_callback_t)(task_metadata_entry *);
 
 // This is a typedef for an execution function called by the scheduler (e.g. to
 // execute a task)
-typedef void (*sched_execute_task_function_t)(task_metadata_block_t *);
+typedef void (*sched_execute_task_function_t)(task_metadata_entry *);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_task_type routine.
-typedef void (*print_metadata_block_contents_t)(/*task_metadata_block_t*/ void *);
-typedef void (*output_task_type_run_stats_t)(/*struct scheduler_datastate_block_struct*/ void *sptr, unsigned my_task_type, unsigned total_accel_types);
+typedef void (*print_metadata_block_contents_t)(/*task_metadata_entry*/ void *);
+typedef void (*output_task_type_run_stats_t)(/*scheduler_datastate*/ void *sptr, unsigned my_task_type, unsigned total_accel_types);
 
-typedef /*task_metadata_block_t*/ void *(*set_up_task_function_t)(/*struct scheduler_datastate_block_struct*/ void *sptr,
+typedef /*task_metadata_entry*/ void *(*set_up_task_function_t)(/*scheduler_datastate*/ void *sptr,
     task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
     int32_t dag_id, void* args);
-typedef void (*finish_task_execution_function_t)(/*task_metadata_block_t*/ void *the_metadata_block, void* args);
-typedef void (*auto_finish_task_function_t)(/*task_metadata_block_t*/ void *mb);
+typedef void (*finish_task_execution_function_t)(/*task_metadata_entry*/ void *the_metadata_block, void* args);
+typedef void (*auto_finish_task_function_t)(/*task_metadata_entry*/ void *mb);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_accelerator_type routine.
-typedef void (*do_accel_initialization_t)(struct scheduler_datastate_block_struct *sptr);
-typedef void (*do_accel_closeout_t)(struct scheduler_datastate_block_struct *sptr);
-typedef void (*output_accel_run_stats_t)(struct scheduler_datastate_block_struct *sptr, unsigned my_accel_id, unsigned total_task_types);
+typedef void (*do_accel_initialization_t)(scheduler_datastate *sptr);
+typedef void (*do_accel_closeout_t)(scheduler_datastate *sptr);
+typedef void (*output_accel_run_stats_t)(scheduler_datastate *sptr, unsigned my_accel_id, unsigned total_task_types);
 
 // This typedef defines a structure used to describe a accelerator (for the
 // register_accelerator_type routine)
@@ -247,7 +258,8 @@ typedef struct bi_ll_struct {
   struct bi_ll_struct *next;
 } blockid_linked_list_t;
 
-typedef struct scheduler_datastate_block_struct {
+class  scheduler_datastate {
+ public:
   // These are limits (e.g. max-task-types) for this instantiation of the
   // scheduler datasatate space
   scheduler_get_datastate_in_parms_t *inparms;
@@ -274,14 +286,12 @@ typedef struct scheduler_datastate_block_struct {
   // Function pointer to the policy initialization routine
   void (*initialize_assign_task_to_pe)(void *in_parm_ptr);
   // Function pointer for the policy's assign_task_to_pe() function
-  ready_mb_task_queue_entry_t *(*assign_task_to_pe)(
-    struct scheduler_datastate_block_struct *sptr,
-    ready_mb_task_queue_entry_t *ready_task_entry);
+  ready_mb_task_queue_entry_t *(*assign_task_to_pe)(scheduler_datastate *sptr);
   // inparm: char policy[256];
 
   // The pool of metadata blocks for use by the tasks, etc.
   unsigned total_metadata_pool_blocks;
-  task_metadata_block_t *master_metadata_pool;
+  task_metadata_entry *master_metadata_pool;
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the
   // free-list metadata information, etc.
@@ -292,12 +302,11 @@ typedef struct scheduler_datastate_block_struct {
 
   pthread_mutex_t task_queue_mutex; // Used to guard access to altering the
   // ready-task-queue contents
-  ready_mb_task_queue_entry_t *ready_mb_task_queue_pool;
-  ready_mb_task_queue_entry_t *free_ready_mb_task_queue_entries;
-  ready_mb_task_queue_entry_t *ready_mb_task_queue_head;
-  ready_mb_task_queue_entry_t *ready_mb_task_queue_tail;
   unsigned num_free_task_queue_entries;
   unsigned num_tasks_in_ready_queue;
+
+  std::list<ready_mb_task_queue_entry_t*> ready_mb_task_queue_pool;
+  std::list<ready_mb_task_queue_entry_t*> free_ready_mb_task_queue_entries;
 
   pthread_mutex_t accel_alloc_mutex; // Used to guard access to altering the
   // accelerator allocations
@@ -364,44 +373,43 @@ typedef struct scheduler_datastate_block_struct {
   uint64_t scheduler_decision_time_usec;
   uint64_t scheduler_decisions;
   uint64_t scheduler_decision_checks;
-
-} scheduler_datastate_block_t;
+};
 
 extern scheduler_get_datastate_in_parms_t *
 get_scheduler_datastate_input_parms();
-extern scheduler_datastate_block_t *
+extern scheduler_datastate *
 initialize_scheduler_and_return_datastate_pointer(
   scheduler_get_datastate_in_parms_t *inp);
-extern scheduler_datastate_block_t *
+extern scheduler_datastate *
 initialize_scheduler_from_config_file(char *config_file_name);
 
 extern void set_up_scheduler();
 
-extern task_metadata_block_t *
-get_task_metadata_block(scheduler_datastate_block_t *sptr, int32_t dag_id,
+extern task_metadata_entry *
+get_task_metadata_block(scheduler_datastate *sptr, int32_t dag_id,
                         task_type_t of_task_type, task_criticality_t crit_level,
                         uint64_t *task_profile);
-extern void free_task_metadata_block(task_metadata_block_t *mb);
+extern void free_task_metadata_block(task_metadata_entry *mb);
 
 extern auto_finish_task_function_t
-get_auto_finish_routine(scheduler_datastate_block_t *sptr,
+get_auto_finish_routine(scheduler_datastate *sptr,
                         task_type_t the_task_type);
 
 extern void request_execution(void *task_metadata_block);
-// extern int get_task_status(scheduler_datastate_block_t* sptr, int task_id);
-extern void wait_all_critical(scheduler_datastate_block_t *sptr);
-extern void wait_all_tasks_finish(scheduler_datastate_block_t *sptr);
-extern void wait_on_tasklist(/*scheduler_datastate_block_t **/ void* sptr, int num_tasks, ...);
-extern void wait_on_tasklist_list(/*scheduler_datastate_block_t **/ void* sptr, int num_tasks, task_metadata_block_t** tlist);
+// extern int get_task_status(scheduler_datastate* sptr, int task_id);
+extern void wait_all_critical(scheduler_datastate *sptr);
+extern void wait_all_tasks_finish(scheduler_datastate *sptr);
+extern void wait_on_tasklist(/*scheduler_datastate **/ void* sptr, int num_tasks, ...);
+extern void wait_on_tasklist_list(/*scheduler_datastate **/ void* sptr, int num_tasks, task_metadata_entry** tlist);
 
-extern void mark_task_done(task_metadata_block_t *task_metadata_block);
+extern void mark_task_done(task_metadata_entry *task_metadata_block);
 
-extern void print_base_metadata_block_contents(task_metadata_block_t *mb);
-extern void dump_all_metadata_blocks_states(scheduler_datastate_block_t *sptr);
+extern void print_base_metadata_block_contents(task_metadata_entry *mb);
+extern void dump_all_metadata_blocks_states(scheduler_datastate *sptr);
 
-extern void shutdown_scheduler(scheduler_datastate_block_t *sptr);
+extern void shutdown_scheduler(scheduler_datastate *sptr);
 
-extern void init_accelerators_in_use_interval(scheduler_datastate_block_t *sptr,
+extern void init_accelerators_in_use_interval(scheduler_datastate *sptr,
     struct timeval start_prog);
 
 extern void cleanup_and_exit(int rval, void *sptr);
@@ -422,4 +430,5 @@ extern void *set_up_task(void *sptr, task_type_t the_task_type,
 
 extern void finish_task_execution(void *the_metadata_block, ...);
 
+extern void print_ready_tasks_queue(scheduler_datastate *sptr);
 #endif

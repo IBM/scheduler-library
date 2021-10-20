@@ -92,11 +92,11 @@ unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 // Forward Declarations:
 void do_cpu_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory);
 void vit_task_reset();
-void vit_task_start_decode(task_metadata_block_t *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
-uint8_t *vit_task_finish_decode(task_metadata_block_t *mb_ptr, int *n_dec_char);
+void vit_task_start_decode(task_metadata_entry *vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in);
+uint8_t *vit_task_finish_decode(task_metadata_entry *mb_ptr, int *n_dec_char);
 
-void print_viterbi_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
+void print_viterbi_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(mb->data_space);
   int32_t  inMem_offset = 0;
@@ -121,8 +121,8 @@ void print_viterbi_metadata_block_contents(/*task_metadata_block_t*/ void *mb_pt
   printf("      out_Data @ %p\n", &(vdata->theData[outData_offset]));
 }
 
-void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+void output_vit_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
          my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
   // The Viterbi Task Timing Info
@@ -201,9 +201,9 @@ void output_vit_task_type_run_stats(/*scheduler_datastate_block_t*/ void *sptr_p
   }
 }
 
-void exec_vit_task_on_vit_hwr_accel( /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
-  scheduler_datastate_block_t *sptr = task_metadata_block->scheduler_datastate_pointer;
+void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
+  scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
   int aidx = task_metadata_block->accelerator_type;
   int vn = task_metadata_block->accelerator_id;
   vit_timing_data_t *vit_timings_p = (vit_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
@@ -273,10 +273,10 @@ void exec_vit_task_on_vit_hwr_accel( /*task_metadata_block_t*/ void *task_metada
 #endif // HW_VIT
 }
 
-void exec_vit_task_on_cpu_accel(/*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
+void exec_vit_task_on_cpu_accel(/*task_metadata_entry*/ void *task_metadata_block_ptr) {
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
-  scheduler_datastate_block_t* sptr = task_metadata_block->scheduler_datastate_pointer;
+  scheduler_datastate* sptr = task_metadata_block->scheduler_datastate_pointer;
   viterbi_data_struct_t* vdata = (viterbi_data_struct_t*)(task_metadata_block->data_space);
   int32_t  in_cbps = vdata->n_cbps;
   int32_t  in_ntraceback = vdata->n_traceback;
@@ -807,7 +807,7 @@ void vit_task_reset() {
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
 void
-vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
+vit_task_start_decode(task_metadata_entry* vit_metadata_block, ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   d_ofdm = ofdm;
   d_frame = frame;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*) & (vit_metadata_block->task_timings[vit_metadata_block->task_type]);
@@ -886,7 +886,7 @@ vit_task_start_decode(task_metadata_block_t* vit_metadata_block, ofdm_param *ofd
 
 
 //uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char) {
-uint8_t* vit_task_finish_decode(task_metadata_block_t* vit_metadata_block, int* psdu_size_out) {
+uint8_t* vit_task_finish_decode(task_metadata_entry* vit_metadata_block, int* psdu_size_out) {
   // Set up the Viterbit Data view of the metatdata block data
   int aidx = vit_metadata_block->accelerator_type;
   vit_timing_data_t * vit_timings_p = (vit_timing_data_t*) & (vit_metadata_block->task_timings[vit_metadata_block->task_type]);
@@ -962,11 +962,11 @@ void set_up_vit_task_on_accel_profile_data() {
   printf("\n"));
 }
 
-/*task_metadata_block_t*/ void *
-set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
-    task_type_t vit_task_type, task_criticality_t crit_level,
-    bool use_auto_finish, int32_t dag_id, void *args) {
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+/*task_metadata_entry*/ void *
+set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
+                                        task_type_t vit_task_type, task_criticality_t crit_level,
+                                        bool use_auto_finish, int32_t dag_id, void *args) {
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_vit, NULL);
 #endif
@@ -984,7 +984,7 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 
 
   // Request a MetadataBlock (for an VIT task at Critical Level)
-  task_metadata_block_t *vit_mb_ptr = NULL;
+  task_metadata_entry *vit_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical VIT-Task %u\n", vit_task_type));
   do {
     vit_mb_ptr = get_task_metadata_block(sptr, dag_id, vit_task_type, crit_level, vit_profile[msize]);
@@ -1004,7 +1004,7 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    vit_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+    vit_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
                              sptr->auto_finish_task_function[vit_task_type]); // get_auto_finish_routine(vit_task_type);
   } else {
     vit_mb_ptr->atFinish = NULL;
@@ -1025,9 +1025,9 @@ set_up_vit_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void viterbi_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+void viterbi_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
@@ -1045,7 +1045,7 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   over-write the original input data with the VIT results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_viterbi_execution(
-  /*task_metadata_block_t*/ void *vit_metadata_block_ptr,
+  /*task_metadata_entry*/ void *vit_metadata_block_ptr,
   void *args) { // message_t* message_id, char* out_msg_text)
 
   va_list var_list;
@@ -1053,7 +1053,7 @@ void finish_viterbi_execution(
   // va_start(var_list, vit_metadata_block_ptr);
 
 
-  task_metadata_block_t *vit_metadata_block = (task_metadata_block_t *)vit_metadata_block_ptr;
+  task_metadata_entry *vit_metadata_block = (task_metadata_entry *)vit_metadata_block_ptr;
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
   message_t *message_id = va_arg(var_list, message_t *);
   char *out_msg_text = va_arg(var_list, char *);

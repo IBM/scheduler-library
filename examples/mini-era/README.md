@@ -276,7 +276,7 @@ These input parameter defaults are then adjusted to correspond to the use by thi
   
   sched_inparms->enable_sched_viz_trace = enable_sl_viz_output;
 ```
-and then the ```scheduler_datastate_block_t* sptr = get_new_scheduler_datastate_pointer(sched_inparms);```
+and then the ```scheduler_datastate* sptr = get_new_scheduler_datastate_pointer(sched_inparms);```
 call is made to use these input parms to establish the desired Scheduler Datastate space (i.e. one that supports the required sizes and dimensions of this Application).
 
 With the Scheduler Datastate Block set up, the Application now does a ```initialize_scheduler(sptr, my_sl_viz_fname);```
@@ -349,8 +349,8 @@ At this point, the Application has effectively "forked" the Task to the Schedule
 
 There are several ways for the Application to identify when tasks are "done" executing.  First, the Metadata Block conatins a field that is the current Task status, and one can simply read out the Task status from there.  There are also a couple of additional Scheduler routines that provide some simple "synchronization barrier" type semantics:
 ```
- void wait_all_critical(scheduler_datastate_block_t* sptr);
- void wait_all_tasks_finish(scheduler_datastate_block_t* sptr);
+ void wait_all_critical(scheduler_datastate* sptr);
+ void wait_all_tasks_finish(scheduler_datastate* sptr);
 ```
 The first of these waits until all "Crtiical" priority tasks in the Scheduler are in the "Done" state, and then returns to the caller.  This is useful for some simple DAGs, and is used in the Mini-ERA Application example, where each time step one Viterbi, one FFT and one CV/CNN task are marked "Critical" and their outputs are used in the Plan-and-Control function.  The Mini-ERA kicks off these critical tasks, then uses ```wait_all_critical``` to delay reading those Tasks' outputs and using them for the Plan-and-Control Task execution.   The scond routine, ```wait_all_tasks_finish``` is similar to ```wait_all_critical``` but waits for ALL task to be done (not just the Critical ones).
 

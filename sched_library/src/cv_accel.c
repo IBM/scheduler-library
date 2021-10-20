@@ -55,7 +55,7 @@ char *python_func_load = "loadmodel";
 #endif
 
 void
-do_cv_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) {
+do_cv_accel_type_initialization(scheduler_datastate* sptr) {
 #ifndef BYPASS_KERAS_CV_CODE
    Py_Initialize();
    pName = PyUnicode_DecodeFSDefault(python_module);
@@ -87,7 +87,7 @@ do_cv_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) {
 
 
 void
-do_cv_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
+do_cv_accel_type_closeout(scheduler_datastate* sptr) {
 #ifndef BYPASS_KERAS_CV_CODE
    Py_DECREF(pModule);
    Py_Finalize();
@@ -99,6 +99,6 @@ do_cv_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
 
 
 void
-output_cv_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
+output_cv_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types) {
 }
 

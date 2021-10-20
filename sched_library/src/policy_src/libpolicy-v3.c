@@ -43,11 +43,13 @@ initialize_assign_task_to_pe(void * in_parm_ptr) {
 //  ready tasks from the task queue.
 
 extern "C" ready_mb_task_queue_entry_t *
-assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry) {
+assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_entry_t*> &ready_queue) {
   //Choose task out of order to be scheduled based on least finish time and available accelerator
-  ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
-  task_metadata_block_t * task_metadata_block = NULL;
-  for (int i = 0; i < sptr->num_tasks_in_ready_queue; ++i) {
+  ready_mb_task_queue_entry_t* selected_task_entry;
+  task_metadata_entry * task_metadata_block = NULL;
+  int i = 0;
+  for (auto task_entry : ready_queue) {
+    selected_task_entry = task_entry;
     task_metadata_block = &(sptr->master_metadata_pool[selected_task_entry->block_id]);
     if (task_metadata_block == NULL) {
       printf("SCHED-FFFQ: ERROR: Ready Task Queue entry %u is NULL even though num_tasks_in_ready_queue = %d depicts otherwise?\n", i,
@@ -144,8 +146,8 @@ assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t
       DEBUG(printf("SCHED-FFFQ: MB%u Not-Available for best accel type: %d  accel_id: %d -- move to next ready task...\n", task_metadata_block->block_id, accel_type,
                    accel_id));
     }
-    selected_task_entry = selected_task_entry->next;
-  } // for (int i = 0; i < sptr->num_tasks_in_ready_queue; ++i)
+    ++i;
+  } // for (auto task_entry : ready_queue) {
 
   // No task found that can be scheduled on its best accelerator
   return NULL;

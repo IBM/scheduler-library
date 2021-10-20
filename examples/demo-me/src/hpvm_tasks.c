@@ -11,10 +11,10 @@
 #include "viterbi_standalone.h"
 
 #ifdef COMPILE_TO_ESP
-// This would be RISC-V FPGA 
+// This would be RISC-V FPGA
 static unsigned cv_cpu_run_time_in_usec = 5000000;
 #else
-// This would be x86 
+// This would be x86
 static unsigned cv_cpu_run_time_in_usec = 10000;
 #endif
 
@@ -118,101 +118,84 @@ static uint8_t *hpvm_depuncture(uint8_t *in, ofdm_param *d_ofdm, frame_param *d_
   return depunctured;
 }
 
-void hpvm_descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg) //definition
-{
-	uint32_t output_length = (psdusize)+2; //output is 2 more bytes than psdu_size
-	uint32_t msg_length = (psdusize)-28;
-	uint8_t out[output_length];
-	int state = 0; //start
-	int verbose = ((ref != NULL) && (msg != NULL));
-	// find the initial state of LFSR (linear feedback shift register: 7 bits) from first 7 input bits
-	for(int i = 0; i < 7; i++)
-	{
-		if(*(in+i))
-		{
-			state |= 1 << (6 - i);
-		}
-	}
-	//init o/p array to zeros
-	for (int i=0; i<output_length; i++ )
-	{
-		out[i] = 0;
-	}
+void hpvm_descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg) { //definition
+  uint32_t output_length = (psdusize) + 2; //output is 2 more bytes than psdu_size
+  uint32_t msg_length = (psdusize) - 28;
+  uint8_t out[output_length];
+  int state = 0; //start
+  int verbose = ((ref != NULL) && (msg != NULL));
+  // find the initial state of LFSR (linear feedback shift register: 7 bits) from first 7 input bits
+  for (int i = 0; i < 7; i++) {
+    if (*(in + i)) {
+      state |= 1 << (6 - i);
+    }
+  }
+  //init o/p array to zeros
+  for (int i = 0; i < output_length; i++ ) {
+    out[i] = 0;
+  }
 
-	out[0] = state; //initial value
-	int feedback;
-	int bit;
-	int index = 0;
-	int mod = 0;
-	for(int i = 7; i < (psdusize*8)+16; i++) // 2 bytes more than psdu_size -> convert to bits
-	{
-		feedback = ((!!(state & 64))) ^ (!!(state & 8));
-		bit = feedback ^ (*(in+i) & 0x1);
-		index = i/8;
-		mod =  i%8;
-		int comp1, comp2, val, comp3;
-		comp1 = (bit << mod);
-		val = out[index];
-		comp2 = val | comp1;
-		out[index] =  comp2;
-		comp3 = out[index];
-		state = ((state << 1) & 0x7e) | feedback;
-	}
+  out[0] = state; //initial value
+  int feedback;
+  int bit;
+  int index = 0;
+  int mod = 0;
+  for (int i = 7; i < (psdusize * 8) + 16; i++) { // 2 bytes more than psdu_size -> convert to bits
+    feedback = ((!!(state & 64))) ^ (!!(state & 8));
+    bit = feedback ^ (*(in + i) & 0x1);
+    index = i / 8;
+    mod =  i % 8;
+    int comp1, comp2, val, comp3;
+    comp1 = (bit << mod);
+    val = out[index];
+    comp2 = val | comp1;
+    out[index] =  comp2;
+    comp3 = out[index];
+    state = ((state << 1) & 0x7e) | feedback;
+  }
 
-	for (int i = 0; i< msg_length; i++)
-	  {
-	    out_msg[i] = out[i+26];
-	  }
-	out_msg[msg_length] = '\0';
+  for (int i = 0; i < msg_length; i++) {
+    out_msg[i] = out[i + 26];
+  }
+  out_msg[msg_length] = '\0';
 
-	if (verbose) {
-	  printf("\n");
-	  printf(">>>>>> Descrambler output is here: >>>>>> \n");
-	  int  des_error_count = 0;
-	  for (int i = 0; i < output_length ; i++)
-	    {
-	      if (out[i] != *(ref+i))
-		{
-		  printf(">>>>>> Miscompare: hpvm_descrambler[%d] = %u vs %u = EXPECTED_VALUE[%d]\n", i, out[i], *(ref+i), i);
-		  des_error_count++;
-		}
-	    }
-	  if (des_error_count !=0)
-	    {
-	      printf(">>>>>> Mismatch in the hpvm_descrambler block, please check the inputs and algorithm one last time. >>>>>> \n");
-	    }
-	  else
-	    {
-	      printf("!!!!!! Great Job, hpvm_descrambler algorithm works fine for the given configuration. !!!!!! \n");
-	    }
-	  printf("\n");
-	  printf(">>>>>> Decoded text message is here: >>>>>> \n");
+  if (verbose) {
+    printf("\n");
+    printf(">>>>>> Descrambler output is here: >>>>>> \n");
+    int  des_error_count = 0;
+    for (int i = 0; i < output_length ; i++) {
+      if (out[i] != *(ref + i)) {
+        printf(">>>>>> Miscompare: hpvm_descrambler[%d] = %u vs %u = EXPECTED_VALUE[%d]\n", i, out[i], *(ref + i), i);
+        des_error_count++;
+      }
+    }
+    if (des_error_count != 0) {
+      printf(">>>>>> Mismatch in the hpvm_descrambler block, please check the inputs and algorithm one last time. >>>>>> \n");
+    } else {
+      printf("!!!!!! Great Job, hpvm_descrambler algorithm works fine for the given configuration. !!!!!! \n");
+    }
+    printf("\n");
+    printf(">>>>>> Decoded text message is here: >>>>>> \n");
 
-	  for (int i = 0; i< msg_length; i++)
-	    {
-	      printf("%c", out_msg[i]);	
-	    }
-	  printf("\n");
+    for (int i = 0; i < msg_length; i++) {
+      printf("%c", out_msg[i]);
+    }
+    printf("\n");
 
-	  int  msg_error_count = 0;
-	  for (int i = 0; i < msg_length ; i++)
-	    {
-	      if (out_msg[i] != *(msg+i))
-		{
-		  printf(">>>>>> Miscompare: text_msg[%c] = %c vs %c = EXPECTED_VALUE[%c]\n", i, out_msg[i], *(msg+i), i);
-		  msg_error_count++;
-		}
-	    }
-	  if (msg_error_count !=0)
-	    {
-	      printf(">>>>>> Mismatch in the text message, please check the inputs and algorithm one last time. >>>>>> \n");
-	    }
-	  else
-	    {
-	      printf("!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! \n");
-	    } 
-	  printf("\n");
-	}
+    int  msg_error_count = 0;
+    for (int i = 0; i < msg_length ; i++) {
+      if (out_msg[i] != *(msg + i)) {
+        printf(">>>>>> Miscompare: text_msg[%c] = %c vs %c = EXPECTED_VALUE[%c]\n", i, out_msg[i], *(msg + i), i);
+        msg_error_count++;
+      }
+    }
+    if (msg_error_count != 0) {
+      printf(">>>>>> Mismatch in the text message, please check the inputs and algorithm one last time. >>>>>> \n");
+    } else {
+      printf("!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! \n");
+    }
+    printf("\n");
+  }
 }
 
 
@@ -257,7 +240,8 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
 
   // Copy some multi-block stuff into a single memory (cleaner transport)
   //
-  { // scope block for definition of imi
+  {
+    // scope block for definition of imi
     int imi = 0;
     for (int ti = 0; ti < 2; ti++) {
       for (int tj = 0; tj < 32; tj++) {
@@ -387,8 +371,8 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
        * encoder state in the low two bits, such a code will have the following
        * identities for even 'n' < 64:
        *
-       * 	encode_state(n) = encode_state(n+65)
-       *	encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
+       *  encode_state(n) = encode_state(n+65)
+       *  encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
        *
        * Any convolutional code you would actually want to use will have
        * these properties, so these assumptions aren't too limiting.
@@ -417,7 +401,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
         // Operate on 4 symbols (2 bits) at a time
 
         unsigned char m0[16], m1[16], m2[16], m3[16], decision0[16],
-            decision1[16], survivor0[16], survivor1[16];
+                 decision1[16], survivor0[16], survivor1[16];
         unsigned char metsv[16], metsvm[16];
         unsigned char shift0[16], shift1[16];
         unsigned char tmp0[16], tmp1[16];
@@ -497,7 +481,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
             }
             for (int j = 0; j < 16; j++) {
               tmp0[j] =
-                  (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
+                (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
             }
 
             for (int j = 0, k = 8; j < 16; j += 2, k++) {
@@ -506,7 +490,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
             }
             for (int j = 0; j < 16; j++) {
               tmp1[j] =
-                  (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
+                (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
             }
 
             for (int j = 0, k = 0; j < 16; j += 2, k++) {
@@ -533,7 +517,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
         }
       }                          // END of call to viterbi_butterfly2_generic
       viterbi_butterfly_calls++; // Do not increment until after the comparison
-                                 // code.
+      // code.
 
       if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
         unsigned char c;
@@ -618,7 +602,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
         if (out_count >= in_ntraceback) {
           for (int i = 0; i < 8; i++) {
             l_decoded[(out_count - in_ntraceback) * 8 + i] =
-                (c >> (7 - i)) & 0x1;
+              (c >> (7 - i)) & 0x1;
             // SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n",
             // (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i,
             // l_decoded[(out_count - in_ntraceback) * 8 + i]));
@@ -637,7 +621,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     });
     */
 
-  // void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block,
+  // void finish_viterbi_execution(task_metadata_entry* vit_metadata_block,
   // va_list var_list) // message_t* message_id, char* out_msg_text)
 
   message_t msg = NUM_MESSAGES;
@@ -731,9 +715,9 @@ static float *hpvm_bit_reverse(float *w, unsigned int N, unsigned int bits) {
   return w;
 }
 
-void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
+void radar_leaf(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
                 distance_t *distance_ptr, size_t distance_ptr_size
-                ) {
+               ) {
 
 
   DEBUG(printf("-- Radar Leaf Node --\n"));
@@ -744,9 +728,9 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
   size_t data_size = 2 * (1 << log_nsamples) * sizeof(float);
 
   float* radar_inputs = (float*) malloc(inputs_ptr_size);
-  
-  for(int copy = 0; copy < 2 * (1 << MAX_RADAR_LOGN); copy++){
-      radar_inputs[copy] = inputs_ptr[copy];
+
+  for (int copy = 0; copy < 2 * (1 << MAX_RADAR_LOGN); copy++) {
+    radar_inputs[copy] = inputs_ptr[copy];
   }
   // radar_data_p->theData == mdataptr
   /*
@@ -819,7 +803,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
   }
 
   // distance_t
-  // do_finish_radar_computations(task_metadata_block_t *radar_metadata_block)
+  // do_finish_radar_computations(task_metadata_entry *radar_metadata_block)
   //
   // uint32_t fft_log_nsamples = radar_data_p->log_nsamples;
   // float *data = (float *)radar_data_p->theData;
@@ -836,7 +820,7 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
     RADAR_fs = 204800.0;
     RADAR_alpha = 30000000000.0;
     RADAR_psd_threshold = 0.000316; // 1e-10*pow(8192,2);  // 450m ~= 0.000638
-                                    // so psd_thres ~= 0.000316 ?
+    // so psd_thres ~= 0.000316 ?
     break;
   case 14:
     RADAR_fs = 32768000.0;
@@ -870,10 +854,10 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
 
   DEBUG(printf("Assigning distance to pointer\n"));
 
-  DEBUG(printf("Distance ptr %p\n",distance_ptr));
+  DEBUG(printf("Distance ptr %p\n", distance_ptr));
   *distance_ptr = distance;
 
-  DEBUG(printf("Distance in object: %.3f\n",*distance_ptr));
+  DEBUG(printf("Distance in object: %.3f\n", *distance_ptr));
   DEBUG(printf("Finished executing Radar_leaf\n"));
 
   __hpvm__return(1, distance_ptr);
@@ -881,16 +865,16 @@ void radar_leaf(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
 
 void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
-              message_t *message_id, size_t msg_id_size, 
-	      vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
-              vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size ,char *out_msg_text, size_t out_msg_text_size, lane_t preferred_lane
-              ) {
+              message_t *message_id, size_t msg_id_size,
+              vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
+              vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size , char *out_msg_text, size_t out_msg_text_size, lane_t preferred_lane
+             ) {
 
   DEBUG(printf("-- PNC Leaf Node --\n"));
 
 
   __hpvm__hint(DEVICE);
-  __hpvm__attributes(6,current_vehicle_state, new_vehicle_state, distance_ptr,
+  __hpvm__attributes(6, current_vehicle_state, new_vehicle_state, distance_ptr,
                      obj_label, message_id,  out_msg_text, 1, new_vehicle_state);
   __hpvm__task(PNC2_TASK);
 
@@ -900,19 +884,21 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
   message_t safe_lanes_msg = *message_id;
 
   distance_t obj_distance = *distance_ptr;
-  DEBUG(printf("In the plan_and_control2 task : label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n", *obj_label, object_names[*obj_label], obj_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, safe_lanes_msg));
-  DEBUG(printf( "Plan-Ctrl2: current Vehicle-State : Active %u Lane %u Speed %.1f Start-Lane %u\n", vehicle_state->active, vehicle_state->lane, vehicle_state->speed, preferred_lane)); 
+  DEBUG(printf("In the plan_and_control2 task : label %u %s distance %.1f (T1 %.1f T2 %.1f T3 %.1f) message %u\n", *obj_label, object_names[*obj_label],
+               obj_distance, PNC_THRESHOLD_1, PNC_THRESHOLD_2, PNC_THRESHOLD_3, safe_lanes_msg));
+  DEBUG(printf( "Plan-Ctrl2: current Vehicle-State : Active %u Lane %u Speed %.1f Start-Lane %u\n", vehicle_state->active, vehicle_state->lane,
+                vehicle_state->speed, preferred_lane));
 
   // Start with output vehicle state is a copy of input vehicle state...
   // plan_ctrl_data_p->new_vehicle_state = plan_ctrl_data_p->vehicle_state;
   if (!vehicle_state->active) {
     // Our car is broken and burning, no plan-and-control possible -- nothing to do
   } else if ( //(plan_ctrl_data_p->object_label != no_object) && // For safety, assume every return is from SOMETHING we should not hit!
-      ((obj_distance <= PNC_THRESHOLD_1)
-      #ifdef USE_SIM_ENVIRON
-       || ((vehicle_state->speed < car_goal_speed) && (obj_distance <= PNC_THRESHOLD_2))
-      #endif
-       )) {
+    ((obj_distance <= PNC_THRESHOLD_1)
+#ifdef USE_SIM_ENVIRON
+     || ((vehicle_state->speed < car_goal_speed) && (obj_distance <= PNC_THRESHOLD_2))
+#endif
+    )) {
     // This covers all cases where we have an obstacle "too close" ahead of us
     if (obj_distance <= IMPACT_DISTANCE) {
       // We've crashed into an obstacle...
@@ -933,14 +919,14 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state->lane]));
           new_vehicle_state->lane -= 1;
         } else { // We are in our preferred lane
-	  if (preferred_lane >= center) { // If we prefer to stay to the right-hand side
-	    DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state->lane]));
-	    new_vehicle_state->lane += 1;
-	  } else if (preferred_lane < center) { // or the left-hand side.
-	    DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state->lane]));
-	    new_vehicle_state->lane -= 1;
-	  }
-	}
+          if (preferred_lane >= center) { // If we prefer to stay to the right-hand side
+            DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state->lane]));
+            new_vehicle_state->lane += 1;
+          } else if (preferred_lane < center) { // or the left-hand side.
+            DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state->lane]));
+            new_vehicle_state->lane -= 1;
+          }
+        }
         break; // prefer right lane
       case safe_to_move_right_only:
         printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state->lane]);
@@ -953,7 +939,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
       case unsafe_to_move_left_or_right:
 #ifdef USE_SIM_ENVIRON
         if (vehicle_state->speed > car_decel_rate) {
-          new_vehicle_state->speed =->vehicle_state->speed - car_decel_rate; // was / 2.0;
+          new_vehicle_state->speed = ->vehicle_state->speed - car_decel_rate; // was / 2.0;
           DEBUG(printf("   In %s with No_Safe_Move -- SLOWING DOWN from %.2f to %.2f\n", lane_names[vehicle_state->lane], vehicle_state.speed, new_vehicle_state->speed));
         } else {
           DEBUG(printf("   In %s with No_Safe_Move -- Going < 15.0 so STOPPING!\n", lane_names[vehicle_state->lane]));
@@ -998,30 +984,31 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
 #endif
   } // end of plan-and-control logic functions...
 
-  DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", new_vehicle_state->active, new_vehicle_state->lane, new_vehicle_state->speed));
+  DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", new_vehicle_state->active, new_vehicle_state->lane,
+               new_vehicle_state->speed));
 
   __hpvm__return(1, new_vehicle_state);
 }
 
 
 void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
-                 size_t ofdm_size, frame_param *frame_ptr,
-                 size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
-                 message_t *message_id, size_t msg_id_size, char *out_msg_text,
-                 size_t out_msg_text_size, label_t in_label, label_t *obj_label,
-                 size_t obj_label_size, uint32_t log_nsamples, float *inputs_ptr,
-                 size_t inputs_ptr_size, distance_t *distance_ptr,
-                 size_t distance_ptr_size,
-                 unsigned time_step, unsigned repeat_factor,
-                 vehicle_state_t *current_vehicle_state,
-                 size_t current_vehicle_state_size,
-                 vehicle_state_t *new_vehicle_state,
-                 size_t new_vehicle_state_size, lane_t preferred_lane){
+                        size_t ofdm_size, frame_param *frame_ptr,
+                        size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
+                        message_t *message_id, size_t msg_id_size, char *out_msg_text,
+                        size_t out_msg_text_size, label_t in_label, label_t *obj_label,
+                        size_t obj_label_size, uint32_t log_nsamples, float *inputs_ptr,
+                        size_t inputs_ptr_size, distance_t *distance_ptr,
+                        size_t distance_ptr_size,
+                        unsigned time_step, unsigned repeat_factor,
+                        vehicle_state_t *current_vehicle_state,
+                        size_t current_vehicle_state_size,
+                        vehicle_state_t *new_vehicle_state,
+                        size_t new_vehicle_state_size, lane_t preferred_lane) {
 
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-		     distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
-		      1, new_vehicle_state);
+                     distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
+                     1, new_vehicle_state);
 
   void *ViterbiNode = __hpvm__createNodeND(0, vit_leaf, /* Node Criticality */ HPVM_CRITICAL);
 
@@ -1102,9 +1089,9 @@ void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
 
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(
-      10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-      distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state_size,
-      1, new_vehicle_state);
+    10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
+    distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state_size,
+    1, new_vehicle_state);
 
   void *WrapperNode = __hpvm__createNodeND(0, MiniERARootWrapper);
 
@@ -1153,7 +1140,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   RootIn* DFGArgs = (RootIn*) malloc(sizeof(RootIn));
 
   /* -- HPVM Host Code -- */
-  
+
   DFGArgs->in_label = *cv_tr_label;
   DFGArgs->obj_label = cv_tr_label;
   DFGArgs->obj_label_size = sizeof(label_t);
@@ -1212,7 +1199,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_request_mem(new_vehicle_state, sizeof(vehicle_state_t));
 
   // Remove relavent memory from memory tracker
-  
+
   llvm_hpvm_untrack_mem(cv_tr_label);
   llvm_hpvm_untrack_mem(DFGArgs->inputs_ptr);
   llvm_hpvm_untrack_mem(distance);
@@ -1246,9 +1233,9 @@ void hpvm_cleanup(RootIn *DFGArgs) {
 #ifdef HPVM_BASE_CRIT
 
 void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
-              frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
-              size_t in_bit_size, message_t *message_id, size_t msg_id_size,
-              char *out_msg_text, size_t out_msg_text_size) {
+                   frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
+                   size_t in_bit_size, message_t *message_id, size_t msg_id_size,
+                   char *out_msg_text, size_t out_msg_text_size) {
 
   DEBUG(printf("-- Vitterbi Leaf Node --\n"));
 
@@ -1285,7 +1272,8 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
 
   // Copy some multi-block stuff into a single memory (cleaner transport)
   //
-  { // scope block for definition of imi
+  {
+    // scope block for definition of imi
     int imi = 0;
     for (int ti = 0; ti < 2; ti++) {
       for (int tj = 0; tj < 32; tj++) {
@@ -1415,8 +1403,8 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
        * encoder state in the low two bits, such a code will have the following
        * identities for even 'n' < 64:
        *
-       * 	encode_state(n) = encode_state(n+65)
-       *	encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
+       *  encode_state(n) = encode_state(n+65)
+       *  encode_state(n+1) = encode_state(n+64) = (3 ^ encode_state(n))
        *
        * Any convolutional code you would actually want to use will have
        * these properties, so these assumptions aren't too limiting.
@@ -1445,7 +1433,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
         // Operate on 4 symbols (2 bits) at a time
 
         unsigned char m0[16], m1[16], m2[16], m3[16], decision0[16],
-            decision1[16], survivor0[16], survivor1[16];
+                 decision1[16], survivor0[16], survivor1[16];
         unsigned char metsv[16], metsvm[16];
         unsigned char shift0[16], shift1[16];
         unsigned char tmp0[16], tmp1[16];
@@ -1525,7 +1513,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
             }
             for (int j = 0; j < 16; j++) {
               tmp0[j] =
-                  (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
+                (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
             }
 
             for (int j = 0, k = 8; j < 16; j += 2, k++) {
@@ -1534,7 +1522,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
             }
             for (int j = 0; j < 16; j++) {
               tmp1[j] =
-                  (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
+                (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
             }
 
             for (int j = 0, k = 0; j < 16; j += 2, k++) {
@@ -1561,7 +1549,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
         }
       }                          // END of call to viterbi_butterfly2_generic
       viterbi_butterfly_calls++; // Do not increment until after the comparison
-                                 // code.
+      // code.
 
       if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
         unsigned char c;
@@ -1646,7 +1634,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
         if (out_count >= in_ntraceback) {
           for (int i = 0; i < 8; i++) {
             l_decoded[(out_count - in_ntraceback) * 8 + i] =
-                (c >> (7 - i)) & 0x1;
+              (c >> (7 - i)) & 0x1;
             // SDEBUG(printf("l_decoded[ %u ] oc %u tb %u i %u written as %u\n",
             // (out_count - in_ntraceback) * 8 + i, out_count, in_ntraceback, i,
             // l_decoded[(out_count - in_ntraceback) * 8 + i]));
@@ -1665,7 +1653,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
     });
     */
 
-  // void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block,
+  // void finish_viterbi_execution(task_metadata_entry* vit_metadata_block,
   // va_list var_list) // message_t* message_id, char* out_msg_text)
 
   message_t msg = NUM_MESSAGES;
@@ -1718,7 +1706,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
   // vit_metadata_block->block_id));
   // free_task_metadata_block(vit_metadata_block);
 
-   __hpvm__return(2, message_id, out_msg_text);
+  __hpvm__return(2, message_id, out_msg_text);
 }
 
 void cv_leaf_base(label_t in_label, label_t *obj_label, size_t obj_label_size) {
@@ -1732,12 +1720,12 @@ void cv_leaf_base(label_t in_label, label_t *obj_label, size_t obj_label_size) {
 
   *obj_label = in_label;
 
-   __hpvm__return(1, obj_label);
+  __hpvm__return(1, obj_label);
 }
 
-void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_size,
-                distance_t *distance_ptr, size_t distance_ptr_size
-                ) {
+void radar_leaf_base(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
+                     distance_t *distance_ptr, size_t distance_ptr_size
+                    ) {
 
 
   DEBUG(printf("-- Radar Leaf Node --\n"));
@@ -1748,9 +1736,9 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
   size_t data_size = 2 * (1 << log_nsamples) * sizeof(float);
 
   float* radar_inputs = (float*) malloc(inputs_ptr_size);
-  
-  for(int copy = 0; copy < 2 * (1 << MAX_RADAR_LOGN); copy++){
-      radar_inputs[copy] = inputs_ptr[copy];
+
+  for (int copy = 0; copy < 2 * (1 << MAX_RADAR_LOGN); copy++) {
+    radar_inputs[copy] = inputs_ptr[copy];
   }
   // radar_data_p->theData == mdataptr
   /*
@@ -1823,7 +1811,7 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
   }
 
   // distance_t
-  // do_finish_radar_computations(task_metadata_block_t *radar_metadata_block)
+  // do_finish_radar_computations(task_metadata_entry *radar_metadata_block)
   //
   // uint32_t fft_log_nsamples = radar_data_p->log_nsamples;
   // float *data = (float *)radar_data_p->theData;
@@ -1840,7 +1828,7 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
     RADAR_fs = 204800.0;
     RADAR_alpha = 30000000000.0;
     RADAR_psd_threshold = 0.000316; // 1e-10*pow(8192,2);  // 450m ~= 0.000638
-                                    // so psd_thres ~= 0.000316 ?
+    // so psd_thres ~= 0.000316 ?
     break;
   case 14:
     RADAR_fs = 32768000.0;
@@ -1874,41 +1862,41 @@ void radar_leaf_base(uint32_t log_nsamples,float *inputs_ptr, size_t inputs_ptr_
 
   DEBUG(printf("Assigning distance to pointer\n"));
 
-  DEBUG(printf("Distance ptr %p\n",distance_ptr));
+  DEBUG(printf("Distance ptr %p\n", distance_ptr));
   *distance_ptr = distance;
 
-  DEBUG(printf("Distance in object: %.3f\n",*distance_ptr));
+  DEBUG(printf("Distance in object: %.3f\n", *distance_ptr));
   DEBUG(printf("Finished executing Radar_leaf\n"));
 
-   __hpvm__return(1, distance_ptr);
+  __hpvm__return(1, distance_ptr);
 }
 void VITRootWrapper(
   message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
   frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
   size_t in_bit_size, message_t *message_id, size_t msg_id_size, char *out_msg_text,
   size_t out_msg_text_size
-  ){
+) {
 
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(5,ofdm_ptr, frame_ptr, in_bits, message_id,
-            out_msg_text,2, message_id, out_msg_text);
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id,
+                     out_msg_text, 2, message_id, out_msg_text);
 
-    void *ViterbiNode = __hpvm__createNodeND(0, vit_leaf_base, /* Node Criticality */ HPVM_BASE);
+  void *ViterbiNode = __hpvm__createNodeND(0, vit_leaf_base, /* Node Criticality */ HPVM_BASE);
 
-    __hpvm__bindIn(ViterbiNode, 0, 0, 0);
-    __hpvm__bindIn(ViterbiNode, 1, 1, 0);
-    __hpvm__bindIn(ViterbiNode, 2, 2, 0);
-    __hpvm__bindIn(ViterbiNode, 3, 3, 0);
-    __hpvm__bindIn(ViterbiNode, 4, 4, 0);
-    __hpvm__bindIn(ViterbiNode, 5, 5, 0);
-    __hpvm__bindIn(ViterbiNode, 6, 6, 0);
-    __hpvm__bindIn(ViterbiNode, 7, 7, 0);
-    __hpvm__bindIn(ViterbiNode, 8, 8, 0);
-    __hpvm__bindIn(ViterbiNode, 9, 9, 0);
-    __hpvm__bindIn(ViterbiNode, 10, 10, 0);
+  __hpvm__bindIn(ViterbiNode, 0, 0, 0);
+  __hpvm__bindIn(ViterbiNode, 1, 1, 0);
+  __hpvm__bindIn(ViterbiNode, 2, 2, 0);
+  __hpvm__bindIn(ViterbiNode, 3, 3, 0);
+  __hpvm__bindIn(ViterbiNode, 4, 4, 0);
+  __hpvm__bindIn(ViterbiNode, 5, 5, 0);
+  __hpvm__bindIn(ViterbiNode, 6, 6, 0);
+  __hpvm__bindIn(ViterbiNode, 7, 7, 0);
+  __hpvm__bindIn(ViterbiNode, 8, 8, 0);
+  __hpvm__bindIn(ViterbiNode, 9, 9, 0);
+  __hpvm__bindIn(ViterbiNode, 10, 10, 0);
 
-    // __hpvm__bindOut(ViterbiNode, 0, 0, /* isStream */ 0);
-    // __hpvm__bindOut(ViterbiNode, 1, 1, /* isStream */ 0);
+  // __hpvm__bindOut(ViterbiNode, 0, 0, /* isStream */ 0);
+  // __hpvm__bindOut(ViterbiNode, 1, 1, /* isStream */ 0);
 
 }
 
@@ -1918,13 +1906,13 @@ void VITRoot(
   frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
   size_t in_bit_size, message_t *message_id, size_t msg_id_size, char *out_msg_text,
   size_t out_msg_text_size
-  ){
+) {
 
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(5,ofdm_ptr, frame_ptr, in_bits, message_id,
-            out_msg_text,2, message_id, out_msg_text);
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id,
+                     out_msg_text, 2, message_id, out_msg_text);
 
-    void* WrapperNode = __hpvm__createNodeND(0, VITRootWrapper);
+  void* WrapperNode = __hpvm__createNodeND(0, VITRootWrapper);
 
   __hpvm__bindIn(WrapperNode, 0, 0, 0);
   __hpvm__bindIn(WrapperNode, 1, 1, 0);
@@ -1939,98 +1927,98 @@ void VITRoot(
   __hpvm__bindIn(WrapperNode, 10, 10, 0);
 }
 
-void hpvm_launch_base_VIT(int vit_base_msg_size, vit_dict_entry_t *base_vdentry){
-    VitRootIn* VitArgs = (VitRootIn*) malloc(sizeof(VitRootIn));
+void hpvm_launch_base_VIT(int vit_base_msg_size, vit_dict_entry_t *base_vdentry) {
+  VitRootIn* VitArgs = (VitRootIn*) malloc(sizeof(VitRootIn));
 
-    message_t out_message;
-    char out_msg_text[1600];
+  message_t out_message;
+  char out_msg_text[1600];
 
-    VitArgs->msg_size = vit_base_msg_size;
-    VitArgs->ofdm_ptr = &base_vdentry->ofdm_p;
-    VitArgs->ofdm_size = sizeof(ofdm_param);
-    VitArgs->frame_ptr = &base_vdentry->frame_p;
-    VitArgs->frame_ptr_size = sizeof(frame_param);
-    VitArgs->in_bits = base_vdentry->in_bits;
-    VitArgs->in_bit_size = sizeof(uint8_t);
-    VitArgs->message_id = &out_message;
-    VitArgs->msg_id_size = sizeof(message_t);
-    VitArgs->out_msg_text = out_msg_text;
-    VitArgs->out_msg_text_size = 1600;
+  VitArgs->msg_size = vit_base_msg_size;
+  VitArgs->ofdm_ptr = &base_vdentry->ofdm_p;
+  VitArgs->ofdm_size = sizeof(ofdm_param);
+  VitArgs->frame_ptr = &base_vdentry->frame_p;
+  VitArgs->frame_ptr_size = sizeof(frame_param);
+  VitArgs->in_bits = base_vdentry->in_bits;
+  VitArgs->in_bit_size = sizeof(uint8_t);
+  VitArgs->message_id = &out_message;
+  VitArgs->msg_id_size = sizeof(message_t);
+  VitArgs->out_msg_text = out_msg_text;
+  VitArgs->out_msg_text_size = 1600;
 
-    llvm_hpvm_track_mem(&base_vdentry->ofdm_p, sizeof(ofdm_param));
-    llvm_hpvm_track_mem(&base_vdentry->frame_p, sizeof(frame_param));
-    llvm_hpvm_track_mem(&base_vdentry->in_bits, sizeof(uint8_t));
-    llvm_hpvm_track_mem(&out_message, sizeof(message_t));
-    llvm_hpvm_track_mem(out_msg_text, 1600);
+  llvm_hpvm_track_mem(&base_vdentry->ofdm_p, sizeof(ofdm_param));
+  llvm_hpvm_track_mem(&base_vdentry->frame_p, sizeof(frame_param));
+  llvm_hpvm_track_mem(&base_vdentry->in_bits, sizeof(uint8_t));
+  llvm_hpvm_track_mem(&out_message, sizeof(message_t));
+  llvm_hpvm_track_mem(out_msg_text, 1600);
 
-    void* BASE_VIT_DFG = __hpvm__launch(0, VITRoot, (void*) VitArgs);
+  void* BASE_VIT_DFG = __hpvm__launch(0, VITRoot, (void*) VitArgs);
 
-    free(VitArgs);
+  free(VitArgs);
 }
 
 void RadarRootWrapper(
   uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
-  distance_t *distance_ptr, size_t distance_ptr_size){
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(2, inputs_ptr, distance_ptr, 1, distance_ptr);
+  distance_t *distance_ptr, size_t distance_ptr_size) {
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(2, inputs_ptr, distance_ptr, 1, distance_ptr);
 
-    void* RadarNode = __hpvm__createNodeND(0, radar_leaf_base, /* Node Criticality */ HPVM_BASE);
+  void* RadarNode = __hpvm__createNodeND(0, radar_leaf_base, /* Node Criticality */ HPVM_BASE);
 
-    __hpvm__bindIn(RadarNode, 0, 0, 0);
-    __hpvm__bindIn(RadarNode, 1, 1, 0);
-    __hpvm__bindIn(RadarNode, 2, 2, 0);
-    __hpvm__bindIn(RadarNode, 3, 3, 0);
-    __hpvm__bindIn(RadarNode, 4, 4, 0);
+  __hpvm__bindIn(RadarNode, 0, 0, 0);
+  __hpvm__bindIn(RadarNode, 1, 1, 0);
+  __hpvm__bindIn(RadarNode, 2, 2, 0);
+  __hpvm__bindIn(RadarNode, 3, 3, 0);
+  __hpvm__bindIn(RadarNode, 4, 4, 0);
 
-    // __hpvm__bindOut(RadarNode, 0, 0, 0);
+  // __hpvm__bindOut(RadarNode, 0, 0, 0);
 
 
 }
 
 void RadarRoot(
   uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
-  distance_t *distance_ptr, size_t distance_ptr_size){
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(2, inputs_ptr, distance_ptr, 1, distance_ptr);
+  distance_t *distance_ptr, size_t distance_ptr_size) {
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(2, inputs_ptr, distance_ptr, 1, distance_ptr);
 
-    void* WrapperNode = __hpvm__createNodeND(0, RadarRootWrapper);
+  void* WrapperNode = __hpvm__createNodeND(0, RadarRootWrapper);
 
-    __hpvm__bindIn(WrapperNode, 0, 0, 0);
-    __hpvm__bindIn(WrapperNode, 1, 1, 0);
-    __hpvm__bindIn(WrapperNode, 2, 2, 0);
-    __hpvm__bindIn(WrapperNode, 3, 3, 0);
-    __hpvm__bindIn(WrapperNode, 4, 4, 0);
+  __hpvm__bindIn(WrapperNode, 0, 0, 0);
+  __hpvm__bindIn(WrapperNode, 1, 1, 0);
+  __hpvm__bindIn(WrapperNode, 2, 2, 0);
+  __hpvm__bindIn(WrapperNode, 3, 3, 0);
+  __hpvm__bindIn(WrapperNode, 4, 4, 0);
 
 }
 
-void hpvm_launch_base_RADAR(unsigned base_log_nsamples, float* base_radar_inputs){
-    RadarRootIn *RadarArgs = (RadarRootIn*) malloc(sizeof(RadarRootIn));
+void hpvm_launch_base_RADAR(unsigned base_log_nsamples, float* base_radar_inputs) {
+  RadarRootIn *RadarArgs = (RadarRootIn*) malloc(sizeof(RadarRootIn));
 
-    distance_t out_distance;
+  distance_t out_distance;
 
-    RadarArgs->log_nsamples = base_log_nsamples;
-    RadarArgs->inputs_ptr = base_radar_inputs;
-    RadarArgs->inputs_ptr_size =  2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
-    RadarArgs->distance_ptr = &out_distance;
-    RadarArgs->distance_ptr_size = sizeof(distance_t);
+  RadarArgs->log_nsamples = base_log_nsamples;
+  RadarArgs->inputs_ptr = base_radar_inputs;
+  RadarArgs->inputs_ptr_size =  2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
+  RadarArgs->distance_ptr = &out_distance;
+  RadarArgs->distance_ptr_size = sizeof(distance_t);
 
-    llvm_hpvm_track_mem(&out_distance, sizeof(distance_t));
-    llvm_hpvm_track_mem(base_radar_inputs, RadarArgs->inputs_ptr_size);
+  llvm_hpvm_track_mem(&out_distance, sizeof(distance_t));
+  llvm_hpvm_track_mem(base_radar_inputs, RadarArgs->inputs_ptr_size);
 
-    void *RadarDFG = __hpvm__launch(0, RadarRoot, (void*) RadarArgs);
+  void *RadarDFG = __hpvm__launch(0, RadarRoot, (void*) RadarArgs);
 
 
-    free(RadarArgs);
+  free(RadarArgs);
 
 }
 
 
 void CVRootWrapper(
-        label_t in_label, label_t *obj_label, size_t obj_label_size){
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(1, obj_label, 1, obj_label);
+  label_t in_label, label_t *obj_label, size_t obj_label_size) {
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(1, obj_label, 1, obj_label);
 
-    void* CVNode = __hpvm__createNodeND(0, cv_leaf_base, /* Node Criticality */ HPVM_BASE);
+  void* CVNode = __hpvm__createNodeND(0, cv_leaf_base, /* Node Criticality */ HPVM_BASE);
 
   __hpvm__bindIn(CVNode, 0, 0, 0);
   __hpvm__bindIn(CVNode, 1, 1, 0);
@@ -2040,32 +2028,32 @@ void CVRootWrapper(
 }
 
 void CVRoot(
-        label_t in_label, label_t *obj_label, size_t obj_label_size){
-    __hpvm__hint(CPU_TARGET);
-    __hpvm__attributes(1, obj_label, 1, obj_label);
+  label_t in_label, label_t *obj_label, size_t obj_label_size) {
+  __hpvm__hint(CPU_TARGET);
+  __hpvm__attributes(1, obj_label, 1, obj_label);
 
-    void* WrapperNode = __hpvm__createNodeND(0, CVRootWrapper);
+  void* WrapperNode = __hpvm__createNodeND(0, CVRootWrapper);
 
   __hpvm__bindIn(WrapperNode, 0, 0, 0);
   __hpvm__bindIn(WrapperNode, 1, 1, 0);
   __hpvm__bindIn(WrapperNode, 2, 2, 0);
 }
 
-void hpvm_launch_base_CV(label_t cv_tr_label){
-    CVRootIn *CVArgs = (CVRootIn*) malloc(sizeof(CVRootIn));
+void hpvm_launch_base_CV(label_t cv_tr_label) {
+  CVRootIn *CVArgs = (CVRootIn*) malloc(sizeof(CVRootIn));
 
-    label_t out_label;
+  label_t out_label;
 
-    CVArgs->in_label = cv_tr_label;
-    CVArgs->obj_label = &out_label;
-    CVArgs->obj_label_size = sizeof(label_t);
+  CVArgs->in_label = cv_tr_label;
+  CVArgs->obj_label = &out_label;
+  CVArgs->obj_label_size = sizeof(label_t);
 
-    llvm_hpvm_track_mem(&out_label, sizeof(label_t));
+  llvm_hpvm_track_mem(&out_label, sizeof(label_t));
 
-    void *CVDFG = __hpvm__launch(0, CVRoot, (void*) CVArgs);
+  void *CVDFG = __hpvm__launch(0, CVRoot, (void*) CVArgs);
 
 
-    free(CVArgs);
+  free(CVArgs);
 }
 
 

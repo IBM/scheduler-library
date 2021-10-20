@@ -81,7 +81,7 @@ typedef struct {
 
 /* Input Trace Functions */
 #ifndef USE_SIM_ENVIRON
- #include "read_trace.h"
+#include "read_trace.h"
 #endif
 
 void output_VizTrace_line(unsigned min_obst_lane, unsigned max_obst_lane, vehicle_state_t* vehicle_state, vehicle_state_t* other_car);
@@ -90,8 +90,8 @@ void output_VizTrace_line(unsigned min_obst_lane, unsigned max_obst_lane, vehicl
 status_t init_cv_kernel(char* py_file, char* dict_fn);
 label_t run_object_classification(unsigned tr_val);
 label_t iterate_cv_kernel(vehicle_state_t vs);
-void start_execution_of_cv_kernel(task_metadata_block_t* mb_ptr, label_t in_tr_val);
-label_t finish_execution_of_cv_kernel(task_metadata_block_t* mb_ptr);
+void start_execution_of_cv_kernel(task_metadata_entry* mb_ptr, label_t in_tr_val);
+label_t finish_execution_of_cv_kernel(task_metadata_entry* mb_ptr);
 void    post_execute_cv_kernel(label_t tr_val, label_t d_object);
 
 status_t init_radar_kernel(char* dict_fn, int set_to_use);
@@ -105,20 +105,20 @@ status_t init_vit_kernel(char* dict_fn);
 vit_dict_entry_t* iterate_vit_kernel(vehicle_state_t vs, message_t* tr_message );
 vit_dict_entry_t* select_specific_vit_input(int l_num, int m_num);
 vit_dict_entry_t* select_random_vit_input();
-void start_execution_of_vit_kernel(task_metadata_block_t* mb_ptr, vit_dict_entry_t* trace_msg);
-message_t finish_execution_of_vit_kernel(task_metadata_block_t* mb_ptr);
+void start_execution_of_vit_kernel(task_metadata_entry* mb_ptr, vit_dict_entry_t* trace_msg);
+message_t finish_execution_of_vit_kernel(task_metadata_entry* mb_ptr);
 void      post_execute_vit_kernel(message_t tr_msg, message_t dec_msg);
 
 status_t   init_test_kernel(char* dict_fn);
 test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs);
-void       start_execution_of_test_kernel(task_metadata_block_t* mb_ptr, test_dict_entry_t* tde);
-test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr);
+void       start_execution_of_test_kernel(task_metadata_entry* mb_ptr, test_dict_entry_t* tde);
+test_res_t finish_execution_of_test_kernel(task_metadata_entry* mb_ptr);
 void       post_execute_test_kernel(test_res_t gold_res, test_res_t exec_res);
 
 
 
-void            start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
-vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr);
+void            start_execution_of_plan_ctrl_kernel(task_metadata_entry* mb_ptr);
+vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_entry* mb_ptr);
 //vehicle_state_t plan_and_control(label_t, distance_t, message_t, vehicle_state_t);
 
 // These routines are used for any finalk, end-of-run operations/output

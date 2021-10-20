@@ -36,7 +36,7 @@
 #include "create_grid_task.h"
 #include "scheduler.h"
 
-void print_create_grid_metadata_block_contents(task_metadata_block_t *mb) {
+void print_create_grid_metadata_block_contents(task_metadata_entry *mb) {
   print_base_metadata_block_contents(mb);
   create_grid_data_struct_t *create_grid_data_p = (create_grid_data_struct_t *)(mb->data_space);
   printf("  PLAN_CTRL: position   = %u\n", create_grid_data_p->position);
@@ -44,7 +44,7 @@ void print_create_grid_metadata_block_contents(task_metadata_block_t *mb) {
   printf("  PLAN_CTRL: occ_grid   = %p\n", create_grid_data_p->occ_grid);
 }
 
-void output_create_grid_task_type_run_stats(scheduler_datastate_block_t *sptr,
+void output_create_grid_task_type_run_stats(scheduler_datastate *sptr,
     unsigned my_task_type,
     unsigned total_accel_types) {
 
@@ -95,7 +95,7 @@ void output_create_grid_task_type_run_stats(scheduler_datastate_block_t *sptr,
   }
 }
 
-void execute_on_cpu_create_grid_accelerator(task_metadata_block_t *task_metadata_block) {
+void execute_on_cpu_create_grid_accelerator(task_metadata_entry *task_metadata_block) {
   DEBUG(printf("In execute_on_cpu_create_grid_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
@@ -139,7 +139,7 @@ void set_up_create_grid_task_on_accel_profile_data() {
   printf("\n"));
 }
 
-task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr,
+task_metadata_entry *set_up_create_grid_task(scheduler_datastate *sptr,
     task_type_t create_grid_task_type, task_criticality_t crit_level,
     bool use_auto_finish, int32_t dag_id, va_list var_list) {
 //unsigned time_step, unsigned repeat_factor,
@@ -156,7 +156,7 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
   uint8_t* occ_grid = va_arg(var_list, uint8_t*);
 
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
-  task_metadata_block_t *create_grid_mb_ptr = NULL;
+  task_metadata_entry *create_grid_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", create_grid_task_type));
   do {
     create_grid_mb_ptr = get_task_metadata_block(sptr, dag_id, create_grid_task_type, crit_level, create_grid_profile);
@@ -175,7 +175,7 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
     exit(-4);
   }
   if (use_auto_finish) {
-    create_grid_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+    create_grid_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
                                      sptr->auto_finish_task_function[create_grid_task_type]); // get_auto_finish_routine(sptr, create_grid_task_type);
   } else {
     create_grid_mb_ptr->atFinish = NULL;
@@ -210,8 +210,8 @@ task_metadata_block_t *set_up_create_grid_task(scheduler_datastate_block_t *sptr
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void create_grid_auto_finish_routine(task_metadata_block_t *mb) {
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+void create_grid_auto_finish_routine(task_metadata_entry *mb) {
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
@@ -227,7 +227,7 @@ void create_grid_auto_finish_routine(task_metadata_block_t *mb) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_create_grid_execution(task_metadata_block_t *create_grid_metadata_block, va_list var_list) {
+void finish_create_grid_execution(task_metadata_entry *create_grid_metadata_block, va_list var_list) {
   // vehicle_state_t *new_vehicle_state)
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
   unsigned* position = va_arg(var_list, unsigned *);

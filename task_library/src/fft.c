@@ -119,7 +119,7 @@ bit_reverse (float * w, unsigned int N, unsigned int bits) {
 
 
 int
-fft(task_metadata_block_t* task_metadata_block, float * data, unsigned int N, unsigned int logn, int sign) {
+fft(task_metadata_entry* task_metadata_block, float * data, unsigned int N, unsigned int logn, int sign) {
   unsigned int transform_length;
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;

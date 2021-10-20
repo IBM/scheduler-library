@@ -32,16 +32,15 @@ initialize_assign_task_to_pe(void * in_parm_ptr) {
 //   If an accelerators of that type is not available, it waits until it is.
 
 extern "C" ready_mb_task_queue_entry_t *
-assign_task_to_pe(scheduler_datastate_block_t* sptr, ready_mb_task_queue_entry_t* ready_task_entry) {
-  //TODO: Make function to get task block from head of ready queue
+assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_entry_t*> &ready_queue) {
   //Choose head of ready queue to be scheduled
-  ready_mb_task_queue_entry_t* selected_task_entry = ready_task_entry;
-  task_metadata_block_t * task_metadata_block = NULL;
+  ready_mb_task_queue_entry_t* selected_task_entry = ready_queue.front();
+  task_metadata_entry * task_metadata_block = NULL;
   if (selected_task_entry != NULL) {
     task_metadata_block = &(sptr->master_metadata_pool[selected_task_entry->block_id]);
   }
   if (selected_task_entry == NULL) {
-    printf("Ready queue empty\n");
+    printf("Ready queue empty or invalid ready queue entry\n");
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");

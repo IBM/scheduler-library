@@ -75,7 +75,7 @@ void init_vit_parameters(int vn) {
 
 
 void
-do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) {
+do_vit_accel_type_initialization(scheduler_datastate* sptr) {
 #ifdef HW_VIT
   // This initializes the Viterbi Accelerator Pool
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
@@ -109,7 +109,7 @@ do_vit_accel_type_initialization(struct scheduler_datastate_block_struct* sptr) 
 
 
 #ifdef HW_VIT
-void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc) {
+void do_decoding_hw(scheduler_datastate* sptr, int *fd, struct vitdodec_access *desc) {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("ERROR : do_decoding_in_hw : IOCTL:");
     exit(EXIT_FAILURE);
@@ -118,7 +118,7 @@ void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_
 #endif
 
 void
-do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
+do_vit_accel_type_closeout(scheduler_datastate* sptr) {
   // Clean up any hardware accelerator stuff
 #ifdef HW_VIT
   for (int vi = 0; vi < NUM_VIT_ACCEL; vi++) {
@@ -130,7 +130,7 @@ do_vit_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
 
 
 void
-output_vit_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
+output_vit_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types) {
 }
 
 

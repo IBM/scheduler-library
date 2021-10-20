@@ -621,7 +621,7 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
     });
     */
 
-  // void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block,
+  // void finish_viterbi_execution(task_metadata_entry* vit_metadata_block,
   // va_list var_list) // message_t* message_id, char* out_msg_text)
 
   message_t msg = NUM_MESSAGES;
@@ -803,7 +803,7 @@ void radar_leaf(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size
   }
 
   // distance_t
-  // do_finish_radar_computations(task_metadata_block_t *radar_metadata_block)
+  // do_finish_radar_computations(task_metadata_entry *radar_metadata_block)
   //
   // uint32_t fft_log_nsamples = radar_data_p->log_nsamples;
   // float *data = (float *)radar_data_p->theData;
@@ -1660,7 +1660,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_si
     });
     */
 
-  // void finish_viterbi_execution(task_metadata_block_t* vit_metadata_block,
+  // void finish_viterbi_execution(task_metadata_entry* vit_metadata_block,
   // va_list var_list) // message_t* message_id, char* out_msg_text)
 
   message_t msg = NUM_MESSAGES;
@@ -1818,7 +1818,7 @@ void radar_leaf_base(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr
   }
 
   // distance_t
-  // do_finish_radar_computations(task_metadata_block_t *radar_metadata_block)
+  // do_finish_radar_computations(task_metadata_entry *radar_metadata_block)
   //
   // uint32_t fft_log_nsamples = radar_data_p->log_nsamples;
   // float *data = (float *)radar_data_p->theData;

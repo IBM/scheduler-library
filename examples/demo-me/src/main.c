@@ -124,7 +124,7 @@ int input_accel_limit_cv = -1;
 #endif
 
 lane_t starting_lane = center;
-float car_goal_speed = 50.0; 
+float car_goal_speed = 50.0;
 
 void print_usage(char *pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -201,9 +201,9 @@ void print_usage(char *pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and
 //  then releases the MetaData Block
 #ifndef HPVM
-void base_release_metadata_block(task_metadata_block_t *mb) {
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
-	 printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
+void base_release_metadata_block(task_metadata_entry *mb) {
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
+         printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
                 sptr->accel_name_str[mb->accelerator_type],
@@ -218,49 +218,52 @@ void base_release_metadata_block(task_metadata_block_t *mb) {
 
 
 #ifndef HPVM
-void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
+void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
 
   vit_task_type = register_task_type(sptr, "VIT-Task", "A Viterbi Decoding task to execute",
-				     &set_up_vit_task, &finish_viterbi_execution, &viterbi_auto_finish_routine,
-				     &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats,
-				     2, // number of accelerator types taht can execute this task type
-				     SCHED_CPU_ACCEL_T, &exec_vit_task_on_cpu_accel,
-				     SCHED_EPOCHS_VITDEC_ACCEL_T, &exec_vit_task_on_vit_hwr_accel);
+                                     &set_up_vit_task, &finish_viterbi_execution, &viterbi_auto_finish_routine,
+                                     &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats,
+                                     2, // number of accelerator types taht can execute this task type
+                                     SCHED_CPU_ACCEL_T, &exec_vit_task_on_cpu_accel,
+                                     SCHED_EPOCHS_VITDEC_ACCEL_T, &exec_vit_task_on_vit_hwr_accel);
   if (input_accel_limit_vit /*NUM_VIT_ACCEL*/ > 0) {
     // Add the new Policy-v0 HW_Threshold values for VIT tasks
     p0_hw_threshold[vit_task_type][vit_hwr_accel_id] = 25; // ~75% chance to use VIT HWR for Vit Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[vit_task_type], sptr->accel_name_str[vit_hwr_accel_id],
+           p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
   }
 
   cv_task_type = register_task_type(sptr, "CV-Task", "A CV/CNN task to execute",
-				    &set_up_cv_task, &finish_cv_execution, &cv_auto_finish_routine,
-				    &print_cv_metadata_block_contents, &output_cv_task_type_run_stats, 2,
-				    SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
-				    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_hwr_cv_accelerator);
+                                    &set_up_cv_task, &finish_cv_execution, &cv_auto_finish_routine,
+                                    &print_cv_metadata_block_contents, &output_cv_task_type_run_stats, 2,
+                                    SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
+                                    SCHED_EPOCHS_CV_CNN_ACCEL_T, &execute_hwr_cv_accelerator);
   if (NUM_CV_ACCEL > 0) {
     // Add the new Policy-v0 HW_Threshold values for CV tasks
     p0_hw_threshold[cv_task_type][cv_hwr_accel_id] = 25; // ~75% chance to use CV HWR for CV Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[cv_task_type], sptr->accel_name_str[cv_hwr_accel_id],
+           p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
 
   radar_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute",
-				     &set_up_radar_task, &finish_radar_execution, &radar_auto_finish_routine,
-				     &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
-				     SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
-				     SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
+                                       &set_up_radar_task, &finish_radar_execution, &radar_auto_finish_routine,
+                                       &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
+                                       SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
+                                       SCHED_EPOCHS_1D_FFT_ACCEL_T, &execute_hwr_fft_accelerator);
   if (input_accel_limit_fft > 0) {
     // Add the new Policy-v0 HW_Threshold values for FFT tasks
     p0_hw_threshold[radar_task_type][fft_hwr_accel_id] = 25; // ~75% chance to use FFT HWR for FFT Tasks
-    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[radar_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[radar_task_type][fft_hwr_accel_id]);
+    printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[radar_task_type], sptr->accel_name_str[fft_hwr_accel_id],
+           p0_hw_threshold[radar_task_type][fft_hwr_accel_id]);
   }
 
   plan_ctrl2_task_type = register_task_type(sptr, "PnC2-Task", "The vehicle state Plan and Control task to execute",
-					   &set_up_plan_ctrl2_task, &finish_plan_ctrl2_execution, &plan_ctrl2_auto_finish_routine,
-					   &print_plan_ctrl2_metadata_block_contents,
-					   &output_plan_ctrl2_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
-					   &execute_on_cpu_plan_ctrl2_accelerator);
+                         &set_up_plan_ctrl2_task, &finish_plan_ctrl2_execution, &plan_ctrl2_auto_finish_routine,
+                         &print_plan_ctrl2_metadata_block_contents,
+                         &output_plan_ctrl2_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
+                         &execute_on_cpu_plan_ctrl2_accelerator);
 
   // Opotionally add the "Test Task" (to test flexibility in the scheduler, etc.
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
@@ -269,41 +272,41 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all 4 accelerators
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 4, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
-					      &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
-					      &execute_on_hwr_fft_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
-					      &execute_on_hwr_cv_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 4, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
+                                              &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
+                                              &execute_on_hwr_fft_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
+                                              &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but CV
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
-					      &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
-					      &execute_on_hwr_fft_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
+                                              &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
+                                              &execute_on_hwr_fft_test_accelerator);
         }
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but FFT
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
-					      &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
-					      &execute_on_hwr_cv_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
+                                              &execute_on_hwr_vit_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
+                                              &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but FFT and CV
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
-					      &execute_on_hwr_vit_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_VITDEC_ACCEL_T,
+                                              &execute_on_hwr_vit_test_accelerator);
         }
       }
     } else {
@@ -312,51 +315,54 @@ void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
-					      &execute_on_hwr_fft_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
-					      &execute_on_hwr_cv_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
+                                              &execute_on_hwr_fft_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
+                                              &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but VIT and CV
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
-					      &execute_on_hwr_fft_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_1D_FFT_ACCEL_T,
+                                              &execute_on_hwr_fft_test_accelerator);
         }
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT and FFT
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
-					      &execute_on_hwr_cv_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator, SCHED_EPOCHS_CV_CNN_ACCEL_T,
+                                              &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST only on CPU
           test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
-					      &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
-					      &print_test_metadata_block_contents,
-					      &output_test_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
-					      &execute_on_cpu_test_accelerator);
+                                              &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
+                                              &print_test_metadata_block_contents,
+                                              &output_test_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
+                                              &execute_on_cpu_test_accelerator);
         }
       }
     }
     if ((input_accel_limit_vit > 0) && (test_on_hwr_vit_run_time_in_usec > 0)) {
       p0_hw_threshold[test_task_type][vit_hwr_accel_id] = 75; // ~25% chance to use VIT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id], p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[vit_hwr_accel_id],
+             p0_hw_threshold[test_task_type][vit_hwr_accel_id]);
     }
     if ((input_accel_limit_fft > 0) && (test_on_hwr_fft_run_time_in_usec > 0)) {
       p0_hw_threshold[test_task_type][fft_hwr_accel_id] = 50; // ~25% chance to use FFT HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id], p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[fft_hwr_accel_id],
+             p0_hw_threshold[test_task_type][fft_hwr_accel_id]);
     }
     if ((input_accel_limit_cv > 0) && (test_on_hwr_cv_run_time_in_usec > 0)) {
       p0_hw_threshold[test_task_type][cv_hwr_accel_id] = 25; // ~25% chance to use CV HWR for Test Tasks in P0
-      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id], p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
+      printf("Set p0_hw_threshold[%s][%s] = %u\n", sptr->task_name_str[test_task_type], sptr->accel_name_str[cv_hwr_accel_id],
+             p0_hw_threshold[test_task_type][cv_hwr_accel_id]);
     }
   }
 
@@ -407,11 +413,11 @@ int main(int argc, char *argv[]) {
   PNC_THRESHOLD_2 = 205.0;
   PNC_THRESHOLD_3 = 305.0;
   VIT_CLEAR_THRESHOLD = 105.0;
-  
+
   set_up_scheduler();
   initialize_task_lib();
 #endif
-  
+
   // put ':' in the starting of the
   // string so that program can
   // distinguish between '?' and ':'
@@ -472,35 +478,35 @@ int main(int argc, char *argv[]) {
       snprintf(wifi_inet_addr_str, 20, "%s", optarg);
       break;
     case 'w':
-     #ifdef USE_SIM_ENVIRON
+#ifdef USE_SIM_ENVIRON
       snprintf(world_desc_file_name, 255, "%s", optarg);
-     #endif
+#endif
       break;
     case 'F':
-     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_fft_tasks_per_time_step = atoi(optarg);
-     #else
+#else
       printf("ERROR: Cannot use '-F' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-     #endif
+#endif
       break;
     case 'M':
-     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_vit_tasks_per_time_step = atoi(optarg);
-     #else
+#else
       printf("ERROR: Cannot use '-M' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-     #endif
+#endif
       break;
     case 'N':
-     #if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
       additional_cv_tasks_per_time_step = atoi(optarg);
-     #else
+#else
       printf("ERROR: Cannot use '-N' option unless compiled with HPVM_BASE_CRIT (e.g. config ALLOW_ADD_BASE_TASKS)\n");
-     #endif
+#endif
       break;
     case 'P':
-     #ifndef HPVM
+#ifndef HPVM
       snprintf(policy, 255, "%s", optarg);
-     #endif
+#endif
       // printf("Set policy to '%s'\n", policy);
       // global_scheduler_selection_policy = atoi(optarg);
       break;
@@ -530,68 +536,67 @@ int main(int argc, char *argv[]) {
 
     case 'g':
       for (int ci = 0; ci < strlen(optarg); ci++) {
-	switch (optarg[ci]) {
-	case 'c' :
-	case 'C' : show_local_occ_grid = true;
-	  break;
-	case 'r' :
-	case 'R' : show_remote_occ_grid = true;
-	  break;
-  	case 'f' :
-	case 'F' : show_fused_occ_grid = true;
-	  break;
-  	case 's' :
-	case 'S' : show_side_by_occ_grids = true;
-	  break;
-	default :
-	  printf("Don't recognize show-grid option '%c'\n", optarg[ci]);
-	  break;
-	}
+        switch (optarg[ci]) {
+        case 'c' :
+        case 'C' : show_local_occ_grid = true;
+          break;
+        case 'r' :
+        case 'R' : show_remote_occ_grid = true;
+          break;
+        case 'f' :
+        case 'F' : show_fused_occ_grid = true;
+          break;
+        case 's' :
+        case 'S' : show_side_by_occ_grids = true;
+          break;
+        default :
+          printf("Don't recognize show-grid option '%c'\n", optarg[ci]);
+          break;
+        }
       }
       break;
 
     case 'l': {
-	bool err = false;
-	if (optarg[0] == 'L') {
-	  if (optarg[1] == 'H') { starting_lane = lhazard; }
-	  else if (optarg[1] == 'L') { starting_lane = left; }
-         #if (BUILD_WITH_N_LANES == 9)
-	  else if (optarg[1] == 'M') { starting_lane = l_center; }
-         #endif
-	  else {err = true; }
-	} else if (optarg[0] == 'R') {
-	  if (optarg[1] == 'H') { starting_lane = rhazard; }
-	  else if (optarg[1] == 'L') { starting_lane = right; }
-         #if (BUILD_WITH_N_LANES == 9)
-	  else if (optarg[1] == 'M') { starting_lane = r_center; }
-         #endif
-	  else {err = true; }
-	} else if (optarg[0] == 'M') {starting_lane = center; }
-       #if (BUILD_WITH_N_LANES == 9)
-	else if (optarg[0] == 'F') {
-	  if (optarg[1] == 'L') { starting_lane = far_left; }
-	  else if (optarg[1] == 'R') { starting_lane = far_left; }
-	}
-       #endif
-	else {err = true; }
-
-	if (err) {
-	  printf("ERROR: Unrecognized initial lane setting: %s\n", optarg);
-	  print_usage(argv[0]);
-	  exit(-1);
-	}
-	printf("Set starting lane (preferred lane) to %u\n", starting_lane);
+      bool err = false;
+      if (optarg[0] == 'L') {
+        if (optarg[1] == 'H') { starting_lane = lhazard; }
+        else if (optarg[1] == 'L') { starting_lane = left; }
+#if (BUILD_WITH_N_LANES == 9)
+        else if (optarg[1] == 'M') { starting_lane = l_center; }
+#endif
+        else {err = true; }
+      } else if (optarg[0] == 'R') {
+        if (optarg[1] == 'H') { starting_lane = rhazard; }
+        else if (optarg[1] == 'L') { starting_lane = right; }
+#if (BUILD_WITH_N_LANES == 9)
+        else if (optarg[1] == 'M') { starting_lane = r_center; }
+#endif
+        else {err = true; }
+      } else if (optarg[0] == 'M') {starting_lane = center; }
+#if (BUILD_WITH_N_LANES == 9)
+      else if (optarg[0] == 'F') {
+        if (optarg[1] == 'L') { starting_lane = far_left; }
+        else if (optarg[1] == 'R') { starting_lane = far_left; }
       }
-      break;
-      
+#endif
+      else {err = true; }
+
+      if (err) {
+        printf("ERROR: Unrecognized initial lane setting: %s\n", optarg);
+        print_usage(argv[0]);
+        exit(-1);
+      }
+      printf("Set starting lane (preferred lane) to %u\n", starting_lane);
+    }
+    break;
+
     case 'B':
 #ifndef HPVM
       num_MBs_to_use = atoi(optarg);
 #endif
       break;
 
-    case 'L': // Accelerator Limits for this run : CPU/CV/FFT/VIT
-    {
+    case 'L': { // Accelerator Limits for this run : CPU/CV/FFT/VIT
 #ifndef HPVM
       unsigned in_cpu = 0;
       unsigned in_cv = 0;
@@ -610,8 +615,7 @@ int main(int argc, char *argv[]) {
 #endif
     } break;
 
-    case 'X': // Add an X-tra task type (with "fake" execution usec times
-    {
+    case 'X': { // Add an X-tra task type (with "fake" execution usec times
 #ifndef HPVM
       unsigned nCrit = 0;
       unsigned nBase = 0;
@@ -636,9 +640,9 @@ int main(int argc, char *argv[]) {
         test_on_hwr_vit_run_time_in_usec = on_vit;
         test_on_hwr_cv_run_time_in_usec = on_cv;
         DEBUG(printf(
-            "     -X option set CPU %u FFT %u VIT %u CV %u\n",
-            test_on_cpu_run_time_in_usec, test_on_hwr_fft_run_time_in_usec,
-            test_on_hwr_vit_run_time_in_usec, test_on_hwr_cv_run_time_in_usec));
+                "     -X option set CPU %u FFT %u VIT %u CV %u\n",
+                test_on_cpu_run_time_in_usec, test_on_hwr_fft_run_time_in_usec,
+                test_on_hwr_vit_run_time_in_usec, test_on_hwr_cv_run_time_in_usec));
       }
 #endif
     } break;
@@ -690,12 +694,12 @@ int main(int argc, char *argv[]) {
 
 #ifndef HPVM
   // Set up the Scheduler Datastate Space
-  scheduler_datastate_block_t *sptr = NULL;
+  scheduler_datastate *sptr = NULL;
   if (global_config_file[0] == '\0') {
     // Get a struct that identifies the Scheduler Set-Up input parameters
     // (filled with the default values)
     scheduler_get_datastate_in_parms_t *sched_inparms =
-        get_scheduler_datastate_input_parms();
+      get_scheduler_datastate_input_parms();
     DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u "
                  "Tsk_times %u\n",
                  sched_inparms->max_task_types, sched_inparms->max_accel_types,
@@ -800,17 +804,17 @@ int main(int argc, char *argv[]) {
     int i = 0;
     int is = 0;
     int ie = 0;
-   #ifdef HW_ONLY_CV
+#ifdef HW_ONLY_CV
     i = 2;
-   #endif
-   #ifdef FAKE_HW_CV
+#endif
+#ifdef FAKE_HW_CV
     if (i == 0) {
       i = 1;
     }
     is = 1;
     ie = 2;
-   #endif
-   #ifdef HW_CV
+#endif
+#ifdef HW_CV
     if (i == 0) {
       i = 1;
     }
@@ -818,31 +822,31 @@ int main(int argc, char *argv[]) {
       is = 2;
     }
     ie = 2;
-   #endif
+#endif
     printf("Run is using %s", cv0_txt[i]);
     for (int ix = is; ix <= ie; ix++) {
       printf("%s", cv1_txt[ix]);
     }
     printf("CV with no-crit-CV = %u\n", no_crit_cnn_task);
   }
- #ifndef HW_ONLY_CV
+#ifndef HW_ONLY_CV
   printf(" with cv_cpu_run_time_in_usec set to %u\n", cv_cpu_run_time_in_usec);
- #endif
- #ifdef FAKE_HW_CV
+#endif
+#ifdef FAKE_HW_CV
   printf("  and cv_fake_hwr_run_time_in_usec set to %u\n",
          cv_fake_hwr_run_time_in_usec);
- #endif
+#endif
 #endif
   printf("Using Plan-And-Control repeat factor %u\n", pandc_repeat_factor);
   printf("Using Radar Dictionary samples set %u for the critical FFT tasks\n", crit_fft_samples_set);
   printf("Using task-size variability behavior %u\n", task_size_variability);
   printf("Using %u maximum time steps (simulation)\n", max_time_steps);
- #ifdef USE_SIM_ENVIRON
+#ifdef USE_SIM_ENVIRON
   printf("Using world description file: %s\n", world_desc_file_name);
   printf("Using random seed of %u\n", rand_seed);
- #else
+#else
   printf("Using trace file: %s\n", trace_file);
- #endif
+#endif
 
   if (rad_dict[0] == '\0') {
     sprintf(rad_dict, "traces/norm_radar_all_dictionary.dfn");
@@ -917,13 +921,13 @@ int main(int argc, char *argv[]) {
   sptr->initialize_assign_task_to_pe(p0_hw_threshold);
 
   DEBUG(printf("p0_hw_threshold is @ %p\n", p0_hw_threshold);
-        for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
-          printf("p0_hw_threshold[%2u] @ %p :", ti, p0_hw_threshold[ti]);
-          for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
-            printf(" %3u", p0_hw_threshold[ti][ai]);
-          }
-          printf("\n");
-        });
+  for (int ti = 0; ti < num_maxTasks_to_use; ti++) {
+  printf("p0_hw_threshold[%2u] @ %p :", ti, p0_hw_threshold[ti]);
+    for (int ai = 0; ai < MY_APP_ACCEL_TYPES; ai++) {
+      printf(" %3u", p0_hw_threshold[ti][ai]);
+    }
+    printf("\n");
+  });
 
   // Set up the Accelerators for this application
   set_up_accelerators_and_tasks(sptr);
@@ -954,7 +958,8 @@ int main(int argc, char *argv[]) {
   printf("Initializing the Radar kernel...\n");
   if (init_radar_kernel(rad_dict, crit_fft_samples_set) != success) {
     if (crit_fft_samples_set >= num_radar_samples_sets) {
-      printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set, num_radar_samples_sets, rad_dict);
+      printf("ERROR : Selected FFT Tasks from Radar Dictionary Set %u but there are only %u sets in the dictionary %s\n", crit_fft_samples_set,
+             num_radar_samples_sets, rad_dict);
       print_usage(argv[0]);
     }
     printf("Error: the radar kernel couldn't be initialized properly.\n");
@@ -969,7 +974,7 @@ int main(int argc, char *argv[]) {
   if ((num_Crit_test_tasks + num_Base_test_tasks) > 0) {
     if (init_test_kernel("") != success) {
       printf(
-          "Error: the testing-task kernel couldn't be initialized properly.\n");
+        "Error: the testing-task kernel couldn't be initialized properly.\n");
       return 1;
     }
   }
@@ -1133,28 +1138,28 @@ int main(int argc, char *argv[]) {
     iter_vit_usec += stop_iter_vit.tv_usec - start_iter_vit.tv_usec;
 #endif
     DEBUG(printf(" Back from iterate_vit_kernel: vdentry_p:\n");
-	  printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
-	  printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
-	  printf("   OFDM    :\n");
-	  printf("     ENCODING   : %u\n", vdentry_p->ofdm_p.encoding);
-	  printf("     RATE_FIELD : %u\n", vdentry_p->ofdm_p.rate_field);
-	  printf("     N_BPSC     : %u\n", vdentry_p->ofdm_p.n_bpsc);
-	  printf("     N_CBPS     : %u\n", vdentry_p->ofdm_p.n_cbps);
-	  printf("     N_DBPS     : %u\n", vdentry_p->ofdm_p.n_dbps);
-	  printf("   FRAME   :\n");
-	  printf("     psdu_size      : %u\n", vdentry_p->frame_p.psdu_size);
-	  printf("     n_sym          : %u\n", vdentry_p->frame_p.n_sym);
-	  printf("     n_pad          : %u\n", vdentry_p->frame_p.n_pad);
-	  printf("     n_encoded_bits : %u\n", vdentry_p->frame_p.n_encoded_bits);
-	  printf("     n_data_bits    : %u\n", vdentry_p->frame_p.n_data_bits);
-	  printf("   IN_BITS :\n         ");
-	  int idx = 0;
-	  for (int iy = 0; iy < 10; iy++) {
-	    for (int ix = 0; ix < 7; ix++) {
-	      printf("0x%02x ", vdentry_p->in_bits[idx]);
-	    }
-	    printf("\n         ");
-	  }printf("\n"));
+          printf("   MSG_NUM : %u\n", vdentry_p->msg_num);
+          printf("   MSG_ID  : %u\n", vdentry_p->msg_num);
+          printf("   OFDM    :\n");
+          printf("     ENCODING   : %u\n", vdentry_p->ofdm_p.encoding);
+          printf("     RATE_FIELD : %u\n", vdentry_p->ofdm_p.rate_field);
+          printf("     N_BPSC     : %u\n", vdentry_p->ofdm_p.n_bpsc);
+          printf("     N_CBPS     : %u\n", vdentry_p->ofdm_p.n_cbps);
+          printf("     N_DBPS     : %u\n", vdentry_p->ofdm_p.n_dbps);
+          printf("   FRAME   :\n");
+          printf("     psdu_size      : %u\n", vdentry_p->frame_p.psdu_size);
+          printf("     n_sym          : %u\n", vdentry_p->frame_p.n_sym);
+          printf("     n_pad          : %u\n", vdentry_p->frame_p.n_pad);
+          printf("     n_encoded_bits : %u\n", vdentry_p->frame_p.n_encoded_bits);
+          printf("     n_data_bits    : %u\n", vdentry_p->frame_p.n_data_bits);
+          printf("   IN_BITS :\n         ");
+          int idx = 0;
+    for (int iy = 0; iy < 10; iy++) {
+    for (int ix = 0; ix < 7; ix++) {
+        printf("0x%02x ", vdentry_p->in_bits[idx]);
+      }
+      printf("\n         ");
+    } printf("\n"));
 
 #ifndef HPVM
     test_dict_entry_t *tdentry_p;
@@ -1178,41 +1183,42 @@ int main(int argc, char *argv[]) {
 
 #ifndef HPVM
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
-    task_metadata_block_t *cv_mb_ptr = NULL;
+    task_metadata_entry *cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      cv_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
-			      false, time_step,
-			      cv_tr_label); // Critical CV task
+      cv_mb_ptr = (task_metadata_entry *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
+                  false, time_step,
+                  cv_tr_label); // Critical CV task
       request_execution(cv_mb_ptr);
       DEBUG(printf("CV/CNN task Block-ID = MB%u\n", cv_mb_ptr->block_id));
     }
 
-    task_metadata_block_t *radar_mb_ptr = NULL;
-    radar_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
-			       false, time_step,
-			       radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
+    task_metadata_entry *radar_mb_ptr = NULL;
+    radar_mb_ptr = (task_metadata_entry *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
+                   false, time_step,
+                   radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
     DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
     request_execution(radar_mb_ptr);
 
 #endif
 
-   #ifdef TIME
+#ifdef TIME
     gettimeofday(&start_exec_vit, NULL);
-   #endif
+#endif
 
 #ifndef HPVM
     // Request a MetadataBlock for a Viterbi Task at Critical Level
-    task_metadata_block_t *viterbi_mb_ptr = NULL;
-    viterbi_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
-				 false, time_step,
-				 vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)); // Critical VITERBI task
+    task_metadata_entry *viterbi_mb_ptr = NULL;
+    viterbi_mb_ptr = (task_metadata_entry *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
+                     false, time_step,
+                     vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits,
+                     sizeof(uint8_t)); // Critical VITERBI task
     DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
-    task_metadata_block_t *test_mb_ptr = NULL;
+    task_metadata_entry *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-      test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
-				false, time_step); // Critical TEST task
+      test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
+                    false, time_step); // Critical TEST task
       DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
       request_execution(test_mb_ptr);
     }
@@ -1231,12 +1237,12 @@ int main(int argc, char *argv[]) {
       // Aditional CV Tasks
       // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
-	task_metadata_block_t *cv_mb_ptr_2 = NULL;
-        cv_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, BASE_TASK,
-				  true, time_step,
-				  cv_tr_label); // NON-Critical CV task
+        task_metadata_entry *cv_mb_ptr_2 = NULL;
+        cv_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, cv_task_type, BASE_TASK,
+                      true, time_step,
+                      cv_tr_label); // NON-Critical CV task
         DEBUG(printf("non-crit CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
-	request_execution(cv_mb_ptr_2);
+        request_execution(cv_mb_ptr_2);
       } // if (i < additional CV tasks)
       // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
       if (i < additional_fft_tasks_per_time_step) {
@@ -1250,39 +1256,40 @@ int main(int argc, char *argv[]) {
         }
         int base_fft_samples_set = rdentry_p2->set;
         float *addl_radar_inputs = rdentry_p2->radar_return_data;
-        task_metadata_block_t *radar_mb_ptr_2 = NULL;
-	radar_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, BASE_TASK,
-				     true, time_step,
-				     radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // NON-Critical RADAR task
+        task_metadata_entry *radar_mb_ptr_2 = NULL;
+        radar_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, radar_task_type, BASE_TASK,
+                         true, time_step,
+                         radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // NON-Critical RADAR task
         DEBUG(printf("non-crit RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
-	request_execution(radar_mb_ptr_2);
+        request_execution(radar_mb_ptr_2);
       } // if (i < additional FFT tasks)
 
       // for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
       if (i < additional_vit_tasks_per_time_step) {
-        task_metadata_block_t* viterbi_mb_ptr_2;
-	DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p), vdentry_p->in_bits));
-	viterbi_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, BASE_TASK,
-				       true, time_step,
-				       vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t));
-	DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
-	request_execution(viterbi_mb_ptr_2);
+        task_metadata_entry* viterbi_mb_ptr_2;
+        DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry_p->ofdm_p), &(vdentry_p->frame_p),
+                     vdentry_p->in_bits));
+        viterbi_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, vit_task_type, BASE_TASK,
+                           true, time_step,
+                           vit_profile_num, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t));
+        DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
+        request_execution(viterbi_mb_ptr_2);
       } // if (i < Additional VIT tasks)
 
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) {
-        task_metadata_block_t *test_mb_ptr_2 = NULL;
-        test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
-				  true, time_step); // Critical TEST task
+        task_metadata_entry *test_mb_ptr_2 = NULL;
+        test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
+                      true, time_step); // Critical TEST task
         DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
-	request_execution(test_mb_ptr_2);
+        request_execution(test_mb_ptr_2);
       } // if (i < Additional TEST tasks)
     } // for (i over MAX_additional_tasks)
 
     sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
-   #ifdef TIME
+#ifdef TIME
     gettimeofday(&start_wait_all_crit, NULL);
-   #endif
+#endif
 
     DEBUG(printf("MAIN: Calling wait_on_tasklist\n"));
     // wait_all_critical(sptr);
@@ -1333,14 +1340,14 @@ int main(int argc, char *argv[]) {
      * vehicle state.
      */
     DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    task_metadata_block_t *pnc_mb_ptr = NULL;
+    task_metadata_entry *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
 
     DEBUG(printf("PRE-Set-Up-PnC: label %u, distance: %.3f\n", label, distance));
 
-    pnc_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
-			     false, time_step,
-			     time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t), starting_lane, &vehicle_state);
+    pnc_mb_ptr = (task_metadata_entry *) set_up_task(sptr, plan_ctrl2_task_type, CRITICAL_TASK,
+                 false, time_step,
+                 time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t), starting_lane, &vehicle_state);
     DEBUG(printf(" MB%u Back from set_up_plan_ctrl2_task\n", pnc_mb_ptr->block_id));
     request_execution(pnc_mb_ptr);
 
@@ -1374,12 +1381,13 @@ int main(int argc, char *argv[]) {
 
     DEBUG(printf("Calling finish_execution_of_plan_ctrl2_kernel for MB%u\n", pnc_mb_ptr->block_id));
     finish_task_execution(pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
-    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, time_step, pandc_repeat_factor, label, distance, message, vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
+    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, time_step,
+                 pandc_repeat_factor, label, distance, message, vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
 
 #else
 
 
-   #ifdef HPVM_BASE_CRIT
+#ifdef HPVM_BASE_CRIT
     /**
     // Launch a specific number of base criticality instances on the particular tasks through hpvm.
 
@@ -1409,7 +1417,7 @@ int main(int argc, char *argv[]) {
       }
 
       if (i < additional_fft_tasks_per_time_step) {
-        radar_dict_entry_t* base_rdentry; 
+        radar_dict_entry_t* base_rdentry;
         if (task_size_variability == 0){
             base_rdentry = select_critical_radar_input(rdentry_p);
         } else {
@@ -1421,13 +1429,14 @@ int main(int argc, char *argv[]) {
       }
     }
     **/
-   #endif
-    
+#endif
+
     DEBUG(printf("Launching HPVM graph!\n"));
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_profile_num, vdentry_p, &message, out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor, starting_lane);
+    hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, vit_profile_num, vdentry_p, &message,
+                out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor, starting_lane);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
@@ -1451,13 +1460,13 @@ int main(int argc, char *argv[]) {
 
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n", vehicle_state.lane, vehicle_state.speed));
 
-   #ifndef USE_SIM_ENVIRON
+#ifndef USE_SIM_ENVIRON
     // Something BAD has happened...
     if (vehicle_state.speed != car_goal_speed) {
       printf("New vehicle state: lane %u speed %.1f -- Speed is < car_goal_speed (%.1f) -- HALT RUN!\n", vehicle_state.lane, vehicle_state.speed, car_goal_speed);
       exit(-1);
     }
-   #endif
+#endif
 
     time_step++;
 
@@ -1471,7 +1480,7 @@ int main(int argc, char *argv[]) {
   // wait_all_tasks_finish();
 
   sleep(1);
-  
+
 #ifdef TIME
   gettimeofday(&stop_prog, NULL);
 #endif
@@ -1491,17 +1500,17 @@ int main(int argc, char *argv[]) {
 #ifdef TIME
   {
     uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
-    uint64_t iter_rad = (uint64_t)(iter_rad_sec)*1000000 + (uint64_t)(iter_rad_usec);
-    uint64_t iter_vit = (uint64_t)(iter_vit_sec)*1000000 + (uint64_t)(iter_vit_usec);
-    uint64_t iter_cv = (uint64_t)(iter_cv_sec)*1000000 + (uint64_t)(iter_cv_usec);
-    uint64_t exec_rad = (uint64_t)(exec_rad_sec)*1000000 + (uint64_t)(exec_rad_usec);
-    uint64_t exec_vit = (uint64_t)(exec_vit_sec)*1000000 + (uint64_t)(exec_vit_usec);
-    uint64_t exec_cv = (uint64_t)(exec_cv_sec)*1000000 + (uint64_t)(exec_cv_usec);
-    uint64_t exec_get_rad = (uint64_t)(exec_get_rad_sec)*1000000 + (uint64_t)(exec_get_rad_usec);
-    uint64_t exec_get_vit = (uint64_t)(exec_get_vit_sec)*1000000 + (uint64_t)(exec_get_vit_usec);
-    uint64_t exec_get_cv = (uint64_t)(exec_get_cv_sec)*1000000 + (uint64_t)(exec_get_cv_usec);
-    uint64_t exec_pandc = (uint64_t)(exec_pandc_sec)*1000000 + (uint64_t)(exec_pandc_usec);
-    uint64_t wait_all_crit = (uint64_t)(wait_all_crit_sec)*1000000 + (uint64_t)(wait_all_crit_usec);
+    uint64_t iter_rad = (uint64_t)(iter_rad_sec) * 1000000 + (uint64_t)(iter_rad_usec);
+    uint64_t iter_vit = (uint64_t)(iter_vit_sec) * 1000000 + (uint64_t)(iter_vit_usec);
+    uint64_t iter_cv = (uint64_t)(iter_cv_sec) * 1000000 + (uint64_t)(iter_cv_usec);
+    uint64_t exec_rad = (uint64_t)(exec_rad_sec) * 1000000 + (uint64_t)(exec_rad_usec);
+    uint64_t exec_vit = (uint64_t)(exec_vit_sec) * 1000000 + (uint64_t)(exec_vit_usec);
+    uint64_t exec_cv = (uint64_t)(exec_cv_sec) * 1000000 + (uint64_t)(exec_cv_usec);
+    uint64_t exec_get_rad = (uint64_t)(exec_get_rad_sec) * 1000000 + (uint64_t)(exec_get_rad_usec);
+    uint64_t exec_get_vit = (uint64_t)(exec_get_vit_sec) * 1000000 + (uint64_t)(exec_get_vit_usec);
+    uint64_t exec_get_cv = (uint64_t)(exec_get_cv_sec) * 1000000 + (uint64_t)(exec_get_cv_usec);
+    uint64_t exec_pandc = (uint64_t)(exec_pandc_sec) * 1000000 + (uint64_t)(exec_pandc_usec);
+    uint64_t wait_all_crit = (uint64_t)(wait_all_crit_sec) * 1000000 + (uint64_t)(wait_all_crit_usec);
     printf("\nProgram total execution time      %lu usec\n", total_exec);
     printf("  iterate_rad_kernel run time       %lu usec\n", iter_rad);
     printf("  iterate_vit_kernel run time       %lu usec\n", iter_vit);

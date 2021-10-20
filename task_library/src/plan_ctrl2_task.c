@@ -39,7 +39,7 @@
 uint64_t plan_ctrl2_profile[SCHED_MAX_ACCEL_TYPES];
 
 void print_plan_ctrl2_metadata_block_contents(void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
   plan_ctrl2_data_struct_t *plan_ctrl2_data_p = (plan_ctrl2_data_struct_t *)(mb->data_space);
   printf("  PLAN_CTRL: in_object     = %u\n", plan_ctrl2_data_p->object_label);
@@ -53,7 +53,7 @@ void print_plan_ctrl2_metadata_block_contents(void *mb_ptr) {
 }
 
 void output_plan_ctrl2_task_type_run_stats(void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
          my_task_type, sptr->task_name_str[my_task_type], sptr->freed_metadata_blocks[my_task_type], total_accel_types);
@@ -103,7 +103,7 @@ void output_plan_ctrl2_task_type_run_stats(void *sptr_ptr, unsigned my_task_type
 }
 
 void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In execute_on_cpu_plan_ctrl2_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
@@ -260,7 +260,7 @@ void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
                              int32_t dag_id, void *args) {
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
   // unsigned time_step, unsigned repeat_factor,
   //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
   //  vehicle_state_t vehicle_state) {
@@ -289,7 +289,7 @@ void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
   DEBUG(printf("SetUp-PNC2: label %u, xfer_dist: %.3f,,distance: %.3f\n", object_label, xfer_object_dist, object_dist));
 
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
-  task_metadata_block_t *plan_ctrl2_mb_ptr = NULL;
+  task_metadata_entry *plan_ctrl2_mb_ptr = NULL;
   DEBUG(
     printf("Calling get_task_metadata_block for Critical PLAN_CTRL-Task %u\n", plan_ctrl2_task_type));
   do {
@@ -315,7 +315,7 @@ void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
     exit(-4);
   }
   if (use_auto_finish) {
-    plan_ctrl2_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+    plan_ctrl2_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
                                     sptr->auto_finish_task_function[plan_ctrl2_task_type]); // get_auto_finish_routine(sptr, plan_ctrl2_task_type);
   } else {
     plan_ctrl2_mb_ptr->atFinish = NULL;
@@ -353,8 +353,8 @@ void *set_up_plan_ctrl2_task(void *sptr_ptr, task_type_t plan_ctrl2_task_type,
 // are not used...
 //
 void plan_ctrl2_auto_finish_routine(void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type], sptr->task_criticality_str[mb->crit_level],
                 sptr->accel_name_str[mb->accelerator_type], mb->accelerator_id));
@@ -372,7 +372,7 @@ void finish_plan_ctrl2_execution(void *metadata_block_ptr, void *args) {
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
   // va_start(var_list, plan_ctrl_metadata_block_ptr);
-  task_metadata_block_t *plan_ctrl2_metadata_block = (task_metadata_block_t *)metadata_block_ptr;
+  task_metadata_entry *plan_ctrl2_metadata_block = (task_metadata_entry *)metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
 

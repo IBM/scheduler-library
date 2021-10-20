@@ -96,7 +96,7 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples) {
 
 
 void
-do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr) {
+do_fft_accel_type_initialization(scheduler_datastate* sptr) {
 #ifdef HW_FFT
   // This initializes the FFT Accelerator Pool
   printf("Initializing the %u total FFT Accelerators...\n", NUM_FFT_ACCEL);
@@ -151,7 +151,7 @@ do_fft_accel_type_initialization(scheduler_datastate_block_t* sptr) {
 
 
 #ifdef HW_FFT
-void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *desc) {
+void fft_in_hw(scheduler_datastate* sptr, int *fd, struct fftHW_access *desc) {
   if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
     perror("ERROR : fft_in_hw : IOCTL:");
     exit(EXIT_FAILURE);
@@ -160,7 +160,7 @@ void fft_in_hw(scheduler_datastate_block_t* sptr, int *fd, struct fftHW_access *
 #endif
 
 void
-do_fft_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
+do_fft_accel_type_closeout(scheduler_datastate* sptr) {
   // Clean up any hardware accelerator stuff
 #ifdef HW_FFT
   for (int fi = 0; fi < NUM_FFT_ACCEL; fi++) {
@@ -172,7 +172,7 @@ do_fft_accel_type_closeout(struct scheduler_datastate_block_struct* sptr) {
 
 
 void
-output_fft_accel_type_run_stats(struct scheduler_datastate_block_struct* sptr, unsigned my_accel_id, unsigned total_task_types) {
+output_fft_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types) {
   ; // Nothing to do here (yet)
 }
 

@@ -44,13 +44,13 @@ extern size_t vitHW_size[NUM_VIT_ACCEL];
 extern struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 #endif
 
-void do_vit_accel_type_initialization(scheduler_datastate_block_t* sptr);
+void do_vit_accel_type_initialization(scheduler_datastate* sptr);
 
 #ifdef HW_VIT
-void do_decoding_hw(scheduler_datastate_block_t* sptr, int *fd, struct vitdodec_access *desc);
+void do_decoding_hw(scheduler_datastate* sptr, int *fd, struct vitdodec_access *desc);
 #endif
 
-void do_vit_accel_type_closeout(scheduler_datastate_block_t* sptr);
-void output_vit_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
+void do_vit_accel_type_closeout(scheduler_datastate* sptr);
+void output_vit_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

@@ -186,8 +186,8 @@ void print_usage(char *pname) {
 //  This SHOULD be a routine that "does the right work" for a given task, and
 //  then releases the MetaData Block
 #ifndef HPVM
-void base_release_metadata_block(task_metadata_block_t *mb) {
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+void base_release_metadata_block(task_metadata_entry *mb) {
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
@@ -203,7 +203,7 @@ void base_release_metadata_block(task_metadata_block_t *mb) {
 
 
 #ifndef HPVM
-void set_up_accelerators_and_tasks(scheduler_datastate_block_t *sptr) {
+void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
 
@@ -658,7 +658,7 @@ int main(int argc, char *argv[]) {
   }
 
 #ifndef HPVM
-  scheduler_datastate_block_t *sptr = NULL;
+  scheduler_datastate *sptr = NULL;
   if (global_config_file[0] == '\0') {
     // Get a struct that identifies the Scheduler Set-Up input parameters
     // (filled with the default values)
@@ -867,7 +867,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Set up a place to record a list of added (critical) task metablock id's to wait on...
-  task_metadata_block_t** the_crit_tasks_mb_ptrs = (task_metadata_block_t**) calloc(sizeof(task_metadata_block_t *),
+  task_metadata_entry** the_crit_tasks_mb_ptrs = (task_metadata_entry**) calloc(sizeof(task_metadata_entry *),
       (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step));
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
@@ -1117,9 +1117,9 @@ int main(int argc, char *argv[]) {
 
 #ifndef HPVM
     // Request a MetadataBlock (for an CV/CNN task at Critical Level)
-    task_metadata_block_t *cv_mb_ptr = NULL;
+    task_metadata_entry *cv_mb_ptr = NULL;
     if (!no_crit_cnn_task) {
-      cv_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
+      cv_mb_ptr = (task_metadata_entry *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
                   false, time_step,
                   cv_tr_label); // Critical CV task
       the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr;
@@ -1131,8 +1131,8 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_exec_rad, NULL);
 #endif
 
-    task_metadata_block_t *radar_mb_ptr = NULL;
-    radar_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
+    task_metadata_entry *radar_mb_ptr = NULL;
+    radar_mb_ptr = (task_metadata_entry *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
                    false, time_step,
                    radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
     the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr;
@@ -1147,8 +1147,8 @@ int main(int argc, char *argv[]) {
 
 #ifndef HPVM
     // Request a MetadataBlock for a Viterbi Task at Critical Level
-    task_metadata_block_t *viterbi_mb_ptr = NULL;
-    viterbi_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
+    task_metadata_entry *viterbi_mb_ptr = NULL;
+    viterbi_mb_ptr = (task_metadata_entry *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
                      false, time_step,
                      vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits,
                      sizeof(uint8_t)); // Critical VITERBI task
@@ -1156,9 +1156,9 @@ int main(int argc, char *argv[]) {
     DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
     request_execution(viterbi_mb_ptr);
 
-    task_metadata_block_t *test_mb_ptr = NULL;
+    task_metadata_entry *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-      test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
+      test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
                     false, time_step); // Critical TEST task
       the_crit_tasks_mb_ptrs[added_crit_task_idx++] = test_mb_ptr;
       DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
@@ -1179,8 +1179,8 @@ int main(int argc, char *argv[]) {
       // Aditional CV Tasks
       // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
       if (i < additional_cv_tasks_per_time_step) {
-        task_metadata_block_t *cv_mb_ptr_2 = NULL;
-        cv_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, cv_task_type, additional_cv_tasks_criticality, //BASE_TASK,
+        task_metadata_entry *cv_mb_ptr_2 = NULL;
+        cv_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, cv_task_type, additional_cv_tasks_criticality, //BASE_TASK,
                       true, time_step,
                       cv_tr_label); // NON-Critical CV task
         if (additional_cv_tasks_criticality == CRITICAL_TASK) {
@@ -1201,8 +1201,8 @@ int main(int argc, char *argv[]) {
         }
         int base_fft_samples_set = rdentry_p2->set;
         float *addl_radar_inputs = rdentry_p2->return_data;
-        task_metadata_block_t *radar_mb_ptr_2 = NULL;
-        radar_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, radar_task_type, additional_fft_tasks_criticality, //BASE_TASK,
+        task_metadata_entry *radar_mb_ptr_2 = NULL;
+        radar_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, radar_task_type, additional_fft_tasks_criticality, //BASE_TASK,
                          true, time_step,
                          radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
         if (additional_fft_tasks_criticality == CRITICAL_TASK) {
@@ -1237,10 +1237,10 @@ int main(int argc, char *argv[]) {
           SDEBUG(printf("Got Random Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES,
                         vdentry_p));
         }
-        task_metadata_block_t* viterbi_mb_ptr_2;
+        task_metadata_entry* viterbi_mb_ptr_2;
         DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p),
                      vdentry2_p->in_bits));
-        viterbi_mb_ptr_2 = (task_metadata_block_t *) set_up_task(sptr, vit_task_type, additional_vit_tasks_criticality, //BASE_TASK,
+        viterbi_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, vit_task_type, additional_vit_tasks_criticality, //BASE_TASK,
                            true, time_step,
                            vit_msgs_size, &(vdentry2_p->ofdm_p), sizeof(ofdm_param), &(vdentry2_p->frame_p), sizeof(frame_param), vdentry2_p->in_bits,
                            sizeof(uint8_t)); //         DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
@@ -1252,8 +1252,8 @@ int main(int argc, char *argv[]) {
 
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) {
-        task_metadata_block_t *test_mb_ptr_2 = NULL;
-        test_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
+        task_metadata_entry *test_mb_ptr_2 = NULL;
+        test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
                       true, time_step); // Critical TEST task
         DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
         request_execution(test_mb_ptr_2);
@@ -1319,14 +1319,14 @@ int main(int argc, char *argv[]) {
      * vehicle state.
      */
     DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    task_metadata_block_t *pnc_mb_ptr = NULL;
+    task_metadata_entry *pnc_mb_ptr = NULL;
     DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
 
     DEBUG(printf("PRE-Set-Up-PnC: label %u, distance: %.3f\n", label, distance));
 #ifdef TIME
     gettimeofday(&start_exec_pandc, NULL);
 #endif
-    pnc_mb_ptr = (task_metadata_block_t *) set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
+    pnc_mb_ptr = (task_metadata_entry *) set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
                  false, time_step,
                  time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state);
     DEBUG(printf(" MB%u Back from set_up_plan_ctrl_task\n", pnc_mb_ptr->block_id));

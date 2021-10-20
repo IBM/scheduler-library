@@ -66,7 +66,7 @@ typedef struct {
   uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
-void print_fft_metadata_block_contents(/*task_metadata_block_t*/ void* mb);
+void print_fft_metadata_block_contents(/*task_metadata_entry*/ void* mb);
 
 void set_up_fft_task_on_accel_profile_data();
 

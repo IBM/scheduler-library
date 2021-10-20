@@ -85,14 +85,14 @@ void set_up_radar_task_on_accel_profile_data() {
   printf("\n"));
 }
 
-/*task_metadata_block_t*/ void *
-set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
+/*task_metadata_entry*/ void *
+set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
     task_type_t radar_task_type, task_criticality_t crit_level,
     bool use_auto_finish, int32_t dag_id, void *args) {
 
   va_list var_list;
   va_copy(var_list, *(va_list*)args);
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_rad, NULL);
 #endif
@@ -102,7 +102,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   size_t inputs_size = va_arg(var_list, size_t);
 
   // Request a MetadataBlock (for an RADAR task at Critical Level)
-  task_metadata_block_t *radar_mb_ptr = NULL;
+  task_metadata_entry *radar_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical RADAR-Task %u\n",
                radar_task_type));
   do {
@@ -122,9 +122,9 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    radar_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+    radar_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
                                sptr->auto_finish_task_function[radar_task_type]); // get_auto_finish_routine(sptr, radar_task_type);
-    //radar_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(sptr->auto_finish_task_function[radar_task_type]);
+    //radar_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(sptr->auto_finish_task_function[radar_task_type]);
   } else {
     radar_mb_ptr->atFinish = NULL;
   }
@@ -154,7 +154,7 @@ set_up_radar_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
-distance_t do_finish_radar_computations(task_metadata_block_t *radar_metadata_block) {
+distance_t do_finish_radar_computations(task_metadata_entry *radar_metadata_block) {
   int tidx = radar_metadata_block->accelerator_type;
   fft_timing_data_t *radar_timings_p = (fft_timing_data_t *) & (radar_metadata_block->task_timings[radar_metadata_block->task_type]);
   fft_data_struct_t *radar_data_p = (fft_data_struct_t *)(radar_metadata_block->data_space);
@@ -227,9 +227,9 @@ distance_t do_finish_radar_computations(task_metadata_block_t *radar_metadata_bl
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void radar_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+void radar_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
@@ -245,11 +245,11 @@ void radar_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
-void finish_radar_execution(/*task_metadata_block_t*/void *radar_metadata_block_ptr, void *args) {
+void finish_radar_execution(/*task_metadata_entry*/void *radar_metadata_block_ptr, void *args) {
   va_list var_list;
   va_copy(var_list, *(va_list*)args);
   //va_start(var_list, radar_metadata_block_ptr);
-  task_metadata_block_t *radar_metadata_block = (task_metadata_block_t*) radar_metadata_block_ptr;
+  task_metadata_entry *radar_metadata_block = (task_metadata_entry*) radar_metadata_block_ptr;
   // float* obj_dist)
   float *obj_dist = va_arg(var_list, float *);
 

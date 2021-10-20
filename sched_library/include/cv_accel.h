@@ -24,8 +24,8 @@
 
 #include "scheduler.h"
 
-void do_cv_accel_type_initialization(scheduler_datastate_block_t* sptr);
-void do_cv_accel_type_closeout(scheduler_datastate_block_t* sptr);
-void output_cv_accel_type_run_stats(scheduler_datastate_block_t* sptr, unsigned my_accel_id, unsigned total_task_types);
+void do_cv_accel_type_initialization(scheduler_datastate* sptr);
+void do_cv_accel_type_closeout(scheduler_datastate* sptr);
+void output_cv_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

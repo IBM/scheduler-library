@@ -335,7 +335,7 @@ radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs) {
 }
 
 
-/*void start_execution_of_radar_kernel(task_metadata_block_t* mb_ptr, uint32_t log_nsamples, float * inputs)
+/*void start_execution_of_radar_kernel(task_metadata_entry* mb_ptr, uint32_t log_nsamples, float * inputs)
 {
   DEBUG(printf("MB%u In start_execution_of_radar_kernel\n", mb_ptr->block_id));
   //DEBUG(printf("  MB%u Calling start_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
@@ -343,7 +343,7 @@ radar_dict_entry_t* iterate_radar_kernel(vehicle_state_t vs) {
   }*/
 
 /*
-distance_t finish_execution_of_radar_kernel(task_metadata_block_t* mb_ptr)
+distance_t finish_execution_of_radar_kernel(task_metadata_entry* mb_ptr)
 {
  DEBUG(printf("MB%u In finish_execution_of_radar_kernel\n", mb_ptr->block_id));
  DEBUG(printf("  MB%u Calling finalize_calculate_peak_dist_from_fmcw\n", mb_ptr->block_id));
@@ -640,13 +640,13 @@ test_dict_entry_t* iterate_test_kernel(vehicle_state_t vs) {
   return tde;
 }
 
-/*void start_execution_of_test_kernel(task_metadata_block_t*  mb_ptr, test_dict_entry_t* trace_msg)*/
+/*void start_execution_of_test_kernel(task_metadata_entry*  mb_ptr, test_dict_entry_t* trace_msg)*/
 /*{*/
 /*DEBUG(printf("MB%u In start_execution_of_test_kernel\n", mb_ptr->block_id));*/
 /*request_execution(mb_ptr);*/
 /*}*/
 
-/*test_res_t finish_execution_of_test_kernel(task_metadata_block_t* mb_ptr)*/
+/*test_res_t finish_execution_of_test_kernel(task_metadata_entry* mb_ptr)*/
 /*{*/
 /*test_res_t tres = TEST_TASK_DONE;*/
 /*// We've finished the execution and lifetime for this task; free its metadata*/
@@ -890,7 +890,7 @@ void closeout_test_kernel() {
 
 
 
-/*void start_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
+/*void start_execution_of_plan_ctrl_kernel(task_metadata_entry* mb_ptr)*/
 /*{*/
 /*int tidx = mb_ptr->accelerator_type;*/
 /*plan_ctrl_timing_data_t * plan_ctrl_timings_p = (plan_ctrl_timing_data_t*)&(mb_ptr->task_timings[mb_ptr->task_type]);*/
@@ -903,7 +903,7 @@ void closeout_test_kernel() {
 /*// This now ends this block -- we've kicked off execution*/
 /*}*/
 
-/*vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_block_t* mb_ptr)*/
+/*vehicle_state_t finish_execution_of_plan_ctrl_kernel(task_metadata_entry* mb_ptr)*/
 /*{*/
 /*DEBUG(printf("In finish_execution_of_plan_ctrl_kernel\n"));*/
 /*plan_ctrl_data_struct_t * plan_ctrl_data_p    = (plan_ctrl_data_struct_t*)(mb_ptr->data_space);*/

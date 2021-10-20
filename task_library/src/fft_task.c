@@ -47,8 +47,8 @@
 
 // uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k
 
-void print_fft_metadata_block_contents(/*task_metadata_block_t*/ void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
+void print_fft_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
   fft_data_struct_t *fft_data_p = (fft_data_struct_t *)(mb->data_space);
   printf("  FFT using logn_samples %u for %u samples\n", fft_data_p->log_nsamples, (1 << fft_data_p->log_nsamples));
@@ -104,8 +104,8 @@ void fft_bit_reverse(float *w, unsigned int n, unsigned int bits) {
 
 #endif
 
-void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+void output_fft_task_type_run_stats( /*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types) {
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
   printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
          my_task_type, sptr->task_name_str[my_task_type],
          sptr->freed_metadata_blocks[my_task_type], total_accel_types);
@@ -286,9 +286,9 @@ void output_fft_task_type_run_stats( /*scheduler_datastate_block_t*/ void *sptr_
 }
 
 void execute_hwr_fft_accelerator(
-  /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
-  scheduler_datastate_block_t *sptr = task_metadata_block->scheduler_datastate_pointer;
+  /*task_metadata_entry*/ void *task_metadata_block_ptr) {
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
+  scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
   int aidx = task_metadata_block->accelerator_type;
   int fn = task_metadata_block->accelerator_id;
   fft_timing_data_t *fft_timings_p = (fft_timing_data_t *) & ( task_metadata_block->task_timings[task_metadata_block->task_type]);
@@ -365,10 +365,10 @@ void execute_hwr_fft_accelerator(
 }
 
 void execute_cpu_fft_accelerator(
-  /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
-  task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
+  /*task_metadata_entry*/ void *task_metadata_block_ptr) {
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In execute_cpu_fft_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
-  scheduler_datastate_block_t *sptr = task_metadata_block->scheduler_datastate_pointer;
+  scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
   int aidx = task_metadata_block->accelerator_type;
   fft_timing_data_t *fft_timings_p = (fft_timing_data_t *) & (task_metadata_block->task_timings[task_metadata_block->task_type]);
   fft_data_struct_t *fft_data_p = (fft_data_struct_t *)(task_metadata_block->data_space);
@@ -420,13 +420,13 @@ void set_up_fft_task_on_accel_profile_data() {
   printf("\n"));
 }
 
-/*task_metadata_block_t*/ void *
-set_up_fft_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
-    task_type_t fft_task_type, task_criticality_t crit_level,
-    bool use_auto_finish, int32_t dag_id, void *args) {
+/*task_metadata_entry*/ void *
+set_up_fft_task(/*scheduler_datastate*/ void *sptr_ptr,
+                                        task_type_t fft_task_type, task_criticality_t crit_level,
+                                        bool use_auto_finish, int32_t dag_id, void *args) {
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
-  scheduler_datastate_block_t *sptr = (scheduler_datastate_block_t *)sptr_ptr;
+  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_fft, NULL);
 #endif
@@ -435,7 +435,7 @@ set_up_fft_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
   float *inputs = va_arg(var_list, float *);
 
   // Request a MetadataBlock (for an FFT task at Critical Level)
-  task_metadata_block_t *fft_mb_ptr = NULL;
+  task_metadata_entry *fft_mb_ptr = NULL;
   DEBUG(printf("Calling get_task_metadata_block for Critical FFT-Task %u\n", fft_task_type));
   do {
     fft_mb_ptr = get_task_metadata_block(sptr, dag_id, fft_task_type, crit_level, fft_profile[log_nsamples]);
@@ -455,7 +455,7 @@ set_up_fft_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
     exit(-4);
   }
   if (use_auto_finish) {
-    fft_mb_ptr->atFinish = (void (*)(struct task_metadata_entry_struct *))(
+    fft_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
                              sptr->auto_finish_task_function[fft_task_type]); // get_auto_finish_routine(sptr, fft_task_type);
   } else {
     fft_mb_ptr->atFinish = NULL;
@@ -485,9 +485,9 @@ set_up_fft_task(/*scheduler_datastate_block_t*/ void *sptr_ptr,
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
-void fft_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
-  task_metadata_block_t *mb = (task_metadata_block_t *)mb_ptr;
-  TDEBUG(scheduler_datastate_block_t *sptr = mb->scheduler_datastate_pointer;
+void fft_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
+  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
+  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
          printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
                 mb->block_id, sptr->task_name_str[mb->task_type],
                 sptr->task_criticality_str[mb->crit_level],
@@ -501,15 +501,15 @@ void fft_auto_finish_routine(/*task_metadata_block_t*/ void *mb_ptr) {
 // NOTE: This routine simply copies out the results to a provided memory space ("results")
 
 void finish_fft_execution(
-  /*task_metadata_block_t*/ void *fft_metadata_block_ptr,
+  /*task_metadata_entry*/ void *fft_metadata_block_ptr,
   void *args) // float* results)
 //... )
 {
   va_list var_list;
   va_copy(var_list, *(va_list *)args);
   //va_start(var_list, fft_metadata_block_ptr);
-  task_metadata_block_t *fft_metadata_block =
-    (task_metadata_block_t *)fft_metadata_block_ptr;
+  task_metadata_entry *fft_metadata_block =
+    (task_metadata_entry *)fft_metadata_block_ptr;
   // float* results)
   float *results = va_arg(var_list, float *);
 
