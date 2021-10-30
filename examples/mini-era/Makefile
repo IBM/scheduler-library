@@ -225,7 +225,7 @@ all: $(TARGET)
 
 hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
-hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
+#hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
@@ -262,7 +262,7 @@ ESP_NVDLA_DIR = esp_hardware/nvdla
 INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
 
 NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
-NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/res/miniera
+NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/gen_miniera
 
 NVDLA_RUNTIME_DIR = $(ROOT)
 NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
@@ -296,7 +296,7 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	cd $(NVDLA_MAKE_DIR) && ln -sf $(CUR_DIR)/user_scripts/gen_me_hpvm_mod.py . && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+	cd $(NVDLA_MAKE_DIR) && ln -sf $(CUR_DIR)/user_scripts/miniera.py . && python miniera.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------
