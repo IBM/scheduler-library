@@ -105,7 +105,8 @@ bool operator<(const ready_mb_task_queue_entry_t& lhs, const ready_mb_task_queue
 // Forward declarations
 void release_accelerator_for_task(task_metadata_entry *task_metadata_block);
 
-void *schedule_executions_from_queue(void *void_parm_ptr);
+void *schedule_dags(void *void_param_ptr);
+void *schedule_executions_from_queue(void *void_param_ptr);
 status_t initialize_scheduler(scheduler_datastate *sptr);
 void register_accel_can_exec_task(scheduler_datastate *sptr,
                                   scheduler_accelerator_type sl_acid,
@@ -665,11 +666,11 @@ void execute_task_on_accelerator(task_metadata_entry * task_metadata_block) {
     printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
 }
 
-void *metadata_thread_wait_for_task(void *void_parm_ptr) {
+void *metadata_thread_wait_for_task(void *void_param_ptr) {
   // Set up the pthread_cancel conditions for this thread
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-  task_metadata_entry *task_metadata_block = (task_metadata_entry *)void_parm_ptr;
+  task_metadata_entry *task_metadata_block = (task_metadata_entry *)void_param_ptr;
 
   int bi = task_metadata_block->block_id;
   DEBUG(printf( "In metadata_thread_wait_for_task for thread for metadata block %d\n", bi));
@@ -1445,10 +1446,16 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     sptr->do_accel_closeout_function[j] = NULL;
     sptr->output_accel_run_stats_function[j] = NULL;
   }
-
+  //Start the "schedule_dags() pthread -- using the
+  // DETACHED pt_attr"
+  int pt_ret = pthread_create(&(sptr->metasched_thread), &pt_attr, schedule_dags, (void *)(sptr));
+  if (pt_ret != 0) {
+    printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
+    exit( -1);
+  }
   // Now start the "schedule_executions_from_queue() pthread -- using the
   // DETACHED pt_attr
-  int pt_ret = pthread_create(&(sptr->scheduling_thread), &pt_attr, schedule_executions_from_queue, (void *)(sptr));
+  pt_ret = pthread_create(&(sptr->tasksched_thread), &pt_attr, schedule_executions_from_queue, (void *)(sptr));
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     exit( -1);
@@ -1562,15 +1569,76 @@ void release_accelerator_for_task(task_metadata_entry * task_metadata_block) {
   pthread_mutex_unlock(&(sptr->accel_alloc_mutex));
 }
 
+//This routine tracks dependencies among active dags and generates ready tasks into the ready queue
+void *schedule_dags(void *void_param_ptr) {
+  printf("Started schedule dags thread\n");
+  // Set up the pthread_cancel behaviors
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+  scheduler_datastate *sptr = (scheduler_datastate *)void_param_ptr;
+
+  while (1) {
+    if (sptr->active_dags.size()) {
+      printf("APP: in schedule DAG number of active dags: %u\n",
+             sptr->active_dags.size());
+      pthread_mutex_lock(&(sptr->dag_queue_mutex));
+      task_metadata_entry *task_metadata_block =
+        (task_metadata_entry *)sptr->active_dags.front();
+      sptr->active_dags.pop_front();
+      pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+      DEBUG(
+        printf("APP: in schedule DAG for MB%u\n",
+               task_metadata_block->block_id);
+      );
+      // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
+      // task id for this task (which is the global request_execution order, for
+      // now)
+
+      task_metadata_block->status = TASK_QUEUED; // queued
+      gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
+      task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
+      task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
+
+      // Put this into the ready-task-queue
+      //   Get a ready_task_queue_entry
+      pthread_mutex_lock(&(sptr->task_queue_mutex));
+      DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
+                   sptr->free_ready_mb_task_queue_entries.size()));
+      SDEBUG(print_free_ready_tasks_list(sptr));
+      ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
+      sptr->free_ready_mb_task_queue_entries.pop_front();
+      sptr->num_free_task_queue_entries--;
+      DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
+      SDEBUG(print_free_ready_tasks_list(sptr));
+      //   Now fill it in
+      my_queue_entry->block_id = task_metadata_block->block_id;
+      DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
+      assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
+      sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
+      sptr->num_tasks_in_ready_queue++;
+      DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
+                   sptr->num_tasks_in_ready_queue);
+            print_ready_tasks_queue(sptr));
+      assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
+      pthread_mutex_unlock(&(sptr->task_queue_mutex));
+    } else {
+      usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
+    }
+  } //while(1)
+
+  return NULL;
+}
+
 // This routine schedules (the first) ready task from the ready task queue
 // The input parm is a pointer to a scheduler_datastate structure
-void *schedule_executions_from_queue(void *void_parm_ptr) {
+void *schedule_executions_from_queue(void *void_param_ptr) {
   DEBUG(printf("SCHED: starting execution of schedule_executions_from_queue thread...\n"));
   // Set up the pthread_cancel behaviors
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-  scheduler_datastate *sptr = (scheduler_datastate *)void_parm_ptr;
+  scheduler_datastate *sptr = (scheduler_datastate *)void_param_ptr;
   // This will now be an eternally-running scheduler process, I think.
   // pthread_mutex_lock(&schedule_from_queue_mutex);
   while (1) {
@@ -1649,7 +1717,7 @@ void *schedule_executions_from_queue(void *void_parm_ptr) {
         ready_queue.erase(std::remove(ready_queue.begin(), ready_queue.end(), selected_task_entry), ready_queue.end());
         sptr->num_tasks_in_ready_queue--;
         DEBUG(printf("SCHED:   Set num_tasks_in_ready_queue to %u %u %d\n",
-               sptr->num_tasks_in_ready_queue, ready_queue.size(), ready_queue.empty()));
+                     sptr->num_tasks_in_ready_queue, ready_queue.size(), ready_queue.empty()));
         //TODO: Figure why assertion triggers when the reqdy_queue is empty
         if (sptr->num_tasks_in_ready_queue != ready_queue.size()) {
           printf("RTQ size mismatch These are not equal\n");
@@ -1715,40 +1783,26 @@ void request_execution(
   /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block =
     (task_metadata_entry *)task_metadata_block_ptr;
-  DEBUG(printf("APP: in request_execution for MB%u\n",
-               task_metadata_block->block_id));
+  DEBUG(
+    printf("APP: in request_execution for MB%u\n",
+           task_metadata_block->block_id);
+  );
   // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
   // task id for this task (which is the global request_execution order, for
   // now)
   scheduler_datastate *sptr =
     task_metadata_block->scheduler_datastate_pointer;
-  task_metadata_block->status = TASK_QUEUED; // queued
-  gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
-  task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
-  task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
 
-  // Put this into the ready-task-queue
+  // Put this into the active dag queue
   //   Get a ready_task_queue_entry
-  pthread_mutex_lock(&(sptr->task_queue_mutex));
-  DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
-               sptr->free_ready_mb_task_queue_entries.size()));
-  SDEBUG(print_free_ready_tasks_list(sptr));
-  ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
-  sptr->free_ready_mb_task_queue_entries.pop_front();
-  sptr->num_free_task_queue_entries--;
-  DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
-  SDEBUG(print_free_ready_tasks_list(sptr));
-  //   Now fill it in
-  my_queue_entry->block_id = task_metadata_block->block_id;
-  DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
-  assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
-  sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
-  sptr->num_tasks_in_ready_queue++;
-  DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
-               sptr->num_tasks_in_ready_queue);
-        print_ready_tasks_queue(sptr));
-  assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
-  pthread_mutex_unlock(&(sptr->task_queue_mutex));
+  pthread_mutex_lock(&(sptr->dag_queue_mutex));
+
+  sptr->active_dags.push_back(task_metadata_block);
+  DEBUG(printf("APP: and now there are %u DAGs in the active dag queue\n",
+               sptr->active_dags.size());
+       );
+
+  pthread_mutex_unlock(&(sptr->dag_queue_mutex));
 
   return;
 }
@@ -1949,8 +2003,9 @@ void cleanup_state(scheduler_datastate *sptr) {
     //printf("  cancelling MB%u pthread\n", i); fflush(stdout);
     pthread_cancel(sptr->metadata_threads[i]);
   }
-  //printf("Cancelling the Schedule-From-Ready-Queue pthread\n"); fflush(stdout);
-  pthread_cancel(sptr->scheduling_thread);
+  //printf("Cancelling the Schedule-From-Ready-Queue pthread and schedule from dag pthread\n"); fflush(stdout);
+  pthread_cancel(sptr->metasched_thread);
+  pthread_cancel(sptr->tasksched_thread);
   sleep(1);
 
   // Clean out the pthread mutex and conditional variables

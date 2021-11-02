@@ -30,6 +30,9 @@
 #include <vector>
 #include <iostream>
 
+#include "boost/graph/adjacency_list.hpp"
+#include "boost/graph/topological_sort.hpp"
+
 //#include "base_types.h"
 typedef enum { success, error } status_t;
 
@@ -146,6 +149,25 @@ typedef struct { // This allows each task to track up to 16 total internal task
 //  etc.
 
 class scheduler_datastate;
+
+class dag_metadata_entry {
+ public:
+  // This points to the scheduler datastate structure (defiuned below) to which
+  // this metadata block belongs.
+  scheduler_datastate *scheduler_datastate_pointer;
+  int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
+  boost::adjacency_list<> * graph_ptr;
+  uint64_t dag_arrival_time; //Time at which the DAG arrived
+  uint64_t dag_deadline_time; //Time before which DAG should be completed
+  uint64_t dag_slack; //Time until deadline
+  task_criticality_t crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
+  // dag_type_t dag_type; //Type of DAG
+
+  //Stats calculation
+  uint64_t dag_response_time;
+
+};
+
 class task_metadata_entry {
  public:
   // This points to the scheduler datastate structure (defiuned below) to which
@@ -305,8 +327,17 @@ class  scheduler_datastate {
   unsigned num_free_task_queue_entries;
   unsigned num_tasks_in_ready_queue;
 
+  pthread_mutex_t dag_queue_mutex; // Used to guard access to altering the
+  // ative-dag-queue contents
+
+  //DAG based queues
+  std::list<task_metadata_entry *> active_dags;
+  std::list<task_metadata_entry *> completed_dags;
+
+  //Task based queues
   std::list<ready_mb_task_queue_entry_t*> ready_mb_task_queue_pool;
   std::list<ready_mb_task_queue_entry_t*> free_ready_mb_task_queue_entries;
+
 
   pthread_mutex_t accel_alloc_mutex; // Used to guard access to altering the
   // accelerator allocations
@@ -320,7 +351,8 @@ class  scheduler_datastate {
 
   // pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to
   // scheduling functionality
-  pthread_t scheduling_thread;
+  pthread_t metasched_thread;
+  pthread_t tasksched_thread;
 
   blockid_linked_list_t *critical_live_task_head;
   blockid_linked_list_t *critical_live_tasks_list;
