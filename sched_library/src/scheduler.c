@@ -424,6 +424,32 @@ void free_task_metadata_block(task_metadata_entry * mb) {
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
 }
 
+void update_dag(task_metadata_entry * task_metadata_block) {
+  DEBUG(
+    printf("SCHED: in update DAG, completed for MB%u\n",
+           task_metadata_block->block_id);
+  );
+  scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
+  pthread_mutex_lock(&(sptr->dag_queue_mutex));
+  auto it = sptr->active_dags.begin();
+  while (it != sptr->active_dags.end()) {
+    dag_metadata_entry * dag = *it;
+    if (dag->task_mb_ptr == task_metadata_block) {
+
+      //TODO: for multi task DAG have to only update
+      //dag structure, if last DAG then push into completed DAGs queue
+      sptr->completed_dags.push_back(dag);
+      sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
+      pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+      return;
+    }
+    ++it;
+  }
+  // pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+  printf("ERROR : Completed task not present in active DAG queue\n");
+  exit( -40);
+}
+
 void mark_task_done(task_metadata_entry * task_metadata_block) {
   scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
   DEBUG(printf("MB%u entered mark_task_done...\n", task_metadata_block->block_id));
@@ -617,7 +643,7 @@ void mark_task_done(task_metadata_entry * task_metadata_block) {
 
   // Then, mark the task as "DONE" with execution
   task_metadata_block->status = TASK_DONE;
-
+  update_dag(task_metadata_block);
   // And finally, call the call-back if there is one... (which might clear out
   // the metadata_block entirely)
   if (task_metadata_block->atFinish != NULL) {
@@ -1588,7 +1614,7 @@ void *schedule_dags(void *void_param_ptr) {
           pthread_mutex_lock(&(sptr->dag_queue_mutex));
           task_metadata_entry *task_metadata_block =
             (task_metadata_entry *)dag->task_mb_ptr;
-	  dag->dag_status = ACTIVE_QUEUED_DAG;
+          dag->dag_status = ACTIVE_QUEUED_DAG;
           // sptr->active_dags.pop_front();
           pthread_mutex_unlock(&(sptr->dag_queue_mutex));
           DEBUG(

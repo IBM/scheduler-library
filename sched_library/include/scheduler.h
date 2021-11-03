@@ -444,6 +444,7 @@ extern void wait_on_tasklist(/*scheduler_datastate **/ void* sptr, int num_tasks
 extern void wait_on_tasklist_list(/*scheduler_datastate **/ void* sptr, int num_tasks, task_metadata_entry** tlist);
 
 extern void mark_task_done(task_metadata_entry *task_metadata_block);
+extern void update_dag(task_metadata_entry *task_metadata_block);
 
 extern void print_base_metadata_block_contents(task_metadata_entry *mb);
 extern void dump_all_metadata_blocks_states(scheduler_datastate *sptr);
