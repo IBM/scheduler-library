@@ -70,6 +70,13 @@ typedef enum {
   NUM_TASK_STATUS
 } task_status_t;
 
+typedef enum {
+  ACTIVE_DAG = 0,
+  ACTIVE_QUEUED_DAG,
+  COMPLETED_DAG,
+  NUM_DAG_STATUS
+} dag_status_t;
+
 #define MAX_TASK_NAME_LEN 32
 #define MAX_TASK_DESC_LEN 256
 
@@ -150,24 +157,6 @@ typedef struct { // This allows each task to track up to 16 total internal task
 
 class scheduler_datastate;
 
-class dag_metadata_entry {
- public:
-  // This points to the scheduler datastate structure (defiuned below) to which
-  // this metadata block belongs.
-  scheduler_datastate *scheduler_datastate_pointer;
-  int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
-  boost::adjacency_list<> * graph_ptr;
-  uint64_t dag_arrival_time; //Time at which the DAG arrived
-  uint64_t dag_deadline_time; //Time before which DAG should be completed
-  uint64_t dag_slack; //Time until deadline
-  task_criticality_t crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
-  // dag_type_t dag_type; //Type of DAG
-
-  //Stats calculation
-  uint64_t dag_response_time;
-
-};
-
 class task_metadata_entry {
  public:
   // This points to the scheduler datastate structure (defiuned below) to which
@@ -227,6 +216,26 @@ class task_metadata_entry {
   // evaluation wants to know)
   uint8_t *data_space; // The total data space for the metadata block (holds ALL
   // data for the task)
+};
+
+class dag_metadata_entry {
+ public:
+  // This points to the scheduler datastate structure (defiuned below) to which
+  // this metadata block belongs.
+  scheduler_datastate *scheduler_datastate_pointer;
+  int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
+  // boost::adjacency_list<> * graph_ptr;
+  task_metadata_entry * task_mb_ptr;
+  uint64_t dag_arrival_time; //Time at which the DAG arrived
+  uint64_t dag_deadline_time; //Time before which DAG should be completed
+  uint64_t dag_slack; //Time until deadline
+  task_criticality_t crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
+  // dag_type_t dag_type; //Type of DAG
+  dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
+
+  //Stats calculation
+  uint64_t dag_response_time;
+
 };
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
@@ -331,8 +340,8 @@ class  scheduler_datastate {
   // ative-dag-queue contents
 
   //DAG based queues
-  std::list<task_metadata_entry *> active_dags;
-  std::list<task_metadata_entry *> completed_dags;
+  std::list<dag_metadata_entry *> active_dags;
+  std::list<dag_metadata_entry *> completed_dags;
 
   //Task based queues
   std::list<ready_mb_task_queue_entry_t*> ready_mb_task_queue_pool;

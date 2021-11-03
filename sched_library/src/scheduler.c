@@ -1579,49 +1579,59 @@ void *schedule_dags(void *void_param_ptr) {
   scheduler_datastate *sptr = (scheduler_datastate *)void_param_ptr;
 
   while (1) {
-    if (sptr->active_dags.size()) {
-      printf("APP: in schedule DAG number of active dags: %u\n",
-             sptr->active_dags.size());
-      pthread_mutex_lock(&(sptr->dag_queue_mutex));
-      task_metadata_entry *task_metadata_block =
-        (task_metadata_entry *)sptr->active_dags.front();
-      sptr->active_dags.pop_front();
-      pthread_mutex_unlock(&(sptr->dag_queue_mutex));
-      DEBUG(
-        printf("APP: in schedule DAG for MB%u\n",
-               task_metadata_block->block_id);
-      );
-      // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
-      // task id for this task (which is the global request_execution order, for
-      // now)
+    if (sptr->active_dags.size() && sptr->active_dags.back()->dag_status == ACTIVE_DAG) { //New DAGs added
+      for (auto it = sptr->active_dags.begin(); it != sptr->active_dags.end(); ++it) {
+        dag_metadata_entry * dag = *it;
+        if (dag->dag_status == ACTIVE_DAG) {
+          DEBUG(printf("APP: in schedule DAG number of active dags: %u\n",
+                       sptr->active_dags.size()););
+          pthread_mutex_lock(&(sptr->dag_queue_mutex));
+          task_metadata_entry *task_metadata_block =
+            (task_metadata_entry *)dag->task_mb_ptr;
+	  dag->dag_status = ACTIVE_QUEUED_DAG;
+          // sptr->active_dags.pop_front();
+          pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+          DEBUG(
+            printf("APP: in schedule DAG for MB%u\n",
+                   task_metadata_block->block_id);
+          );
+          // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
+          // task id for this task (which is the global request_execution order, for
+          // now)
 
-      task_metadata_block->status = TASK_QUEUED; // queued
-      gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
-      task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
-      task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
+          task_metadata_block->status = TASK_QUEUED; // queued
+          gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
+          task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
+          task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
 
-      // Put this into the ready-task-queue
-      //   Get a ready_task_queue_entry
-      pthread_mutex_lock(&(sptr->task_queue_mutex));
-      DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
-                   sptr->free_ready_mb_task_queue_entries.size()));
-      SDEBUG(print_free_ready_tasks_list(sptr));
-      ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
-      sptr->free_ready_mb_task_queue_entries.pop_front();
-      sptr->num_free_task_queue_entries--;
-      DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
-      SDEBUG(print_free_ready_tasks_list(sptr));
-      //   Now fill it in
-      my_queue_entry->block_id = task_metadata_block->block_id;
-      DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
-      assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
-      sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
-      sptr->num_tasks_in_ready_queue++;
-      DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
-                   sptr->num_tasks_in_ready_queue);
-            print_ready_tasks_queue(sptr));
-      assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
-      pthread_mutex_unlock(&(sptr->task_queue_mutex));
+          // Put this into the ready-task-queue
+          //   Get a ready_task_queue_entry
+          pthread_mutex_lock(&(sptr->task_queue_mutex));
+          DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
+                       sptr->free_ready_mb_task_queue_entries.size()));
+          SDEBUG(print_free_ready_tasks_list(sptr));
+          ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
+          sptr->free_ready_mb_task_queue_entries.pop_front();
+          sptr->num_free_task_queue_entries--;
+          DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
+          SDEBUG(print_free_ready_tasks_list(sptr));
+          //   Now fill it in
+          my_queue_entry->block_id = task_metadata_block->block_id;
+          DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
+          assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
+          sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
+          sptr->num_tasks_in_ready_queue++;
+          DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
+                       sptr->num_tasks_in_ready_queue);
+                print_ready_tasks_queue(sptr));
+          assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
+          pthread_mutex_unlock(&(sptr->task_queue_mutex));
+        } else {
+          continue;
+        }
+
+      }
+
     } else {
       usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     }
@@ -1783,10 +1793,11 @@ void request_execution(
   /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block =
     (task_metadata_entry *)task_metadata_block_ptr;
-  DEBUG(
-    printf("APP: in request_execution for MB%u\n",
-           task_metadata_block->block_id);
-  );
+  dag_metadata_entry * dag = new(dag_metadata_entry);
+  dag->task_mb_ptr = task_metadata_block;
+  dag->dag_status = ACTIVE_DAG; //Active DAG
+  DEBUG(printf("APP: in request_execution for MB%u\n",
+               task_metadata_block->block_id););
   // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
   // task id for this task (which is the global request_execution order, for
   // now)
@@ -1797,10 +1808,9 @@ void request_execution(
   //   Get a ready_task_queue_entry
   pthread_mutex_lock(&(sptr->dag_queue_mutex));
 
-  sptr->active_dags.push_back(task_metadata_block);
+  sptr->active_dags.push_back(dag);
   DEBUG(printf("APP: and now there are %u DAGs in the active dag queue\n",
-               sptr->active_dags.size());
-       );
+               sptr->active_dags.size()););
 
   pthread_mutex_unlock(&(sptr->dag_queue_mutex));
 
