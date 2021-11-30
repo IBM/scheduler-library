@@ -28,7 +28,6 @@
 #include "cpu_accel.h"
 #include "fft_accel.h"
 #include "vit_accel.h"
-#include "scheduler.h"
 
 #include "task_lib.h"
 #include "cv_task.h"
@@ -36,6 +35,7 @@
 #include "vit_task.h"
 #include "plan_ctrl_task.h"
 #include "test_task.h"
+#include "scheduler.h"
 #endif
 
 #include "getopt.h"
@@ -476,7 +476,7 @@ int main(int argc, char *argv[]) {
 #endif
       break;
     case 'F': {
-#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#ifndef HPVM
       int addl_fft_tasks_and_crit = atoi(optarg);
       if (addl_fft_tasks_and_crit < 0) {
         additional_fft_tasks_per_time_step = -addl_fft_tasks_and_crit;
@@ -491,7 +491,7 @@ int main(int argc, char *argv[]) {
     }
     break;
     case 'M': {
-#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#ifndef HPVM
       int addl_vit_tasks_and_crit = atoi(optarg);
       if (addl_vit_tasks_and_crit < 0) {
         additional_vit_tasks_per_time_step = -addl_vit_tasks_and_crit;
@@ -506,7 +506,7 @@ int main(int argc, char *argv[]) {
     }
     break;
     case 'N': {
-#if (!defined(HPVM) || defined(HPVM_BASE_CRIT))
+#ifndef HPVM
       int addl_cv_tasks_and_crit = atoi(optarg);
       if (addl_cv_tasks_and_crit < 0) {
         additional_cv_tasks_per_time_step = -addl_cv_tasks_and_crit;
@@ -854,10 +854,12 @@ int main(int argc, char *argv[]) {
   printf("   Radar  : %s\n", rad_dict);
   printf("   Viterbi: %s\n", vit_dict);
 
+#ifndef HPVM
   printf("\n There are %d additional %s FFT, %d addtional %s Viterbi and %d Additional %s CV/CNN tasks per time step\n",
          additional_fft_tasks_per_time_step, sptr->task_criticality_str[additional_fft_tasks_criticality],
          additional_vit_tasks_per_time_step, sptr->task_criticality_str[additional_vit_tasks_criticality],
          additional_cv_tasks_per_time_step, sptr->task_criticality_str[additional_cv_tasks_criticality]);
+#endif
   max_additional_tasks_per_time_step = additional_fft_tasks_per_time_step;
   if (additional_vit_tasks_per_time_step > max_additional_tasks_per_time_step) {
     max_additional_tasks_per_time_step = additional_vit_tasks_per_time_step;
@@ -867,8 +869,10 @@ int main(int argc, char *argv[]) {
   }
 
   // Set up a place to record a list of added (critical) task metablock id's to wait on...
+#ifndef HPVM
   task_metadata_entry** the_crit_tasks_mb_ptrs = (task_metadata_entry**) calloc(sizeof(task_metadata_entry *),
       (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step));
+#endif
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
 
@@ -1283,10 +1287,12 @@ int main(int argc, char *argv[]) {
     wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
 #endif
 
+#ifndef HPVM
     // Clean pu this time step's added critical tasks MB_ptr list
     for (int addidx = 0; addidx < added_crit_task_idx; addidx++) {
       the_crit_tasks_mb_ptrs[addidx] = NULL;
     }
+#endif
     added_crit_task_idx = 0;
 
 #ifndef HPVM
