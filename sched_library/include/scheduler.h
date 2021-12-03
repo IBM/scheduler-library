@@ -165,16 +165,14 @@ class task_metadata_entry {
 
   // This portion is management, control, and scheduler stuff...
   int32_t block_id; // master-pool-index; a unique ID per metadata task
-  task_status_t
-  status; // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
+  task_status_t status; // -1 = free, 0 = allocated, 1 = queued, 2 = running, 3 = done ?
   pthread_t thread_id; // set when we invoke pthread_create (at least for CPU)
   pthread_mutex_t metadata_mutex; // Used to guard access to altering metadata
   // conditional variables
   pthread_cond_t metadata_condv;  // These phthreads conditional variables are
   // used to "signal" a thread to do work
 
-  accelerator_type_t
-  accelerator_type; // indicates which accelerator type is being used (id's
+  accelerator_type_t accelerator_type; // indicates which accelerator type is being used (id's
   // set at accelerator registration)
   int32_t accelerator_id; // indicates which (of the N of that type) accelerator
   // this task is executing on
@@ -363,11 +361,6 @@ class  scheduler_datastate {
   pthread_t metasched_thread;
   pthread_t tasksched_thread;
 
-  blockid_linked_list_t *critical_live_task_head;
-  blockid_linked_list_t *critical_live_tasks_list;
-  int *free_critlist_pool;
-  int free_critlist_entries;
-  int total_critical_tasks;
 
   char **task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
   char **task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
@@ -438,7 +431,6 @@ get_auto_finish_routine(scheduler_datastate *sptr,
 
 extern void request_execution(void *task_metadata_block);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);
-extern void wait_all_critical(scheduler_datastate *sptr);
 extern void wait_all_tasks_finish(scheduler_datastate *sptr);
 extern void wait_on_tasklist(/*scheduler_datastate **/ void* sptr, int num_tasks, ...);
 extern void wait_on_tasklist_list(/*scheduler_datastate **/ void* sptr, int num_tasks, task_metadata_entry** tlist);

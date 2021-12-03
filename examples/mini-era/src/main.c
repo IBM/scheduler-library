@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+// #define VERBOSE
 #include "verbose.h"
 
 #ifndef HPVM
@@ -871,7 +872,7 @@ int main(int argc, char *argv[]) {
   // Set up a place to record a list of added (critical) task metablock id's to wait on...
 #ifndef HPVM
   task_metadata_entry** the_crit_tasks_mb_ptrs = (task_metadata_entry**) calloc(sizeof(task_metadata_entry *),
-      (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step));
+      (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step + num_Crit_test_tasks));
 #endif
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
@@ -1257,8 +1258,8 @@ int main(int argc, char *argv[]) {
       // Non-Critical (base) TEST-Tasks
       if (i < num_Base_test_tasks) {
         task_metadata_entry *test_mb_ptr_2 = NULL;
-        test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
-                      true, time_step); // Critical TEST task
+        test_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, test_task_type, BASE_TASK,
+                        true, time_step); // Critical TEST task
         DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
         request_execution(test_mb_ptr_2);
       } // if (i < Additional TEST tasks)

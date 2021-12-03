@@ -199,20 +199,6 @@ void print_base_metadata_block_contents(task_metadata_entry * mb) {
   printf("MB%u    data_space @ %p\n", mb->block_id, mb->data_space);
 }
 
-void print_critical_task_list_ids(scheduler_datastate *sptr) {
-  blockid_linked_list_t *cli = sptr->critical_live_task_head;
-  if (cli == NULL) {
-    printf("Critical task list is EMPTY\n");
-  } else {
-    printf("Critical task list : ");
-    while (cli != NULL) {
-      printf(" %u",
-             cli->clt_block_id); //, free_critlist_pool[cli->clt_block_id]);
-      cli = cli->next;
-    }
-    printf("\n");
-  }
-}
 
 void do_accelerator_type_closeout(scheduler_datastate *sptr) {
   // Clean up any hardware accelerator stuff
@@ -310,23 +296,6 @@ get_task_metadata_block(scheduler_datastate *sptr, int32_t in_dag_id,
   sptr->master_metadata_pool[bi].sched_timings.idle_usec += sptr->master_metadata_pool[bi].sched_timings.get_start.tv_usec -
       sptr->master_metadata_pool[bi].sched_timings.idle_start.tv_usec;
 
-  if (crit_level > 1) { // is this a "critical task"
-    // Select the next available critical-live-task-list entry ID
-    int li = sptr->free_critlist_pool[sptr->free_critlist_entries - 1];
-    sptr->free_critlist_pool[sptr->free_critlist_entries - 1] =
-      -1; // clear it a(as it is no longer free)
-    sptr->free_critlist_entries -= 1;
-    // Now li indicates the critical_live_tasks_list[] index to use
-    // Now set up the revisions to the critical live tasks list
-    sptr->critical_live_tasks_list[li].clt_block_id =
-      bi; // point this entry to the sptr->master_metadata_pool block id
-    sptr->critical_live_tasks_list[li].next =
-      sptr->critical_live_task_head; // Insert as head of critical tasks list
-    sptr->critical_live_task_head = &(sptr->critical_live_tasks_list[li]);
-    sptr->total_critical_tasks += 1;
-  }
-  DEBUG(printf("  returning block %u\n", bi);
-        print_critical_task_list_ids(sptr));
   TDEBUG(printf(" AFTER_GET : MB%u : free_metadata_pool : ", bi);
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
   printf("%d ", sptr->free_metadata_pool[i]);
@@ -350,48 +319,12 @@ void free_task_metadata_block(task_metadata_entry * mb) {
          printf(" BEFORE_FREE : MB%u : free_metadata_pool : ", bi);
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
   printf("%d ", sptr->free_metadata_pool[i]);
-  } printf("\n"));
+  } printf("\n"););
 
   if (sptr->free_metadata_blocks < sptr->total_metadata_pool_blocks) {
     sptr->master_metadata_pool[bi].frees_by_task_type[mb->task_type]++;
     sptr->free_metadata_pool[sptr->free_metadata_blocks] = bi;
     sptr->free_metadata_blocks += 1;
-    if (sptr->master_metadata_pool[bi].crit_level >
-        1) { // is this a critical tasks?
-      // Remove task form critical list, free critlist entry, etc.
-      blockid_linked_list_t *lcli = NULL;
-      blockid_linked_list_t *cli = sptr->critical_live_task_head;
-      // while ((cli != NULL) &&
-      // (critical_live_tasks_list[cli->clt_block_id].clt_block_id != bi)) {
-      while ((cli != NULL) && (cli->clt_block_id != bi)) {
-        lcli = cli; // The "previous" block; NULL == "head"
-        cli = cli->next;
-      }
-      if (cli == NULL) {
-        printf("ERROR: Critical task NOT on the critical_live_task_list :\n");
-        print_base_metadata_block_contents(mb);
-        exit( -6);
-      }
-      // We've found the critical task in critical_live_tasks_list - cli points
-      // to it
-      int cti = cli->clt_block_id;
-      // printf(" freeing critlist_pool %u to %u\n", free_critlist_entries - 1,
-      // cti);
-      sptr->free_critlist_pool[sptr->free_critlist_entries] =
-        cti; // Enable this crit-list entry for new use
-      sptr->free_critlist_entries +=
-        1; // Update the count of available critlist entries in the pool
-      cli->clt_block_id =
-        -1; // clear the clt_block_id indicator (we're done with it)
-      // And remove the cli entry from the critical_lvet_tasks linked list
-      if (lcli == NULL) {
-        sptr->critical_live_task_head = cli->next;
-      } else {
-        lcli->next = cli->next;
-      }
-      cli->next = NULL;
-      sptr->total_critical_tasks -= 1;
-    }
     sptr->master_metadata_pool[bi].atFinish =
       NULL; // Ensure this is now set to NULL (safety safety)
     // For neatness (not "security") we'll clear the meta-data in the block (not
@@ -420,7 +353,7 @@ void free_task_metadata_block(task_metadata_entry * mb) {
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
   printf("%d ", sptr->free_metadata_pool[i]);
-  } printf("\n"));
+  } printf("\n"););
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
 }
 
@@ -985,20 +918,6 @@ scheduler_datastate *initialize_scheduler_and_return_datastate_pointer(scheduler
     printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->metadata_threads\n");
     exit(-99);
   }
-  sptr->critical_live_tasks_list = (blockid_linked_list_t *) calloc(inp->max_metadata_pool_blocks, sizeof(blockid_linked_list_t));
-  sched_state_size += inp->max_metadata_pool_blocks * sizeof(blockid_linked_list_t);
-  if (sptr->critical_live_tasks_list == NULL) {
-    printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->critical_live_tasks_list\n");
-    exit(-99);
-  }
-  sptr->free_critlist_pool = (int *) calloc(inp->max_metadata_pool_blocks, sizeof(int));
-  sched_state_size += inp->max_metadata_pool_blocks * sizeof(int);
-  if (sptr->free_critlist_pool == NULL) {
-    printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->free_critlist_pool\n");
-    exit(-99);
-  }
-
-  // Now allocate the metadata block entries...
   sptr->master_metadata_pool = new task_metadata_entry [inp->max_metadata_pool_blocks];
   sched_state_size += inp->max_metadata_pool_blocks * sizeof(task_metadata_entry);
   if (sptr->master_metadata_pool == NULL) {
@@ -1275,9 +1194,6 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
   sptr->free_metadata_blocks = sptr->total_metadata_pool_blocks;
   sptr->num_free_task_queue_entries = 0;
   sptr->num_tasks_in_ready_queue = 0;
-  sptr->critical_live_task_head = NULL;
-  sptr->free_critlist_entries = sptr->total_metadata_pool_blocks;
-  sptr->total_critical_tasks = 0;
 
   snprintf(sptr->task_criticality_str[0], 32, "%s", "NO-TASK");
   snprintf(sptr->task_criticality_str[1], 32, "%s", "NBASETASK");
@@ -1396,7 +1312,6 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     pthread_cond_init(&(sptr->master_metadata_pool[i].metadata_condv), NULL);
 
     sptr->free_metadata_pool[i] = i; // Set up all blocks are free
-    sptr->free_critlist_pool[i] = i; // Set up all critlist blocks are free
   }
 
   // Now set up the free task list
@@ -1846,50 +1761,6 @@ void request_execution(
 /********************************************************************************
  * Here are the wait routines -- for critical tasks or all tasks to finish
  ********************************************************************************/
-void wait_all_critical(scheduler_datastate *sptr) {
-  struct timeval stop_wait_all_crit, start_wait_all_crit;
-  uint64_t wait_all_crit_sec = 0LL;
-  uint64_t wait_all_crit_usec = 0LL;
-
-  gettimeofday(&start_wait_all_crit, NULL);
-  // Loop through the critical tasks list and check whether they are all in
-  // status "done"
-  blockid_linked_list_t *cli = sptr->critical_live_task_head;
-  while (cli != NULL) {
-    if (sptr->master_metadata_pool[cli->clt_block_id].status != TASK_DONE) {
-      // This task is not finished yet.. wait for it
-      //  So start polling from the start of the list again.
-      cli = sptr->critical_live_task_head;
-    } else {
-      cli = cli->next;
-    }
-  }
-  gettimeofday(&stop_wait_all_crit, NULL);
-  wait_all_crit_sec  += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;
-  wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
-  if (sptr->visualizer_output_started &&
-      ((sptr->inparms->visualizer_task_stop_count < 0) || (global_finished_task_id_counter < sptr->inparms->visualizer_task_stop_count))) {
-    int64_t wait_start = 1000000 * start_wait_all_crit.tv_sec + start_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
-    int64_t wait_stop = 1000000 * stop_wait_all_crit.tv_sec + stop_wait_all_crit.tv_usec - sptr->visualizer_start_time_usec;
-    if (wait_start < 0) {
-      wait_start = 0;
-    }
-    pthread_mutex_lock(&(sptr->sl_viz_out_mutex));
-    fprintf(sptr->sl_viz_fp, "%lu,%d,%d,%s,%d,%d,%d,%s,%s,%lu,%lu,%lu\n",
-            wait_start, //  sim_time,   ( pretend this was reported at start_time)
-            (sptr->next_avail_DAG_id - 1), // task_dag_id
-            0, // task_tid (This is a "fake" one, as there is no real single task here)
-            "Waiting", 0,
-            0, // dag_dtime
-            sptr->inparms->max_accel_types + 2,       // accelerator_id  - use a number that cannot be a legal accel_id, isnt Rdy_Que
-            "Wait_Crit", // accelerator_type ?,
-            "nan",       // task_parent_ids
-            wait_start, // task_arrival_time    (Make arrival and start the same, as we really only have start time?
-            wait_start, // curr_job_start_time  (Make arrival and start the same, as we really only have start time?
-            wait_stop); // curr_job_end_time
-    pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
-  }
-}
 
 void wait_on_tasklist(/* scheduler_datastate */ void *_sptr, int num_tasks, ...) {
   scheduler_datastate *sptr = (scheduler_datastate*)_sptr;
@@ -2068,8 +1939,6 @@ void cleanup_state(scheduler_datastate *sptr) {
   }
   assert(entries = sptr->total_metadata_pool_blocks);
   free(sptr->metadata_threads);
-  free(sptr->critical_live_tasks_list);
-  free(sptr->free_critlist_pool);
   delete sptr->master_metadata_pool;
   free(sptr->free_metadata_pool);
   free(sptr->inparms);
