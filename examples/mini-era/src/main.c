@@ -1259,7 +1259,7 @@ int main(int argc, char *argv[]) {
       if (i < num_Base_test_tasks) {
         task_metadata_entry *test_mb_ptr_2 = NULL;
         test_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, test_task_type, BASE_TASK,
-                        true, time_step); // Critical TEST task
+                        true, time_step); //Base TEST task
         DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
         request_execution(test_mb_ptr_2);
       } // if (i < Additional TEST tasks)
