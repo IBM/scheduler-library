@@ -230,6 +230,7 @@ void fuse_grids_auto_finish_routine(task_metadata_entry *mb) {
 //   really.
 void finish_fuse_grids_execution(task_metadata_entry *fuse_grids_metadata_block, va_list var_list) {
   // vehicle_state_t *new_vehicle_state)
+  //TODO: need an output struct
   vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
   unsigned* position = va_arg(var_list, unsigned *);
   unsigned* x_dim = va_arg(var_list, unsigned *);

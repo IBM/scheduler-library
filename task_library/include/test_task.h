@@ -27,6 +27,7 @@
 extern unsigned num_Crit_test_tasks;
 extern unsigned num_Base_test_tasks;
 
+// These are some "fake" times (models the execution of TEST timing)
 extern unsigned test_on_cpu_run_time_in_usec;
 extern unsigned test_on_hwr_fft_run_time_in_usec;
 extern unsigned test_on_hwr_vit_run_time_in_usec;
@@ -43,11 +44,6 @@ typedef struct {
   uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 } test_timing_data_t;
-
-// These are some "fake" times (models the execution of TEST timing)
-extern unsigned test_cpu_run_time_in_usec;
-extern unsigned test_on_hwr_fft_run_time_in_usec;
-extern unsigned test_on_hwr_vit_run_time_in_usec;
 
 void print_test_metadata_block_contents(void *mb);
 

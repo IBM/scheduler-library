@@ -28,6 +28,12 @@
 // Some Profiling Data:
 //#define usecHwrCV   150000
 
+//CV: cv_tr_label
+struct cv_input_t {
+  label_t in_label;
+  cv_input_t(label_t cv_tr_label) : in_label(cv_tr_label) {}
+};
+
 // This is a structure that defines the "CV" task's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "CV" Task view of "data"

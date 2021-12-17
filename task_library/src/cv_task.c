@@ -406,15 +406,12 @@ set_up_cv_task(/*scheduler_datastate*/ void *sptr_ptr,
                                        task_type_t cv_task_type, task_criticality_t crit_level,
                                        bool use_auto_finish, int32_t dag_id,
                                        void *args) { // label_t in_label) {
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
-
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 
 #ifdef TIME
   gettimeofday(&start_exec_cv, NULL);
 #endif
-  label_t in_label = (label_t) va_arg(var_list, int);
+  label_t in_label = ((cv_input_t *) args)->in_label;
 
   // Request a MetadataBlock (for an CV task at Critical Level)
   task_metadata_entry *cv_mb_ptr = NULL;
@@ -452,7 +449,6 @@ set_up_cv_task(/*scheduler_datastate*/ void *sptr_ptr,
 #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
 #endif
-  va_end(var_list);
   return cv_mb_ptr;
   //  schedule_cv(data);
 }
@@ -479,12 +475,9 @@ void cv_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
 //   over-write the original input data with the CV results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list*)args);
-  // va_start(var_list, cv_metadata_block_ptr);
   task_metadata_entry *cv_metadata_block = (task_metadata_entry *)cv_metadata_block_ptr;
   // label_t *obj_label)
-  label_t *obj_label = va_arg(var_list, label_t *);
+  label_t *obj_label = (label_t *) args;
 
   int tidx = cv_metadata_block->accelerator_type;
   cv_timing_data_t *cv_timings_p = (cv_timing_data_t *) & (cv_metadata_block->task_timings[cv_metadata_block->task_type]);
@@ -501,5 +494,4 @@ void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  v
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
   free_task_metadata_block(cv_metadata_block);
-  va_end(var_list);
 }

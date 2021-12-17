@@ -970,17 +970,15 @@ set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
 #ifdef TIME
   gettimeofday(&start_exec_vit, NULL);
 #endif
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr,
   // uint8_t* in_bits)
-  message_size_t msize = (message_size_t) va_arg(var_list, int);
-  ofdm_param *ofdm_ptr = va_arg(var_list, ofdm_param *);
-  size_t ofdm_param_size = va_arg(var_list, size_t);
-  frame_param *frame_ptr = va_arg(var_list, frame_param *);
-  size_t frame_ptr_size = va_arg(var_list, size_t);
-  uint8_t *in_bits = va_arg(var_list, uint8_t *);
-  size_t in_bits_size = va_arg(var_list, size_t);
+  message_size_t msize = ((viterbi_input_t *) args)->msize;
+  ofdm_param *ofdm_ptr = ((viterbi_input_t *) args)->ofdm_ptr;
+  size_t ofdm_param_size = ((viterbi_input_t *) args)->ofdm_param_size;
+  frame_param *frame_ptr = ((viterbi_input_t *) args)->frame_ptr;
+  size_t frame_ptr_size = ((viterbi_input_t *) args)->frame_ptr_size;
+  uint8_t *in_bits = ((viterbi_input_t *) args)->in_bits;
+  size_t in_bits_size = ((viterbi_input_t *) args)->in_bits_size;
 
 
   // Request a MetadataBlock (for an VIT task at Critical Level)
@@ -1015,7 +1013,6 @@ set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
   //DEBUG(printf("  MB%u Calling the viterbi decode routine for message %u\n", mb_ptr->block_id, trace_msg->msg_num));
   // NOTE: vit_task_start_decode ends in the request_execution (for now)
   vit_task_start_decode(vit_mb_ptr, ofdm_ptr, frame_ptr, in_bits);
-  va_end(var_list);
 
   // This now ends this block -- we've kicked off execution
   return vit_mb_ptr;
@@ -1046,17 +1043,13 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_viterbi_execution(
   /*task_metadata_entry*/ void *vit_metadata_block_ptr,
-  void *args) { // message_t* message_id, char* out_msg_text)
-
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
-  // va_start(var_list, vit_metadata_block_ptr);
-
+  void *args) { // message_t* message_id)
 
   task_metadata_entry *vit_metadata_block = (task_metadata_entry *)vit_metadata_block_ptr;
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
-  message_t *message_id = va_arg(var_list, message_t *);
-  char *out_msg_text = va_arg(var_list, char *);
+  message_t *message_id = (message_t *) args;
+  // char *out_msg_text = va_arg(var_list, char *);
+  char out_msg_text[1600];
 
   message_t msg = NUM_MESSAGES;
   uint8_t *result;
@@ -1081,6 +1074,4 @@ void finish_viterbi_execution(
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u fin_vit Calling free_task_metadata_block\n", vit_metadata_block->block_id));
   free_task_metadata_block(vit_metadata_block);
-
-  va_end(var_list);
 }

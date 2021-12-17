@@ -253,8 +253,6 @@ void set_up_plan_ctrl_task_on_accel_profile_data() {
 void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
                             task_criticality_t crit_level, bool use_auto_finish,
                             int32_t dag_id, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
   // unsigned time_step, unsigned repeat_factor,
   //  label_t object_label, distance_t object_dist, message_t safe_lanes_msg,
@@ -262,21 +260,20 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
 #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
 #endif
-  unsigned time_step = va_arg(var_list, unsigned);
-  unsigned repeat_factor = va_arg(var_list, unsigned);
-  label_t* object_label_ptr = va_arg(var_list, label_t*);
+  unsigned time_step = ((pnc_input_t *) args)->time_step;
+  unsigned repeat_factor = ((pnc_input_t *) args)->repeat_factor;
+  label_t* object_label_ptr = ((pnc_input_t *) args)->object_label_ptr;
   label_t object_label = *object_label_ptr;
-  size_t object_label_size = va_arg(var_list, size_t);
-  // double* xfer_object_dist_ptr = va_arg(var_list, double*);
-  distance_t* xfer_object_dist_ptr = va_arg(var_list, distance_t*);
+  size_t object_label_size = ((pnc_input_t *) args)->object_label_size;
+  // double* xfer_object_dist_ptr = ((pnc_input_t *) args)->xfer_object_dist_ptr;
+  distance_t* xfer_object_dist_ptr = ((pnc_input_t *) args)->xfer_object_dist_ptr;
   distance_t xfer_object_dist = *xfer_object_dist_ptr;
-  size_t dist_size = va_arg(var_list, size_t);
+  size_t dist_size = ((pnc_input_t *) args)->dist_size;
   distance_t object_dist = xfer_object_dist;
-  message_t* safe_lanes_msg_ptr = va_arg(var_list, message_t*);
+  message_t* safe_lanes_msg_ptr = ((pnc_input_t *) args)->safe_lanes_msg_ptr;
   message_t safe_lanes_msg = *safe_lanes_msg_ptr;
-  size_t safe_lanes_msg_size = va_arg(var_list, size_t);
-
-  vehicle_state_t* vehicle_state_ptr = va_arg(var_list, vehicle_state_t*);
+  size_t safe_lanes_msg_size = ((pnc_input_t *) args)->safe_lanes_msg_size;
+  vehicle_state_t* vehicle_state_ptr = ((pnc_input_t *) args)->vehicle_state_ptr;
 
   vehicle_state_t vehicle_state = *vehicle_state_ptr;
 
@@ -344,7 +341,6 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
 #ifdef INT_TIME
   gettimeofday(&(plan_ctrl_timings_p->call_start), NULL);
 #endif
-  va_end(var_list);
   return plan_ctrl_mb_ptr;
 }
 
@@ -369,12 +365,9 @@ void plan_ctrl_auto_finish_routine(void *mb_ptr) {
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
 void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
-  // va_start(var_list, plan_ctrl_metadata_block_ptr);
   task_metadata_entry *plan_ctrl_metadata_block = (task_metadata_entry *)plan_ctrl_metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
-  vehicle_state_t *new_vehicle_state = va_arg(var_list, vehicle_state_t *);
+  vehicle_state_t *new_vehicle_state = (vehicle_state_t *) args;
 
   int tidx = plan_ctrl_metadata_block->accelerator_type;
   plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *) & (plan_ctrl_metadata_block->task_timings[plan_ctrl_metadata_block->task_type]);
@@ -391,5 +384,4 @@ void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr, void *args) 
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", plan_ctrl_metadata_block->block_id));
   free_task_metadata_block(plan_ctrl_metadata_block);
-  va_end(var_list);
 }

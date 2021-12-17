@@ -368,13 +368,11 @@ void plan_ctrl2_auto_finish_routine(void *mb_ptr) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
-void finish_plan_ctrl2_execution(void *metadata_block_ptr, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
-  // va_start(var_list, plan_ctrl_metadata_block_ptr);
+void finish_plan_ctrl2_execution(void *metadata_block_ptr, void * args) {
+
   task_metadata_entry *plan_ctrl2_metadata_block = (task_metadata_entry *)metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
-  vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
+  vehicle_state_t* new_vehicle_state = (vehicle_state_t *) args;
 
   int tidx = plan_ctrl2_metadata_block->accelerator_type;
   plan_ctrl2_timing_data_t *plan_ctrl2_timings_p = (plan_ctrl2_timing_data_t *) & (plan_ctrl2_metadata_block->task_timings[plan_ctrl2_metadata_block->task_type]);

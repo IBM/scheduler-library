@@ -25,6 +25,24 @@
 #include "base_task_types.h"
 #include "scheduler.h"
 
+//Plan and contrl: time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state
+struct pnc_input_t {
+  unsigned time_step;
+  unsigned repeat_factor;
+  label_t* object_label_ptr;
+  size_t object_label_size;
+  distance_t* xfer_object_dist_ptr;
+  size_t dist_size;
+  message_t* safe_lanes_msg_ptr;
+  size_t safe_lanes_msg_size;
+  vehicle_state_t* vehicle_state_ptr;
+  pnc_input_t(  unsigned time_step, unsigned repeat_factor, label_t* object_label_ptr, size_t object_label_size, distance_t* xfer_object_dist_ptr,
+                size_t dist_size, message_t* safe_lanes_msg_ptr, size_t safe_lanes_msg_size, vehicle_state_t* vehicle_state_ptr) :
+    time_step(time_step), repeat_factor(repeat_factor), object_label_ptr(object_label_ptr), object_label_size(object_label_size),
+    xfer_object_dist_ptr(xfer_object_dist_ptr), dist_size(dist_size), safe_lanes_msg_ptr(safe_lanes_msg_ptr), safe_lanes_msg_size(safe_lanes_msg_size),
+    vehicle_state_ptr(vehicle_state_ptr) {}
+};
+
 // This is a structure that defines the "PLAN_CTRL" task's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Plan-and-Control" Task view of "data"
@@ -57,7 +75,7 @@ void set_up_plan_ctrl_task_on_accel_profile_data();
 
 void *set_up_plan_ctrl_task(void *sptr, task_type_t plan_ctrl_task_type,
                             task_criticality_t crit_level, bool use_auto_finish,
-                            int32_t dag_id, void *var_list);
+                            int32_t dag_id, void *args);
 
 void plan_ctrl_auto_finish_routine(void *mb);
 void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block, void *var_list); // vehicle_state_t* new_vehicle_state);

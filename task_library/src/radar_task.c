@@ -90,16 +90,14 @@ set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
     task_type_t radar_task_type, task_criticality_t crit_level,
     bool use_auto_finish, int32_t dag_id, void *args) {
 
-  va_list var_list;
-  va_copy(var_list, *(va_list*)args);
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
 #ifdef TIME
   gettimeofday(&start_exec_rad, NULL);
 #endif
   //uint32_t log_nsamples, float * inputs
-  uint32_t log_nsamples = va_arg(var_list, uint32_t);
-  float *inputs = va_arg(var_list, float *);
-  size_t inputs_size = va_arg(var_list, size_t);
+  uint32_t log_nsamples = ((radar_input_t *) args)->log_nsamples;
+  float *inputs = ((radar_input_t *) args)->inputs;
+  size_t inputs_size = ((radar_input_t *) args)->inputs_size;
 
   // Request a MetadataBlock (for an RADAR task at Critical Level)
   task_metadata_entry *radar_mb_ptr = NULL;
@@ -147,7 +145,6 @@ set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
 #ifdef INT_TIME
   gettimeofday(&(radar_timings_p->call_start), NULL);
 #endif
-  va_end(var_list);
   // This now ends this block -- we've kicked off execution
   return radar_mb_ptr;
 }
@@ -246,12 +243,9 @@ void radar_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
 void finish_radar_execution(/*task_metadata_entry*/void *radar_metadata_block_ptr, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list*)args);
-  //va_start(var_list, radar_metadata_block_ptr);
   task_metadata_entry *radar_metadata_block = (task_metadata_entry*) radar_metadata_block_ptr;
   // float* obj_dist)
-  float *obj_dist = va_arg(var_list, float *);
+  float *obj_dist = (float *) args;
 
   distance_t distance = do_finish_radar_computations(radar_metadata_block);
   *obj_dist = distance;
@@ -260,5 +254,4 @@ void finish_radar_execution(/*task_metadata_entry*/void *radar_metadata_block_pt
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
                radar_metadata_block->block_id));
   free_task_metadata_block(radar_metadata_block);
-  va_end(var_list);
 }

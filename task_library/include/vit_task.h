@@ -26,6 +26,21 @@
 #include "scheduler.h"
 #include "viterbi_base.h"
 
+//Viterbi: vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)
+struct viterbi_input_t {
+  message_size_t  msize;
+  ofdm_param *    ofdm_ptr;
+  size_t          ofdm_param_size;
+  frame_param *   frame_ptr;
+  size_t          frame_ptr_size;
+  uint8_t *       in_bits;
+  size_t          in_bits_size;
+  viterbi_input_t(message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size, frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
+                  size_t in_bits_size) :
+    msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr), frame_ptr_size(frame_ptr_size), in_bits(in_bits),
+    in_bits_size(in_bits_size) {}
+};
+
 // This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Viterbi" view of "data"

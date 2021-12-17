@@ -1116,228 +1116,201 @@ int main(int argc, char *argv[]) {
 
     // EXECUTE the kernels using the now known inputs
     unsigned added_crit_task_idx = 0;
-#ifdef TIME
-    gettimeofday(&start_exec_cv, NULL);
-#endif
 
 #ifndef HPVM
-    // Request a MetadataBlock (for an CV/CNN task at Critical Level)
-    task_metadata_entry *cv_mb_ptr = NULL;
+    //DAG info should have task type at the node and is given input for the task
+    //Create DAG
+    Graph * graph_ptr = new(Graph);
+    dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_ptr, 10000000, CRITICAL_TASK);
+    //inputs
+    //CV: cv_input_t
+    //Radar: radar_input_t
+    //Viterbi: viterbi_input_t
+    //Test: NA
+    //Plan and contrl: pnc_input_t
+
+    //outputs:
+    //radar: &distance
+    //viterbi: &message
+    //cv: &label
+    //test: NULL
+    //pnc: &vehicle_state
+
+    Graph &graph = *graph_ptr;
+    uint8_t id = 0;
+    vertex_t radar_vertex = boost::add_vertex(graph);
+    graph[radar_vertex].vertex_id = id++;
+    vertex_t viterbi_vertex = boost::add_vertex(graph);
+    graph[viterbi_vertex].vertex_id = id++;
+    vertex_t pnc_vertex = boost::add_vertex(graph);
+    graph[pnc_vertex].vertex_id = id++;
+
+
+    boost::add_edge(radar_vertex, pnc_vertex, graph);
+    boost::add_edge(viterbi_vertex, pnc_vertex, graph);
+
+    graph[radar_vertex].task_type = radar_task_type;
+    graph[viterbi_vertex].task_type = vit_task_type;
+    graph[pnc_vertex].task_type = plan_ctrl_task_type;
+
+    graph[radar_vertex].input_ptr = new radar_input_t(
+      radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN));
+    graph[radar_vertex].output_ptr = &distance;
+    graph[radar_vertex].vertex_status = TASK_FREE;
+
+    graph[viterbi_vertex].input_ptr = new viterbi_input_t(
+      (message_size_t) vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t));
+    graph[viterbi_vertex].output_ptr = &message;
+    graph[viterbi_vertex].vertex_status = TASK_FREE;
+
     if (!no_crit_cnn_task) {
-      cv_mb_ptr = (task_metadata_entry *) set_up_task(sptr, cv_task_type, CRITICAL_TASK,
-                  false, time_step,
-                  cv_tr_label); // Critical CV task
-      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr;
-      request_execution(cv_mb_ptr);
-      DEBUG(printf("CV/CNN task Block-ID = MB%u\n", cv_mb_ptr->block_id));
+      vertex_t cv_vertex = boost::add_vertex(graph);
+      graph[cv_vertex].vertex_id = id++;
+      boost::add_edge(cv_vertex, pnc_vertex, graph);
+      graph[cv_vertex].task_type = cv_task_type;
+      graph[cv_vertex].input_ptr = new cv_input_t(cv_tr_label);
+      graph[cv_vertex].output_ptr = &label;
+      graph[cv_vertex].vertex_status = TASK_FREE;
     }
 
-#ifdef TIME
-    gettimeofday(&start_exec_rad, NULL);
-#endif
-
-    task_metadata_entry *radar_mb_ptr = NULL;
-    radar_mb_ptr = (task_metadata_entry *) set_up_task(sptr, radar_task_type, CRITICAL_TASK,
-                   false, time_step,
-                   radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
-    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr;
-    DEBUG(printf("FFT task Block-ID = MB%u\n", radar_mb_ptr->block_id));
-    request_execution(radar_mb_ptr);
-
-#endif
-
-#ifdef TIME
-    gettimeofday(&start_exec_vit, NULL);
-#endif
-
-#ifndef HPVM
-    // Request a MetadataBlock for a Viterbi Task at Critical Level
-    task_metadata_entry *viterbi_mb_ptr = NULL;
-    viterbi_mb_ptr = (task_metadata_entry *) set_up_task(sptr, vit_task_type, CRITICAL_TASK,
-                     false, time_step,
-                     vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits,
-                     sizeof(uint8_t)); // Critical VITERBI task
-    the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr;
-    DEBUG(printf("VIT_TASK_BLOCK: ID = MB%u\n", viterbi_mb_ptr->block_id));
-    request_execution(viterbi_mb_ptr);
-
-    task_metadata_entry *test_mb_ptr = NULL;
     if (num_Crit_test_tasks > 0) {
-      test_mb_ptr = (task_metadata_entry *) set_up_task(sptr, test_task_type, CRITICAL_TASK,
-                    false, time_step); // Critical TEST task
-      the_crit_tasks_mb_ptrs[added_crit_task_idx++] = test_mb_ptr;
-      DEBUG(printf("TEST_TASK_BLOCK: ID = MB%u\n", test_mb_ptr->block_id));
-      request_execution(test_mb_ptr);
+      vertex_t test_vertex = boost::add_vertex(graph);
+      graph[test_vertex].vertex_id = id++;
+      boost::add_edge(test_vertex, pnc_vertex, graph);
+      graph[test_vertex].task_type = test_task_type;
+      graph[test_vertex].input_ptr = NULL; // No input
+      graph[test_vertex].output_ptr = NULL;
+      graph[test_vertex].vertex_status = TASK_FREE;
     }
 
-#else
+    graph[pnc_vertex].input_ptr = new pnc_input_t(
+      time_step, pandc_repeat_factor, &label, sizeof(label_t), &distance, sizeof(distance_t), &message, sizeof(message_t), &vehicle_state);
+    graph[pnc_vertex].output_ptr = &vehicle_state;
+    graph[pnc_vertex].vertex_status = TASK_FREE;
 
-    /* -- HPVM -- Fill in Viterbi Task Args */
-    char out_msg_text[1600]; // more than large enough to hold max-size message
+    DEBUG(
+    printf("MAIN: Arrival of DAG with id: %u\n", sptr->next_avail_DAG_id);
+    );
+
+    request_execution(dag_ptr);
+
 
 #endif
 
 
 #ifndef HPVM
-    // Now we add in the additional non-critical tasks...
-    for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
-      // Aditional CV Tasks
-      // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
-      if (i < additional_cv_tasks_per_time_step) {
-        task_metadata_entry *cv_mb_ptr_2 = NULL;
-        cv_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, cv_task_type, additional_cv_tasks_criticality, //BASE_TASK,
-                      true, time_step,
-                      cv_tr_label); // NON-Critical CV task
-        if (additional_cv_tasks_criticality == CRITICAL_TASK) {
-          the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr_2;
-        }
-        DEBUG(printf("added CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
-        request_execution(cv_mb_ptr_2);
-      } // if (i < additional CV tasks)
-      // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
-      if (i < additional_fft_tasks_per_time_step) {
-        radar_dict_entry_t *rdentry_p2;
-        if (task_size_variability == 0) {
-          rdentry_p2 = select_critical_radar_input(rdentry_p);
-        } else {
-          rdentry_p2 = select_random_radar_input();
-          // printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set,
-          // rdentry_p2->set);
-        }
-        int base_fft_samples_set = rdentry_p2->set;
-        float *addl_radar_inputs = rdentry_p2->return_data;
-        task_metadata_entry *radar_mb_ptr_2 = NULL;
-        radar_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, radar_task_type, additional_fft_tasks_criticality, //BASE_TASK,
-                         true, time_step,
-                         radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
-        if (additional_fft_tasks_criticality == CRITICAL_TASK) {
-          the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr_2;
-        }
-        DEBUG(printf("added RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
-        request_execution(radar_mb_ptr_2);
-      } // if (i < additional FFT tasks)
+    // // TODO: Additional non-critical tasks as new DAGs
+    // // Now we add in the additional non-critical tasks...
+    // for (int i = 0; i < max_additional_tasks_per_time_step; i++) {
+    //   // Aditional CV Tasks
+    //   // for (int i = 0; i < additional_cv_tasks_per_time_step; i++) {
+    //   if (i < additional_cv_tasks_per_time_step) {
+    //     task_metadata_entry *cv_mb_ptr_2 = NULL;
+    //     cv_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, cv_task_type, additional_cv_tasks_criticality, //BASE_TASK,
+    //                   true, time_step,
+    //                   cv_tr_label); // NON-Critical CV task
+    //     if (additional_cv_tasks_criticality == CRITICAL_TASK) {
+    //       the_crit_tasks_mb_ptrs[added_crit_task_idx++] = cv_mb_ptr_2;
+    //     }
+    //     DEBUG(printf("added CV_TASK ID = MB%u\n", cv_mb_ptr_2->block_id));
+    //     request_execution(cv_mb_ptr_2);
+    //   } // if (i < additional CV tasks)
+    //   // for (int i = 0; i < additional_fft_tasks_per_time_step; i++) {
+    //   if (i < additional_fft_tasks_per_time_step) {
+    //     radar_dict_entry_t *rdentry_p2;
+    //     if (task_size_variability == 0) {
+    //       rdentry_p2 = select_critical_radar_input(rdentry_p);
+    //     } else {
+    //       rdentry_p2 = select_random_radar_input();
+    //       // printf("FFT select: Crit %u rdp2->set %u\n", crit_fft_samples_set,
+    //       // rdentry_p2->set);
+    //     }
+    //     int base_fft_samples_set = rdentry_p2->set;
+    //     float *addl_radar_inputs = rdentry_p2->return_data;
+    //     task_metadata_entry *radar_mb_ptr_2 = NULL;
+    //     radar_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, radar_task_type, additional_fft_tasks_criticality, //BASE_TASK,
+    //                      true, time_step,
+    //                      radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)); // Critical RADAR task
+    //     if (additional_fft_tasks_criticality == CRITICAL_TASK) {
+    //       the_crit_tasks_mb_ptrs[added_crit_task_idx++] = radar_mb_ptr_2;
+    //     }
+    //     DEBUG(printf("added RADAR_TASK ID = MB%u\n", radar_mb_ptr_2->block_id));
+    //     request_execution(radar_mb_ptr_2);
+    //   } // if (i < additional FFT tasks)
 
-      // for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
-      if (i < additional_vit_tasks_per_time_step) {
-        vit_dict_entry_t *vdentry2_p;
-        int base_msg_size;
-        if (task_size_variability == 0) {
-          base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
-          int m_id = vdentry_p->msg_num % NUM_MESSAGES;
-          if (m_id != vdentry_p->msg_id) {
-            printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
-                   vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-          }
-          if (base_msg_size != vit_msgs_size) {
-            printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
-                   vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
-          }
-          vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
-          SDEBUG(printf("Got Matching Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES,
-                        vdentry_p));
-        } else {
-          DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
-          vdentry2_p = select_random_vit_input();
-          base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
-          SDEBUG(printf("Got Random Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES,
-                        vdentry_p));
-        }
-        task_metadata_entry* viterbi_mb_ptr_2;
-        DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p),
-                     vdentry2_p->in_bits));
-        viterbi_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, vit_task_type, additional_vit_tasks_criticality, //BASE_TASK,
-                           true, time_step,
-                           vit_msgs_size, &(vdentry2_p->ofdm_p), sizeof(ofdm_param), &(vdentry2_p->frame_p), sizeof(frame_param), vdentry2_p->in_bits,
-                           sizeof(uint8_t)); //         DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
-        if (additional_vit_tasks_criticality == CRITICAL_TASK) {
-          the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr_2;
-        }
-        request_execution(viterbi_mb_ptr_2);
-      } // if (i < Additional VIT tasks)
+    //   // for (int i = 0; i < additional_vit_tasks_per_time_step; i++) {
+    //   if (i < additional_vit_tasks_per_time_step) {
+    //     vit_dict_entry_t *vdentry2_p;
+    //     int base_msg_size;
+    //     if (task_size_variability == 0) {
+    //       base_msg_size = vdentry_p->msg_num / NUM_MESSAGES;
+    //       int m_id = vdentry_p->msg_num % NUM_MESSAGES;
+    //       if (m_id != vdentry_p->msg_id) {
+    //         printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
+    //                vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+    //       }
+    //       if (base_msg_size != vit_msgs_size) {
+    //         printf("WARNING: MSG_NUM %u : LNUM %u M_ID %u MSG_ID %u\n",
+    //                vdentry_p->msg_num, base_msg_size, m_id, vdentry_p->msg_id);
+    //       }
+    //       vdentry2_p = select_specific_vit_input(base_msg_size, m_id);
+    //       SDEBUG(printf("Got Matching Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES,
+    //                     vdentry_p));
+    //     } else {
+    //       DEBUG(printf("Note: electing a random Vit Message for base-task\n"));
+    //       vdentry2_p = select_random_vit_input();
+    //       base_msg_size = vdentry2_p->msg_num / NUM_MESSAGES;
+    //       SDEBUG(printf("Got Random Base VIT with size %u entry %p (vs Crit size %u entry %p)\n", base_msg_size, vdentry2_p, vdentry_p->msg_num / NUM_MESSAGES,
+    //                     vdentry_p));
+    //     }
+    //     task_metadata_entry* viterbi_mb_ptr_2;
+    //     DEBUG(printf("Calling VIT set-up-task with base_msg_size %u ofdm_p %p frame_p %p in_bits %p\n", base_msg_size, &(vdentry2_p->ofdm_p), &(vdentry2_p->frame_p),
+    //                  vdentry2_p->in_bits));
+    //     viterbi_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, vit_task_type, additional_vit_tasks_criticality, //BASE_TASK,
+    //                        true, time_step,
+    //                        vit_msgs_size, &(vdentry2_p->ofdm_p), sizeof(ofdm_param), &(vdentry2_p->frame_p), sizeof(frame_param), vdentry2_p->in_bits,
+    //                        sizeof(uint8_t)); //         DEBUG(printf("non-crit VITERBI_TASK ID = MB%u\n", viterbi_mb_ptr_2->block_id));
+    //     if (additional_vit_tasks_criticality == CRITICAL_TASK) {
+    //       the_crit_tasks_mb_ptrs[added_crit_task_idx++] = viterbi_mb_ptr_2;
+    //     }
+    //     request_execution(viterbi_mb_ptr_2);
+    //   } // if (i < Additional VIT tasks)
 
-      // Non-Critical (base) TEST-Tasks
-      if (i < num_Base_test_tasks) {
-        task_metadata_entry *test_mb_ptr_2 = NULL;
-        test_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, test_task_type, BASE_TASK,
-                        true, time_step); //Base TEST task
-        DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
-        request_execution(test_mb_ptr_2);
-      } // if (i < Additional TEST tasks)
-    } // for (i over MAX_additional_tasks)
+    //   // Non-Critical (base) TEST-Tasks
+    //   if (i < num_Base_test_tasks) {
+    //     task_metadata_entry *test_mb_ptr_2 = NULL;
+    //     test_mb_ptr_2 = (task_metadata_entry *) set_up_task(sptr, test_task_type, BASE_TASK,
+    //                     true, time_step); //Base TEST task
+    //     DEBUG(printf("non-crit TEST_TASK ID = MB%u\n", test_mb_ptr_2->block_id));
+    //     request_execution(test_mb_ptr_2);
+    //   } // if (i < Additional TEST tasks)
+    // } // for (i over MAX_additional_tasks)
 
-    sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
-#ifdef TIME
-    gettimeofday(&start_wait_all_crit, NULL);
-#endif
 
-    DEBUG(printf("MAIN: Calling wait_all_critical\n"));
-    //wait_all_critical(sptr);
-    /**
-    if (num_Crit_test_tasks > 0) {
-      wait_on_tasklist(sptr, 4+2, added_crit_task_idx, the_crit_tasks_mb_ptrs, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr, test_mb_ptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
-    } else {
-      wait_on_tasklist(sptr, 3+2, cv_mb_ptr, radar_mb_ptr, viterbi_mb_ptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
-    }
-    **/
-    wait_on_tasklist_list(sptr, added_crit_task_idx, the_crit_tasks_mb_ptrs);
-#endif
-
-#ifdef TIME
-    gettimeofday(&stop_wait_all_crit, NULL);
-    wait_all_crit_sec  += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;
-    wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
-#endif
-
-#ifndef HPVM
-    // Clean pu this time step's added critical tasks MB_ptr list
-    for (int addidx = 0; addidx < added_crit_task_idx; addidx++) {
-      the_crit_tasks_mb_ptrs[addidx] = NULL;
-    }
-#endif
-    added_crit_task_idx = 0;
-
-#ifndef HPVM
-    finish_task_execution(radar_mb_ptr, &distance);
-    char out_msg_text[1600]; // more than large enough to hold max-size message
-    finish_task_execution(viterbi_mb_ptr, &message, out_msg_text);
-    if (!no_crit_cnn_task) {
-      finish_task_execution(cv_mb_ptr, &label);
-    }
-    if (num_Crit_test_tasks > 0) {
-      finish_task_execution(test_mb_ptr);
-    }
-#endif
-
-#ifdef TIME
-    gettimeofday(&stop_exec_rad, NULL);
-    exec_rad_sec += stop_exec_rad.tv_sec - start_exec_rad.tv_sec;
-    exec_rad_usec += stop_exec_rad.tv_usec - start_exec_rad.tv_usec;
-    exec_vit_sec += stop_exec_rad.tv_sec - start_exec_vit.tv_sec;
-    exec_vit_usec += stop_exec_rad.tv_usec - start_exec_vit.tv_usec;
-    exec_cv_sec += stop_exec_rad.tv_sec - start_exec_cv.tv_sec;
-    exec_cv_usec += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
 #endif
 
 #ifdef HPVM
     vehicle_state_t new_vehicle_state;
 #else
-    /* The plan_and_control task makes planning and control decisions
-     * based on the currently perceived information. It returns the new
-     * vehicle state.
-     */
-    DEBUG(printf("Time Step %3u : Calling Plan and Control %u times with message %u and distance %.1f\n", time_step, pandc_repeat_factor, message, distance));
-    task_metadata_entry *pnc_mb_ptr = NULL;
-    DEBUG(printf("Calling start_plan_ctrl_execution...\n"));
-
-    DEBUG(printf("PRE-Set-Up-PnC: label %u, distance: %.3f\n", label, distance));
 #ifdef TIME
-    gettimeofday(&start_exec_pandc, NULL);
+    gettimeofday(&start_wait_all_crit, NULL);
 #endif
-    pnc_mb_ptr = (task_metadata_entry *) set_up_task(sptr, plan_ctrl_task_type, CRITICAL_TASK,
-                 false, time_step,
-                 time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state);
-    DEBUG(printf(" MB%u Back from set_up_plan_ctrl_task\n", pnc_mb_ptr->block_id));
-    request_execution(pnc_mb_ptr);
+
+    DEBUG(printf("MAIN: Calling wait for DAG id: %u to complete\n", dag_ptr->dag_id));
+
+    //TODO: Need this only for the CRITICAL DAGs - multi-DAG BASE DAGs don't need a wait
+    //TODO: convert to conditional variable to save on power
+    // wait_on_daglist(sptr, dag_ptr);
+    while (dag_ptr->dag_status != COMPLETED_DAG) {
+      usleep(sptr->inparms ->scheduler_holdoff_usec);
+    }
+
+    DEBUG(printf("MAIN: [%u] Completed DAG execution status: %u\n", dag_ptr->dag_id, dag_ptr->dag_status););
+#ifdef TIME
+    gettimeofday(&stop_wait_all_crit, NULL);
+    wait_all_crit_sec  += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;
+    wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
+#endif
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
@@ -1349,32 +1322,30 @@ int main(int argc, char *argv[]) {
       post_execute_test_kernel(TEST_TASK_DONE, test_res);
     }
 
-    DEBUG(printf("MAIN: Calling wait for plan-and-control task\n"));
 #ifdef TIME
-    gettimeofday(&start_wait_all_crit, NULL);
+    //TODO: Move this profiling into the scheduler where task is created and completed
+
+    gettimeofday(&start_exec_rad, NULL);
+    gettimeofday(&stop_exec_rad, NULL);
+    gettimeofday(&start_exec_vit, NULL);
+    gettimeofday(&stop_exec_vit, NULL);
+    gettimeofday(&start_exec_cv, NULL);
+    gettimeofday(&stop_exec_cv, NULL);
+    gettimeofday(&start_exec_pandc, NULL);
+    gettimeofday(&stop_exec_pandc, NULL);
+    exec_rad_sec += stop_exec_rad.tv_sec - start_exec_rad.tv_sec;
+    exec_rad_usec += stop_exec_rad.tv_usec - start_exec_rad.tv_usec;
+    exec_vit_sec += stop_exec_rad.tv_sec - start_exec_vit.tv_sec;
+    exec_vit_usec += stop_exec_rad.tv_usec - start_exec_vit.tv_usec;
+    exec_cv_sec += stop_exec_rad.tv_sec - start_exec_cv.tv_sec;
+    exec_cv_usec += stop_exec_rad.tv_usec - start_exec_cv.tv_usec;
+    exec_pandc_sec += stop_exec_pandc.tv_sec - start_exec_pandc.tv_sec;
+    exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
 #endif
 
-    // wait_all_critical(sptr);
-    wait_on_tasklist(sptr, 1, pnc_mb_ptr);
 #endif
 
-#ifdef TIME
-    gettimeofday(&stop_wait_all_crit, NULL);
-    wait_all_crit_sec  += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;
-    wait_all_crit_usec += stop_wait_all_crit.tv_usec - start_wait_all_crit.tv_usec;
-#endif
-
-#ifndef HPVM
-    DEBUG(printf("MAIN:  Back from wait for plan-and-control\n"));
-
-    DEBUG(printf("Calling finish_execution_of_plan_ctrl_kernel for MB%u\n", pnc_mb_ptr->block_id));
-    finish_task_execution(pnc_mb_ptr, &vehicle_state); // Critical Plan-and-Control Task
-    DEBUG(printf("   Final MB%u time_step %u rpt_fac %u obj %u dist %.1f msg %u VS : act %u lane %u Spd %.1f \n", pnc_mb_ptr->block_id, time_step,
-                 pandc_repeat_factor, label, distance, message, vehicle_state.active, vehicle_state.lane, vehicle_state.speed));
-
-#else
-
-
+#ifdef HPVM
 #ifdef HPVM_BASE_CRIT
     // Launch a specific number of base criticality instances on the particular tasks through hpvm.
 
@@ -1418,6 +1389,9 @@ int main(int argc, char *argv[]) {
 
 #endif
 
+    /* -- HPVM -- Fill in Viterbi Task Args */
+    char out_msg_text[1600]; // more than large enough to hold max-size message
+
     DEBUG(printf("Launching HPVM graph!\n"));
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
@@ -1439,16 +1413,12 @@ int main(int argc, char *argv[]) {
 
 #endif
 
-#ifdef TIME
-    gettimeofday(&stop_exec_pandc, NULL);
-    exec_pandc_sec += stop_exec_pandc.tv_sec - start_exec_pandc.tv_sec;
-    exec_pandc_usec += stop_exec_pandc.tv_usec - start_exec_pandc.tv_usec;
-#endif
-
     DEBUG(printf("New vehicle state: lane %u speed %.1f\n\n",
                  vehicle_state.lane, vehicle_state.speed));
 
+    //TODO: time step and dag_id are same here
     time_step++;
+    sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
 
 #ifndef USE_SIM_ENVIRON
     read_next_trace_record(vehicle_state);

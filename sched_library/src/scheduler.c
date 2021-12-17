@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -34,7 +35,7 @@
 #include <cassert>
 
 //#include "utils.h"
-//#define VERBOSE
+// #define VERBOSE
 #include "verbose.h"
 
 /*#ifdef COMPILE_TO_ESP
@@ -96,6 +97,20 @@ bool operator<(const ready_mb_task_queue_entry_t& lhs, const ready_mb_task_queue
   return ((lhs.sptr)->master_metadata_pool[lhs.block_id]).rank < ((rhs.sptr)->master_metadata_pool[rhs.block_id]).rank;
 }
 
+//Constructors
+dag_metadata_entry::dag_metadata_entry(scheduler_datastate *scheduler_datastate_pointer, int32_t dag_id, Graph * graph_ptr, uint64_t dag_deadline_time,
+                                       task_criticality_t crit_level) {
+
+  gettimeofday(&this->dag_arrival_time, NULL);
+  this->scheduler_datastate_pointer = scheduler_datastate_pointer;
+  this->dag_id = dag_id;
+  this->graph_ptr = graph_ptr;
+  this->dag_deadline_time_usec = dag_deadline_time_usec;
+  this->dag_slack_usec = dag_deadline_time_usec;
+  this->crit_level = crit_level;
+  this->dag_response_time = 0;
+}
+
 // This now will hold all the state for an instance of the scheduler.
 //  This can be shared with the policies, etc. using a single pointer parameter
 //  This also could allow multiple scheduler states to be in effect
@@ -105,6 +120,7 @@ bool operator<(const ready_mb_task_queue_entry_t& lhs, const ready_mb_task_queue
 // Forward declarations
 void release_accelerator_for_task(task_metadata_entry *task_metadata_block);
 
+vertex_t get_ready_task_vertex(dag_metadata_entry * dag_ptr);
 void *schedule_dags(void *void_param_ptr);
 void *schedule_executions_from_queue(void *void_param_ptr);
 status_t initialize_scheduler(scheduler_datastate *sptr);
@@ -112,6 +128,9 @@ void register_accel_can_exec_task(scheduler_datastate *sptr,
                                   scheduler_accelerator_type sl_acid,
                                   task_type_t tid,
                                   sched_execute_task_function_t fptr);
+void print_dag_graph(Graph &graph) {
+  boost::write_graphviz(std::cout, graph);
+}
 
 void print_ready_tasks_queue(scheduler_datastate *sptr) {
   int ti = 0;
@@ -264,7 +283,7 @@ get_task_metadata_block(scheduler_datastate *sptr, int32_t in_dag_id,
       printf("  free_metadata_pool[%2u] = %d\n", i,
              sptr->free_metadata_pool[i]);
     }
-    exit( -16);
+    exit(-16);
   }
   sptr->free_metadata_pool[sptr->free_metadata_blocks - 1] = -1;
   sptr->free_metadata_blocks -= 1;
@@ -348,7 +367,7 @@ void free_task_metadata_block(task_metadata_entry * mb) {
     }
     DEBUG(printf("    THE Being-Freed Meta-Data Block:\n");
           print_base_metadata_block_contents(mb));
-    exit( -5);
+    exit(-5);
   }
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
   for (int i = 0; i < sptr->total_metadata_pool_blocks; i++) {
@@ -367,20 +386,51 @@ void update_dag(task_metadata_entry * task_metadata_block) {
   auto it = sptr->active_dags.begin();
   while (it != sptr->active_dags.end()) {
     dag_metadata_entry * dag = *it;
-    if (dag->task_mb_ptr == task_metadata_block) {
+    //Update dag of completed task
+    if (dag->dag_id == task_metadata_block->dag_id) {
+      Graph &graph = *(dag->graph_ptr);
+      bool found_task = false;
+      Graph::vertex_iterator vit, vend, vnext;
+      boost::tie(vit, vend) = vertices(graph);
+      for (vnext = vit; vit != vend; vit = vnext) {
+        ++vnext;
+        vertex_t vertex = *vit;
+        if (graph[vertex].vertex_status == TASK_QUEUED && graph[vertex].task_mb_ptr == task_metadata_block) {
+          //Found the completed task
+          DEBUG(printf("DAG[%u.%u] completed task execution MB: %u\n", dag->dag_id, graph[vertex].vertex_id, task_metadata_block->block_id););
+          finish_task_execution(task_metadata_block, graph[vertex].output_ptr);
+          boost::clear_vertex(vertex, graph);
+          boost::remove_vertex(vertex, graph);
+          found_task = true;
+          break;
+        }
+      }
 
-      //TODO: for multi task DAG have to only update
-      //dag structure, if last DAG then push into completed DAGs queue
-      sptr->completed_dags.push_back(dag);
-      sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
+      if (!found_task) {
+        //TODO: Won't hold true for dropping
+        printf("ERROR: DAG inconsistent, did not find completed task in the DAG\n");
+        exit(-42);
+      }
+
+      DEBUG(boost::write_graphviz(std::cout, graph););
+
+      if (boost::num_vertices(graph) == 0) {
+        DEBUG(printf("DAG[%u] completed\n", dag->dag_id););
+        dag->dag_status = COMPLETED_DAG;
+        //Can cleanup the graph -> No longer required
+        delete dag->graph_ptr;
+        sptr->completed_dags.push_back(dag);
+        sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
+      } else {
+        dag->dag_status = ACTIVE_QUEUED_DAG;
+      }
       pthread_mutex_unlock(&(sptr->dag_queue_mutex));
       return;
     }
     ++it;
   }
-  // pthread_mutex_unlock(&(sptr->dag_queue_mutex));
   printf("ERROR : Completed task not present in active DAG queue\n");
-  exit( -40);
+  exit(-40);
 }
 
 void mark_task_done(task_metadata_entry * task_metadata_block) {
@@ -613,13 +663,13 @@ void execute_task_on_accelerator(task_metadata_entry * task_metadata_block) {
              "%u\n",
              task_metadata_block->task_type);
       print_base_metadata_block_contents(task_metadata_block);
-      exit( -13);
+      exit(-13);
     }
   } else {
     printf("ERROR -- called execute_task_on_accelerator for NO_ACCELERATOR "
            "with block:\n");
     print_base_metadata_block_contents(task_metadata_block);
-    exit( -11);
+    exit(-11);
   }
   TDEBUG(
     printf("DONE Executing Task for MB%d\n", task_metadata_block->block_id));
@@ -1010,7 +1060,7 @@ scheduler_datastate *initialize_scheduler_and_return_datastate_pointer(scheduler
   status_t init_status = initialize_scheduler(sptr);
   if (init_status != success) {
     printf("ERROR : Scheduiler initialization returned an error indication...\n");
-    exit( -1);
+    exit(-1);
   }
   return sptr;
 }
@@ -1182,7 +1232,7 @@ void set_up_scheduler() {
 }
 
 status_t
-initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
+initialize_scheduler(scheduler_datastate * sptr) { //, char* sl_viz_fname)
   DEBUG(printf("In initialize...\n"));
   // Currently we set this to a fixed a-priori number...
   sptr->total_metadata_pool_blocks = sptr->inparms->max_metadata_pool_blocks;
@@ -1219,7 +1269,7 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     if (sptr->sl_viz_fp == NULL) {
       printf("ERROR: Cannot open the output vizualizer file '%s' - exiting\n",
              sptr->inparms->sl_viz_fname);
-      exit( -1);
+      exit(-1);
     }
     fprintf(sptr->sl_viz_fp,
             "sim_time,task_dag_id,task_tid,task_name,task_crit,dag_dtime,id,"
@@ -1232,14 +1282,14 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
   snprintf(policy_filename, 270, "%s", sptr->inparms->policy);
   if ((sptr->policy_handle = dlopen(policy_filename, RTLD_LAZY)) == NULL) {
     printf("Could not open plug-in scheduling policy: %s\n", dlerror());
-    exit( -1);
+    exit(-1);
   }
 
   if (dlerror() != NULL) {
     dlclose(sptr->policy_handle);
     printf("Function initialize_policy() not found in scheduling policy %s\n",
            policy_filename);
-    exit( -1);
+    exit(-1);
   }
 
   sptr->initialize_assign_task_to_pe =
@@ -1249,7 +1299,7 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     printf("Function initialize_assign_task_to_pe() not found in scheduling "
            "policy %s\n",
            policy_filename);
-    exit( -1);
+    exit(-1);
   }
 
   sptr->assign_task_to_pe =
@@ -1258,7 +1308,7 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     dlclose(sptr->policy_handle);
     printf("Function assign_task_to_pe() not found in scheduling policy %s\n",
            policy_filename);
-    exit( -1);
+    exit(-1);
   }
 
   pthread_mutex_init(&(sptr->free_metadata_mutex), NULL);
@@ -1341,7 +1391,7 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
                        metadata_thread_wait_for_task,
                        &(sptr->master_metadata_pool[i]))) {
       printf( "ERROR: Scheduler failed to create thread for metadata block: %d\n", i);
-      exit( -10);
+      exit(-10);
     }
     sptr->master_metadata_pool[i].thread_id = sptr->metadata_threads[i];
   }
@@ -1387,23 +1437,20 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
     sptr->do_accel_closeout_function[j] = NULL;
     sptr->output_accel_run_stats_function[j] = NULL;
   }
-  //Start the "schedule_dags() pthread -- using the
-  // DETACHED pt_attr"
+  //Start the "schedule_dags() pthread -- using the DETACHED pt_attr"
   int pt_ret = pthread_create(&(sptr->metasched_thread), &pt_attr, schedule_dags, (void *)(sptr));
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
-    exit( -1);
+    exit(-1);
   }
-  // Now start the "schedule_executions_from_queue() pthread -- using the
-  // DETACHED pt_attr
+  // Now start the "schedule_executions_from_queue() pthread -- using the DETACHED pt_attr
   pt_ret = pthread_create(&(sptr->tasksched_thread), &pt_attr, schedule_executions_from_queue, (void *)(sptr));
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
-    exit( -1);
+    exit(-1);
   }
 
-  // Now set up the pool of accelerators that this applicaiton will use (from
-  // their
+  // Now set up the pool of accelerators that this applicaiton will use (from their
   printf("\nRegistering the ACCELERATOR Usage...\n");
   unsigned total_accelerators_allocated = 0;
   for (int i = 0; i < SCHED_MAX_ACCEL_TYPES; i++) {
@@ -1422,7 +1469,7 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
       accelerator_type_t acid = sptr->next_avail_accel_id;
       if (acid >= sptr->inparms->max_accel_types) {
         printf("ERROR: Ran out of Accel IDs: MAX_ACCEL_ID = %u and we are adding id %u\n", sptr->inparms->max_accel_types, acid);
-        exit( -32);
+        exit(-32);
       }
       sptr->map_sched_accel_type_to_local_accel_type[i] = acid;
       printf("map_sched_accel_type_to_local_accel_type[%u] = %u\n", i, acid);
@@ -1431,12 +1478,12 @@ initialize_scheduler(scheduler_datastate *sptr) { //, char* sl_viz_fname)
       if (desired_num > global_hardware_state_block.num_accelerators_of_type[i]) {
         printf("ERROR: Specified desired number of accelerators ( %u ) is more than available in the hardware ( %u )\n", desired_num,
                global_hardware_state_block.num_accelerators_of_type[i]);
-        exit( -33);
+        exit(-33);
       }
       if (desired_num > sptr->max_accel_of_any_type) {
         printf("ERROR: Specified desired number of accelerators ( %u ) is more than specified max_accel_of_any_type ( %u )\n", desired_num,
                sptr->max_accel_of_any_type);
-        exit( -34);
+        exit(-34);
       }
       unsigned alloc_num;
       if (desired_num < 0) {
@@ -1510,6 +1557,24 @@ void release_accelerator_for_task(task_metadata_entry * task_metadata_block) {
   pthread_mutex_unlock(&(sptr->accel_alloc_mutex));
 }
 
+vertex_t get_ready_task_vertex(dag_metadata_entry * dag_ptr) {
+  Graph &graph = *(dag_ptr->graph_ptr);
+  Graph::vertex_iterator v, vend;
+  for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
+    if (boost::in_degree(*v, graph) == 0 && graph[*v].vertex_status == TASK_FREE) {
+      //Found a ready task
+      // printf("DAG[%u] Found ready task in vertex %u\n", dag_ptr->dag_id, graph[*v].vertex_id);
+      return *v;
+    }
+  }
+  if (boost::num_vertices(graph) == 0) {
+    print_dag_graph(*(dag_ptr->graph_ptr));
+    printf("DAG is empty\n");
+  }
+  return -1;
+
+}
+
 //This routine tracks dependencies among active dags and generates ready tasks into the ready queue
 void *schedule_dags(void *void_param_ptr) {
   printf("Started schedule dags thread\n");
@@ -1520,53 +1585,77 @@ void *schedule_dags(void *void_param_ptr) {
   scheduler_datastate *sptr = (scheduler_datastate *)void_param_ptr;
 
   while (1) {
-    if (sptr->active_dags.size() && sptr->active_dags.back()->dag_status == ACTIVE_DAG) { //New DAGs added
-      for (auto it = sptr->active_dags.begin(); it != sptr->active_dags.end(); ++it) {
+    if (sptr->active_dags.size() && (sptr->active_dags.back()->dag_status == ACTIVE_DAG || //New DAGs added
+                                     sptr->active_dags.back()->dag_status == ACTIVE_QUEUED_DAG)) { //Active DAGs with tasks
+      for (auto it = sptr->active_dags.begin(); it != sptr->active_dags.end(); ++it) { //TODO: potential multithread bug if different thread deletes from active_dags
         dag_metadata_entry * dag = *it;
-        if (dag->dag_status == ACTIVE_DAG) {
-          DEBUG(printf("APP: in schedule DAG number of active dags: %u\n",
-                       sptr->active_dags.size()););
-          pthread_mutex_lock(&(sptr->dag_queue_mutex));
-          task_metadata_entry *task_metadata_block =
-            (task_metadata_entry *)dag->task_mb_ptr;
-          dag->dag_status = ACTIVE_QUEUED_DAG;
-          // sptr->active_dags.pop_front();
-          pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+        if (dag->dag_status == ACTIVE_DAG || dag->dag_status == ACTIVE_QUEUED_DAG) {
           DEBUG(
-            printf("APP: in schedule DAG for MB%u\n",
-                   task_metadata_block->block_id);
+            printf("APP: in schedule DAG number of active dags: %u\n",
+                   sptr->active_dags.size());
           );
-          // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
-          // task id for this task (which is the global request_execution order, for
-          // now)
+          pthread_mutex_lock(&(sptr->dag_queue_mutex));
 
-          task_metadata_block->status = TASK_QUEUED; // queued
-          gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
-          task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
-          task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
+          //Create new ready task and put into ready queue
+          Graph &graph = *(dag->graph_ptr);
+          while (1) {
+            vertex_t ready_task_vertex = -1;
+            ready_task_vertex = get_ready_task_vertex(dag);
+            if (ready_task_vertex == -1) { // No more ready tasks
+              DEBUG(printf("DAG[%u] No more ready tasks\n", dag->dag_id););
+              dag->dag_status = ACTIVE_NOTREADY_DAG;
+              pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+              break;
+            }
+            DEBUG(printf("DAG[%u] Found ready task %u\n", dag->dag_id, graph[ready_task_vertex].vertex_id););
 
-          // Put this into the ready-task-queue
-          //   Get a ready_task_queue_entry
-          pthread_mutex_lock(&(sptr->task_queue_mutex));
-          DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
-                       sptr->free_ready_mb_task_queue_entries.size()));
-          SDEBUG(print_free_ready_tasks_list(sptr));
-          ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
-          sptr->free_ready_mb_task_queue_entries.pop_front();
-          sptr->num_free_task_queue_entries--;
-          DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
-          SDEBUG(print_free_ready_tasks_list(sptr));
-          //   Now fill it in
-          my_queue_entry->block_id = task_metadata_block->block_id;
-          DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
-          assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
-          sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
-          sptr->num_tasks_in_ready_queue++;
-          DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
-                       sptr->num_tasks_in_ready_queue);
-                print_ready_tasks_queue(sptr));
-          assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
-          pthread_mutex_unlock(&(sptr->task_queue_mutex));
+            //Create task from vertex
+            task_metadata_entry *task_metadata_block = (task_metadata_entry *) set_up_task(sptr, graph[ready_task_vertex].task_type, dag->crit_level,
+                false, dag->dag_id, graph[ready_task_vertex].input_ptr); // Critical CV task
+            //Update task node in graph with the metadata block ptr
+            graph[ready_task_vertex].task_mb_ptr = task_metadata_block;
+            DEBUG(
+              printf("DAG[%u.%u] Creating and scheduling Task type:%u task Block-ID = MB%u\n", dag->dag_id, graph[ready_task_vertex].vertex_id,
+                     graph[ready_task_vertex].task_type, task_metadata_block->block_id);
+            );
+
+            dag->dag_status = ACTIVE_QUEUED_DAG;
+            graph[ready_task_vertex].vertex_status = TASK_QUEUED;
+            // sptr->active_dags.pop_front();
+            pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+
+            // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
+            // task id for this task (which is the global request_execution order, for
+            // now)
+
+            task_metadata_block->status = TASK_QUEUED; // queued
+            gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
+            task_metadata_block->sched_timings.get_sec  += task_metadata_block->sched_timings.queued_start.tv_sec - task_metadata_block->sched_timings.get_start.tv_sec;
+            task_metadata_block->sched_timings.get_usec += task_metadata_block->sched_timings.queued_start.tv_usec - task_metadata_block->sched_timings.get_start.tv_usec;
+
+            // Put this into the ready-task-queue
+            //   Get a ready_task_queue_entry
+            pthread_mutex_lock(&(sptr->task_queue_mutex));
+            DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n", sptr->num_free_task_queue_entries,
+                         sptr->free_ready_mb_task_queue_entries.size()));
+            SDEBUG(print_free_ready_tasks_list(sptr));
+            ready_mb_task_queue_entry_t *my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
+            sptr->free_ready_mb_task_queue_entries.pop_front();
+            sptr->num_free_task_queue_entries--;
+            DEBUG(printf("APP: and now there are %u free task queue entries in the list\n", sptr->num_free_task_queue_entries));
+            SDEBUG(print_free_ready_tasks_list(sptr));
+            //   Now fill it in
+            my_queue_entry->block_id = task_metadata_block->block_id;
+            DEBUG(printf("APP: got a free_task_ready_queue_entry, leaving %u free\n", sptr->num_free_task_queue_entries));
+            assert(sptr->num_free_task_queue_entries = sptr->free_ready_mb_task_queue_entries.size());
+            sptr->ready_mb_task_queue_pool.push_back(my_queue_entry);
+            sptr->num_tasks_in_ready_queue++;
+            DEBUG(printf("APP: and now there are %u ready tasks in the queue\n",
+                         sptr->num_tasks_in_ready_queue);
+                  print_ready_tasks_queue(sptr));
+            assert(sptr->num_tasks_in_ready_queue = sptr->ready_mb_task_queue_pool.size());
+            pthread_mutex_unlock(&(sptr->task_queue_mutex));
+          }
         } else {
           continue;
         }
@@ -1634,7 +1723,7 @@ void *schedule_executions_from_queue(void *void_param_ptr) {
         printf("SCHED: ERROR : Selected Task has no accelerator assigned\n");
         // pthread_mutex_unlock(&schedule_from_queue_mutex);
         print_base_metadata_block_contents(task_metadata_block);
-        exit( -19);
+        exit(-19);
       } else {
         // Mark the requested accelerator as "In-USE" by this metadata block
         if (sptr->accelerator_in_use_by[accel_type][accel_id] != -1) {
@@ -1642,7 +1731,7 @@ void *schedule_executions_from_queue(void *void_param_ptr) {
                  "ACCEL %s %u which is already allocated to Block %u\n",
                  sptr->accel_name_str[accel_type], accel_id,
                  sptr->accelerator_in_use_by[accel_type][accel_id]);
-          exit( -14);
+          exit(-14);
         }
         account_accelerators_in_use_interval(sptr);
         int bi = task_metadata_block->block_id; // short name for the block_id
@@ -1731,19 +1820,20 @@ void *schedule_executions_from_queue(void *void_param_ptr) {
 }
 
 void request_execution(
-  /*task_metadata_entry*/ void *task_metadata_block_ptr) {
-  task_metadata_entry *task_metadata_block =
-    (task_metadata_entry *)task_metadata_block_ptr;
-  dag_metadata_entry * dag = new(dag_metadata_entry);
-  dag->task_mb_ptr = task_metadata_block;
+  /*dag_metadata_entry*/ void *dag_ptr) {
+  dag_metadata_entry * dag = (dag_metadata_entry *)dag_ptr;;
   dag->dag_status = ACTIVE_DAG; //Active DAG
-  DEBUG(printf("APP: in request_execution for MB%u\n",
-               task_metadata_block->block_id););
+  Graph &graph = *(dag->graph_ptr);
+  DEBUG(
+    printf("APP: in request_execution for dag id%u\n",
+           dag->dag_id);
+  );
+
   // TASKID: task_metadata_block->task_id = global_task_id_counter++; // Set a
   // task id for this task (which is the global request_execution order, for
   // now)
   scheduler_datastate *sptr =
-    task_metadata_block->scheduler_datastate_pointer;
+    dag->scheduler_datastate_pointer;
 
   // Put this into the active dag queue
   //   Get a ready_task_queue_entry
@@ -1778,7 +1868,7 @@ void wait_on_tasklist(/* scheduler_datastate */ void *_sptr, int num_tasks, ...)
     task_metadata_entry *mb_ptr = va_arg(var_list, task_metadata_entry *);
     if (mb_ptr == NULL) {
       printf("ERROR: wait_on_tasklist provided a NULL task pointer\n");
-      exit( -30);
+      exit(-30);
     }
     task_block_ids[i] = mb_ptr->block_id;
   }
@@ -1838,7 +1928,7 @@ void wait_on_tasklist_list(/*scheduler_datastate **/ void* in_sptr, int num_task
     task_metadata_entry *mb_ptr = tlist[i];
     if (mb_ptr == NULL) {
       printf("ERROR: wait_on_tasklist provided a NULL task pointer\n");
-      exit( -30);
+      exit(-30);
     }
     task_block_ids[i] = mb_ptr->block_id;
   }
@@ -1884,7 +1974,7 @@ void wait_on_tasklist_list(/*scheduler_datastate **/ void* in_sptr, int num_task
   }
 }
 
-void wait_all_tasks_finish(scheduler_datastate *sptr) {
+void wait_all_tasks_finish(scheduler_datastate * sptr) {
   // Spin loop : check whether all blocks are free...
   printf("Waiting for ALL tasks to finish: free = %u and total = %u\n",
          sptr->free_metadata_blocks, sptr->total_metadata_pool_blocks);
@@ -1894,7 +1984,7 @@ void wait_all_tasks_finish(scheduler_datastate *sptr) {
 }
 
 // This cleans up the state (pthreads, etc.) before exit
-void cleanup_state(scheduler_datastate *sptr) {
+void cleanup_state(scheduler_datastate * sptr) {
   DEBUG(printf("In the cleanup-state routine...\n"); fflush(stdout));
 
   // Dynamically unload the scheduling policy (plug-in)
@@ -1942,13 +2032,17 @@ void cleanup_state(scheduler_datastate *sptr) {
   delete sptr->master_metadata_pool;
   free(sptr->free_metadata_pool);
   free(sptr->inparms);
+  //Delete DAG entries created
+  for (auto it : sptr->completed_dags) {
+    delete it;
+  }
   delete sptr;
 }
 
 // This is called at the end of run/life to shut down the scheduler
 //  This will also output a bunch of stats abdout timings, etc.
 
-void output_run_statistics(scheduler_datastate *sptr) {
+void output_run_statistics(scheduler_datastate * sptr) {
 
   // NOW output some overall full-run statistics, etc.
   printf("\nOverall Accelerator allocation/usage statistics:\n");
@@ -2126,7 +2220,7 @@ void output_run_statistics(scheduler_datastate *sptr) {
   }
 }
 
-void shutdown_scheduler(scheduler_datastate *sptr) {
+void shutdown_scheduler(scheduler_datastate * sptr) {
   output_run_statistics(sptr);
   // DON'T call this here -- there is an "on_exit" call that does this automatically now!
   //printf("Calling cleanup_stats...\n"); fflush(stdout);
@@ -2141,7 +2235,7 @@ void cleanup_and_exit(int rval, void *sptr_ptr) {
   exit(rval);
 }
 
-void dump_all_metadata_blocks_states(scheduler_datastate *sptr) {
+void dump_all_metadata_blocks_states(scheduler_datastate * sptr) {
   if (sptr->free_metadata_blocks == 0) {
     printf("FREE_MBS: { }\n");
   } else {
@@ -2212,19 +2306,19 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
 
   if (set_up_task_func == NULL) {
     printf("ERROR: Must set set_up_task_func function -- can use base routine\n");
-    exit( -31);
+    exit(-31);
   }
   if (finish_task_func == NULL) {
     printf("ERROR: Must set finish_task_func function -- can use base routine\n");
-    exit( -31);
+    exit(-31);
   }
   if (auto_finish_func == NULL) {
     printf("ERROR: Must set auto_finish_func function -- can use base routine\n");
-    exit( -31);
+    exit(-31);
   }
   if (print_metadata_block_contents == NULL) {
     printf("ERROR: Must set print_metadata_block_contents function -- can use base routine\n");
-    exit( -31);
+    exit(-31);
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information
   // for this task
@@ -2233,7 +2327,7 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
     sptr->next_avail_task_type++;
   } else {
     printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding id %u\n", (sptr->inparms->max_task_types - 1), tid);
-    exit( -35);
+    exit(-35);
   }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
@@ -2257,28 +2351,28 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
   return tid;
 }
 
-void register_accel_can_exec_task(scheduler_datastate *sptr,
+void register_accel_can_exec_task(scheduler_datastate * sptr,
                                   scheduler_accelerator_type sl_acid,
                                   task_type_t tid,
                                   sched_execute_task_function_t fptr) {
   if (sl_acid > SCHED_MAX_ACCEL_TYPES) {
     printf("In register_accel_can_exec_task specified an illegal accelerator id: %u vs %u (MAX)\n", sl_acid, (SCHED_MAX_ACCEL_TYPES - 1));
-    exit( -36);
+    exit(-36);
   }
   DEBUG(printf("In register_accel_can_exec_task for accel %u %s and task %u with fptr %p\n", sl_acid, sptr->accel_name_str[sl_acid], tid, fptr));
   int acid = sptr->map_sched_accel_type_to_local_accel_type[sl_acid];
   if (acid < 0) {
     printf("In register_accel_can_exec_task specified an un-allocated accelerator id: %u %s\n", sl_acid, sptr->accel_name_str[sl_acid]);
-    exit( -38);
+    exit(-38);
   }
   if (tid >= sptr->next_avail_task_type) {
     printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n", tid, sptr->next_avail_task_type);
-    exit( -37);
+    exit(-37);
   }
   if (sptr->scheduler_execute_task_function[acid][tid] != NULL) {
     printf("In register_accel_can_exec_task for accel_type %u and task_type %u - Already have a registered execution (%p)\n", acid, tid,
            sptr->scheduler_execute_task_function[tid][acid]);
-    exit( -39);
+    exit(-39);
   }
   sptr->scheduler_execute_task_function[acid][tid] = fptr;
   DEBUG(printf("  Set scheduler_execute_task_function[acid = %u ][tid = %u ]  to %p\n", acid, tid, fptr));
@@ -2288,36 +2382,29 @@ void register_accel_can_exec_task(scheduler_datastate *sptr,
 /*task_metadata_entry*/ void *
 set_up_task(/*scheduler_datastate*/ void *sptr_ptr,
                                     task_type_t the_task_type, task_criticality_t crit_level,
-                                    int use_auto_finish, int32_t dag_id, ...) {
+                                    int use_auto_finish, int32_t dag_id, void * args) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
-  va_list args;
-  va_start(args, dag_id);
 
   task_metadata_entry *task_mb = (task_metadata_entry*) sptr->set_up_task_function[the_task_type](
-                                   sptr, the_task_type, crit_level, use_auto_finish, dag_id, &args);
+                                   sptr, the_task_type, crit_level, use_auto_finish, dag_id, args);
 
-  va_end(args);
   return task_mb;
 }
 
 void finish_task_execution(
-  /*task_metadata_entry*/ void *the_metadata_block_ptr, ...) {
+  /*task_metadata_entry*/ void *the_metadata_block_ptr, void * args) {
   task_metadata_entry *the_metadata_block =
     (task_metadata_entry *)the_metadata_block_ptr;
   scheduler_datastate *sptr =
     the_metadata_block->scheduler_datastate_pointer;
   task_type_t task_type = the_metadata_block->task_type;
 
-  va_list args;
-  va_start(args, the_metadata_block_ptr);
+  sptr->finish_task_execution_function[task_type](the_metadata_block, args);
 
-  sptr->finish_task_execution_function[task_type](the_metadata_block, &args);
-
-  va_end(args);
 }
 
 auto_finish_task_function_t
-get_auto_finish_routine(scheduler_datastate *sptr,
+get_auto_finish_routine(scheduler_datastate * sptr,
                         task_type_t the_task_type) {
   return sptr->auto_finish_task_function[the_task_type];
 }

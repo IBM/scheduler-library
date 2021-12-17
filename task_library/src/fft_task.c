@@ -501,17 +501,12 @@ void fft_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
 // NOTE: This routine simply copies out the results to a provided memory space ("results")
 
 void finish_fft_execution(
-  /*task_metadata_entry*/ void *fft_metadata_block_ptr,
-  void *args) // float* results)
-//... )
-{
-  va_list var_list;
-  va_copy(var_list, *(va_list *)args);
-  //va_start(var_list, fft_metadata_block_ptr);
+  /*task_metadata_entry*/ void *fft_metadata_block_ptr, void *args) {// float* results)
+
   task_metadata_entry *fft_metadata_block =
     (task_metadata_entry *)fft_metadata_block_ptr;
   // float* results)
-  float *results = va_arg(var_list, float *);
+  float *results = (float *) args;
 
   int tidx = fft_metadata_block->accelerator_type;
   fft_timing_data_t * fft_timings_p = (fft_timing_data_t*) & (fft_metadata_block->task_timings[fft_metadata_block->task_type]);
@@ -537,5 +532,4 @@ void finish_fft_execution(
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", fft_metadata_block->block_id));
   free_task_metadata_block(fft_metadata_block);
-  va_end(var_list);
 }

@@ -31,11 +31,20 @@
 
 #include "fft_task.h"
 
+//Radar: radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)
+struct radar_input_t {
+        uint32_t log_nsamples;
+        float *inputs;
+        size_t inputs_size;
+        radar_input_t(uint32_t log_nsamples, float *inputs, size_t inputs_size):
+                log_nsamples(log_nsamples), inputs(inputs), inputs_size(inputs_size) {}
+};
+
 void set_up_radar_task_on_accel_profile_data();
 
 /*task_metadata_entry*/ void* set_up_radar_task(/*scheduler_datastate*/ void* sptr,
-        task_type_t radar_task_type, task_criticality_t crit_level,
-        bool use_auto_finish, int32_t dag_id, /*va_list var_list*/ void* args);
+                task_type_t radar_task_type, task_criticality_t crit_level,
+                bool use_auto_finish, int32_t dag_id, void* args);
 
 void radar_auto_finish_routine(/*task_metadata_entry*/ void* mb);
 void finish_radar_execution(/*task_metadata_entry*/ void* radar_metadata_block, void* args);

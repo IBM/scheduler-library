@@ -32,6 +32,8 @@
 
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/topological_sort.hpp"
+#include <boost/graph/directed_graph.hpp>
+#include <boost/graph/graphviz.hpp>
 
 //#include "base_types.h"
 typedef enum { success, error } status_t;
@@ -73,6 +75,7 @@ typedef enum {
 typedef enum {
   ACTIVE_DAG = 0,
   ACTIVE_QUEUED_DAG,
+  ACTIVE_NOTREADY_DAG,
   COMPLETED_DAG,
   NUM_DAG_STATUS
 } dag_status_t;
@@ -216,23 +219,44 @@ class task_metadata_entry {
   // data for the task)
 };
 
+struct dag_vertex_t {
+  uint8_t vertex_id;
+  task_status_t vertex_status = TASK_FREE;
+  task_type_t task_type;
+  task_metadata_entry * task_mb_ptr;
+  void * input_ptr;
+  void * output_ptr;
+};
+
+struct dag_edge_t {
+  uint64_t data_movement_time_usec;
+};
+
+typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, dag_vertex_t, dag_edge_t > Graph;
+typedef Graph::vertex_descriptor vertex_t;
+typedef Graph::edge_descriptor edge_t;
+
 class dag_metadata_entry {
  public:
   // This points to the scheduler datastate structure (defiuned below) to which
   // this metadata block belongs.
   scheduler_datastate *scheduler_datastate_pointer;
   int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
+  Graph * graph_ptr;
   // boost::adjacency_list<> * graph_ptr;
   task_metadata_entry * task_mb_ptr;
-  uint64_t dag_arrival_time; //Time at which the DAG arrived
-  uint64_t dag_deadline_time; //Time before which DAG should be completed
-  uint64_t dag_slack; //Time until deadline
+  struct timeval dag_arrival_time; //Time at which the DAG arrived
+  uint64_t dag_deadline_time_usec; //Time before which DAG should be completed
+  uint64_t dag_slack_usec; //Time until deadline
   task_criticality_t crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
   // dag_type_t dag_type; //Type of DAG
   dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
 
   //Stats calculation
   uint64_t dag_response_time;
+
+  dag_metadata_entry(scheduler_datastate *scheduler_datastate_pointer, int32_t dag_id, Graph * graph_ptr, uint64_t dag_deadline_time,
+                     task_criticality_t crit_level);
 
 };
 
@@ -429,11 +453,8 @@ extern auto_finish_task_function_t
 get_auto_finish_routine(scheduler_datastate *sptr,
                         task_type_t the_task_type);
 
-extern void request_execution(void *task_metadata_block);
+extern void request_execution(void *dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);
-extern void wait_all_tasks_finish(scheduler_datastate *sptr);
-extern void wait_on_tasklist(/*scheduler_datastate **/ void* sptr, int num_tasks, ...);
-extern void wait_on_tasklist_list(/*scheduler_datastate **/ void* sptr, int num_tasks, task_metadata_entry** tlist);
 
 extern void mark_task_done(task_metadata_entry *task_metadata_block);
 extern void update_dag(task_metadata_entry *task_metadata_block);
@@ -460,9 +481,9 @@ task_type_t register_task_type(
 
 extern void *set_up_task(void *sptr, task_type_t the_task_type,
                          task_criticality_t crit_level, int use_auto_finish,
-                         int32_t dag_id, ...);
+                         int32_t dag_id, void * args);
 
-extern void finish_task_execution(void *the_metadata_block, ...);
+extern void finish_task_execution(void *the_metadata_block, void * args);
 
 extern void print_ready_tasks_queue(scheduler_datastate *sptr);
 #endif

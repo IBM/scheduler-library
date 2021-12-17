@@ -301,8 +301,6 @@ void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
 //   over-write the original input data with the TEST results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 void finish_test_execution(/*task_metadata_entry*/void* test_metadata_block_ptr, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list*)args);
   task_metadata_entry *test_metadata_block = (task_metadata_entry*)test_metadata_block_ptr;
   int tidx = test_metadata_block->accelerator_type;
   test_timing_data_t * test_timings_p = (test_timing_data_t*) & (test_metadata_block->task_timings[test_metadata_block->task_type]);
@@ -317,7 +315,6 @@ void finish_test_execution(/*task_metadata_entry*/void* test_metadata_block_ptr,
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
   free_task_metadata_block(test_metadata_block);
-  va_end(var_list);
 }
 
 
