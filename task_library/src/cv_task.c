@@ -51,9 +51,9 @@ PyObject *pName, *pModule, *pFunc, *pFunc_load;
 PyObject *pArgs, *pValue, *pretValue;
 #define PY_SSIZE_T_CLEAN
 
-char *python_module = "mio";
-char *python_func = "predict";
-char *python_func_load = "loadmodel";
+extern char *python_module; // = "yolo";
+extern char *python_func; // = "predict";
+extern char *python_func_loadi; // = "loadmodel";
 #endif
 
 #ifdef ENABLE_NVDLA
@@ -347,19 +347,20 @@ label_t run_object_classification(unsigned tr_val) {
   return object;
 }
 
-void execute_cpu_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_block_ptr) {
+void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_block_t *task_metadata_block = (task_metadata_block_t *)task_metadata_block_ptr;
-  DEBUG(printf("In execute_cpu_cv_accelerator: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
+  DEBUG(printf("In execute_cpu_cv_accelerator actual computation: MB %d  CL %d\n", task_metadata_block->block_id, task_metadata_block->crit_level));
   int aidx = task_metadata_block->accelerator_type;
+  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&( task_metadata_block->task_timings[task_metadata_block->task_type]);
+  cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(task_metadata_block->data_space);
+
+  label_t tr_val = cv_data_p->object_label;
   task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
 #ifdef INT_TIME
   gettimeofday(&(cv_timings_p->call_start), NULL);
-#endif
-
-  usleep(cv_cpu_run_time_in_usec);
-
+#endif // INT_TIME
+  cv_data_p->object_label = run_object_classification(tr_val);
 #ifdef INT_TIME
   struct timeval stop_time;
   gettimeofday(&stop_time, NULL);
@@ -367,11 +368,9 @@ void execute_cpu_cv_accelerator( /*task_metadata_block_t*/ void *task_metadata_b
   cv_timings_p->call_usec[aidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
 #endif
 
-  TDEBUG(printf("MB%u CV_CPU calling mark_task_done...\n",
-                task_metadata_block->block_id));
+  TDEBUG(printf("MB%u CV_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
-
 
 void set_up_cv_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {

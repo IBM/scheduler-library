@@ -49,7 +49,7 @@ PyObject *pName, *pModule, *pFunc, *pFunc_load;
 PyObject *pArgs, *pValue, *pretValue;
 #define PY_SSIZE_T_CLEAN
 
-char *python_module = "mio";
+char *python_module = "yolo";
 char *python_func = "predict";
 char *python_func_load = "loadmodel";
 #endif

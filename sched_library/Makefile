@@ -100,14 +100,14 @@ endif
 ifdef CONFIG_KERAS_CV_BYPASS
  CFLAGS += -DBYPASS_KERAS_CV_CODE
 else
- CFLAGS += -I/usr/include/python2.7
+ CFLAGS += -I/home/espuser/anaconda3/include/python3.7m
 endif
 
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV -DENABLE_NVDLA
- #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
+ #CFLAGS += -DHW_CV -DENABLE_NVDLA
+ CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/home/espuser/anaconda3/include/python3.7m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
   SW_STR =
@@ -167,7 +167,7 @@ ifdef COMPILE_TO_ESP
  LDFLAGS += -lcontig
 endif
 ifndef CONFIG_KERAS_CV_BYPASS
- LDFLAGS += -lpython2.7
+ LDFLAGS += -lpython3.7m
 endif
 
 SRC = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
@@ -229,7 +229,7 @@ endif
 .PHONY: esp-build-clean esp-build-distclean esp-libs
 
 obj/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
 
 policies/%.so: src/policy_src/%.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@

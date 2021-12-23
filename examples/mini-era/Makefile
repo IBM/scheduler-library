@@ -104,14 +104,14 @@ endif
 ifdef CONFIG_KERAS_CV_BYPASS
  CFLAGS += -DBYPASS_KERAS_CV_CODE
 else
- CFLAGS += -I/usr/include/python2.7
+ CFLAGS += -I/home/espuser/anaconda3/include/python3.7m
 endif
 
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV -DENABLE_NVDLA
- #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
+ #CFLAGS += -DHW_CV -DENABLE_NVDLA
+ CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/home/espuser/anaconda3/include/python3.7m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
   SW_STR =
@@ -186,7 +186,7 @@ ifdef COMPILE_TO_ESP
  LDFLAGS += -lcontig
 endif
 ifndef CONFIG_KERAS_CV_BYPASS
- LDFLAGS += -lpython2.7
+ LDFLAGS += -lpython3.7m
 endif
 
 SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
@@ -309,10 +309,10 @@ obj_s/%.o: %.c
 
 $(OBJ_T): $(HDR_T)
 
-$(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T) $(NVDLA_MODULE) $(ALLMODULE_OBJS)
+$(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T) $(ALLMODULE_OBJS)
 	#$(CROSS_COMPILE)$(CC) -fPIC $< -c -o me_test.o
-	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) $(OBJ_T) -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) $(OBJ_T) -o w_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) w_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
 	#$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
 
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
@@ -320,9 +320,9 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
-	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
-	rm me_test.o wnvdla_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o w_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) w_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	rm me_test.o w_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
