@@ -32,8 +32,9 @@ initialize_assign_task_to_pe(void * in_parm_ptr) {
 //   If an accelerators of that type is not available, it waits until it is.
 
 extern "C" ready_mb_task_queue_entry_t *
-assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_entry_t*> &ready_queue) {
+assign_task_to_pe(scheduler_datastate* sptr) {
   //Choose head of ready queue to be scheduled
+  std::list<ready_mb_task_queue_entry_t*> & ready_queue = sptr->ready_mb_task_queue_pool;
   ready_mb_task_queue_entry_t* selected_task_entry = ready_queue.front();
   task_metadata_entry * task_metadata_block = NULL;
   if (selected_task_entry != NULL) {
@@ -48,7 +49,8 @@ assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_ent
     exit( -19);
   }
 
-  DEBUG(printf("SCHED-PnWT: In pick_accel_and_wait_for_available policy for MB%u : TID %u = %s\n", task_metadata_block->block_id, task_metadata_block->task_type,
+  DEBUG(printf("SCHED-PnWT: In pick_accel_and_wait_for_available policy for MB%u : TID %u = %s\n",
+               task_metadata_block->block_id, task_metadata_block->task_type,
                sptr->task_name_str[task_metadata_block->task_type]));
 #ifdef INT_TIME
   struct timeval current_time;
@@ -62,8 +64,10 @@ assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_ent
 
     int num = (rand() % (100)); // Return a value from [0,99]
     for (int i = 1; i < sptr->next_avail_accel_id; i++) {
-      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u = %s][%u = %s] = %u\n", task_metadata_block->task_type,
-                   sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type, sptr->task_name_str[task_metadata_block->task_type], i,
+      DEBUG(printf(" CHECK: Task %u %s : rand %u HW_THRESH[%u = %s][%u = %s] = %u\n",
+                   task_metadata_block->task_type,
+                   sptr->task_name_str[task_metadata_block->task_type], num, task_metadata_block->task_type,
+                   sptr->task_name_str[task_metadata_block->task_type], i,
                    sptr->accel_name_str[i],  HW_THRESHOLD[task_metadata_block->task_type][i]));
       if (num >= HW_THRESHOLD[task_metadata_block->task_type][i]) {
         // Execute on hardware
@@ -72,18 +76,21 @@ assign_task_to_pe(scheduler_datastate* sptr, std::vector<ready_mb_task_queue_ent
       sptr->scheduler_decision_checks++;
     }
   } else {
-    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n", task_metadata_block->task_type);
+    printf("ERROR : pick_accel_and_wait_for_available called for unknown task type: %u\n",
+           task_metadata_block->task_type);
     exit( -15);
   }
 
-  DEBUG(printf(" We've got proposed_accel %u with %u of that type\n", proposed_accel, sptr->num_accelerators_of_type[proposed_accel]));
+  DEBUG(printf(" We've got proposed_accel %u with %u of that type\n", proposed_accel,
+               sptr->num_accelerators_of_type[proposed_accel]));
   // Okay, here we should have a good task to schedule...
   // Creating a "busy spin loop" where we constantly try to allocate
   //  This metablock to an accelerator, until one gets free...
 #ifdef INT_TIME
   struct timeval decis_time;
   gettimeofday(&decis_time, NULL);
-  sptr->scheduler_decision_time_usec += 1000000 * (decis_time.tv_sec - current_time.tv_sec) + (decis_time.tv_usec - current_time.tv_usec);
+  sptr->scheduler_decision_time_usec += 1000000 * (decis_time.tv_sec - current_time.tv_sec) +
+                                        (decis_time.tv_usec - current_time.tv_usec);
 #endif
   sptr->scheduler_decisions++;
   do {

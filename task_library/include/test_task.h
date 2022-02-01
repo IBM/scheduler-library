@@ -58,7 +58,7 @@ void set_up_test_task_on_accel_profile_data();
 
 void *set_up_test_task(void *sptr, task_type_t test_task_type,
                        task_criticality_t crit_level, bool use_auto_finish,
-                       int32_t dag_id, void *);
+                       int32_t dag_id, int32_t task_id, void *);
 
 void test_auto_finish_routine(void *mb);
 void finish_test_execution(void *test_metadata_block, void *);

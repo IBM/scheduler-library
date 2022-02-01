@@ -175,15 +175,24 @@ HDR = $(wildcard include/*.h)
 OBJ = $(SRC:%.c=obj/%.o)
 LL_OBJ = $(SRC:%.c=obj/%.bc)
 
-SRC_P = $(foreach f, $(wildcard src/policy_src/*.c), $(shell basename $(f)))
-OBJ_P = $(SRC_P:%.c=policies/%.so)
-LIB_P = $(SRC_P:lib%.c=-l%)
 
- $(info $$SRC_P is [${SRC_P}])
- $(info $$OBJ_P is [${OBJ_P}])
- $(info $$LIB_P is [${LIB_P}])
+SRC_M = $(foreach f, $(wildcard src/meta_policy_src/*.c), $(shell basename $(f)))
+OBJ_M = $(SRC_M:%.c=meta_policies/%.so)
+LIB_M = $(SRC_M:lib%.c=-l%)
 
-VPATH = ./src ./src/policy_src
+ $(info $$SRC_M is [${SRC_M}])
+ $(info $$OBJ_M is [${OBJ_M}])
+ $(info $$LIB_M is [${LIB_M}])
+
+SRC_T = $(foreach f, $(wildcard src/task_policy_src/*.c), $(shell basename $(f)))
+OBJ_T = $(SRC_T:%.c=task_policies/%.so)
+LIB_T = $(SRC_T:lib%.c=-l%)
+
+ $(info $$SRC_T is [${SRC_T}])
+ $(info $$OBJ_T is [${OBJ_T}])
+ $(info $$LIB_T is [${LIB_T}])
+
+VPATH = ./src ./src/meta_policy_src ./src/task_policy_src
 
 TARGET=libscheduler.a
 HPVM_TARGET=libscheduler.bc
@@ -191,7 +200,7 @@ HPVM_TARGET=libscheduler.bc
 #$(info $$TARGET is [${TARGET}])
 
 
-all: esp-libs $(TARGET) policies $(OBJ_P)
+all: esp-libs $(TARGET) task_policies meta_policies $(OBJ_M) $(OBJ_T)
 
 ESP_BUILD_DRIVERS     = esp-build/drivers
 
@@ -231,9 +240,11 @@ endif
 obj/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
-policies/%.so: src/policy_src/%.c
+meta_policies/%.so: src/meta_policy_src/%.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@
 
+task_policies/%.so: src/task_policy_src/%.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@
 
 $(OBJ): $(HDR)
 
@@ -243,8 +254,8 @@ $(TARGET): obj $(OBJ)
 
 
 clean:
-	$(RM) $(OBJ) $(OBJ_P) $(LL_OBJ) $(SCHED_LIB)
-	$(RM) -rf obj policies
+	$(RM) $(OBJ) $(OBJ_M) $(OBJ_T) $(LL_OBJ) $(SCHED_LIB)
+	$(RM) -rf obj meta_policies task_policies
 
 clobber: clean
 	$(RM) $(TARGET) $(HPVM_TARGET)
@@ -254,7 +265,10 @@ clobber: clean
 obj:
 	mkdir $@
 
-policies:
+task_policies:
+	mkdir $@
+
+meta_policies:
 	mkdir $@
 
 

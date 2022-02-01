@@ -44,7 +44,7 @@ void set_up_radar_task_on_accel_profile_data();
 
 /*task_metadata_entry*/ void* set_up_radar_task(/*scheduler_datastate*/ void* sptr,
                 task_type_t radar_task_type, task_criticality_t crit_level,
-                bool use_auto_finish, int32_t dag_id, void* args);
+                bool use_auto_finish, int32_t dag_id, int32_t task_id, void* args);
 
 void radar_auto_finish_routine(/*task_metadata_entry*/ void* mb);
 void finish_radar_execution(/*task_metadata_entry*/ void* radar_metadata_block, void* args);

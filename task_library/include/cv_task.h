@@ -69,7 +69,7 @@ void set_up_cv_task_on_accel_profile_data();
 
 void *set_up_cv_task(void *sptr, task_type_t cv_task_type,
                      task_criticality_t crit_level, bool use_auto_finish,
-                     int32_t dag_id, void *args); // label_t in_label);
+                     int32_t dag_id, int32_t task_id, void *args); // label_t in_label);
 
 void cv_auto_finish_routine(void *mb);
 void finish_cv_execution(void *fft_metadata_block, void *args); // label_t* out_label);

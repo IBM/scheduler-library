@@ -29,6 +29,21 @@
 #define MAX_OCC_X  7
 #define MAX_OCC_Y  100
 
+struct create_grid_input_t {
+  lane_t lane;
+  unsigned in_data_size;
+  uint8_t* in_data;
+  unsigned occ_x_dim;
+  unsigned occ_y_dim;
+  uint8_t* occ_grid;
+
+  create_grid_input_t(
+    lane_t lane, unsigned in_data_size, uint8_t* in_data, unsigned occ_x_dim, unsigned occ_y_dim,
+    uint8_t* occ_grid):
+    lane(lane), in_data_size(in_data_size), in_data(in_data), occ_x_dim(occ_x_dim),
+    occ_y_dim(occ_y_dim), occ_grid(occ_grid) {}
+};
+
 // This is a structure that defines the "CREATE_GRID" task's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Plan-and-Control" Task view of "data"
@@ -40,7 +55,6 @@ typedef struct { // The "Plan-and-Control" Task view of "data"
   uint8_t    occ_grid[MAX_OCC_X * MAX_OCC_Y];
 } create_grid_data_struct_t;
 
-
 typedef struct {
   struct timeval call_start;
   uint64_t call_sec[SCHED_MAX_ACCEL_TYPES];
@@ -50,7 +64,8 @@ typedef struct {
 
 void print_create_grid_metadata_block_contents(task_metadata_entry* mb);
 
-void output_create_grid_task_type_run_stats(scheduler_datastate* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_create_grid_task_type_run_stats(scheduler_datastate* sptr, unsigned my_task_type,
+    unsigned total_accel_types);
 
 void execute_on_cpu_create_grid_accelerator(task_metadata_entry* task_metadata_block);
 void execute_on_hwr_vit_create_grid_accelerator(task_metadata_entry* task_metadata_block);
@@ -61,9 +76,10 @@ void set_up_create_grid_task_on_accel_profile_data();
 
 task_metadata_entry* set_up_create_grid_task(scheduler_datastate* sptr,
     task_type_t create_grid_task_type, task_criticality_t crit_level,
-    bool use_auto_finish, int32_t dag_id, va_list var_list);
+    bool use_auto_finish, int32_t dag_id, void * args);
 
 void create_grid_auto_finish_routine(task_metadata_entry* mb);
-void finish_create_grid_execution(task_metadata_entry* create_grid_metadata_block, va_list var_list); //vehicle_state_t* new_vehicle_state);
+void finish_create_grid_execution(task_metadata_entry* create_grid_metadata_block,
+                                  void * args); //vehicle_state_t* new_vehicle_state);
 
 #endif

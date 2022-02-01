@@ -35,9 +35,11 @@ struct viterbi_input_t {
   size_t          frame_ptr_size;
   uint8_t *       in_bits;
   size_t          in_bits_size;
-  viterbi_input_t(message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size, frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
+  viterbi_input_t(message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size,
+                  frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
                   size_t in_bits_size) :
-    msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr), frame_ptr_size(frame_ptr_size), in_bits(in_bits),
+    msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
+    frame_ptr_size(frame_ptr_size), in_bits(in_bits),
     in_bits_size(in_bits_size) {}
 };
 
@@ -82,9 +84,10 @@ void set_up_vit_task_on_accel_profile_data();
 
 void *set_up_vit_task(void *sptr, task_type_t vit_task_type,
                       task_criticality_t crit_level, bool use_auto_finish,
-                      int32_t dag_id, void *);
+                      int32_t dag_id, int32_t task_id, void *);
 
 void viterbi_auto_finish_routine(void *mb);
-void finish_viterbi_execution(void *vit_metadata_block, void * args); // message_t* message_id, char* out_msg_txt);
+void finish_viterbi_execution(void *vit_metadata_block,
+                              void * args); // message_t* message_id, char* out_msg_txt);
 
 #endif

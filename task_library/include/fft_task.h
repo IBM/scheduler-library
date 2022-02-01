@@ -72,14 +72,15 @@ void set_up_fft_task_on_accel_profile_data();
 
 void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
-void output_fft_task_type_run_stats(void *sptr_ptr, unsigned my_task_type, unsigned total_accel_types);
+void output_fft_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
+                                    unsigned total_accel_types);
 
 void execute_hwr_fft_accelerator(void *task_metadata_block);
 void execute_cpu_fft_accelerator(void *task_metadata_block);
 
 void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
                       task_criticality_t crit_level, bool use_auto_finish,
-                      int32_t dag_id, void *);
+                      int32_t dag_id, int32_t task_id, void *);
 
 void finish_fft_execution(void *fft_metadata_block, void *); // float* results);
 

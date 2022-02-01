@@ -50,7 +50,8 @@ typedef struct {
 
 void print_fuse_grids_metadata_block_contents(task_metadata_entry* mb);
 
-void output_fuse_grids_task_type_run_stats(scheduler_datastate* sptr, unsigned my_task_type, unsigned total_accel_types);
+void output_fuse_grids_task_type_run_stats(scheduler_datastate* sptr, unsigned my_task_type,
+    unsigned total_accel_types);
 
 void execute_on_cpu_fuse_grids_accelerator(task_metadata_entry* task_metadata_block);
 void execute_on_hwr_vit_fuse_grids_accelerator(task_metadata_entry* task_metadata_block);
@@ -61,9 +62,10 @@ void set_up_fuse_grids_task_on_accel_profile_data();
 
 task_metadata_entry* set_up_fuse_grids_task(scheduler_datastate* sptr,
     task_type_t fuse_grids_task_type, task_criticality_t crit_level,
-    bool use_auto_finish, int32_t dag_id, va_list var_list);
+    bool use_auto_finish, int32_t dag_id, int32_t task_id, void * args);
 
 void fuse_grids_auto_finish_routine(task_metadata_entry* mb);
-void finish_fuse_grids_execution(task_metadata_entry* fuse_grids_metadata_block, va_list var_list); //vehicle_state_t* new_vehicle_state);
+void finish_fuse_grids_execution(task_metadata_entry* fuse_grids_metadata_block,
+                                 void * args); //vehicle_state_t* new_vehicle_state);
 
 #endif
