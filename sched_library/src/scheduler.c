@@ -130,7 +130,8 @@ void print_dag_graph(Graph &graph) {
   boost::write_graphviz(std::cout, graph);
   Graph::vertex_iterator v, vend;
   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
-    printf("%u: Status: %u\n", graph[*v].vertex_id, graph[*v].vertex_status);
+    printf("%u: Task-type: %u Status: %u\n", graph[*v].vertex_id, graph[*v].task_type,
+           graph[*v].vertex_status);
   }
 }
 
@@ -2049,6 +2050,44 @@ void request_execution(
   pthread_mutex_unlock(&(sptr->dag_queue_mutex));
 
   return;
+}
+
+//TODO: Use Template Variadic args instead
+dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_ptr,
+    task_criticality_t crit_level, ...) {
+
+  // Create new graph
+  // Deleted when all tasks in the Graph have completed execution (in update_dag)
+  Graph * graph_ptr = new(Graph);
+  Graph &graph = *graph_ptr;
+
+  // Copy static DFG into a new graph
+  boost::copy_graph(*dfg_ptr, *graph_ptr);
+
+  //Create DAG object and set graph_ptr
+  //Deleted during cleanup state
+  dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_ptr,
+      10000000, crit_level);
+
+  //Set Input and Output ptr of graph
+  va_list var_list;
+  va_start(var_list, crit_level);
+  Graph::vertex_iterator v, vend;
+  for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
+    uint32_t vertex_id = va_arg(var_list, uint32_t);
+    assert(graph[*v].vertex_id == vertex_id);
+    graph[*v].input_ptr = va_arg(var_list, void *);
+    graph[*v].output_ptr = va_arg(var_list, void *);
+    DEBUG(printf("%u: Task-type: %u %s Status: %u\n", graph[*v].vertex_id, task_type,
+                 sptr->task_name_str[task_type], graph[*v].vertex_status););
+  }
+  va_end(var_list);
+
+  //Request execution on the DAG
+  request_execution(dag_ptr);
+
+  //return for waitlist
+  return dag_ptr;
 }
 
 /********************************************************************************

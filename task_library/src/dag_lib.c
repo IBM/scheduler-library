@@ -31,23 +31,43 @@
 //test: NULL
 //pnc: &vehicle_state
 
+Graph * create_graph(char * graphml_filename) {
+    //Create empty DFG
+    Graph * dfg_ptr = new(Graph);
+
+    //Open graphml file
+    std::ifstream inFile;
+    inFile.open(graphml_filename, std::ifstream::in);
+
+    //Read Graphml into static DFG graph
+    // Graph graph;
+    boost::dynamic_properties dp;
+    dp.property("task_type", boost::get(&dag_vertex_t::task_type, *dfg_ptr));
+    dp.property("vertex_id", boost::get(&dag_vertex_t::vertex_id, *dfg_ptr));
+    boost::read_graphml(inFile, *dfg_ptr, dp);
+
+    DEBUG(print_dag_graph(*dfg_ptr););
+
+    return dfg_ptr;
+}
+
 //Functions to create static DAGs
-void create_graph_miniERA(Graph * graph_ptr, bool no_crit_cnn_task, unsigned num_Crit_test_tasks,
-                          task_type_t radar_task_type, task_type_t vit_task_type, task_type_t plan_ctrl_task_type,
-                          task_type_t cv_task_type, task_type_t test_task_type,
-                          //RADAR IOuts
-                          uint32_t log_nsamples, float *inputs, size_t inputs_size,
-                          //VIT IOuts
-                          message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size, frame_param *frame_ptr,
-                          size_t frame_ptr_size, uint8_t *in_bits, size_t in_bits_size,
-                          //CV IOuts
-                          label_t cv_tr_label,
-                          //PnC IOuts
-                          unsigned time_step, unsigned repeat_factor, label_t* object_label_ptr, size_t object_label_size,
-                          distance_t* xfer_object_dist_ptr, size_t dist_size, message_t* safe_lanes_msg_ptr,
-                          size_t safe_lanes_msg_size, vehicle_state_t* vehicle_state_ptr) {
+Graph * create_graph_miniERA(bool no_crit_cnn_task, unsigned num_Crit_test_tasks,
+                             task_type_t radar_task_type, task_type_t vit_task_type, task_type_t plan_ctrl_task_type,
+                             task_type_t cv_task_type, task_type_t test_task_type,
+                             //RADAR IOuts
+                             uint32_t log_nsamples, float *inputs, size_t inputs_size,
+                             //VIT IOuts
+                             message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size, frame_param *frame_ptr,
+                             size_t frame_ptr_size, uint8_t *in_bits, size_t in_bits_size,
+                             //CV IOuts
+                             label_t cv_tr_label,
+                             //PnC IOuts
+                             unsigned time_step, unsigned repeat_factor, label_t* object_label_ptr, size_t object_label_size,
+                             distance_t* xfer_object_dist_ptr, size_t dist_size, message_t* safe_lanes_msg_ptr,
+                             size_t safe_lanes_msg_size, vehicle_state_t* vehicle_state_ptr) {
 
-
+    Graph * graph_ptr = new(Graph);
     //Create graph with cv, vit, rad and test; pnc has dependency on all the above
     Graph &graph = *graph_ptr;
     uint8_t id = 0;
@@ -104,6 +124,20 @@ void create_graph_miniERA(Graph * graph_ptr, bool no_crit_cnn_task, unsigned num
             vehicle_state_ptr);
     graph[pnc_vertex].output_ptr = vehicle_state_ptr;
     graph[pnc_vertex].vertex_status = TASK_FREE;
+
+    std::ofstream myfile;
+    myfile.open ("miniera.graphml");
+
+
+    boost::dynamic_properties dp;
+    dp.property("task_type", boost::get(&dag_vertex_t::task_type, graph));
+    dp.property("vertex_id", boost::get(&dag_vertex_t::vertex_id, graph));
+
+    boost::write_graphml(myfile, graph, dp, true);
+
+    myfile.close();
+
+    return graph_ptr;
 }
 
 void create_graph_cv(Graph * graph_ptr, task_type_t cv_task_type, label_t cv_tr_label,

@@ -29,11 +29,17 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <fstream>
 
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/topological_sort.hpp"
 #include <boost/graph/directed_graph.hpp>
 #include <boost/graph/graphviz.hpp>
+#include <boost/graph/graph_utility.hpp>
+#include <boost/property_map/property_map.hpp>
+#include <boost/property_map/dynamic_property_map.hpp>
+#include <boost/graph/graphml.hpp>
+#include <boost/graph/copy.hpp>
 
 //#include "base_types.h"
 typedef enum { success, error } status_t;
@@ -226,6 +232,7 @@ class task_metadata_entry {
   // data for the task)
 };
 
+//Boost graph task vertex bundled property
 struct dag_vertex_t {
   int32_t vertex_id;
   task_status_t vertex_status = TASK_FREE;
@@ -235,14 +242,15 @@ struct dag_vertex_t {
   void * output_ptr;
 };
 
+//Boost graph edge vertex bundled property
 struct dag_edge_t {
-  uint64_t data_movement_time_usec[SCHED_MAX_ACCEL_TYPES][SCHED_MAX_ACCEL_TYPES];
+  uint64_t data_movement_bytes;
 };
 
 typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, dag_vertex_t, dag_edge_t >
 Graph;
-typedef Graph::vertex_descriptor vertex_t;
-typedef Graph::edge_descriptor edge_t;
+typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
+typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
 
 class dag_metadata_entry {
  public:
@@ -468,6 +476,8 @@ struct rank_ordering {
   }
 };
 
+//Function to print DAG graph
+extern void print_dag_graph(Graph &graph);
 
 extern scheduler_get_datastate_in_parms_t *
 get_scheduler_datastate_input_parms();
@@ -488,6 +498,11 @@ extern void free_task_metadata_block(task_metadata_entry *mb);
 extern auto_finish_task_function_t
 get_auto_finish_routine(scheduler_datastate *sptr,
                         task_type_t the_task_type);
+
+// Create DAG and Process arrival
+// Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
+extern dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_ptr,
+    task_criticality_t crit_level, ...);
 
 extern void request_execution(void *dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);

@@ -179,6 +179,7 @@ LDFLAGS ?=
 LDFLAGS += -ltasks -lscheduler
 LDFLAGS += -lm
 LDFLAGS += -lpthread
+LDFLAGS += -lboost_graph -lboost_regex
 LDFLAGS += -ldl -rdynamic
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt

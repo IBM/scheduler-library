@@ -1066,6 +1066,9 @@ int main(int argc, char *argv[]) {
   RootIn* DFGArgs = hpvm_initialize();
 #endif
 
+  // Create Static DFG
+  Graph * dfg_ptr = create_graph("miniera.graphml");
+
   printf("Starting the main loop...\n");
   /* The input trace contains the per-epoch (time-step) input data */
 #ifdef TIME
@@ -1152,26 +1155,31 @@ int main(int argc, char *argv[]) {
     unsigned added_crit_task_idx = 0;
 
 #ifndef HPVM
-    //DAG info should have task type at the node and is given input for the task
-    //Create DAG
-    Graph * graph_ptr = new(Graph);
-    dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_ptr,
-        10000000, CRITICAL_TASK);
-    create_graph_miniERA(graph_ptr, no_crit_cnn_task, num_Crit_test_tasks,
-                         radar_task_type, vit_task_type, plan_ctrl_task_type, cv_task_type, test_task_type,
-                         radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN),
-                         (message_size_t) vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p),
-                         sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t),
-                         cv_tr_label,
-                         time_step, pandc_repeat_factor, &label, sizeof(label_t), &distance, sizeof(distance_t), &message,
-                         sizeof(message_t), &vehicle_state);
+    //Create input output struct pointers
+    void * radar_input_ptr = new radar_input_t(radar_log_nsamples_per_dict_set[crit_fft_samples_set],
+        radar_inputs, 2 * (1 << MAX_RADAR_LOGN));
+    void * radar_output_ptr = &distance;
+    void * viterbi_input_ptr = new viterbi_input_t((message_size_t) vit_msgs_size, &(vdentry_p->ofdm_p),
+        sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits,
+        sizeof(uint8_t));
+    void * viterbi_output_ptr = &message;
+    void * cv_input_ptr = new cv_input_t(cv_tr_label);
+    void * cv_output_ptr = &label;
+    void * test_input_ptr = NULL; // No input
+    void * test_output_ptr = NULL;
+    void * pnc_input_ptr = new pnc_input_t(time_step, pandc_repeat_factor, &label, sizeof(label_t),
+                                           &distance, sizeof(distance_t), &message, sizeof(message_t), &vehicle_state);
+    void * pnc_output_ptr = &vehicle_state;
+
+    // DFG info should have task type at the node and is given input for the task
+    dag_metadata_entry * dag_ptr = process_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK, 0, radar_input_ptr,
+                                   radar_output_ptr, 1, viterbi_input_ptr, viterbi_output_ptr, 2, pnc_input_ptr, pnc_output_ptr, 3,
+                                   cv_input_ptr, cv_output_ptr, 4, test_input_ptr, test_output_ptr);
+
 
     DEBUG(
       printf("MAIN: Arrival of DAG with id: %u\n", sptr->next_avail_DAG_id);
     );
-
-    request_execution(dag_ptr);
-
 
 #endif
 
@@ -1370,6 +1378,9 @@ int main(int argc, char *argv[]) {
     printf("  wait_all_critical run time        %lu usec\n", wait_all_crit);
   }
 #endif // TIME
+
+  //Delete DFGs
+  delete(dfg_ptr);
 
 #ifdef HPVM
   hpvm_cleanup(DFGArgs);
