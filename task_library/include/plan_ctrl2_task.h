@@ -66,5 +66,5 @@ void *set_up_plan_ctrl2_task(void *sptr, task_type_t plan_ctrl2_task_type,
 void plan_ctrl2_auto_finish_routine(void *mb);
 void finish_plan_ctrl2_execution(void *plan_ctrl2_metadata_block,
                                  void *args); // vehicle_state_t* new_vehicle_state);
-
+extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl2_profile;
 #endif

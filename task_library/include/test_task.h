@@ -36,6 +36,7 @@ extern unsigned test_on_hwr_cv_run_time_in_usec;
 // This is a structure that defines the "TEST" task's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "TEST" Task view of "data"
+  size_t in_size;
   label_t object_label; // The determined label of the object in the image
 } test_data_struct_t;
 
@@ -63,4 +64,5 @@ void *set_up_test_task(void *sptr, task_type_t test_task_type,
 void test_auto_finish_routine(void *mb);
 void finish_test_execution(void *test_metadata_block, void *);
 
+extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
 #endif

@@ -65,7 +65,7 @@ extern uint64_t depunc_usec;
 extern ofdm_param ofdm;
 extern frame_param frame;
 
-uint64_t vit_profile[4][SCHED_MAX_ACCEL_TYPES]; // Vit messages can by short,
+std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile; // Vit messages can by short,
 
 t_branchtab27 d_branchtab27_generic[2];
 

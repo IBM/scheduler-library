@@ -30,6 +30,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <map>
 
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/topological_sort.hpp"
@@ -237,9 +238,17 @@ struct dag_vertex_t {
   int32_t vertex_id;
   task_status_t vertex_status = TASK_FREE;
   task_type_t task_type;
-  task_metadata_entry * task_mb_ptr;
-  void * input_ptr;
-  void * output_ptr;
+  uint64_t * profile_ptr = NULL;
+  uint64_t max_time;
+  uint64_t min_time;
+  task_metadata_entry * task_mb_ptr = NULL;
+  size_t input_size;
+  void * input_ptr = NULL;
+  void * output_ptr = NULL;
+};
+
+struct struct_input_t {
+  size_t in_size;
 };
 
 //Boost graph edge vertex bundled property
@@ -278,6 +287,7 @@ class dag_metadata_entry {
 };
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
+//TODO: Why not just a queue of shorts?
 class ready_mb_task_queue_entry_t {
  public:
   // short unique_id;
@@ -329,7 +339,7 @@ typedef struct bi_ll_struct {
   struct bi_ll_struct *next;
 } blockid_linked_list_t;
 
-class  scheduler_datastate {
+class scheduler_datastate {
  public:
   // These are limits (e.g. max-task-types) for this instantiation of the
   // scheduler datasatate space
@@ -415,10 +425,10 @@ class  scheduler_datastate {
   char **task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
   char **task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
 
-  char *
-  *accel_name_str; // array over ACCEL_TYPES and of size MAX_ACCEL_NAME_LEN
-  char *
-  *accel_desc_str; // array over ACCEL_TYPES and of size MAX_ACCEL_DESC_LEN
+  std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> ** global_task_profile; // array over TASK_TYPES for task profile maps
+
+  char ** accel_name_str; // array over ACCEL_TYPES and of size MAX_ACCEL_NAME_LEN
+  char ** accel_desc_str; // array over ACCEL_TYPES and of size MAX_ACCEL_DESC_LEN
 
   char task_criticality_str[NUM_TASK_CRIT_LEVELS][32];
   char task_status_str[NUM_TASK_STATUS][32];
@@ -441,12 +451,10 @@ class  scheduler_datastate {
 
   do_accel_initialization_t *do_accel_init_function; //[MAX_ACCEL_TYPES];
   do_accel_closeout_t *do_accel_closeout_function;   //[MAX_ACCEL_TYPES];
-  output_accel_run_stats_t
-  *output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
+  output_accel_run_stats_t * output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
 
   int map_sched_accel_type_to_local_accel_type[SCHED_MAX_ACCEL_TYPES];
-  volatile int *
-  *accelerator_in_use_by;    //[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
+  volatile int ** accelerator_in_use_by;    //[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
   int *num_accelerators_of_type; //[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
@@ -507,6 +515,8 @@ extern dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph
 extern void request_execution(void *dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);
 
+extern void wait_on_daglist(void * sptr, int num_dags, ...);
+
 extern void mark_task_done(task_metadata_entry *task_metadata_block);
 extern void update_dag(task_metadata_entry *task_metadata_block);
 
@@ -522,6 +532,7 @@ extern void cleanup_and_exit(int rval, void *sptr);
 
 task_type_t register_task_type(
   void *sptr, char *task_name, char *task_description,
+  std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> * profile_map_ptr,
   set_up_task_function_t set_up_task_func,
   finish_task_execution_function_t finish_task_func,
   auto_finish_task_function_t auto_finish_func,

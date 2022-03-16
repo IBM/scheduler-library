@@ -210,7 +210,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
 
-  vit_task_type = register_task_type(sptr, "VIT-Task", "A Viterbi Decoding task to execute",
+  vit_task_type = register_task_type(sptr, "VIT-Task", "A Viterbi Decoding task to execute", &vit_profile,
                                      &set_up_vit_task, &finish_viterbi_execution, &viterbi_auto_finish_routine,
                                      &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats,
                                      2, // number of accelerator types that can execute this task type
@@ -224,7 +224,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
            p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
   }
 
-  cv_task_type = register_task_type(sptr, "CV-Task", "A CV/CNN task to execute",
+  cv_task_type = register_task_type(sptr, "CV-Task", "A CV/CNN task to execute", &cv_profile,
                                     &set_up_cv_task, &finish_cv_execution, &cv_auto_finish_routine,
                                     &print_cv_metadata_block_contents, &output_cv_task_type_run_stats, 2,
                                     SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
@@ -237,7 +237,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
            p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
 
-  radar_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute",
+  radar_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute", &radar_profile,
                                        &set_up_radar_task, &finish_radar_execution, &radar_auto_finish_routine,
                                        &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
                                        SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
@@ -251,7 +251,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
   }
 
   plan_ctrl_task_type = register_task_type(sptr, "PnC-Task",
-                        "The vehicle state Plan and Control task to execute",
+    "The vehicle state Plan and Control task to execute", &plan_ctrl_profile,
                         &set_up_plan_ctrl_task, &finish_plan_ctrl_execution, &plan_ctrl_auto_finish_routine,
                         &print_plan_ctrl_metadata_block_contents,
                         &output_plan_ctrl_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
@@ -263,7 +263,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       if (test_on_hwr_fft_run_time_in_usec > 0) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all 4 accelerators
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 4, SCHED_CPU_ACCEL_T,
@@ -273,7 +273,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -284,7 +284,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but FFT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -293,7 +293,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but FFT and CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -306,7 +306,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       if (test_on_hwr_fft_run_time_in_usec > 0) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -315,7 +315,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but VIT and CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -325,7 +325,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT and FFT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -333,7 +333,7 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST only on CPU
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute",
+          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
@@ -684,8 +684,7 @@ int main(int argc, char *argv[]) {
   if (global_config_file[0] == '\0') {
     // Get a struct that identifies the Scheduler Set-Up input parameters
     // (filled with the default values)
-    scheduler_get_datastate_in_parms_t *sched_inparms =
-      get_scheduler_datastate_input_parms();
+    scheduler_get_datastate_in_parms_t * sched_inparms = get_scheduler_datastate_input_parms();
     DEBUG(printf("DEFAULT: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u "
                  "Tsk_times %u\n",
                  sched_inparms->max_task_types, sched_inparms->max_accel_types,
@@ -896,11 +895,8 @@ int main(int argc, char *argv[]) {
 
   // Set up a place to record a list of added (critical) task metablock id's to wait on...
 #ifndef HPVM
-  task_metadata_entry** the_crit_tasks_mb_ptrs = (task_metadata_entry**) calloc(sizeof(
-        task_metadata_entry *),
-      (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step +
-       additional_cv_tasks_per_time_step +
-       num_Crit_test_tasks));
+  task_metadata_entry ** the_crit_tasks_mb_ptrs = (task_metadata_entry **) calloc(sizeof(task_metadata_entry *),
+    (5 + additional_fft_tasks_per_time_step + additional_vit_tasks_per_time_step + additional_cv_tasks_per_time_step + num_Crit_test_tasks));
 #endif
 
   char cv_py_file[] = "../cv/keras_cnn/lenet.py";
@@ -1066,8 +1062,10 @@ int main(int argc, char *argv[]) {
   RootIn* DFGArgs = hpvm_initialize();
 #endif
 
+#ifndef HPVM
   // Create Static DFG
   Graph * dfg_ptr = create_graph("miniera.graphml");
+#endif
 
   printf("Starting the main loop...\n");
   /* The input trace contains the per-epoch (time-step) input data */
@@ -1193,15 +1191,10 @@ int main(int argc, char *argv[]) {
 
     DEBUG(printf("MAIN: Calling wait for DAG id: %u to complete\n", dag_ptr->dag_id));
 
-    //TODO: Need this only for the CRITICAL DAGs - multi-DAG BASE DAGs don't need a wait
-    //TODO: convert to conditional variable to save on power
-    // wait_on_daglist(sptr, dag_ptr);
-    while (dag_ptr->dag_status != COMPLETED_DAG) {
-      usleep(sptr->inparms ->scheduler_holdoff_usec);
-    }
+#ifndef HPVM
+    wait_on_daglist(sptr, 1, dag_ptr);
+#endif
 
-    DEBUG(printf("MAIN: [%u] Completed DAG execution status: %u\n", dag_ptr->dag_id,
-                 dag_ptr->dag_status););
 #ifdef TIME
     gettimeofday(&stop_wait_all_crit, NULL);
     wait_all_crit_sec  += stop_wait_all_crit.tv_sec - start_wait_all_crit.tv_sec;

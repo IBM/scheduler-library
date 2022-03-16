@@ -33,11 +33,12 @@
 
 //Radar: radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)
 struct radar_input_t {
+        uint32_t in_size; //For profiling
         uint32_t log_nsamples;
         float *inputs;
         size_t inputs_size;
         radar_input_t(uint32_t log_nsamples, float *inputs, size_t inputs_size):
-                log_nsamples(log_nsamples), inputs(inputs), inputs_size(inputs_size) {}
+                in_size(log_nsamples), log_nsamples(log_nsamples), inputs(inputs), inputs_size(inputs_size) {}
 };
 
 void set_up_radar_task_on_accel_profile_data();
@@ -48,5 +49,5 @@ void set_up_radar_task_on_accel_profile_data();
 
 void radar_auto_finish_routine(/*task_metadata_entry*/ void* mb);
 void finish_radar_execution(/*task_metadata_entry*/ void* radar_metadata_block, void* args);
-
+extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
 #endif

@@ -30,8 +30,9 @@
 
 //CV: cv_tr_label
 struct cv_input_t {
+  size_t in_size;
   label_t in_label;
-  cv_input_t(label_t cv_tr_label) : in_label(cv_tr_label) {}
+  cv_input_t(label_t cv_tr_label) : in_size(sizeof(label_t)), in_label(cv_tr_label) {}
 };
 
 // This is a structure that defines the "CV" task's "view" of the data (in the metadata structure)
@@ -73,5 +74,5 @@ void *set_up_cv_task(void *sptr, task_type_t cv_task_type,
 
 void cv_auto_finish_routine(void *mb);
 void finish_cv_execution(void *fft_metadata_block, void *args); // label_t* out_label);
-
+extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cv_profile;
 #endif

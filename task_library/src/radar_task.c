@@ -40,7 +40,7 @@
 #define RADAR_c 300000000.0 // Speed of Light in Meters/Sec
 #define RADAR_threshold -100;
 
-uint64_t radar_profile[15][SCHED_MAX_ACCEL_TYPES];
+std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
 
 // This now illustrates the use of the "task metadata" to transfer information
 // for a radar (FFT) operation.

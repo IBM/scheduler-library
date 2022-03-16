@@ -45,7 +45,7 @@
 #include "calc_fmcw_dist.h"
 #include "fft-1d.h"
 
-// uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k
+std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile; // FFT tasks can be 1k or 16k samplesw
 
 void print_fft_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
@@ -424,7 +424,6 @@ void execute_cpu_fft_accelerator(
 }
 
 // We set up this data for all possible legal FFT log_nsamples sizes (though we only use 1k and 16k so far)
-uint64_t fft_profile[15][SCHED_MAX_ACCEL_TYPES]; // FFT tasks can be 1k or 16k samplesw
 void set_up_fft_task_on_accel_profile_data() {
   for (int si = 0; si <= 14; si++) {
     for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {

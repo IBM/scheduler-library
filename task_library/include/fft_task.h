@@ -84,4 +84,5 @@ void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
 
 void finish_fft_execution(void *fft_metadata_block, void *); // float* results);
 
+extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile;
 #endif

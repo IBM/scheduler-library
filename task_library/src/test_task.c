@@ -39,7 +39,7 @@
 unsigned num_Crit_test_tasks = 0;
 unsigned num_Base_test_tasks = 0;
 
-uint64_t test_profile[SCHED_MAX_ACCEL_TYPES];
+std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
 
 void print_test_metadata_block_contents(/*task_metadata_entry*/void* mb_ptr) {
   task_metadata_entry* mb = (task_metadata_entry*)mb_ptr;
@@ -238,18 +238,18 @@ unsigned test_on_hwr_cv_run_time_in_usec     =     1;
 
 void set_up_test_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
-    test_profile[ai] = ACINFPROF;
+    test_profile[0][ai] = ACINFPROF;
   }
 
-  test_profile[SCHED_CPU_ACCEL_T]           = test_on_cpu_run_time_in_usec;
-  test_profile[SCHED_EPOCHS_VITDEC_ACCEL_T] = test_on_hwr_vit_run_time_in_usec;
-  test_profile[SCHED_EPOCHS_1D_FFT_ACCEL_T] = test_on_hwr_fft_run_time_in_usec;
-  test_profile[SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
+  test_profile[0][SCHED_CPU_ACCEL_T] = test_on_cpu_run_time_in_usec;
+  test_profile[0][SCHED_EPOCHS_VITDEC_ACCEL_T] = test_on_hwr_vit_run_time_in_usec;
+  test_profile[0][SCHED_EPOCHS_1D_FFT_ACCEL_T] = test_on_hwr_fft_run_time_in_usec;
+  test_profile[0][SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
 
   DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "TEST-PROFILES", "CPU", "FFT-HWR", "VIT-HWR",
                "CV-HWR");
         printf("%15s :", "pnc_profile");
-  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[ai]); } printf("\n");
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[0][ai]); } printf("\n");
   printf("\n"));
 }
 
@@ -268,7 +268,7 @@ set_up_test_task(/*scheduler_datastate*/void* sptr_ptr,
   DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
   do {
     test_mb_ptr = get_task_metadata_block(sptr, dag_id, task_id, test_task_type, crit_level,
-                                          test_profile);
+      test_profile[0]);
     //usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
 #ifdef TIME
