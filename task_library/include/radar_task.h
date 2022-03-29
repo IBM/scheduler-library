@@ -43,11 +43,12 @@ struct radar_input_t {
 
 void set_up_radar_task_on_accel_profile_data();
 
+extern "C"
 /*task_metadata_entry*/ void* set_up_radar_task(/*scheduler_datastate*/ void* sptr,
                 task_type_t radar_task_type, task_criticality_t crit_level,
                 bool use_auto_finish, int32_t dag_id, int32_t task_id, void* args);
 
-void radar_auto_finish_routine(/*task_metadata_entry*/ void* mb);
-void finish_radar_execution(/*task_metadata_entry*/ void* radar_metadata_block, void* args);
-extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
+extern "C" void radar_auto_finish_routine(/*task_metadata_entry*/ void * mb);
+extern "C" void finish_radar_execution(/*task_metadata_entry*/ void * radar_metadata_block, void * args);
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
 #endif

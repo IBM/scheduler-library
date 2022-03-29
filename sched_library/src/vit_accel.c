@@ -84,12 +84,12 @@ do_vit_accel_type_initialization(scheduler_datastate* sptr) {
     snprintf(vitAccelName[vi], 63, "%s.%u", VIT_DEV_BASE, vi);
     printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vi, vitAccelName[vi]);
     vitHW_fd[vi] = open(vitAccelName[vi], O_RDWR, 0);
-    if (vitHW_fd < 0) {
+    if (vitHW_fd[vi] < 0) {
       fprintf(stderr, "Error: cannot open %s", vitAccelName[vi]);
       exit(EXIT_FAILURE);
     }
 
-    vitHW_lmem[vi] = contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
+    vitHW_lmem[vi] = (vitHW_token_t *) contig_alloc(vitHW_size[vi], &(vitHW_mem[vi]));
     if (vitHW_lmem[vi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size[vi]);
       exit(EXIT_FAILURE);

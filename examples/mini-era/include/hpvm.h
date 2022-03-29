@@ -7,7 +7,7 @@
  ***************************************************************************/
 
 #ifndef DEVICE
-#define DEVICE GPU_TARGET
+#define DEVICE hpvm::GPU_TARGET
 #endif
 
 

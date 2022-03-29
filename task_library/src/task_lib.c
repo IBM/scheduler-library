@@ -39,6 +39,7 @@
 #include "test_task.h"
 #include "create_grid_task.h"
 
+extern "C" {
 void initialize_task_lib() {
   set_up_vit_task_on_accel_profile_data();
   set_up_fft_task_on_accel_profile_data();
@@ -48,4 +49,5 @@ void initialize_task_lib() {
   set_up_plan_ctrl_task_on_accel_profile_data();
   set_up_plan_ctrl2_task_on_accel_profile_data();
   set_up_create_grid_task_on_accel_profile_data();
+}
 }

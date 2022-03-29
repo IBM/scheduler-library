@@ -65,9 +65,14 @@ extern uint64_t depunc_usec;
 extern ofdm_param ofdm;
 extern frame_param frame;
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile; // Vit messages can by short,
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile; // Vit messages can by short,
 
+#ifdef COMPILE_TO_ESP
+extern t_branchtab27 d_branchtab27_generic[2];
+#else
 t_branchtab27 d_branchtab27_generic[2];
+#endif
+
 
 ofdm_param ofdm = { (Encoding) 0,   //  encoding   : 0 = BPSK_1_2
                     13,   //  rate_field : rate field ofSIGNAL header
@@ -97,6 +102,7 @@ void vit_task_start_decode(task_metadata_entry *vit_metadata_block, ofdm_param *
                            frame_param *frame, uint8_t *in);
 uint8_t *vit_task_finish_decode(task_metadata_entry *mb_ptr, int *n_dec_char);
 
+extern "C" {
 void print_viterbi_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
@@ -122,7 +128,9 @@ void print_viterbi_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr)
   printf("      in_Data  @ %p\n", &(vdata->theData[inData_offset]));
   printf("      out_Data @ %p\n", &(vdata->theData[outData_offset]));
 }
+}
 
+extern "C" {
 void output_vit_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
@@ -220,7 +228,9 @@ void output_vit_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsi
            total_dodec_usec[total_accel_types], avg);
   }
 }
+}
 
+extern "C" {
 void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   scheduler_datastate *sptr = task_metadata_block->scheduler_datastate_pointer;
@@ -250,8 +260,8 @@ void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void *task_metadata
   vitHW_desc[vn].data_bits = in_data_bits;
 
   DEBUG(printf("EHVA:   setting up HW_VIT memory\n"));
-  uint8_t* hwrInMem  = vitHW_li_mem[vn];
-  uint8_t* hwrOutMem = vitHW_lo_mem[vn];
+  uint8_t * hwrInMem = (uint8_t *) vitHW_li_mem[vn];
+  uint8_t * hwrOutMem = (uint8_t *) vitHW_lo_mem[vn];
   for (int ti = 0; ti < 70; ti ++) {
     hwrInMem[ti] = in_Mem[ti];
   }
@@ -294,7 +304,9 @@ void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void *task_metadata
   exit(-3);
 #endif // HW_VIT
 }
+}
 
+extern "C" {
 void exec_vit_task_on_cpu_accel(/*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
@@ -339,6 +351,7 @@ void exec_vit_task_on_cpu_accel(/*task_metadata_entry*/ void *task_metadata_bloc
   TDEBUG(printf("[%u.%u] MB%u VIT_CPU calling mark_task_done...\n", task_metadata_block->dag_id,
                 task_metadata_block->task_id, task_metadata_block->block_id););
   mark_task_done(task_metadata_block);
+}
 }
 
 
@@ -999,6 +1012,7 @@ void set_up_vit_task_on_accel_profile_data() {
   printf("\n"));
 }
 
+extern "C" {
 /*task_metadata_entry*/ void *
 set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
                                         task_type_t vit_task_type, task_criticality_t crit_level,
@@ -1055,11 +1069,13 @@ set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
   // This now ends this block -- we've kicked off execution
   return vit_mb_ptr;
 }
+}
 
 // This is a default "finish" routine that can be included in the
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
+extern "C" {
 void viterbi_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
@@ -1071,6 +1087,7 @@ void viterbi_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
+}
 
 extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t *msg);
 
@@ -1079,6 +1096,7 @@ extern void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, 
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the VIT results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
+extern "C" {
 void finish_viterbi_execution(
   /*task_metadata_entry*/ void *vit_metadata_block_ptr,
   void *args) { // message_t* message_id)
@@ -1087,6 +1105,11 @@ void finish_viterbi_execution(
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
   message_t *message_id = (message_t *) args;
   // char *out_msg_text = va_arg(var_list, char *);
+  // struct timeval stop_vit_post_processing, start_vit_post_processing;
+  // uint64_t vit_post_processing_sec = 0LL;
+  // uint64_t vit_post_processing_usec = 0LL;
+
+  // gettimeofday(&start_vit_post_processing, NULL);
   char out_msg_text[1600];
 
   message_t msg = NUM_MESSAGES;
@@ -1111,7 +1134,17 @@ void finish_viterbi_execution(
   DEBUG(printf("MB%u The finish_viterbi_execution found message %u\n", vit_metadata_block->block_id,
                msg));
   *message_id = msg;
+
+  // gettimeofday(&stop_vit_post_processing, NULL);
+  // vit_post_processing_sec += stop_vit_post_processing.tv_sec - start_vit_post_processing.tv_sec;
+  // vit_post_processing_usec += stop_vit_post_processing.tv_usec - start_vit_post_processing.tv_usec;
+
+  // int64_t vit_post_processing_time = 1000000 * vit_post_processing_sec + vit_post_processing_usec;
+
+  // std::cout << "Vit post processing time: " << vit_post_processing_time << std::endl;
+
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u fin_vit Calling free_task_metadata_block\n", vit_metadata_block->block_id));
   free_task_metadata_block(vit_metadata_block);
+}
 }

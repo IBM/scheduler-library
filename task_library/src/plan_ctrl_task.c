@@ -36,8 +36,9 @@
 #include "plan_ctrl_task.h"
 #include "scheduler.h"
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl_profile;
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl_profile;
 
+extern "C" {
 void print_plan_ctrl_metadata_block_contents(void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
@@ -52,7 +53,9 @@ void print_plan_ctrl_metadata_block_contents(void *mb_ptr) {
          plan_ctrl_data_p->new_vehicle_state.active, plan_ctrl_data_p->new_vehicle_state.lane,
          plan_ctrl_data_p->new_vehicle_state.speed);
 }
+}
 
+extern "C" {
 void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
@@ -115,7 +118,9 @@ void output_plan_ctrl_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
            total_plan_ctrl_call_usec[total_accel_types], avg);
   }
 }
+}
 
+extern "C" {
 void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In execute_on_cpu_plan_ctrl_accelerator: MB %d  CL %d\n",
@@ -274,21 +279,27 @@ void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block_ptr) {
   TDEBUG(printf("MB_THREAD %u calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+}
 
 void set_up_plan_ctrl_task_on_accel_profile_data() {
   for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
-    plan_ctrl_profile[0][ai] = ACINFPROF;
+    plan_ctrl_profile[sizeof(label_t) + sizeof(message_t) + sizeof(distance_t)][ai] = ACINFPROF;
   }
+#ifdef COMPILE_TO_ESP
   // NOTE: The following data is for the RISCV-FPGA environment @ ~78MHz
-  plan_ctrl_profile[0][SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
-
+  plan_ctrl_profile[sizeof(label_t) + sizeof(message_t) + sizeof(distance_t)][SCHED_CPU_ACCEL_T] = 500; // Picked a small value...
+#else
+  plan_ctrl_profile[sizeof(label_t) + sizeof(message_t) + sizeof(distance_t)][SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
+#endif
   DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "PnC-PROFILES", "CPU", "FFT-HWR", "VIT-HWR",
                "CV-HWR");
         printf("%15s :", "pnc_profile");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", plan_ctrl_profile[0][0][ai]); }
+        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", plan_ctrl_profile[sizeof(label_t) + sizeof(message_t) + sizeof(distance_t)][0][ai]); }
   printf("\n\n"));
 }
 
+
+extern "C" {
 void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
                             task_criticality_t crit_level, bool use_auto_finish,
                             int32_t dag_id, int32_t task_id, void *args) {
@@ -337,7 +348,7 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
                plan_ctrl_task_type));
   do {
     plan_ctrl_mb_ptr = get_task_metadata_block(sptr, dag_id, task_id, plan_ctrl_task_type, crit_level,
-      plan_ctrl_profile[0]);
+      plan_ctrl_profile[sizeof(label_t) + sizeof(message_t) + sizeof(distance_t)]);
     // usleep(get_mb_holdoff);
   } while (0); //(*mb_ptr == NULL);
 #ifdef TIME
@@ -390,11 +401,13 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
 #endif
   return plan_ctrl_mb_ptr;
 }
+}
 
 // This is a default "finish" routine that can be included in the
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
+extern "C" {
 void plan_ctrl_auto_finish_routine(void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
@@ -404,6 +417,7 @@ void plan_ctrl_auto_finish_routine(void *mb_ptr) {
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
+}
 
 // NOTE: This routine DOES NOT copy out the data results -- a call to
 //   calculate_peak_distance_from_fmcw now results in alteration ONLY
@@ -411,6 +425,7 @@ void plan_ctrl_auto_finish_routine(void *mb_ptr) {
 //   over-write the original input data with the PLAN_CTRL results (As we used
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
+extern "C" {
 void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr, void *args) {
   task_metadata_entry *plan_ctrl_metadata_block = (task_metadata_entry *)plan_ctrl_metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
@@ -433,4 +448,5 @@ void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr, void *args) 
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", plan_ctrl_metadata_block->block_id));
   free_task_metadata_block(plan_ctrl_metadata_block);
+}
 }

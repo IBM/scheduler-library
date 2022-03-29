@@ -388,7 +388,7 @@ void free_task_metadata_block(task_metadata_entry * task_metadata_ptr) {
       printf("        free[%2u] = %u\n", ii, sptr->free_metadata_pool[ii]);
     }
     DEBUG(printf("    THE Being-Freed Meta-Data Block:\n");
-          print_base_metadata_block_contents(mb));
+    print_base_metadata_block_contents(task_metadata_ptr));
     exit(-5);
   }
   TDEBUG(printf(" AFTER_FREE : MB%u : free_metadata_pool : ", bi);
@@ -952,7 +952,7 @@ scheduler_datastate *initialize_scheduler_and_return_datastate_pointer(
     }
 
     // Set up global task profile array
-    sptr->global_task_profile = (std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> **) calloc(inp->max_task_types, sizeof(std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> *));
+    sptr->global_task_profile = (std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> **) calloc(inp->max_task_types, sizeof(std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> *));
     sched_state_size += inp->max_task_types * sizeof(uint64_t *);
     if (sptr->global_task_profile == NULL) {
       printf("ERROR: get_new_scheduler_datastate_pointer cannot allocate memory for sptr->global_task_profile\n");
@@ -1165,8 +1165,9 @@ scheduler_datastate *initialize_scheduler_and_return_datastate_pointer(
 //  contains the desired scheduler datastate input parms (to be changed from
 //  default) and thus invoke the full initialization in a single call
 // Under the covers it uses the above routines and lower-level API interface...
+extern "C" {
 scheduler_datastate *
-initialize_scheduler_from_config_file(char *config_file_name) {
+initialize_scheduler_from_config_file(char * config_file_name) {//, unsigned max_task_types) {
   DEBUG(printf("In the initialize_scheduler_from_config_file routine...\n"));
   FILE *cf = fopen(config_file_name, "r");
   if (cf == NULL) {
@@ -1189,6 +1190,9 @@ initialize_scheduler_from_config_file(char *config_file_name) {
   printf("  Scanning the configuration file `%s`\n", config_file_name);
   char parm_id[256];
   char setting[256];
+
+  sched_inparms->max_task_types = 5; //max_task_types; //From main code or compiler
+  printf("  Set inparms->max_task_types = %d\n", sched_inparms->max_task_types);
   while ((fscanf(cf, "%s = %s\n", parm_id, setting) == 2) || (!feof(cf))) {
     if (strcmp(parm_id, "MAX_TASK_TYPES") == 0) {
       sched_inparms->max_task_types = atoi(setting);
@@ -1255,6 +1259,7 @@ initialize_scheduler_from_config_file(char *config_file_name) {
 
   return sptr;
 }
+}
 
 // This function is really only executed once, at the very start of scheduler
 // lifetime,
@@ -1263,7 +1268,7 @@ initialize_scheduler_from_config_file(char *config_file_name) {
 #include "cv_accel.h"
 #include "fft_accel.h"
 #include "vit_accel.h"
-
+extern "C" {
 void set_up_scheduler() {
   printf( "Setting up the Global Scheduler Hardware State (System Accelerators)\n");
   // Set up the "CPU" (threada/accelerators)
@@ -1351,6 +1356,7 @@ void set_up_scheduler() {
   } else {
     printf("Note: accelerator initialization function is NULL\n");
   }
+}
 }
 
 status_t
@@ -2063,15 +2069,77 @@ void request_execution(
   return;
 }
 
+void collect_paths(Graph & graph, std::vector<std::pair<uint64_t, std::vector<vertex_t> *>> & path_list, std::vector<vertex_t> & vertex_list, uint64_t vertex_count) {
+  //Collect the path
+  uint64_t path_time = 0;
+  std::vector<vertex_t> * path_vector = new std::vector<vertex_t>;
+  for (int i = 0;i < vertex_count;i++) {
+    path_vector->push_back(vertex_list[i]);
+    path_time += graph[vertex_list[i]].max_time;
+  }
+
+  //Add path into the path_list
+  path_list.push_back(std::make_pair(path_time, path_vector));
+}
+
+void find_paths(Graph & graph, std::vector<std::pair<uint64_t, std::vector<vertex_t> *>> & path_list, std::vector<vertex_t> & vertex_list, uint64_t vertex_count, vertex_t start) {
+  auto newIt = vertex_list.insert(vertex_list.begin() + vertex_count, start);
+  vertex_count++;
+  graph[start].visited = true;
+
+  AdjacencyIterator temp, t_end;
+  boost::tie(temp, t_end) = boost::adjacent_vertices(start, graph);
+  bool flag = false;
+  // Flag is used to check the dead end of the path
+  for (; temp != t_end; temp++) {
+    if (graph[*temp].visited == false) {
+      flag = true;
+      find_paths(graph, path_list, vertex_list, vertex_count, *temp);
+    }
+  }
+  if (flag == false) {
+    // If all are having visited == 1 , there is no new node, so its a dead end
+    // Found a path, update sdr
+    collect_paths(graph, path_list, vertex_list, vertex_count);
+  }
+  graph[start].visited = false;
+  vertex_count--;
+}
+
 //Append SDR values for MS_stat and MS_dyn
-void append_sdr(Graph * graph_ptr) {
+void append_sdr(Graph & graph) {
+  std::vector<std::pair<uint64_t, std::vector<vertex_t> *>> path_list;
+  std::vector<vertex_t> vertex_list(num_vertices(graph));
+  uint64_t vertex_count = 0;
+  Graph::vertex_iterator v, vend;
+  for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
+    if (boost::in_degree(*v, graph) == 0) {
+      //Found source node and get paths from it
+      find_paths(graph, path_list, vertex_list, vertex_count, *v);
+    }
+  }
   //For each path in graph
-  //get wcet path time
+  //get CPT
   //calculate sdr for ms_stat 
   //calculate sdr for ms_dyn
+  int path_count = 0;
+  std::vector<vertex_t> * crit_path_vector;
+  uint64_t crit_path_time = 0;
+  for (auto pit : path_list) {
+    if (pit.first > crit_path_time) {
+      crit_path_time = pit.first;
+      crit_path_vector = pit.second;
+    }
+    path_count++;
+  }
+  //Delete the path_vectors in path_list
+  for (auto pit : path_list) {
+    delete pit.second;
+  }
 }
 
 //TODO: Use Template Variadic args instead
+extern "C" {
 dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_ptr,
     task_criticality_t crit_level, ...) {
 
@@ -2082,7 +2150,7 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
 
   // Copy static DFG into a new graph
   boost::copy_graph(*dfg_ptr, *graph_ptr);
-
+  sptr->next_avail_DAG_id++;
   //Create DAG object and set graph_ptr
   //Deleted during cleanup state
   dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_ptr,
@@ -2098,8 +2166,13 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
     graph[*v].input_ptr = va_arg(var_list, void *);
     graph[*v].input_size = ((struct_input_t *) (graph[*v].input_ptr))->in_size;
     graph[*v].output_ptr = va_arg(var_list, void *);
-    std::map<uint64_t, uint64_t[4]> & profile_map = *(sptr->global_task_profile[graph[*v].task_type]);
+    std::map<size_t, uint64_t[4]> & profile_map = *(sptr->global_task_profile[graph[*v].task_type]);
     graph[*v].profile_ptr = profile_map[graph[*v].input_size];
+    // std::cout << "Use " << sptr->task_name_str[graph[*v].task_type] << ": Profile map ptr: " << &profile_map << std::endl;
+    // if (strncmp(sptr->task_name_str[graph[*v].task_type], "FFT-Task", 5) == 0) {
+    //   size_t  in_size = 10;
+    //   std::cout << "Radar profile[10]: " << profile_map[10] << " Size: " << graph[*v].input_size << "profile_map[size_t 10]: " << profile_map[in_size] << " Profile ptr: " << graph[*v].profile_ptr << std::endl;
+    // }
     uint64_t min_time = ACINFPROF;
     uint64_t max_time = 0;
     for (int i = 0; i < sptr->inparms->max_accel_types; ++i) {
@@ -2110,16 +2183,25 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
         min_time = graph[*v].profile_ptr[i];
       }
     }
+
+    // if (strncmp(sptr->task_name_str[graph[*v].task_type], "FFT-Task", 5) == 0) {
+    //   std::cout << "Radar profile[10]: " << profile_map[10] << " Size: " << graph[*v].input_size << " Profile ptr: " << graph[*v].profile_ptr << std::endl;
+    // }
+
     graph[*v].max_time = max_time;
     graph[*v].min_time = min_time;
+    graph[*v].visited = false;
 
-    DEBUG(printf("%u: Task-type: %u %s Status: %u\n", graph[*v].vertex_id, graph[*v].task_type,
-      sptr->task_name_str[graph[*v].task_type], graph[*v].vertex_status););
+    DEBUG(
+      printf("%u: Task-type: %s Size: %d Max: %d Min: %d Status: %u\n", graph[*v].vertex_id,
+        sptr->task_name_str[graph[*v].task_type], graph[*v].input_size, graph[*v].max_time,
+        graph[*v].min_time, graph[*v].vertex_status);
+    );
   }
   va_end(var_list);
 
   //Calc and add SDR for MS_stat and MS_dyn
-  append_sdr(graph_ptr);
+  append_sdr(graph);
 
   //Request execution on the DAG
   request_execution(dag_ptr);
@@ -2127,13 +2209,16 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
   //return for waitlist
   return dag_ptr;
 }
+}
 
 /********************************************************************************
  * Here are the wait routines -- for critical tasks or all tasks to finish
  ********************************************************************************/
  //TODO: Need this only for the CRITICAL DAGs - multi-DAG BASE DAGs don't need a wait?
  //TODO: convert to conditional variable to save on power
-void wait_on_daglist(void * sptr, int num_dags, ...) {
+extern "C" {
+  void wait_on_daglist(void * _sptr, int num_dags, ...) {
+    scheduler_datastate * sptr = (scheduler_datastate *) _sptr;
   va_list var_list;
   va_start(var_list, num_dags);
   for (size_t i = 0; i < num_dags; i++) {
@@ -2147,6 +2232,7 @@ void wait_on_daglist(void * sptr, int num_dags, ...) {
       dag_ptr->dag_status););
   }
   va_end(var_list);
+}
 }
 void wait_on_tasklist(/* scheduler_datastate */ void *_sptr, int num_tasks, ...) {
   scheduler_datastate * sptr = (scheduler_datastate *) _sptr;
@@ -2536,11 +2622,13 @@ void output_run_statistics(scheduler_datastate * sptr) {
   }
 }
 
+extern "C" {
 void shutdown_scheduler(scheduler_datastate * sptr) {
   output_run_statistics(sptr);
   // DON'T call this here -- there is an "on_exit" call that does this automatically now!
   //printf("Calling cleanup_stats...\n"); fflush(stdout);
   // cleanup_state(sptr);
+}
 }
 
 void cleanup_and_exit(int rval, void *sptr_ptr) {
@@ -2600,8 +2688,11 @@ void dump_all_metadata_blocks_states(scheduler_datastate * sptr) {
   } // for (mbi loop over Metablocks)
 }
 
-task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *task_name,
-  char * task_description, std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> * profile_map_ptr,
+extern "C" {
+  // void register_task_type(/*scheduler_datastate*/ void * sptr_ptr, task_type_t tid,
+  task_type_t register_task_type(/*scheduler_datastate*/ void * sptr_ptr,
+    char * task_name, char * task_description,
+    std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> * profile_map_ptr,
   set_up_task_function_t set_up_task_func, // function pointer
   finish_task_execution_function_t finish_task_func, // function pointer
   auto_finish_task_function_t auto_finish_func, // function pointer
@@ -2609,12 +2700,14 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
   output_task_type_run_stats_t output_task_type_run_stats, // function pointer
   int num_accel_task_exec_descriptions, ...) {
   scheduler_datastate * sptr = (scheduler_datastate *) sptr_ptr;
-  DEBUG(printf("In register_task_type with inputs:\n");
+  DEBUG(
+    printf("In register_task_type with inputs:\n");
   printf("  name  = %s\n", task_name);
-        printf("  description  = %s\n", task_description);
-        printf("  print_metadata_block_contents = %p\n", print_metadata_block_contents);
-        printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats);
-        printf(" and num_accel_task_exeC_descr  = %u\n", num_accel_task_exec_descriptions));
+  printf("  description  = %s\n", task_description);
+  printf("  print_metadata_block_contents = %p\n", print_metadata_block_contents);
+  printf("  output_task_type_run_stats_t  = %p\n", output_task_type_run_stats);
+  printf(" and num_accel_task_exeC_descr  = %u\n", num_accel_task_exec_descriptions);
+  );
 
   printf("Registering Task %s : %s\n", task_name, task_description);
 
@@ -2652,6 +2745,10 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
   sptr->global_task_profile[tid] = profile_map_ptr;
+  // std::cout << "Assign " << sptr->task_name_str[tid] << ": Profile map ptr: " << profile_map_ptr << std::endl;
+  // if (strncmp(sptr->task_name_str[tid], "FFT-Task", 5) == 0) {
+  //   std::cout << "Radar profile[10]: " << (*profile_map_ptr)[10] << std::endl;
+  // }
   sptr->output_task_run_stats_function[tid] = output_task_type_run_stats;
   sptr->set_up_task_function[tid] = set_up_task_func;
   sptr->finish_task_execution_function[tid] = finish_task_func;
@@ -2663,14 +2760,19 @@ task_type_t register_task_type(/*scheduler_datastate*/ void *sptr_ptr, char *tas
          num_accel_task_exec_descriptions);
   va_list var_list;
   va_start(var_list, num_accel_task_exec_descriptions);
+  //TODO: ignoring the first couple for now until task_library is cleaned
+  // scheduler_accelerator_type _sched_accel = (scheduler_accelerator_type) va_arg(var_list, int64_t);
+  // sched_execute_task_function_t _exec_fptr = va_arg(var_list, sched_execute_task_function_t);
+
   for (int i = 0; i < num_accel_task_exec_descriptions; i++) {
-    scheduler_accelerator_type sched_accel = (scheduler_accelerator_type) va_arg(var_list, int);
+    scheduler_accelerator_type sched_accel = (scheduler_accelerator_type) va_arg(var_list, int64_t);
     sched_execute_task_function_t exec_fptr = va_arg(var_list, sched_execute_task_function_t);
-    printf(" Call %d to Register Accel %u for task %u with fptr %p\n", i, sched_accel, tid, exec_fptr);
+    printf(" Call %d to Register Accel %d for task %u with fptr %p\n", i, sched_accel, tid, exec_fptr);
     register_accel_can_exec_task(sptr, sched_accel, tid, exec_fptr);
   }
   va_end(var_list);
   return tid;
+}
 }
 
 void register_accel_can_exec_task(scheduler_datastate * sptr, scheduler_accelerator_type sl_acid,

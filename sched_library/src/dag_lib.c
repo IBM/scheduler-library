@@ -15,13 +15,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_TASK_LIB_INCLUDE_H
-#define H_TASK_LIB_INCLUDE_H
+#include "dag_lib.h"
 
-#include <stdint.h>
+extern "C" {
+    Graph * create_graph(char * graphml_filename) {
+        //Create empty DFG
+        Graph * dfg_ptr = new(Graph);
 
-#include "base_task_types.h"
+        //Open graphml file
+        std::ifstream inFile;
+        inFile.open(graphml_filename, std::ifstream::in);
 
-extern "C" void initialize_task_lib();
+        //Read Graphml into static DFG graph
+        boost::dynamic_properties dp;
+        dp.property("task_type", boost::get(&dag_vertex_t::task_type, *dfg_ptr));
+        dp.property("vertex_id", boost::get(&dag_vertex_t::vertex_id, *dfg_ptr));
+        boost::read_graphml(inFile, *dfg_ptr, dp);
 
-#endif
+        DEBUG(print_dag_graph(*dfg_ptr););
+
+        return dfg_ptr;
+    }
+}

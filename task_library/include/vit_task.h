@@ -28,6 +28,7 @@
 
 //Viterbi: vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)
 struct viterbi_input_t {
+  uint32_t in_size; //For profiling
   message_size_t  msize;
   ofdm_param *    ofdm_ptr;
   size_t          ofdm_param_size;
@@ -38,7 +39,7 @@ struct viterbi_input_t {
   viterbi_input_t(message_size_t msize, ofdm_param *ofdm_ptr, size_t ofdm_param_size,
                   frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
                   size_t in_bits_size) :
-    msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
+    in_size(msize), msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
     frame_ptr_size(frame_ptr_size), in_bits(in_bits),
     in_bits_size(in_bits_size) {}
 };
@@ -71,23 +72,23 @@ typedef struct {
   uint64_t depunc_usec[SCHED_MAX_ACCEL_TYPES];
 } vit_timing_data_t;
 
-void print_viterbi_metadata_block_contents(void *mb);
+extern "C" void print_viterbi_metadata_block_contents(void * mb);
 
 void init_vit_parameters(int vn);
 
-void output_vit_task_type_run_stats(void *sptr, unsigned my_task_type, unsigned total_accel_types);
+extern "C" void output_vit_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-void exec_vit_task_on_vit_hwr_accel(void *task_metadata_block);
-void exec_vit_task_on_cpu_accel(void *task_metadata_block);
+extern "C" void exec_vit_task_on_vit_hwr_accel(void * task_metadata_block);
+extern "C" void exec_vit_task_on_cpu_accel(void * task_metadata_block);
 
 void set_up_vit_task_on_accel_profile_data();
 
-void *set_up_vit_task(void *sptr, task_type_t vit_task_type,
+extern "C" void * set_up_vit_task(void * sptr, task_type_t vit_task_type,
                       task_criticality_t crit_level, bool use_auto_finish,
                       int32_t dag_id, int32_t task_id, void *);
 
-void viterbi_auto_finish_routine(void *mb);
-void finish_viterbi_execution(void *vit_metadata_block,
+extern "C" void viterbi_auto_finish_routine(void * mb);
+extern "C" void finish_viterbi_execution(void * vit_metadata_block,
                               void * args); // message_t* message_id, char* out_msg_txt);
-extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile;
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile;
 #endif

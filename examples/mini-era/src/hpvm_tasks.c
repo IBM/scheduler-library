@@ -5,6 +5,7 @@
 #include "hpvm_tasks.h"
 #include "base_types.h"
 #include "verbose.h"
+#include "unistd.h"
 
 #include "viterbi_base.h"
 #include "viterbi_types.h"
@@ -916,19 +917,19 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
          * head into the RHazard Lane */
         if (vehicle_state->lane < right) {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Right\n", lane_names[vehicle_state->lane]));
-          new_vehicle_state->lane += 1;
+          new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane + 1);
         } else {
           DEBUG(printf("   In %s with Safe_L_or_R : Moving Left\n", lane_names[vehicle_state->lane]));
-          new_vehicle_state->lane -= 1;
+          new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane - 1);
         }
         break; // prefer right lane
       case safe_to_move_right_only:
         printf("   In %s with Safe_R_only : Moving Right\n", lane_names[vehicle_state->lane]);
-        new_vehicle_state->lane += 1;
+        new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane + 1);
         break;
       case safe_to_move_left_only:
         printf("   In %s with Safe_L_Only : Moving Left\n", lane_names[vehicle_state->lane]);
-        new_vehicle_state->lane -= 1;
+        new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane - 1);
         break;
       case unsafe_to_move_left_or_right:
 #ifdef USE_SIM_ENVIRON
@@ -957,7 +958,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_right_only)) {
         DEBUG(printf("  In %s with Can_move_Right: Moving Right\n", lane_names[vehicle_state->lane]));
-        new_vehicle_state->lane += 1;
+        new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane + 1);
       }
       break;
     case center:
@@ -969,7 +970,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
       if ((safe_lanes_msg == safe_to_move_right_or_left) ||
           (safe_lanes_msg == safe_to_move_left_only)) {
         DEBUG(printf("  In %s with Can_move_Left : Moving Left\n", lane_names[vehicle_state->lane]));
-        new_vehicle_state->lane -= 1;
+        new_vehicle_state->lane = (lane_t) ((int) new_vehicle_state->lane - 1);
       }
       break;
     default:
@@ -1001,7 +1002,7 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
 }
 
 
-void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
+void MiniERARoot(message_size_t msg_size, ofdm_param * ofdm_ptr,
                         size_t ofdm_size, frame_param *frame_ptr,
                         size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
                         message_t *message_id, size_t msg_id_size, char *out_msg_text,
@@ -1081,58 +1082,6 @@ void MiniERARootWrapper(message_size_t msg_size, ofdm_param *ofdm_ptr,
   __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
 }
 
-void MiniERARoot(message_size_t msg_size, ofdm_param *ofdm_ptr,
-                 size_t ofdm_size, frame_param *frame_ptr,
-                 size_t frame_ptr_size, uint8_t *in_bits, size_t in_bit_size,
-                 message_t *message_id, size_t msg_id_size, char *out_msg_text,
-                 size_t out_msg_text_size, label_t in_label, label_t *obj_label,
-                 size_t obj_label_size, uint32_t log_nsamples, float *inputs_ptr,
-                 size_t inputs_ptr_size, distance_t *distance_ptr,
-                 size_t distance_ptr_size,
-                 unsigned time_step,
-                 unsigned repeat_factor,
-                 vehicle_state_t* current_vehicle_state,
-                 size_t current_vehicle_state_size,
-                 vehicle_state_t *new_vehicle_state,
-                 size_t new_vehicle_state_size) {
-
-  __hpvm__hint(CPU_TARGET);
-  __hpvm__attributes(
-    10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
-    distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state_size,
-    1, new_vehicle_state);
-
-  void *WrapperNode = __hpvm__createNodeND(0, MiniERARootWrapper);
-
-  // 25 arguments
-  __hpvm__bindIn(WrapperNode, 0, 0, 0);
-  __hpvm__bindIn(WrapperNode, 1, 1, 0);
-  __hpvm__bindIn(WrapperNode, 2, 2, 0);
-  __hpvm__bindIn(WrapperNode, 3, 3, 0);
-  __hpvm__bindIn(WrapperNode, 4, 4, 0);
-  __hpvm__bindIn(WrapperNode, 5, 5, 0);
-  __hpvm__bindIn(WrapperNode, 6, 6, 0);
-  __hpvm__bindIn(WrapperNode, 7, 7, 0);
-  __hpvm__bindIn(WrapperNode, 8, 8, 0);
-  __hpvm__bindIn(WrapperNode, 9, 9, 0);
-  __hpvm__bindIn(WrapperNode, 10, 10, 0);
-  __hpvm__bindIn(WrapperNode, 11, 11, 0);
-  __hpvm__bindIn(WrapperNode, 12, 12, 0);
-  __hpvm__bindIn(WrapperNode, 13, 13, 0);
-  __hpvm__bindIn(WrapperNode, 14, 14, 0);
-  __hpvm__bindIn(WrapperNode, 15, 15, 0);
-  __hpvm__bindIn(WrapperNode, 16, 16, 0);
-  __hpvm__bindIn(WrapperNode, 17, 17, 0);
-  __hpvm__bindIn(WrapperNode, 18, 18, 0);
-  __hpvm__bindIn(WrapperNode, 19, 19, 0);
-  __hpvm__bindIn(WrapperNode, 20, 20, 0);
-  __hpvm__bindIn(WrapperNode, 21, 21, 0);
-  __hpvm__bindIn(WrapperNode, 22, 22, 0);
-  __hpvm__bindIn(WrapperNode, 23, 23, 0);
-  __hpvm__bindIn(WrapperNode, 24, 24, 0);
-
-
-}
 
 void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
                  unsigned log_nsamples, float *radar_inputs,
@@ -1196,7 +1145,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
 
   DEBUG(printf("\n\nLaunching ERA pipeline!\n"));
 
-  void *ERADFG = __hpvm__launch(0, MiniERARoot, (void *)DFGArgs);
+  void * ERADFG = __hpvm__launch(0, MiniERARoot, (void *) DFGArgs);
   __hpvm__wait(ERADFG);
 
   DEBUG(printf("\n\nFinished executing ERA pipeline!\n"));
@@ -1224,10 +1173,12 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   free(DFGArgs);
 }
 
+extern "C" {
 RootIn *hpvm_initialize() {
   __hpvm__init();
   RootIn *DFGArgs = (RootIn *)malloc(sizeof(DFGArgs));
   return DFGArgs;
+}
 }
 
 void hpvm_cleanup(RootIn *DFGArgs) {
@@ -1877,7 +1828,7 @@ void radar_leaf_base(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr
 
   __hpvm__return(1, distance_ptr);
 }
-void VITRootWrapper(
+void VITRoot(
   message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
   frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
   size_t in_bit_size, message_t *message_id, size_t msg_id_size, char *out_msg_text,
@@ -1908,31 +1859,7 @@ void VITRootWrapper(
 }
 
 
-void VITRoot(
-  message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
-  frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
-  size_t in_bit_size, message_t *message_id, size_t msg_id_size, char *out_msg_text,
-  size_t out_msg_text_size
-) {
 
-  __hpvm__hint(CPU_TARGET);
-  __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id,
-                     out_msg_text, 2, message_id, out_msg_text);
-
-  void* WrapperNode = __hpvm__createNodeND(0, VITRootWrapper);
-
-  __hpvm__bindIn(WrapperNode, 0, 0, 0);
-  __hpvm__bindIn(WrapperNode, 1, 1, 0);
-  __hpvm__bindIn(WrapperNode, 2, 2, 0);
-  __hpvm__bindIn(WrapperNode, 3, 3, 0);
-  __hpvm__bindIn(WrapperNode, 4, 4, 0);
-  __hpvm__bindIn(WrapperNode, 5, 5, 0);
-  __hpvm__bindIn(WrapperNode, 6, 6, 0);
-  __hpvm__bindIn(WrapperNode, 7, 7, 0);
-  __hpvm__bindIn(WrapperNode, 8, 8, 0);
-  __hpvm__bindIn(WrapperNode, 9, 9, 0);
-  __hpvm__bindIn(WrapperNode, 10, 10, 0);
-}
 
 void hpvm_launch_base_VIT(int vit_base_msg_size, vit_dict_entry_t *base_vdentry) {
   VitRootIn* VitArgs = (VitRootIn*) malloc(sizeof(VitRootIn));
@@ -1940,7 +1867,7 @@ void hpvm_launch_base_VIT(int vit_base_msg_size, vit_dict_entry_t *base_vdentry)
   message_t out_message;
   char out_msg_text[1600];
 
-  VitArgs->msg_size = vit_base_msg_size;
+  VitArgs->msg_size = (message_size_t) vit_base_msg_size;
   VitArgs->ofdm_ptr = &base_vdentry->ofdm_p;
   VitArgs->ofdm_size = sizeof(ofdm_param);
   VitArgs->frame_ptr = &base_vdentry->frame_p;
@@ -1963,7 +1890,7 @@ void hpvm_launch_base_VIT(int vit_base_msg_size, vit_dict_entry_t *base_vdentry)
   free(VitArgs);
 }
 
-void RadarRootWrapper(
+void RadarRoot(
   uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
   distance_t *distance_ptr, size_t distance_ptr_size) {
   __hpvm__hint(CPU_TARGET);
@@ -1979,22 +1906,6 @@ void RadarRootWrapper(
 
   // __hpvm__bindOut(RadarNode, 0, 0, 0);
 
-
-}
-
-void RadarRoot(
-  uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
-  distance_t *distance_ptr, size_t distance_ptr_size) {
-  __hpvm__hint(CPU_TARGET);
-  __hpvm__attributes(2, inputs_ptr, distance_ptr, 1, distance_ptr);
-
-  void* WrapperNode = __hpvm__createNodeND(0, RadarRootWrapper);
-
-  __hpvm__bindIn(WrapperNode, 0, 0, 0);
-  __hpvm__bindIn(WrapperNode, 1, 1, 0);
-  __hpvm__bindIn(WrapperNode, 2, 2, 0);
-  __hpvm__bindIn(WrapperNode, 3, 3, 0);
-  __hpvm__bindIn(WrapperNode, 4, 4, 0);
 
 }
 
@@ -2019,8 +1930,7 @@ void hpvm_launch_base_RADAR(unsigned base_log_nsamples, float* base_radar_inputs
 
 }
 
-
-void CVRootWrapper(
+void CVRoot(
   label_t in_label, label_t *obj_label, size_t obj_label_size) {
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(1, obj_label, 1, obj_label);
@@ -2034,17 +1944,6 @@ void CVRootWrapper(
   // __hpvm__bindOut(CVNode, 0, 0, 0);
 }
 
-void CVRoot(
-  label_t in_label, label_t *obj_label, size_t obj_label_size) {
-  __hpvm__hint(CPU_TARGET);
-  __hpvm__attributes(1, obj_label, 1, obj_label);
-
-  void* WrapperNode = __hpvm__createNodeND(0, CVRootWrapper);
-
-  __hpvm__bindIn(WrapperNode, 0, 0, 0);
-  __hpvm__bindIn(WrapperNode, 1, 1, 0);
-  __hpvm__bindIn(WrapperNode, 2, 2, 0);
-}
 
 void hpvm_launch_base_CV(label_t cv_tr_label) {
   CVRootIn *CVArgs = (CVRootIn*) malloc(sizeof(CVRootIn));

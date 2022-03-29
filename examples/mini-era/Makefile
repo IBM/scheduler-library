@@ -22,6 +22,7 @@ HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
 OPT = $(HPVM_BIN_PATH)/opt
 LLVM_LINK = $(HPVM_BIN_PATH)/llvm-link
 HPVMCC = $(HPVM_BIN_PATH)/clang
+HPVMCXX = $(HPVM_BIN_PATH)/clang++
 HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
 HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 
@@ -105,14 +106,14 @@ endif
 ifdef CONFIG_KERAS_CV_BYPASS
  CFLAGS += -DBYPASS_KERAS_CV_CODE
 else
- CFLAGS += -I/usr/include/python2.7
+ CFLAGS += -I/usr/include/python3.6m
 endif
 
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV -DENABLE_NVDLA
- #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
+ CFLAGS += -DHW_CV -DENABLE_NVDLA -I/usr/include/python3.6m
+#  CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
   SW_STR =
@@ -155,6 +156,10 @@ ifdef CONFIG_GDB
 CFLAGS += -g
 endif
 
+ifdef COMPILE_TO_ESP
+CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
+endif
+
 
 
 SCHED_LIB = $(SCHED_LIB_DIR)/libscheduler.a
@@ -188,7 +193,7 @@ ifdef COMPILE_TO_ESP
  LDFLAGS += -lcontig
 endif
 ifndef CONFIG_KERAS_CV_BYPASS
- LDFLAGS += -lpython2.7
+ LDFLAGS += -lpython3.6m
 endif
 
 SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
@@ -218,14 +223,14 @@ $(info $$OBJ_H is [${OBJ_H}])
 $(info $$OBJ_LINKED is [${OBJ_LINKED}])
 
 ifdef CONFIG_CV_EN
-NVDLA_MODULE = hpvm-mod.nvdla
+NVDLA_MODULE=hpvm-mod.nvdla
 endif 
 $(info $$NVDLA_MODULE is [${NVDLA_MODULE}])
 
 #all: $(TARGET) $(STARGET)
 all: $(TARGET)
 
-hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
+#hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
 hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
@@ -303,7 +308,7 @@ $(NVDLA_MODULE):
 
 #-----------------------------------------------------------------------------------------------
 obj_t/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
 
 obj_s/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
@@ -321,13 +326,13 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
-	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
+	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
 	rm me_test.o wnvdla_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
-	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
+	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) me_test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
 
 
@@ -342,16 +347,16 @@ obj_hpvm:
 	mkdir $@
 
 obj_hpvm/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $<
 
 obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.ll
-	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce $< -S -o $@ $(OPTFLAGS)
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce -hpvm-timers-gen $< -S -o $@ $(OPTFLAGS) -debug
 
 $(OBJ_H) : obj_hpvm/hpvm_tasks.hpvm.ll
-	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -S $< -o $@ $(OPTFLAGS)
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -dce -globaldce -S $< -o $@ $(OPTFLAGS) -debug
 
 $(OBJ_LL):obj_hpvm/%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $<
 
 $(OBJ_LINKED) : $(OBJ_H) $(OBJ_LL) $(HPVM_RT_LIB)
 	$(LLVM_LINK) $^ -S -o $@
@@ -377,6 +382,7 @@ $(TASK_LIB) $(TASK_MODULE):
 clean:
 	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_LL) $(OBJ_H) $(OBJ_LINKED)
 	$(RM) -r obj_t obj_s obj_hpvm
+	$(RM) wnvdla_test.o
 	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
 	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
 

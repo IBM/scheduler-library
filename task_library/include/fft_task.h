@@ -66,17 +66,17 @@ typedef struct {
   uint64_t cdfmcw_usec[SCHED_MAX_ACCEL_TYPES];
 } fft_timing_data_t;
 
-void print_fft_metadata_block_contents(/*task_metadata_entry*/ void* mb);
+extern "C" void print_fft_metadata_block_contents(/*task_metadata_entry*/ void * mb);
 
 void set_up_fft_task_on_accel_profile_data();
 
 void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 
-void output_fft_task_type_run_stats(void *sptr_ptr, unsigned my_task_type,
+extern "C" void output_fft_task_type_run_stats(void * sptr_ptr, unsigned my_task_type,
                                     unsigned total_accel_types);
 
-void execute_hwr_fft_accelerator(void *task_metadata_block);
-void execute_cpu_fft_accelerator(void *task_metadata_block);
+extern "C" void execute_hwr_fft_accelerator(void * task_metadata_block);
+extern "C" void execute_cpu_fft_accelerator(void * task_metadata_block);
 
 void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
                       task_criticality_t crit_level, bool use_auto_finish,
@@ -84,5 +84,5 @@ void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
 
 void finish_fft_execution(void *fft_metadata_block, void *); // float* results);
 
-extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile;
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile;
 #endif

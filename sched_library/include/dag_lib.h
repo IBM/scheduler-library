@@ -15,13 +15,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H_TASK_LIB_INCLUDE_H
-#define H_TASK_LIB_INCLUDE_H
+#ifndef H_DAG_LIB_INCLUDE_H
+#define H_DAG_LIB_INCLUDE_H
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
+#include <iostream>
+#include <string>
 
-#include "base_task_types.h"
+#include "scheduler.h"
 
-extern "C" void initialize_task_lib();
+#include "verbose.h"
+
+ //Functions to create static DAGs
+extern "C" Graph * create_graph(char * graphml_filename);
 
 #endif

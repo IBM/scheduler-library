@@ -46,23 +46,23 @@ typedef struct {
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 } test_timing_data_t;
 
-void print_test_metadata_block_contents(void *mb);
+extern "C" void print_test_metadata_block_contents(void * mb);
 
-void output_test_task_type_run_stats(void *sptr, unsigned my_task_type, unsigned total_accel_types);
+extern "C" void output_test_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-void execute_on_cpu_test_accelerator(void *task_metadata_block);
-void execute_on_hwr_vit_test_accelerator(void *task_metadata_block);
-void execute_on_hwr_fft_test_accelerator(void *task_metadata_block);
-void execute_on_hwr_cv_test_accelerator(void *task_metadata_block);
+extern "C" void execute_on_cpu_test_accelerator(void * task_metadata_block);
+extern "C" void execute_on_hwr_vit_test_accelerator(void * task_metadata_block);
+extern "C" void execute_on_hwr_fft_test_accelerator(void * task_metadata_block);
+extern "C" void execute_on_hwr_cv_test_accelerator(void * task_metadata_block);
 
 void set_up_test_task_on_accel_profile_data();
 
-void *set_up_test_task(void *sptr, task_type_t test_task_type,
+extern "C" void * set_up_test_task(void * sptr, task_type_t test_task_type,
                        task_criticality_t crit_level, bool use_auto_finish,
                        int32_t dag_id, int32_t task_id, void *);
 
-void test_auto_finish_routine(void *mb);
-void finish_test_execution(void *test_metadata_block, void *);
+extern "C" void test_auto_finish_routine(void * mb);
+extern "C" void finish_test_execution(void * test_metadata_block, void *);
 
-extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
 #endif

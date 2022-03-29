@@ -21,6 +21,7 @@ HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
 OPT = $(HPVM_BIN_PATH)/opt
 LLVM_LINK = $(HPVM_BIN_PATH)/llvm-link
 HPVMCC = $(HPVM_BIN_PATH)/clang
+HPVMCXX = $(HPVM_BIN_PATH)/clang++
 HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
 HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 
@@ -100,14 +101,16 @@ endif
 ifdef CONFIG_KERAS_CV_BYPASS
  CFLAGS += -DBYPASS_KERAS_CV_CODE
 else
- CFLAGS += -I/usr/include/python2.7
+ CFLAGS += -I/usr/include/python3.6m
 endif
+
+CFLAGS += -I/usr/include/python3.6m
 
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
  CFLAGS += -DHW_CV -DENABLE_NVDLA
- #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python2.7
+ #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
   SW_STR =
@@ -167,7 +170,7 @@ ifdef COMPILE_TO_ESP
  LDFLAGS += -lcontig
 endif
 ifndef CONFIG_KERAS_CV_BYPASS
- LDFLAGS += -lpython2.7
+ LDFLAGS += -lpython3.6m
 endif
 
 SRC = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
@@ -238,7 +241,7 @@ endif
 .PHONY: esp-build-clean esp-build-distclean esp-libs
 
 obj/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
 
 meta_policies/%.so: src/meta_policy_src/%.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@
@@ -278,7 +281,9 @@ $(HPVM_TARGET): $(LL_OBJ)
 	$(LLVM_LINK) $^ -o $@ 
 
 obj/%.bc: %.c
-	$(HPVMCC) -O3 -S $(CFLAGS) -emit-llvm $< -o $@
+	$(HPVMCXX) -S $(CFLAGS) -emit-llvm $< -o $@
+
+
 
 
 .PHONY: all clean

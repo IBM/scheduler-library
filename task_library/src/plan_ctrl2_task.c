@@ -36,7 +36,7 @@
 #include "plan_ctrl2_task.h"
 #include "scheduler.h"
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl2_profile;
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl2_profile;
 
 void print_plan_ctrl2_metadata_block_contents(void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;

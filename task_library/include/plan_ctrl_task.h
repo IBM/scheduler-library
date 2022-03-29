@@ -67,24 +67,24 @@ typedef struct {
   uint64_t call_usec[SCHED_MAX_ACCEL_TYPES];
 } plan_ctrl_timing_data_t;
 
-void print_plan_ctrl_metadata_block_contents(void *mb);
+extern "C" void print_plan_ctrl_metadata_block_contents(void * mb);
 
-void output_plan_ctrl_task_type_run_stats(void *sptr, unsigned my_task_type,
+extern "C" void output_plan_ctrl_task_type_run_stats(void * sptr, unsigned my_task_type,
     unsigned total_accel_types);
 
-void execute_on_cpu_plan_ctrl_accelerator(void *task_metadata_block);
+extern "C" void execute_on_cpu_plan_ctrl_accelerator(void * task_metadata_block);
 void execute_on_hwr_vit_plan_ctrl_accelerator(void *task_metadata_block);
 void execute_on_hwr_fft_plan_ctrl_accelerator(void *task_metadata_block);
 void execute_on_hwr_cv_plan_ctrl_accelerator(void *task_metadata_block);
 
 void set_up_plan_ctrl_task_on_accel_profile_data();
 
-void *set_up_plan_ctrl_task(void *sptr, task_type_t plan_ctrl_task_type,
+extern "C" void * set_up_plan_ctrl_task(void * sptr, task_type_t plan_ctrl_task_type,
                             task_criticality_t crit_level, bool use_auto_finish,
                             int32_t dag_id, int32_t task_id, void *args);
 
-void plan_ctrl_auto_finish_routine(void *mb);
-void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block,
+extern "C" void plan_ctrl_auto_finish_routine(void * mb);
+extern "C" void finish_plan_ctrl_execution(void * plan_ctrl_metadata_block,
                                 void *var_list); // vehicle_state_t* new_vehicle_state);
-extern std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl_profile;
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl_profile;
 #endif

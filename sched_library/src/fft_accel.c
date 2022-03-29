@@ -114,7 +114,7 @@ do_fft_accel_type_initialization(scheduler_datastate* sptr) {
     }
 
     printf(" Allocate hardware buffer of size %u\n", fftHW_size[fi]);
-    fftHW_lmem[fi] = contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
+    fftHW_lmem[fi] = (fftHW_token_t *) contig_alloc(fftHW_size[fi], &(fftHW_mem[fi]));
     if (fftHW_lmem[fi] == NULL) {
       fprintf(stderr, "Error: cannot allocate %zu contig bytes", fftHW_size[fi]);
       exit(EXIT_FAILURE);

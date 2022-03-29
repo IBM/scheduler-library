@@ -73,14 +73,17 @@ unsigned cv_cpu_run_time_in_usec = 3500000;
 unsigned cv_fake_hwr_run_time_in_usec = 320000;
 #endif
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cv_profile;
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cv_profile;
 unsigned image_index = 0;
 
+extern "C" {
 void print_cv_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
 }
+}
 
+extern "C" {
 void output_cv_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
@@ -179,7 +182,7 @@ void output_cv_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsig
     printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
            total_cv_comp_by[total_accel_types], total_parse_usec[total_accel_types], avg);
   }
-}
+}}
 
 static inline label_t parse_output_dimg() {
   FILE *file_p = fopen("./output.dimg", "r");
@@ -201,6 +204,7 @@ static inline label_t parse_output_dimg() {
   return (label_t)max_idx;
 }
 
+extern "C" {
 void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(task_metadata_block->data_space);
@@ -283,6 +287,7 @@ void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_blo
 #endif
   // This usleep call stands in as the "Fake" CNN accelerator
   usleep(cv_fake_hwr_run_time_in_usec);
+  // cv_data_p->object_label = run_object_classification(tr_val);
 
 #ifdef INT_TIME
   struct timeval stop_time;
@@ -296,7 +301,7 @@ void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_blo
 #endif // else of #ifdef HW_CV
   TDEBUG(printf("MB%u CV_HWR calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
-}
+}}
 
 label_t run_object_classification(unsigned tr_val) {
   DEBUG(printf("Entered run_object_classification... tr_val = %u\n", tr_val));
@@ -315,7 +320,7 @@ label_t run_object_classification(unsigned tr_val) {
         Py_DECREF(pModule);
         fprintf(stderr, "Trying to run CNN kernel: Cannot convert C argument "
                 "into python\n");
-        return 1;
+        return (label_t) 1;
       }
       PyTuple_SetItem(pArgs, 0, pValue);
       pretValue = PyObject_CallObject(pFunc, pArgs);
@@ -333,7 +338,7 @@ label_t run_object_classification(unsigned tr_val) {
         Py_DECREF(pModule);
         PyErr_Print();
         printf("Trying to run CNN kernel : Python function call failed\n");
-        return 1;
+        return (label_t) 1;
       }
     } else {
       if (PyErr_Occurred())
@@ -347,7 +352,8 @@ label_t run_object_classification(unsigned tr_val) {
   return object;
 }
 
-void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
+extern "C" {
+  void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void * task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
   DEBUG(printf("In execute_cpu_cv_accelerator actual computation: MB %d  CL %d\n",
                task_metadata_block->block_id, task_metadata_block->crit_level));
@@ -372,6 +378,7 @@ void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_blo
 
   TDEBUG(printf("MB%u CV_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
+}
 }
 
 // void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
@@ -431,8 +438,8 @@ void set_up_cv_task_on_accel_profile_data() {
   printf("\n\n"));
 }
 
-/*task_metadata_entry*/ void *
-set_up_cv_task(/*scheduler_datastate*/ void * sptr_ptr, task_type_t cv_task_type,
+extern "C" {
+  /*task_metadata_entry*/ void * set_up_cv_task(/*scheduler_datastate*/ void * sptr_ptr, task_type_t cv_task_type,
   task_criticality_t crit_level, bool use_auto_finish, int32_t dag_id, int32_t task_id,
                                        void *args) { // label_t in_label) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
@@ -482,12 +489,13 @@ set_up_cv_task(/*scheduler_datastate*/ void * sptr_ptr, task_type_t cv_task_type
 #endif
   return cv_mb_ptr;
   //  schedule_cv(data);
-}
+  }}
 
 // This is a default "finish" routine that can be included in the
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
+extern "C" {
 void cv_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
@@ -498,13 +506,14 @@ void cv_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
                 mb->accelerator_id));
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
-}
+}}
 
 // NOTE: This routine DOES NOT copy out the data results -- a call to
 //   calculate_peak_distance_from_fmcw now results in alteration ONLY
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the CV results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
+extern "C" {
 void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  void *args) {
   task_metadata_entry *cv_metadata_block = (task_metadata_entry *)cv_metadata_block_ptr;
   // label_t *obj_label)
@@ -526,4 +535,4 @@ void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  v
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
   free_task_metadata_block(cv_metadata_block);
-}
+}}

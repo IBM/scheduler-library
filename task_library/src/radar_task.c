@@ -40,7 +40,7 @@
 #define RADAR_c 300000000.0 // Speed of Light in Meters/Sec
 #define RADAR_threshold -100;
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> radar_profile;
 
 // This now illustrates the use of the "task metadata" to transfer information
 // for a radar (FFT) operation.
@@ -76,6 +76,7 @@ void set_up_radar_task_on_accel_profile_data() {
   // This is for out x86 all-software runs...
   radar_profile[10][SCHED_CPU_ACCEL_T] = 50;
   radar_profile[14][SCHED_CPU_ACCEL_T] = 1250;
+  std::cout << "Radar profile[10]: " << radar_profile[10] << std::endl;
 #endif
   DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "RADAR-PROFILES", "CPU", "FFT-HWR", "VIT-HWR",
                "CV-HWR");
@@ -86,6 +87,7 @@ void set_up_radar_task_on_accel_profile_data() {
   printf("\n"));
 }
 
+extern "C" {
 /*task_metadata_entry*/ void *
 set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
     task_type_t radar_task_type, task_criticality_t crit_level,
@@ -150,6 +152,7 @@ set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
 #endif
   // This now ends this block -- we've kicked off execution
   return radar_mb_ptr;
+}
 }
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
@@ -230,6 +233,7 @@ distance_t do_finish_radar_computations(task_metadata_entry *radar_metadata_bloc
 // start_executiond call for a task that is to be executed, but whose results
 // are not used...
 //
+extern "C" {
 void radar_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
@@ -245,19 +249,34 @@ void radar_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
+}
 
 // NOTE: This routine DOES NOT copy out the FFT data results --
 //   this only computes the distance to nearest obstacle, and returns that.
+extern "C" {
 void finish_radar_execution(/*task_metadata_entry*/void *radar_metadata_block_ptr, void *args) {
   task_metadata_entry *radar_metadata_block = (task_metadata_entry*) radar_metadata_block_ptr;
   // float* obj_dist)
   float *obj_dist = (float *) args;
 
+  // struct timeval stop_radar_post_processing, start_radar_post_processing;
+  // uint64_t radar_post_processing_sec = 0LL;
+  // uint64_t radar_post_processing_usec = 0LL;
+
+  // gettimeofday(&start_radar_post_processing, NULL);
   distance_t distance = do_finish_radar_computations(radar_metadata_block);
+  // gettimeofday(&stop_radar_post_processing, NULL);
+  // radar_post_processing_sec += stop_radar_post_processing.tv_sec - start_radar_post_processing.tv_sec;
+  // radar_post_processing_usec += stop_radar_post_processing.tv_usec - start_radar_post_processing.tv_usec;
+
+  // int64_t radar_post_processing_time = 1000000 * radar_post_processing_sec + radar_post_processing_usec;
+
+  // std::cout << "Radar post processing time: " << radar_post_processing_time << std::endl;
   *obj_dist = distance;
 
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n",
                radar_metadata_block->block_id));
   free_task_metadata_block(radar_metadata_block);
+}
 }

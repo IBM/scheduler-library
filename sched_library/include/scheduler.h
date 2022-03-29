@@ -31,6 +31,8 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <vector>
+#include <utility>
 
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/topological_sort.hpp"
@@ -245,6 +247,7 @@ struct dag_vertex_t {
   size_t input_size;
   void * input_ptr = NULL;
   void * output_ptr = NULL;
+  bool visited = false;
 };
 
 struct struct_input_t {
@@ -256,10 +259,10 @@ struct dag_edge_t {
   uint64_t data_movement_bytes;
 };
 
-typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, dag_vertex_t, dag_edge_t >
-Graph;
+typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, dag_vertex_t, dag_edge_t > Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
 typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
+typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
 
 class dag_metadata_entry {
  public:
@@ -425,7 +428,7 @@ class scheduler_datastate {
   char **task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
   char **task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
 
-  std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> ** global_task_profile; // array over TASK_TYPES for task profile maps
+  std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> ** global_task_profile; // array over TASK_TYPES for task profile maps
 
   char ** accel_name_str; // array over ACCEL_TYPES and of size MAX_ACCEL_NAME_LEN
   char ** accel_desc_str; // array over ACCEL_TYPES and of size MAX_ACCEL_DESC_LEN
@@ -492,10 +495,10 @@ get_scheduler_datastate_input_parms();
 extern scheduler_datastate *
 initialize_scheduler_and_return_datastate_pointer(
   scheduler_get_datastate_in_parms_t *inp);
-extern scheduler_datastate *
-initialize_scheduler_from_config_file(char *config_file_name);
+extern "C" scheduler_datastate *
+initialize_scheduler_from_config_file(char * config_file_name); //, unsigned max_task_types);
 
-extern void set_up_scheduler();
+extern "C" void set_up_scheduler();
 
 extern task_metadata_entry *
 get_task_metadata_block(scheduler_datastate *sptr, int32_t dag_id, int32_t task_id,
@@ -509,13 +512,13 @@ get_auto_finish_routine(scheduler_datastate *sptr,
 
 // Create DAG and Process arrival
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
-extern dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_ptr,
+extern "C" dag_metadata_entry * process_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr,
     task_criticality_t crit_level, ...);
 
 extern void request_execution(void *dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);
 
-extern void wait_on_daglist(void * sptr, int num_dags, ...);
+extern "C" void wait_on_daglist(void * sptr, int num_dags, ...);
 
 extern void mark_task_done(task_metadata_entry *task_metadata_block);
 extern void update_dag(task_metadata_entry *task_metadata_block);
@@ -523,16 +526,18 @@ extern void update_dag(task_metadata_entry *task_metadata_block);
 extern void print_base_metadata_block_contents(task_metadata_entry *mb);
 extern void dump_all_metadata_blocks_states(scheduler_datastate *sptr);
 
-extern void shutdown_scheduler(scheduler_datastate *sptr);
+extern "C" void shutdown_scheduler(scheduler_datastate * sptr);
 
 extern void init_accelerators_in_use_interval(scheduler_datastate *sptr,
     struct timeval start_prog);
 
 extern void cleanup_and_exit(int rval, void *sptr);
 
-task_type_t register_task_type(
+// extern "C" void register_task_type(
+//   void * sptr, task_type_t tid, char * task_name, char * task_description,
+extern "C" task_type_t register_task_type(
   void *sptr, char *task_name, char *task_description,
-  std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> * profile_map_ptr,
+  std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> *profile_map_ptr,
   set_up_task_function_t set_up_task_func,
   finish_task_execution_function_t finish_task_func,
   auto_finish_task_function_t auto_finish_func,

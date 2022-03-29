@@ -39,16 +39,17 @@
 unsigned num_Crit_test_tasks = 0;
 unsigned num_Base_test_tasks = 0;
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
 
+extern "C" {
 void print_test_metadata_block_contents(/*task_metadata_entry*/void* mb_ptr) {
   task_metadata_entry* mb = (task_metadata_entry*)mb_ptr;
   print_base_metadata_block_contents(mb);
 }
+}
 
-
-void
-output_test_task_type_run_stats(/*scheduler_datastate*/void* sptr_ptr, unsigned my_task_type,
+extern "C" {
+  void output_test_task_type_run_stats(/*scheduler_datastate*/void * sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
   scheduler_datastate *sptr = (scheduler_datastate*) sptr_ptr;
 
@@ -107,11 +108,11 @@ output_test_task_type_run_stats(/*scheduler_datastate*/void* sptr_ptr, unsigned 
            total_test_comp_by[total_accel_types], total_test_call_usec[total_accel_types], avg);
   }
 }
+}
 
 
-
-void
-execute_on_hwr_fft_test_accelerator(/*task_metadata_entry*/void* task_metadata_block_ptr) {
+extern "C" {
+  void execute_on_hwr_fft_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
   int fn = task_metadata_block->accelerator_id;
   int aidx = task_metadata_block->accelerator_type;
@@ -138,9 +139,10 @@ execute_on_hwr_fft_test_accelerator(/*task_metadata_entry*/void* task_metadata_b
   TDEBUG(printf("MB%u TEST_FFThwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+}
 
-void
-execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void* task_metadata_block_ptr) {
+extern "C" {
+  void execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
   int fn = task_metadata_block->accelerator_id;
   int aidx = task_metadata_block->accelerator_type;
@@ -167,9 +169,10 @@ execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void* task_metadata_b
   TDEBUG(printf("MB%u TEST_VIThwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+}
 
-void
-execute_on_hwr_cv_test_accelerator(/*task_metadata_entry*/void* task_metadata_block_ptr) {
+extern "C" {
+  void execute_on_hwr_cv_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
   int fn = task_metadata_block->accelerator_id;
   int aidx = task_metadata_block->accelerator_type;
@@ -196,7 +199,9 @@ execute_on_hwr_cv_test_accelerator(/*task_metadata_entry*/void* task_metadata_bl
   TDEBUG(printf("MB%u TEST_CVhwr calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+}
 
+extern "C" {
 void execute_on_cpu_test_accelerator(/*task_metadata_entry*/void* task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
   DEBUG(printf("In execute_on_cpu_test_accelerator: MB %d  CL %d\n", task_metadata_block->block_id,
@@ -221,6 +226,7 @@ void execute_on_cpu_test_accelerator(/*task_metadata_entry*/void* task_metadata_
 
   TDEBUG(printf("MB%u TEST_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
+}
 }
 
 
@@ -253,8 +259,8 @@ void set_up_test_task_on_accel_profile_data() {
   printf("\n"));
 }
 
-/*task_metadata_entry*/void*
-set_up_test_task(/*scheduler_datastate*/void* sptr_ptr,
+extern "C" {
+  /*task_metadata_entry*/void * set_up_test_task(/*scheduler_datastate*/void * sptr_ptr,
                                         task_type_t test_task_type, task_criticality_t crit_level,
                                         bool use_auto_finish, int32_t dag_id, int32_t task_id, void *args) {
   va_list var_list;
@@ -304,11 +310,12 @@ set_up_test_task(/*scheduler_datastate*/void* sptr_ptr,
   // This now ends this block -- we've kicked off execution
   return test_mb_ptr;
 }
-
+}
 
 // This is a default "finish" routine that can be included in the start_executiond call
 // for a task that is to be executed, but whose results are not used...
 //
+extern "C" {
 void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry*)mb_ptr;
   TDEBUG(scheduler_datastate* sptr = mb->scheduler_datastate_pointer;
@@ -319,6 +326,7 @@ void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
   DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
   free_task_metadata_block(mb);
 }
+}
 
 
 
@@ -328,6 +336,7 @@ void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
 //   of the metadata task data; we could send in the data pointer and
 //   over-write the original input data with the TEST results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
+extern "C" {
 void finish_test_execution(/*task_metadata_entry*/void* test_metadata_block_ptr, void *args) {
   task_metadata_entry *test_metadata_block = (task_metadata_entry*)test_metadata_block_ptr;
   int tidx = test_metadata_block->accelerator_type;
@@ -344,6 +353,7 @@ void finish_test_execution(/*task_metadata_entry*/void* test_metadata_block_ptr,
   // We've finished the execution and lifetime for this task; free its metadata
   DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
   free_task_metadata_block(test_metadata_block);
+}
 }
 
 

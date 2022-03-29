@@ -381,6 +381,7 @@ int main(int argc, char *argv[]) {
   char trace_file[256] = "";
 #endif
   char global_config_file[256] = "";
+  unsigned main_max_task_types = 5;
   int opt;
 
   rad_dict[0] = '\0';
@@ -392,11 +393,11 @@ int main(int argc, char *argv[]) {
   unsigned additional_vit_tasks_per_time_step = 0;
   unsigned max_additional_tasks_per_time_step = 0;
 
+#ifndef HPVM
   task_criticality_t additional_cv_tasks_criticality = (task_criticality_t) 0;
   task_criticality_t additional_fft_tasks_criticality = (task_criticality_t) 0;
   task_criticality_t additional_vit_tasks_criticality = (task_criticality_t) 0;
 
-#ifndef HPVM
   unsigned sched_holdoff_usec = 0;
   char meta_policy[256];
   char task_policy[256];
@@ -733,7 +734,7 @@ int main(int argc, char *argv[]) {
   } else {
     // Use the specified Global Configuration File to set up the Scheduler
     printf("Using Config file `%s`\n", global_config_file);
-    sptr = initialize_scheduler_from_config_file(global_config_file);
+    sptr = initialize_scheduler_from_config_file(global_config_file); //, main_max_task_types);
   }
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times "
@@ -1170,9 +1171,13 @@ int main(int argc, char *argv[]) {
     void * pnc_output_ptr = &vehicle_state;
 
     // DFG info should have task type at the node and is given input for the task
-    dag_metadata_entry * dag_ptr = process_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK, 0, radar_input_ptr,
-                                   radar_output_ptr, 1, viterbi_input_ptr, viterbi_output_ptr, 2, pnc_input_ptr, pnc_output_ptr, 3,
-                                   cv_input_ptr, cv_output_ptr, 4, test_input_ptr, test_output_ptr);
+    dag_metadata_entry * dag_ptr = process_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK,
+      0, radar_input_ptr, radar_output_ptr,
+      1, viterbi_input_ptr, viterbi_output_ptr,
+      2, pnc_input_ptr, pnc_output_ptr,
+      3, cv_input_ptr, cv_output_ptr,
+      4, pnc_input_ptr, pnc_output_ptr,
+      5, test_input_ptr, test_output_ptr);
 
 
     DEBUG(
@@ -1291,7 +1296,7 @@ int main(int argc, char *argv[]) {
     label = cv_tr_label; // label used as input and output in hpvm_launch
     hpvm_launch(DFGArgs, &label, time_step, radar_log_nsamples_per_dict_set[crit_fft_samples_set],
                 radar_inputs, &distance,
-                vit_msgs_size, vdentry_p, &message,
+      (message_size_t) vit_msgs_size, vdentry_p, &message,
                 out_msg_text, &vehicle_state, &new_vehicle_state, pandc_repeat_factor);
 
     // POST-EXECUTE other tasks to gather stats, etc.
@@ -1301,7 +1306,7 @@ int main(int argc, char *argv[]) {
       post_execute_cv_kernel(cv_tr_label, label);
     }
     post_execute_radar_kernel(rdentry_p->set, rdentry_p->index_in_set, rdict_dist, distance);
-    post_execute_vit_kernel(vdentry_p->msg_id, message);
+    post_execute_vit_kernel((message_t) vdentry_p->msg_id, message);
 
     // Overwrite the current vehicle state with the new state
     vehicle_state = new_vehicle_state;
@@ -1314,7 +1319,6 @@ int main(int argc, char *argv[]) {
 
     //TODO: time step and dag_id are same here
     time_step++;
-    sptr->next_avail_DAG_id++; // We're FAKING some DAG stuff for Viz right now
 
 #ifndef USE_SIM_ENVIRON
     read_next_trace_record(vehicle_state);
@@ -1372,8 +1376,11 @@ int main(int argc, char *argv[]) {
   }
 #endif // TIME
 
+#ifndef HPVM
+  //TODO: move this into the scheduler. It should be done irrespective of HPVM define
   //Delete DFGs
   delete(dfg_ptr);
+#endif
 
 #ifdef HPVM
   hpvm_cleanup(DFGArgs);

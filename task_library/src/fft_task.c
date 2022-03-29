@@ -45,15 +45,16 @@
 #include "calc_fmcw_dist.h"
 #include "fft-1d.h"
 
-std::map<uint64_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile; // FFT tasks can be 1k or 16k samplesw
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> fft_profile; // FFT tasks can be 1k or 16k samplesw
 
+extern "C" {
 void print_fft_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
   task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
   print_base_metadata_block_contents(mb);
   fft_data_struct_t *fft_data_p = (fft_data_struct_t *)(mb->data_space);
   printf("  FFT using logn_samples %u for %u samples\n", fft_data_p->log_nsamples,
          (1 << fft_data_p->log_nsamples));
-}
+}}
 
 // Right now default to max of 16k-samples
 #define MAX_fft_log_nsamples 14 // Maximum FFT samples per invocation size
@@ -105,6 +106,7 @@ void fft_bit_reverse(float *w, unsigned int n, unsigned int bits) {
 
 #endif
 
+extern "C" {
 void output_fft_task_type_run_stats( /*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
   scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
@@ -307,7 +309,9 @@ void output_fft_task_type_run_stats( /*scheduler_datastate*/ void *sptr_ptr, uns
            total_fft_comp_by[total_accel_types], total_cdfmcw_usec[total_accel_types], avg);
   }
 }
+}
 
+extern "C" {
 void execute_hwr_fft_accelerator(
   /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
@@ -390,7 +394,9 @@ void execute_hwr_fft_accelerator(
   exit(-2);
 #endif
 }
+}
 
+extern "C" {
 void execute_cpu_fft_accelerator(
   /*task_metadata_entry*/ void *task_metadata_block_ptr) {
   task_metadata_entry *task_metadata_block = (task_metadata_entry *)task_metadata_block_ptr;
@@ -422,6 +428,7 @@ void execute_cpu_fft_accelerator(
   TDEBUG(printf("MB%u FFT_CPU calling mark_task_done...\n", task_metadata_block->block_id));
   mark_task_done(task_metadata_block);
 }
+}
 
 // We set up this data for all possible legal FFT log_nsamples sizes (though we only use 1k and 16k so far)
 void set_up_fft_task_on_accel_profile_data() {
@@ -439,13 +446,14 @@ void set_up_fft_task_on_accel_profile_data() {
 #else
   fft_profile[10][SCHED_CPU_ACCEL_T] = 50;
   fft_profile[14][SCHED_CPU_ACCEL_T] = 1250;
+  std::cout << "FFT profile[10]: " << fft_profile[10] << std::endl;
+
 #endif
-  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "FFT-PROFILES", "CPU", "FFT-HWR", "VIT-HWR",
-               "CV-HWR");
-        printf("%15s :", "fft_profile[0]");
-  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[0][ai]); } printf("\n");
-  printf("%15s :", "fft_profile[1]");
-  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[1][ai]); } printf("\n");
+  DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "FFT-PROFILES", "CPU", "FFT-HWR", "VIT-HWR", "CV-HWR");
+  printf("%15s :", "fft_profile[10]");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[10][ai]); } printf("\n");
+  printf("%15s :", "fft_profile[14]");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", fft_profile[14][ai]); } printf("\n");
   printf("\n"));
 }
 
