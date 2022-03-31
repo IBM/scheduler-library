@@ -1023,13 +1023,13 @@ set_up_vit_task(/*scheduler_datastate*/ void *sptr_ptr,
 #endif
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr,
   // uint8_t* in_bits)
-  message_size_t msize = ((viterbi_input_t *) args)->msize;
-  ofdm_param *ofdm_ptr = ((viterbi_input_t *) args)->ofdm_ptr;
-  size_t ofdm_param_size = ((viterbi_input_t *) args)->ofdm_param_size;
-  frame_param *frame_ptr = ((viterbi_input_t *) args)->frame_ptr;
-  size_t frame_ptr_size = ((viterbi_input_t *) args)->frame_ptr_size;
-  uint8_t *in_bits = ((viterbi_input_t *) args)->in_bits;
-  size_t in_bits_size = ((viterbi_input_t *) args)->in_bits_size;
+  message_size_t msize = ((viterbi_io_t *) args)->msize;
+  ofdm_param * ofdm_ptr = ((viterbi_io_t *) args)->ofdm_ptr;
+  size_t ofdm_param_size = ((viterbi_io_t *) args)->ofdm_param_size;
+  frame_param * frame_ptr = ((viterbi_io_t *) args)->frame_ptr;
+  size_t frame_ptr_size = ((viterbi_io_t *) args)->frame_ptr_size;
+  uint8_t * in_bits = ((viterbi_io_t *) args)->in_bits;
+  size_t in_bits_size = ((viterbi_io_t *) args)->in_bits_size;
 
 
   // Request a MetadataBlock (for an VIT task at Critical Level)
@@ -1103,14 +1103,14 @@ void finish_viterbi_execution(
 
   task_metadata_entry *vit_metadata_block = (task_metadata_entry *)vit_metadata_block_ptr;
   // message_size_t msize, ofdm_param* ofdm_ptr, frame_param* frame_ptr, uint8_t* in_bits)
-  message_t *message_id = (message_t *) args;
+  message_t * message_id = ((viterbi_io_t *) args)->message_id;
   // char *out_msg_text = va_arg(var_list, char *);
   // struct timeval stop_vit_post_processing, start_vit_post_processing;
   // uint64_t vit_post_processing_sec = 0LL;
   // uint64_t vit_post_processing_usec = 0LL;
 
   // gettimeofday(&start_vit_post_processing, NULL);
-  char out_msg_text[1600];
+  char * out_msg_text = ((viterbi_io_t *) args)->out_msg_text;
 
   message_t msg = NUM_MESSAGES;
   uint8_t *result;

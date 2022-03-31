@@ -447,7 +447,7 @@ extern "C" {
 #ifdef TIME
   gettimeofday(&start_exec_cv, NULL);
 #endif
-  label_t in_label = ((cv_input_t *) args)->in_label;
+  label_t in_label = ((cv_io_t *) args)->in_label;
 
   // Request a MetadataBlock (for an CV task at Critical Level)
   task_metadata_entry *cv_mb_ptr = NULL;
@@ -517,7 +517,7 @@ extern "C" {
 void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  void *args) {
   task_metadata_entry *cv_metadata_block = (task_metadata_entry *)cv_metadata_block_ptr;
   // label_t *obj_label)
-  label_t *obj_label = (label_t *) args;
+  label_t * obj_label = ((cv_io_t *) args)->obj_label;
 
   int tidx = cv_metadata_block->accelerator_type;
   cv_timing_data_t *cv_timings_p = (cv_timing_data_t *) &

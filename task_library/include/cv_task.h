@@ -29,10 +29,12 @@
 //#define usecHwrCV   150000
 
 //CV: cv_tr_label
-struct cv_input_t {
-  size_t in_size;
+struct cv_io_t {
   label_t in_label;
-  cv_input_t(label_t cv_tr_label) : in_size(sizeof(label_t)), in_label(cv_tr_label) {}
+  label_t * obj_label;
+  size_t obj_label_size;
+  cv_io_t(label_t in_label, label_t * obj_label, size_t obj_label_size) :
+    in_label(in_label), obj_label(obj_label), obj_label_size(obj_label_size) {}
 };
 
 // This is a structure that defines the "CV" task's "view" of the data (in the metadata structure)

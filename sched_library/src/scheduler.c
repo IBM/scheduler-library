@@ -424,7 +424,7 @@ void update_dag(task_metadata_entry * task_metadata_block) {
             printf("DAG[%u.%u] completed task execution MB: %u\n", dag->dag_id, graph[vertex].vertex_id,
                    task_metadata_block->block_id);
           );
-          finish_task_execution(task_metadata_block, graph[vertex].output_ptr);
+          finish_task_execution(task_metadata_block, graph[vertex].io_ptr);
           boost::clear_vertex(vertex, graph);
           boost::remove_vertex(vertex, graph);
 
@@ -1167,7 +1167,7 @@ scheduler_datastate *initialize_scheduler_and_return_datastate_pointer(
 // Under the covers it uses the above routines and lower-level API interface...
 extern "C" {
 scheduler_datastate *
-initialize_scheduler_from_config_file(char * config_file_name) {//, unsigned max_task_types) {
+initialize_scheduler_from_config_file(char * config_file_name, unsigned max_task_types) {
   DEBUG(printf("In the initialize_scheduler_from_config_file routine...\n"));
   FILE *cf = fopen(config_file_name, "r");
   if (cf == NULL) {
@@ -1191,13 +1191,10 @@ initialize_scheduler_from_config_file(char * config_file_name) {//, unsigned max
   char parm_id[256];
   char setting[256];
 
-  sched_inparms->max_task_types = 5; //max_task_types; //From main code or compiler
+  sched_inparms->max_task_types = max_task_types; //From main code or compiler
   printf("  Set inparms->max_task_types = %d\n", sched_inparms->max_task_types);
   while ((fscanf(cf, "%s = %s\n", parm_id, setting) == 2) || (!feof(cf))) {
-    if (strcmp(parm_id, "MAX_TASK_TYPES") == 0) {
-      sched_inparms->max_task_types = atoi(setting);
-      printf("  Set inparms->max_task_types = %d\n", sched_inparms->max_task_types);
-    } else if (strcmp(parm_id, "MAX_ACCEL_TYPES") == 0) {
+    if (strcmp(parm_id, "MAX_ACCEL_TYPES") == 0) {
       sched_inparms->max_accel_types = atoi(setting);
       printf("  Set inparms->max_accel_types = %d\n", sched_inparms->max_accel_types);
     } else if (strcmp(parm_id, "MAX_METADATA_POOL_BLOCKS") == 0) {
@@ -1795,7 +1792,7 @@ void *schedule_dags(void *void_param_ptr) {
             //Create task from vertex
             task_metadata_entry *task_metadata_block = (task_metadata_entry *) set_up_task(sptr,
                 graph[ready_task_vertex].task_type, dag->crit_level, false, dag->dag_id,
-                graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].input_ptr); // Critical CV task
+              graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].io_ptr); // Critical CV task
             //Update task node in graph with the metadata block ptr
             graph[ready_task_vertex].task_mb_ptr = task_metadata_block;
             DEBUG(
@@ -2161,11 +2158,14 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
   va_start(var_list, crit_level);
   Graph::vertex_iterator v, vend;
   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
-    uint32_t vertex_id = va_arg(var_list, uint32_t);
-    assert(graph[*v].vertex_id == vertex_id);
-    graph[*v].input_ptr = va_arg(var_list, void *);
-    graph[*v].input_size = ((struct_input_t *) (graph[*v].input_ptr))->in_size;
-    graph[*v].output_ptr = va_arg(var_list, void *);
+    int32_t vertex_id = va_arg(var_list, int32_t);
+    if (graph[*v].vertex_id != vertex_id) {
+      std::cout << "Graph VID: " << graph[*v].vertex_id << " Input: " << vertex_id << std::endl;
+      assert(graph[*v].vertex_id == vertex_id);
+    }
+    graph[*v].io_ptr = va_arg(var_list, void *);
+    /*
+    graph[*v].input_size = ((struct_io_t *) (graph[*v].io_ptr))->in_size;
     std::map<size_t, uint64_t[4]> & profile_map = *(sptr->global_task_profile[graph[*v].task_type]);
     graph[*v].profile_ptr = profile_map[graph[*v].input_size];
     // std::cout << "Use " << sptr->task_name_str[graph[*v].task_type] << ": Profile map ptr: " << &profile_map << std::endl;
@@ -2197,11 +2197,12 @@ dag_metadata_entry * process_dag_arrival(scheduler_datastate *sptr, Graph * dfg_
         sptr->task_name_str[graph[*v].task_type], graph[*v].input_size, graph[*v].max_time,
         graph[*v].min_time, graph[*v].vertex_status);
     );
+    */
   }
   va_end(var_list);
 
   //Calc and add SDR for MS_stat and MS_dyn
-  append_sdr(graph);
+  // append_sdr(graph);
 
   //Request execution on the DAG
   request_execution(dag_ptr);
@@ -2689,8 +2690,7 @@ void dump_all_metadata_blocks_states(scheduler_datastate * sptr) {
 }
 
 extern "C" {
-  // void register_task_type(/*scheduler_datastate*/ void * sptr_ptr, task_type_t tid,
-  task_type_t register_task_type(/*scheduler_datastate*/ void * sptr_ptr,
+  void register_task_type(/*scheduler_datastate*/ void * sptr_ptr, task_type_t tid,
     char * task_name, char * task_description,
     std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> * profile_map_ptr,
   set_up_task_function_t set_up_task_func, // function pointer
@@ -2734,14 +2734,6 @@ extern "C" {
   }
   // Okay, so here is where we "fill in" the scheduler's task-type information
   // for this task
-  task_type_t tid = sptr->next_avail_task_type;
-  if (tid < sptr->inparms->max_task_types) {
-    sptr->next_avail_task_type++;
-  } else {
-    printf("ERROR: Ran out of Task IDs: MAX_TASK_TYPE = %u and we are adding id %u\n",
-           (sptr->inparms->max_task_types - 1), tid);
-    exit(-35);
-  }
   snprintf(sptr->task_name_str[tid], MAX_TASK_NAME_LEN, "%s", task_name);
   snprintf(sptr->task_desc_str[tid], MAX_TASK_DESC_LEN, "%s", task_description);
   sptr->global_task_profile[tid] = profile_map_ptr;
@@ -2771,7 +2763,6 @@ extern "C" {
     register_accel_can_exec_task(sptr, sched_accel, tid, exec_fptr);
   }
   va_end(var_list);
-  return tid;
 }
 }
 
@@ -2790,9 +2781,9 @@ void register_accel_can_exec_task(scheduler_datastate * sptr, scheduler_accelera
            sptr->accel_name_str[sl_acid]);
     exit(-38);
   }
-  if (task_type_id >= sptr->next_avail_task_type) {
-    printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u currently defined\n",
-      task_type_id, sptr->next_avail_task_type);
+  if (task_type_id > sptr->inparms->max_task_types) {
+    printf("In register_task_can_exec_task specified an illegal taskerator id: %u vs %u max tasks allowed\n",
+      task_type_id, sptr->inparms->max_task_types);
     exit(-37);
   }
   if (sptr->scheduler_execute_task_function[acid][task_type_id] != NULL) {

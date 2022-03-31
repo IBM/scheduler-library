@@ -210,7 +210,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
   // Now set up the Task Types...
   printf("\nSetting up/Registering the TASK TYPES...\n");
 
-  vit_task_type = register_task_type(sptr, "VIT-Task", "A Viterbi Decoding task to execute", &vit_profile,
+  vit_task_type = 0;
+  register_task_type(sptr, vit_task_type, "VIT-Task", "A Viterbi Decoding task to execute", &vit_profile,
                                      &set_up_vit_task, &finish_viterbi_execution, &viterbi_auto_finish_routine,
                                      &print_viterbi_metadata_block_contents, &output_vit_task_type_run_stats,
                                      2, // number of accelerator types that can execute this task type
@@ -224,7 +225,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
            p0_hw_threshold[vit_task_type][vit_hwr_accel_id]);
   }
 
-  cv_task_type = register_task_type(sptr, "CV-Task", "A CV/CNN task to execute", &cv_profile,
+  cv_task_type = 1;
+  register_task_type(sptr, cv_task_type, "CV-Task", "A CV/CNN task to execute", &cv_profile,
                                     &set_up_cv_task, &finish_cv_execution, &cv_auto_finish_routine,
                                     &print_cv_metadata_block_contents, &output_cv_task_type_run_stats, 2,
                                     SCHED_CPU_ACCEL_T, &execute_cpu_cv_accelerator,
@@ -237,7 +239,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
            p0_hw_threshold[cv_task_type][cv_hwr_accel_id]);
   }
 
-  radar_task_type = register_task_type(sptr, "FFT-Task", "A 1-D FFT task to execute", &radar_profile,
+  radar_task_type = 2;
+  register_task_type(sptr, radar_task_type, "FFT-Task", "A 1-D FFT task to execute", &radar_profile,
                                        &set_up_radar_task, &finish_radar_execution, &radar_auto_finish_routine,
                                        &print_fft_metadata_block_contents, &output_fft_task_type_run_stats, 2,
                                        SCHED_CPU_ACCEL_T, &execute_cpu_fft_accelerator,
@@ -250,7 +253,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
            p0_hw_threshold[radar_task_type][fft_hwr_accel_id]);
   }
 
-  plan_ctrl_task_type = register_task_type(sptr, "PnC-Task",
+  plan_ctrl_task_type = 3;
+  register_task_type(sptr, plan_ctrl_task_type, "PnC-Task",
     "The vehicle state Plan and Control task to execute", &plan_ctrl_profile,
                         &set_up_plan_ctrl_task, &finish_plan_ctrl_execution, &plan_ctrl_auto_finish_routine,
                         &print_plan_ctrl_metadata_block_contents,
@@ -263,7 +267,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       if (test_on_hwr_fft_run_time_in_usec > 0) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all 4 accelerators
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 4, SCHED_CPU_ACCEL_T,
@@ -273,7 +278,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -284,7 +290,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but FFT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -293,7 +300,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but FFT and CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -306,7 +314,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       if (test_on_hwr_fft_run_time_in_usec > 0) {
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 3, SCHED_CPU_ACCEL_T,
@@ -315,7 +324,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST on all but VIT and CV
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -325,7 +335,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
       } else { // if (FFT > 0)
         if (test_on_hwr_cv_run_time_in_usec > 0) {
           // Can run TEST on all but VIT and FFT
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 2, SCHED_CPU_ACCEL_T,
@@ -333,7 +344,8 @@ void set_up_accelerators_and_tasks(scheduler_datastate *sptr) {
                                               &execute_on_hwr_cv_test_accelerator);
         } else {
           // Can run TEST only on CPU
-          test_task_type = register_task_type(sptr, "TEST-Task", "A TESTING task to execute", &test_profile,
+          test_task_type = 4;
+          register_task_type(sptr, test_task_type, "TEST-Task", "A TESTING task to execute", &test_profile,
                                               &set_up_test_task, &finish_test_execution, &test_auto_finish_routine,
                                               &print_test_metadata_block_contents,
                                               &output_test_task_type_run_stats, 1, SCHED_CPU_ACCEL_T,
@@ -734,7 +746,7 @@ int main(int argc, char *argv[]) {
   } else {
     // Use the specified Global Configuration File to set up the Scheduler
     printf("Using Config file `%s`\n", global_config_file);
-    sptr = initialize_scheduler_from_config_file(global_config_file); //, main_max_task_types);
+    sptr = initialize_scheduler_from_config_file(global_config_file, main_max_task_types);
   }
 
   printf("LIMITS: Max Tasks %u Accels %u MB_blocks %u DSp_bytes %u Tsk_times "
@@ -1149,35 +1161,28 @@ int main(int argc, char *argv[]) {
 #endif
     }
 #endif
-
+    char out_msg_text[1600]; // more than large enough to hold max-size message
     // EXECUTE the kernels using the now known inputs
     unsigned added_crit_task_idx = 0;
 
 #ifndef HPVM
     //Create input output struct pointers
-    void * radar_input_ptr = new radar_input_t(radar_log_nsamples_per_dict_set[crit_fft_samples_set],
-        radar_inputs, 2 * (1 << MAX_RADAR_LOGN));
-    void * radar_output_ptr = &distance;
-    void * viterbi_input_ptr = new viterbi_input_t((message_size_t) vit_msgs_size, &(vdentry_p->ofdm_p),
-        sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits,
-        sizeof(uint8_t));
-    void * viterbi_output_ptr = &message;
-    void * cv_input_ptr = new cv_input_t(cv_tr_label);
-    void * cv_output_ptr = &label;
-    void * test_input_ptr = NULL; // No input
-    void * test_output_ptr = NULL;
-    void * pnc_input_ptr = new pnc_input_t(time_step, pandc_repeat_factor, &label, sizeof(label_t),
-                                           &distance, sizeof(distance_t), &message, sizeof(message_t), &vehicle_state);
-    void * pnc_output_ptr = &vehicle_state;
+    void * radar_io_ptr = new radar_io_t(radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float), &distance, sizeof(distance_t));
+    void * viterbi_io_ptr = new viterbi_io_t((message_size_t) vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t), &message, sizeof(message_t), out_msg_text, 1600);
+    void * cv_io_ptr = new cv_io_t(cv_tr_label, &label, sizeof(label_t));
+    void * test_io_ptr = NULL; // No input or output
+    void * pnc_io_ptr = new pnc_io_t(time_step, pandc_repeat_factor, &label, sizeof(label_t),
+      &distance, sizeof(distance_t), &message, sizeof(message_t), &vehicle_state,
+      sizeof(vehicle_state), &vehicle_state, sizeof(vehicle_state), out_msg_text, 1600);
 
     // DFG info should have task type at the node and is given input for the task
     dag_metadata_entry * dag_ptr = process_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK,
-      0, radar_input_ptr, radar_output_ptr,
-      1, viterbi_input_ptr, viterbi_output_ptr,
-      2, pnc_input_ptr, pnc_output_ptr,
-      3, cv_input_ptr, cv_output_ptr,
-      4, pnc_input_ptr, pnc_output_ptr,
-      5, test_input_ptr, test_output_ptr);
+      0, radar_io_ptr,
+      1, viterbi_io_ptr,
+      2, pnc_io_ptr,
+      3, cv_io_ptr,
+      4, pnc_io_ptr,
+      5, test_io_ptr);
 
 
     DEBUG(
@@ -1288,7 +1293,6 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* -- HPVM -- Fill in Viterbi Task Args */
-    char out_msg_text[1600]; // more than large enough to hold max-size message
 
     DEBUG(printf("Launching HPVM graph!\n"));
 

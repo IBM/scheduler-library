@@ -29,19 +29,22 @@
 #define MAX_OCC_X  7
 #define MAX_OCC_Y  100
 
-struct create_grid_input_t {
+struct create_grid_io_t {
   lane_t lane;
   unsigned in_data_size;
   uint8_t* in_data;
   unsigned occ_x_dim;
   unsigned occ_y_dim;
   uint8_t* occ_grid;
+  lane_t * position;
+  unsigned * x_dim;
+  unsigned * y_dim;
 
-  create_grid_input_t(
+  create_grid_io_t(
     lane_t lane, unsigned in_data_size, uint8_t* in_data, unsigned occ_x_dim, unsigned occ_y_dim,
     uint8_t* occ_grid):
     lane(lane), in_data_size(in_data_size), in_data(in_data), occ_x_dim(occ_x_dim),
-    occ_y_dim(occ_y_dim), occ_grid(occ_grid) {}
+    occ_y_dim(occ_y_dim), occ_grid(occ_grid), position(position), x_dim(x_dim), y_dim(y_dim) {}
 };
 
 // This is a structure that defines the "CREATE_GRID" task's "view" of the data (in the metadata structure)

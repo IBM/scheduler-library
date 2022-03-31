@@ -310,20 +310,18 @@ void *set_up_plan_ctrl_task(void *sptr_ptr, task_type_t plan_ctrl_task_type,
 #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
 #endif
-  unsigned time_step = ((pnc_input_t *) args)->time_step;
-  unsigned repeat_factor = ((pnc_input_t *) args)->repeat_factor;
-  label_t* object_label_ptr = ((pnc_input_t *) args)->object_label_ptr;
+  unsigned time_step = ((pnc_io_t *) args)->time_step;
+  unsigned repeat_factor = ((pnc_io_t *) args)->repeat_factor;
+  label_t * object_label_ptr = ((pnc_io_t *) args)->obj_label;
   label_t object_label = *object_label_ptr;
-  size_t object_label_size = ((pnc_input_t *) args)->object_label_size;
-  // double* xfer_object_dist_ptr = ((pnc_input_t *) args)->xfer_object_dist_ptr;
-  distance_t* xfer_object_dist_ptr = ((pnc_input_t *) args)->xfer_object_dist_ptr;
+  size_t object_label_size = ((pnc_io_t *) args)->obj_label_size;
+  // double* xfer_object_dist_ptr = ((pnc_io_t *) args)->xfer_object_dist_ptr;
+  distance_t * xfer_object_dist_ptr = ((pnc_io_t *) args)->distance_ptr;
   distance_t xfer_object_dist = *xfer_object_dist_ptr;
-  size_t dist_size = ((pnc_input_t *) args)->dist_size;
   distance_t object_dist = xfer_object_dist;
-  message_t* safe_lanes_msg_ptr = ((pnc_input_t *) args)->safe_lanes_msg_ptr;
+  message_t * safe_lanes_msg_ptr = ((pnc_io_t *) args)->message_id;
   message_t safe_lanes_msg = *safe_lanes_msg_ptr;
-  size_t safe_lanes_msg_size = ((pnc_input_t *) args)->safe_lanes_msg_size;
-  vehicle_state_t* vehicle_state_ptr = ((pnc_input_t *) args)->vehicle_state_ptr;
+  vehicle_state_t * vehicle_state_ptr = ((pnc_io_t *) args)->current_vehicle_state;
 
   vehicle_state_t vehicle_state = *vehicle_state_ptr;
 
@@ -429,7 +427,7 @@ extern "C" {
 void finish_plan_ctrl_execution(void *plan_ctrl_metadata_block_ptr, void *args) {
   task_metadata_entry *plan_ctrl_metadata_block = (task_metadata_entry *)plan_ctrl_metadata_block_ptr;
   // vehicle_state_t *new_vehicle_state)
-  vehicle_state_t *new_vehicle_state = (vehicle_state_t *) args;
+  vehicle_state_t * new_vehicle_state = ((pnc_io_t *) args)->new_vehicle_state;
 
   int tidx = plan_ctrl_metadata_block->accelerator_type;
   plan_ctrl_timing_data_t *plan_ctrl_timings_p = (plan_ctrl_timing_data_t *) &

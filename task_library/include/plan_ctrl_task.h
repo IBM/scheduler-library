@@ -26,27 +26,23 @@
 #include "scheduler.h"
 
 //Plan and contrl: time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state
-struct pnc_input_t {
-  size_t in_size;
+struct pnc_io_t {
   unsigned time_step;
   unsigned repeat_factor;
-  label_t* object_label_ptr;
-  size_t object_label_size;
-  distance_t* xfer_object_dist_ptr;
-  size_t dist_size;
-  message_t* safe_lanes_msg_ptr;
-  size_t safe_lanes_msg_size;
-  vehicle_state_t* vehicle_state_ptr;
-  pnc_input_t(  unsigned time_step, unsigned repeat_factor, label_t* object_label_ptr,
-                size_t object_label_size, distance_t* xfer_object_dist_ptr,
-                size_t dist_size, message_t* safe_lanes_msg_ptr, size_t safe_lanes_msg_size,
-                vehicle_state_t* vehicle_state_ptr) :
-    in_size(object_label_size + dist_size + safe_lanes_msg_size), time_step(time_step),
-    repeat_factor(repeat_factor), object_label_ptr(object_label_ptr),
-    object_label_size(object_label_size),
-    xfer_object_dist_ptr(xfer_object_dist_ptr), dist_size(dist_size),
-    safe_lanes_msg_ptr(safe_lanes_msg_ptr), safe_lanes_msg_size(safe_lanes_msg_size),
-    vehicle_state_ptr(vehicle_state_ptr) {}
+  label_t * obj_label;
+  size_t obj_label_size;
+  distance_t * distance_ptr;
+  size_t distance_ptr_size;
+  message_t * message_id;
+  size_t msg_id_size;
+  vehicle_state_t * current_vehicle_state;
+  size_t current_vehicle_state_size;
+  vehicle_state_t * new_vehicle_state;
+  size_t new_vehicle_state_size;
+  char * out_msg_text;
+  size_t out_msg_text_size;
+  pnc_io_t(unsigned time_step, unsigned repeat_factor, label_t * obj_label, size_t obj_label_size, distance_t * distance_ptr, size_t distance_ptr_size, message_t * message_id, size_t msg_id_size, vehicle_state_t * current_vehicle_state, size_t current_vehicle_state_size, vehicle_state_t * new_vehicle_state, size_t new_vehicle_state_size, char * out_msg_text, size_t out_msg_text_size) :
+    time_step(time_step), repeat_factor(repeat_factor), obj_label(obj_label), obj_label_size(obj_label_size), distance_ptr(distance_ptr), distance_ptr_size(distance_ptr_size), message_id(message_id), msg_id_size(msg_id_size), current_vehicle_state(current_vehicle_state), current_vehicle_state_size(current_vehicle_state_size), new_vehicle_state(new_vehicle_state), new_vehicle_state_size(new_vehicle_state_size), out_msg_text(out_msg_text), out_msg_text_size(out_msg_text_size) {}
 };
 
 // This is a structure that defines the "PLAN_CTRL" task's "view" of the data (in the metadata structure)

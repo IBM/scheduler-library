@@ -245,12 +245,11 @@ struct dag_vertex_t {
   uint64_t min_time;
   task_metadata_entry * task_mb_ptr = NULL;
   size_t input_size;
-  void * input_ptr = NULL;
-  void * output_ptr = NULL;
+  void * io_ptr = NULL;
   bool visited = false;
 };
 
-struct struct_input_t {
+struct struct_io_t {
   size_t in_size;
 };
 
@@ -496,7 +495,7 @@ extern scheduler_datastate *
 initialize_scheduler_and_return_datastate_pointer(
   scheduler_get_datastate_in_parms_t *inp);
 extern "C" scheduler_datastate *
-initialize_scheduler_from_config_file(char * config_file_name); //, unsigned max_task_types);
+initialize_scheduler_from_config_file(char * config_file_name, unsigned max_task_types);
 
 extern "C" void set_up_scheduler();
 
@@ -533,10 +532,8 @@ extern void init_accelerators_in_use_interval(scheduler_datastate *sptr,
 
 extern void cleanup_and_exit(int rval, void *sptr);
 
-// extern "C" void register_task_type(
-//   void * sptr, task_type_t tid, char * task_name, char * task_description,
-extern "C" task_type_t register_task_type(
-  void *sptr, char *task_name, char *task_description,
+extern "C" void register_task_type(
+  void * sptr, task_type_t tid, char * task_name, char * task_description,
   std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> *profile_map_ptr,
   set_up_task_function_t set_up_task_func,
   finish_task_execution_function_t finish_task_func,

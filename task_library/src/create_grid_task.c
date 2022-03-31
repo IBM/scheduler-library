@@ -165,12 +165,12 @@ task_metadata_entry *set_up_create_grid_task(scheduler_datastate *sptr,
 #ifdef TIME
   gettimeofday(&start_exec_pandc, NULL);
 #endif
-  lane_t lane           = ((create_grid_input_t *) args)->lane;
-  unsigned in_data_size = ((create_grid_input_t *) args)->in_data_size;
-  uint8_t* in_data      = ((create_grid_input_t *) args)->in_data;
-  unsigned occ_x_dim    = ((create_grid_input_t *) args)->occ_x_dim;
-  unsigned occ_y_dim    = ((create_grid_input_t *) args)->occ_y_dim;
-  uint8_t* occ_grid     = ((create_grid_input_t *) args)->occ_grid;
+  lane_t lane = ((create_grid_io_t *) args)->lane;
+  unsigned in_data_size = ((create_grid_io_t *) args)->in_data_size;
+  uint8_t * in_data = ((create_grid_io_t *) args)->in_data;
+  unsigned occ_x_dim = ((create_grid_io_t *) args)->occ_x_dim;
+  unsigned occ_y_dim = ((create_grid_io_t *) args)->occ_y_dim;
+  uint8_t * occ_grid = ((create_grid_io_t *) args)->occ_grid;
 
   // Request a MetadataBlock (for an PLAN_CTRL task at Critical Level)
   task_metadata_entry *create_grid_mb_ptr = NULL;
@@ -249,14 +249,13 @@ void create_grid_auto_finish_routine(task_metadata_entry *mb) {
 //   to) but this seems un-necessary since we only want the final "distance"
 //   really.
 void finish_create_grid_execution(task_metadata_entry *create_grid_metadata_block,
-                                  va_list var_list) {
-  // vehicle_state_t *new_vehicle_state)
+  void * args) {
+  // vehicle_state_t *)
   //TODO: Create output struct
-  vehicle_state_t* new_vehicle_state = va_arg(var_list, vehicle_state_t*);
-  unsigned* position = va_arg(var_list, unsigned *);
-  unsigned* x_dim = va_arg(var_list, unsigned *);
-  unsigned* y_dim = va_arg(var_list, unsigned *);
-  uint8_t*  occ_grid = va_arg(var_list, uint8_t *);
+  lane_t * position = ((create_grid_io_t *) args)->position;
+  unsigned * x_dim = ((create_grid_io_t *) args)->x_dim;
+  unsigned * y_dim = ((create_grid_io_t *) args)->y_dim;
+  uint8_t * occ_grid = ((create_grid_io_t *) args)->occ_grid;
 
   int tidx = create_grid_metadata_block->accelerator_type;
   create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *) &

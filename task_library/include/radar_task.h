@@ -32,13 +32,14 @@
 #include "fft_task.h"
 
 //Radar: radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, 2 * (1 << MAX_RADAR_LOGN) * sizeof(float)
-struct radar_input_t {
-        uint32_t in_size; //For profiling
+struct radar_io_t {
         uint32_t log_nsamples;
-        float *inputs;
-        size_t inputs_size;
-        radar_input_t(uint32_t log_nsamples, float *inputs, size_t inputs_size):
-                in_size(log_nsamples), log_nsamples(log_nsamples), inputs(inputs), inputs_size(inputs_size) {}
+        float * inputs_ptr;
+        size_t inputs_ptr_size;
+        distance_t * distance_ptr;
+        size_t distance_ptr_size;
+        radar_io_t(uint32_t log_nsamples, float * inputs_ptr, size_t inputs_ptr_size, distance_t * distance_ptr, size_t distance_ptr_size) :
+                log_nsamples(log_nsamples), inputs_ptr(inputs_ptr), inputs_ptr_size(inputs_ptr_size), distance_ptr(distance_ptr), distance_ptr_size(distance_ptr_size) {}
 };
 
 void set_up_radar_task_on_accel_profile_data();

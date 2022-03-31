@@ -98,9 +98,8 @@ set_up_radar_task(/*scheduler_datastate*/ void *sptr_ptr,
   gettimeofday(&start_exec_rad, NULL);
 #endif
   //uint32_t log_nsamples, float * inputs
-  uint32_t log_nsamples = ((radar_input_t *) args)->log_nsamples;
-  float *inputs = ((radar_input_t *) args)->inputs;
-  size_t inputs_size = ((radar_input_t *) args)->inputs_size;
+  uint32_t log_nsamples = ((radar_io_t *) args)->log_nsamples;
+  float * inputs = ((radar_io_t *) args)->inputs_ptr;
 
   // Request a MetadataBlock (for an RADAR task at Critical Level)
   task_metadata_entry *radar_mb_ptr = NULL;
@@ -257,7 +256,7 @@ extern "C" {
 void finish_radar_execution(/*task_metadata_entry*/void *radar_metadata_block_ptr, void *args) {
   task_metadata_entry *radar_metadata_block = (task_metadata_entry*) radar_metadata_block_ptr;
   // float* obj_dist)
-  float *obj_dist = (float *) args;
+  distance_t * obj_dist = ((radar_io_t *) args)->distance_ptr;
 
   // struct timeval stop_radar_post_processing, start_radar_post_processing;
   // uint64_t radar_post_processing_sec = 0LL;

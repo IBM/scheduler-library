@@ -1126,7 +1126,7 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DFGArgs->out_msg_text_size = 1600;
 
   DFGArgs->current_vehicle_state = vehicle_state;
-  DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
+  DFGArgs->current_vehicle_state_size = sizeof(vehicle_state);
   DFGArgs->new_vehicle_state = new_vehicle_state;
   DFGArgs->new_vehicle_state_size = sizeof(new_vehicle_state);
   DFGArgs->repeat_factor = pandc_repeat_factor;
