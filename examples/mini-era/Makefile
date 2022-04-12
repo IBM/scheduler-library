@@ -161,6 +161,11 @@ CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 endif
 
 
+ifdef COMPILE_HCC
+CFLAGS += -DHCC
+endif
+
+
 
 SCHED_LIB = $(SCHED_LIB_DIR)/libscheduler.a
 TASK_LIB = $(TASK_LIB_DIR)/libtasks.a

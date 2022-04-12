@@ -201,7 +201,11 @@ void descrambler(uint8_t* in, int psdusize, char* out_msg, uint8_t* ref, uint8_t
 
 
 
-void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
+void 
+#ifdef HCC
+inline __attribute__((always_inline))
+#endif
+vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
               frame_param *frame_ptr, size_t frame_ptr_size, uint8_t *in_bits,
               size_t in_bit_size, message_t *message_id, size_t msg_id_size,
               char *out_msg_text, size_t out_msg_text_size) {
@@ -209,8 +213,11 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
   DEBUG(printf("-- Vitterbi Leaf Node --\n"));
 
   __hpvm__hint(DEVICE);
+
+#ifndef HCC
   __hpvm__attributes(5, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text,
                      2, message_id, out_msg_text);
+#endif
   __hpvm__task(VIT_TASK);
 
   reset(ofdm_ptr);
@@ -675,13 +682,22 @@ void vit_leaf(message_size_t msg_size, ofdm_param *ofdm_ptr, size_t ofdm_size,
   // vit_metadata_block->block_id));
   // free_task_metadata_block(vit_metadata_block);
 
+#ifndef HCC
   __hpvm__return(2, message_id, out_msg_text);
+#endif
 }
 
-void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
+void 
+#ifdef HCC
+inline __attribute__((always_inline))
+#endif
+cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
   DEBUG(printf("-- CV Leaf Node --\n"));
   __hpvm__hint(DEVICE);
+
+#ifndef HCC
   __hpvm__attributes(1, obj_label, 1, obj_label);
+#endif
   __hpvm__task(CV_TASK);
 
   // CPU CV sleeps for a particular time
@@ -689,7 +705,9 @@ void cv_leaf(label_t in_label, label_t *obj_label, size_t obj_label_size) {
 
   *obj_label = in_label;
 
+#ifndef HCC
   __hpvm__return(1, obj_label);
+#endif
 }
 
 static float *bit_reverse(float *w, unsigned int N, unsigned int bits) {
@@ -716,14 +734,21 @@ static float *bit_reverse(float *w, unsigned int N, unsigned int bits) {
   return w;
 }
 
-void radar_leaf(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
+void 
+#ifdef HCC
+inline __attribute__((always_inline))
+#endif
+radar_leaf(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size,
                 distance_t *distance_ptr, size_t distance_ptr_size
                ) {
 
 
   DEBUG(printf("-- Radar Leaf Node --\n"));
   __hpvm__hint(DEVICE);
+
+#ifndef HCC
   __hpvm__attributes(2, distance_ptr, inputs_ptr, 2, distance_ptr, inputs_ptr);
+#endif
   __hpvm__task(RADAR_TASK);
 
   size_t data_size = 2 * (1 << log_nsamples) * sizeof(float);
@@ -861,10 +886,16 @@ void radar_leaf(uint32_t log_nsamples, float *inputs_ptr, size_t inputs_ptr_size
   DEBUG(printf("Distance in object: %.3f\n", *distance_ptr));
   DEBUG(printf("Finished executing Radar_leaf\n"));
 
+#ifndef HCC
   __hpvm__return(1, distance_ptr);
+#endif
 }
 
-void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
+void 
+#ifdef HCC
+inline __attribute__((always_inline))
+#endif
+pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, size_t obj_label_size,
               distance_t *distance_ptr, size_t distance_ptr_size,
               message_t *message_id, size_t msg_id_size, vehicle_state_t* current_vehicle_state, size_t current_vehicle_state_size,
               vehicle_state_t* new_vehicle_state, size_t new_vehicle_state_size , char *out_msg_text, size_t out_msg_text_size
@@ -874,8 +905,11 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
 
 
   __hpvm__hint(DEVICE);
+
+#ifndef HCC
   __hpvm__attributes(6, current_vehicle_state, new_vehicle_state, distance_ptr,
                      obj_label, message_id, out_msg_text, 1, new_vehicle_state);
+#endif
   __hpvm__task(PNC_TASK);
 
 
@@ -998,7 +1032,9 @@ void pnc_leaf(unsigned time_step, unsigned repeat_factor,  label_t *obj_label, s
   DEBUG(printf("Plan-Ctrl:     new Vehicle-State : Active %u Lane %u Speed %.1f\n", new_vehicle_state->active, new_vehicle_state->lane,
                new_vehicle_state->speed));
 
+#ifndef HCC
   __hpvm__return(1, new_vehicle_state);
+#endif
 }
 
 
@@ -1016,6 +1052,66 @@ void MiniERARoot(message_size_t msg_size, ofdm_param * ofdm_ptr,
                         vehicle_state_t *new_vehicle_state,
                         size_t new_vehicle_state_size) {
 
+#ifdef HCC
+    void* Section = __hetero_section_begin();
+    {
+
+        void* VIT = __hetero_task_begin(6, msg_size, ofdm_ptr, ofdm_size,
+                frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
+                out_msg_text, out_msg_text_size,
+                2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
+                /* Optional Node Name */ "VIT");
+
+        // Body will be inlined into task
+        vit_leaf(msg_size, ofdm_ptr, ofdm_size,
+                frame_ptr, frame_ptr_size, in_bits, in_bit_size, message_id, msg_id_size,
+                out_msg_text, out_msg_text_size);
+
+        __hetero_task_end(VIT);
+
+        void* RADAR = __hetero_task_begin(3,log_nsamples, inputs_ptr,inputs_ptr_size,
+                distance_ptr, distance_ptr_size,
+                1, distance_ptr, distance_ptr_size,
+                /* Optional Node Name */ "RADAR");
+
+        // Body will be inlined into task
+        radar_leaf(log_nsamples, inputs_ptr,inputs_ptr_size,
+                distance_ptr, distance_ptr_size);
+
+        __hetero_task_end(RADAR);
+
+        void* CV = __hetero_task_begin(2, in_label, obj_label, obj_label_size,
+                1, obj_label, obj_label_size, 
+                /* Optional Node Name */ "CV");
+
+        // Body will be inlined into task
+        cv_leaf(in_label, obj_label, obj_label_size);
+
+        __hetero_task_end(CV);
+
+
+        void* PNC = __hetero_task_begin(8,time_step, repeat_factor, obj_label, obj_label_size,
+                distance_ptr, distance_ptr_size, message_id, msg_id_size, current_vehicle_state, current_vehicle_state_size, new_vehicle_state, new_vehicle_state_size,
+                out_msg_text, out_msg_text_size, 1, new_vehicle_state, new_vehicle_state_size,
+                /* Optional Node Name */ "PNC");
+
+        // Body will be inlined into task
+        pnc_leaf(time_step, repeat_factor, obj_label, obj_label_size,
+                distance_ptr, distance_ptr_size, message_id, msg_id_size, current_vehicle_state, current_vehicle_state_size, new_vehicle_state, new_vehicle_state_size,
+                out_msg_text, out_msg_text_size);
+
+        __hetero_task_end(PNC);
+
+
+
+    }
+    __hetero_section_end(Section);
+
+
+#else
+  
+
+  // Describe DAG using HPVM-C
   __hpvm__hint(CPU_TARGET);
   __hpvm__attributes(10, ofdm_ptr, frame_ptr, in_bits, message_id, out_msg_text, obj_label,
                      distance_ptr, inputs_ptr, new_vehicle_state, current_vehicle_state,
@@ -1080,6 +1176,8 @@ void MiniERARoot(message_size_t msg_size, ofdm_param * ofdm_ptr,
 
 
   __hpvm__bindOut(PNCNode, 0, 0, /* isStream */ 0);
+
+#endif
 }
 
 
@@ -1093,7 +1191,12 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   DEBUG(printf("In hpvm_launch()\n"));
 
 
+#ifndef HCC
 
+
+  // Use HPVM-C 
+  
+  
   RootIn* DFGArgs = (RootIn*) malloc(sizeof(RootIn));
 
   /* -- HPVM Host Code -- */
@@ -1167,10 +1270,40 @@ void hpvm_launch(RootIn *_DFGArgs, label_t *cv_tr_label, unsigned time_step,
   llvm_hpvm_untrack_mem(new_vehicle_state);
   llvm_hpvm_untrack_mem(vehicle_state);
 
+#else
+
+  size_t radar_inputs_size = 2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
+
+  // Use Hetero-C++ 
+  void* DFG = __hetero_launch((void*) MiniERARoot, 
+          /* Num Input Pairs */ 15 ,
+          vit_msgs_size, 
+          &vdentry_p->ofdm_p , sizeof(ofdm_param), 
+          &vdentry_p->frame_p, sizeof(frame_param), 
+          vdentry_p->in_bits, sizeof(uint8_t),
+          message, sizeof(message_t), 
+          out_msg_text, 1600, 
+          *cv_tr_label, 
+          cv_tr_label, sizeof(label_t), 
+          log_nsamples, 
+          radar_inputs, radar_inputs_size, 
+          distance, sizeof(distance_t), 
+          time_step, pandc_repeat_factor, 
+          vehicle_state, sizeof(vehicle_state_t),
+          new_vehicle_state, sizeof(vehicle_state_t), 
+          /* Num Output Pairs */ 1, 
+          new_vehicle_state, sizeof(vehicle_state_t)
+          );
+  __hetero_wait(DFG);
+
+#endif
+
+
   DEBUG(printf("[ HPVM ] New vehicle state: lane %u speed %.1f\n\n", new_vehicle_state->lane, new_vehicle_state->speed));
 
-
+#ifndef HCC
   free(DFGArgs);
+#endif
 }
 
 extern "C" {
