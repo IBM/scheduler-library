@@ -50,16 +50,13 @@ extern "C" void print_test_metadata_block_contents(void * mb);
 
 extern "C" void output_test_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-extern "C" void execute_on_cpu_test_accelerator(void * task_metadata_block);
-extern "C" void execute_on_hwr_vit_test_accelerator(void * task_metadata_block);
-extern "C" void execute_on_hwr_fft_test_accelerator(void * task_metadata_block);
-extern "C" void execute_on_hwr_cv_test_accelerator(void * task_metadata_block);
+extern "C" void execute_on_cpu_test_accelerator(void * test_io_ptr);
+extern "C" void execute_on_hwr_vit_test_accelerator(void * test_io_ptr);
+extern "C" void execute_on_hwr_fft_test_accelerator(void * test_io_ptr);
+extern "C" void execute_on_hwr_cv_test_accelerator(void * test_io_ptr);
 
 void set_up_test_task_on_accel_profile_data();
 
-extern "C" void * set_up_test_task(void * sptr, task_type_t test_task_type,
-                       task_criticality_t crit_level, bool use_auto_finish,
-                       int32_t dag_id, int32_t task_id, void *);
 
 extern "C" void test_auto_finish_routine(void * mb);
 extern "C" void finish_test_execution(void * test_metadata_block, void *);

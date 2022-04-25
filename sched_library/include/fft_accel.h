@@ -35,9 +35,9 @@
 extern int fftHW_fd[NUM_FFT_ACCEL];
 extern contig_handle_t fftHW_mem[NUM_FFT_ACCEL];
 
-extern fftHW_token_t* fftHW_lmem[NUM_FFT_ACCEL];  // Pointer to local version (mapping) of fftHW_mem
-extern fftHW_token_t* fftHW_li_mem[NUM_FFT_ACCEL]; // Pointer to input memory block
-extern fftHW_token_t* fftHW_lo_mem[NUM_FFT_ACCEL]; // Pointer to output memory block
+extern fftHW_token_t * fftHW_lmem[NUM_FFT_ACCEL];  // Pointer to local version (mapping) of fftHW_mem
+extern fftHW_token_t * fftHW_li_mem[NUM_FFT_ACCEL]; // Pointer to input memory block
+extern fftHW_token_t * fftHW_lo_mem[NUM_FFT_ACCEL]; // Pointer to output memory block
 extern size_t fftHW_in_len[NUM_FFT_ACCEL];
 extern size_t fftHW_out_len[NUM_FFT_ACCEL];
 extern size_t fftHW_in_size[NUM_FFT_ACCEL];
@@ -47,13 +47,13 @@ extern size_t fftHW_size[NUM_FFT_ACCEL];
 extern struct fftHW_access fftHW_desc[NUM_FFT_ACCEL];
 #endif
 
-void do_fft_accel_type_initialization(scheduler_datastate* sptr);
+void do_fft_accel_type_initialization(scheduler_datastate * sptr);
 
 #ifdef HW_FFT
-void fft_in_hw(scheduler_datastate* sptr, int *fd, struct fftHW_access *desc);
+void fft_in_hw(int * fd, struct fftHW_access * desc);
 #endif
 
-void do_fft_accel_type_closeout(scheduler_datastate* sptr);
-void output_fft_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types);
+void do_fft_accel_type_closeout(scheduler_datastate * sptr);
+void output_fft_accel_type_run_stats(scheduler_datastate * sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

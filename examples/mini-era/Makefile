@@ -25,6 +25,8 @@ HPVMCC = $(HPVM_BIN_PATH)/clang
 HPVMCXX = $(HPVM_BIN_PATH)/clang++
 HPVM_RT_PATH = $(HPVM_BUILD_DIR)/tools/hpvm/projects/hpvm-rt
 HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
+HCC=$(HPVM_BIN_PATH)/hpvm-extract-task
+HPVM_DEF_FILE=HPVMCFunctionDeclarations.ll
 
 YEL='\033[0;33m'
 NC='\033[0m'
@@ -354,7 +356,10 @@ obj_hpvm:
 obj_hpvm/hpvm_tasks.ll : src/hpvm_tasks.c
 	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $<
 
-obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.ll
+obj_hpvm/hpvm_tasks.hetero.ll : obj_hpvm/hpvm_tasks.ll
+	$(HCC) -declsfile $(HPVM_DEF_FILE) --no-return-sizes -use0D $< -o $@ 
+
+obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.hetero.ll
 	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce -hpvm-timers-gen $< -S -o $@ $(OPTFLAGS) -debug
 
 $(OBJ_H) : obj_hpvm/hpvm_tasks.hpvm.ll

@@ -25,8 +25,8 @@
 #include "base_task_types.h"
 #include "scheduler.h"
 
-//Plan and contrl: time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state
-struct pnc_io_t {
+ //Plan and contrl: time_step, pandc_repeat_factor, &label, sizeof(label_t),  &distance, sizeof(distance_t), &message, sizeof(message_t) , &vehicle_state
+struct plan_ctrl_io_t {
   unsigned time_step;
   unsigned repeat_factor;
   label_t * obj_label;
@@ -41,7 +41,7 @@ struct pnc_io_t {
   size_t new_vehicle_state_size;
   char * out_msg_text;
   size_t out_msg_text_size;
-  pnc_io_t(unsigned time_step, unsigned repeat_factor, label_t * obj_label, size_t obj_label_size, distance_t * distance_ptr, size_t distance_ptr_size, message_t * message_id, size_t msg_id_size, vehicle_state_t * current_vehicle_state, size_t current_vehicle_state_size, vehicle_state_t * new_vehicle_state, size_t new_vehicle_state_size, char * out_msg_text, size_t out_msg_text_size) :
+  plan_ctrl_io_t(unsigned time_step, unsigned repeat_factor, label_t * obj_label, size_t obj_label_size, distance_t * distance_ptr, size_t distance_ptr_size, message_t * message_id, size_t msg_id_size, vehicle_state_t * current_vehicle_state, size_t current_vehicle_state_size, vehicle_state_t * new_vehicle_state, size_t new_vehicle_state_size, char * out_msg_text, size_t out_msg_text_size) :
     time_step(time_step), repeat_factor(repeat_factor), obj_label(obj_label), obj_label_size(obj_label_size), distance_ptr(distance_ptr), distance_ptr_size(distance_ptr_size), message_id(message_id), msg_id_size(msg_id_size), current_vehicle_state(current_vehicle_state), current_vehicle_state_size(current_vehicle_state_size), new_vehicle_state(new_vehicle_state), new_vehicle_state_size(new_vehicle_state_size), out_msg_text(out_msg_text), out_msg_text_size(out_msg_text_size) {}
 };
 
@@ -66,21 +66,18 @@ typedef struct {
 extern "C" void print_plan_ctrl_metadata_block_contents(void * mb);
 
 extern "C" void output_plan_ctrl_task_type_run_stats(void * sptr, unsigned my_task_type,
-    unsigned total_accel_types);
+  unsigned total_accel_types);
 
-extern "C" void execute_on_cpu_plan_ctrl_accelerator(void * task_metadata_block);
-void execute_on_hwr_vit_plan_ctrl_accelerator(void *task_metadata_block);
-void execute_on_hwr_fft_plan_ctrl_accelerator(void *task_metadata_block);
-void execute_on_hwr_cv_plan_ctrl_accelerator(void *task_metadata_block);
+extern "C" void execute_on_cpu_plan_ctrl_accelerator(void * plan_ctrl_io_ptr);
+void execute_on_hwr_vit_plan_ctrl_accelerator(void * plan_ctrl_io_ptr);
+void execute_on_hwr_fft_plan_ctrl_accelerator(void * plan_ctrl_io_ptr);
+void execute_on_hwr_cv_plan_ctrl_accelerator(void * plan_ctrl_io_ptr);
 
 void set_up_plan_ctrl_task_on_accel_profile_data();
 
-extern "C" void * set_up_plan_ctrl_task(void * sptr, task_type_t plan_ctrl_task_type,
-                            task_criticality_t crit_level, bool use_auto_finish,
-                            int32_t dag_id, int32_t task_id, void *args);
 
 extern "C" void plan_ctrl_auto_finish_routine(void * mb);
 extern "C" void finish_plan_ctrl_execution(void * plan_ctrl_metadata_block,
-                                void *var_list); // vehicle_state_t* new_vehicle_state);
+  void * var_list); // vehicle_state_t* new_vehicle_state);
 extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl_profile;
 #endif

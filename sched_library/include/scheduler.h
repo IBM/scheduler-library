@@ -44,7 +44,7 @@
 #include <boost/graph/graphml.hpp>
 #include <boost/graph/copy.hpp>
 
-//#include "base_types.h"
+ //#include "base_types.h"
 typedef enum { success, error } status_t;
 
 typedef enum {
@@ -148,8 +148,8 @@ typedef struct {
   uint64_t queued_sec, queued_usec;
   uint64_t assign_sec, assign_usec;
   struct timeval running_start;
-  uint64_t *running_sec;  //[MAX_ACCEL_TYPES];
-  uint64_t *running_usec; //[MAX_ACCEL_TYPES];
+  uint64_t * running_sec;  //[MAX_ACCEL_TYPES];
+  uint64_t * running_usec; //[MAX_ACCEL_TYPES];
   struct timeval done_start;
   uint64_t done_sec, done_usec;
 } sched_timing_data_t;
@@ -174,10 +174,10 @@ typedef struct { // This allows each task to track up to 16 total internal task
 class scheduler_datastate;
 
 class task_metadata_entry {
- public:
+public:
   // This points to the scheduler datastate structure (defiuned below) to which
   // this metadata block belongs.
-  scheduler_datastate *scheduler_datastate_pointer;
+  scheduler_datastate * scheduler_datastate_pointer;
 
   // This portion is management, control, and scheduler stuff...
   int32_t block_id; // master-pool-index; a unique ID per metadata task
@@ -197,13 +197,13 @@ class task_metadata_entry {
   int32_t task_id; // A unique identifier for this task (across the full run)
   int32_t dag_id;  // Indicates which DAG spawns or owns this task
   task_criticality_t
-  crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
+    crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
   float rank_hom;
   uint8_t rank_het;
   uint64_t deadline_time;
 
 
-  uint64_t *task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for
+  uint64_t * task_on_accel_profile; //[MAX_ACCEL_TYPES];  //Timing profile for
   //task (in usec) -- maps task projected time
   //on accelerator...
   uint64_t task_max_time;
@@ -212,26 +212,26 @@ class task_metadata_entry {
   void (*atFinish)(task_metadata_entry *); // Call-back Finish-time function
 
   // Statistics
-  uint32_t *gets_by_task_type;  // Count of times this metadata block allocated
+  uint32_t * gets_by_task_type;  // Count of times this metadata block allocated
   // per task type.
-  uint32_t *frees_by_task_type; // Count of times this metadata block allocated
+  uint32_t * frees_by_task_type; // Count of times this metadata block allocated
   // per task type.
 
   // The number of tiumes this MB was allocated to use each accelerator in the
   // system
-  uint32_t **accelerator_allocated_to_MB; //[MAX_ACCEL_TYPES]; //
+  uint32_t ** accelerator_allocated_to_MB; //[MAX_ACCEL_TYPES]; //
   //[MAX_ACCEL_OF_ANY_TYPE];
 
   // These are timing-related storage; currently we keep per-task-type in each
   // metadata to aggregate (per block) over the run
   sched_timing_data_t sched_timings;
-  uint32_t **task_computed_on; //[MAX_ACCEL_TYPES]; // array over TASK_TYPES
-  task_timing_data_t *task_timings; // array over TASK_TYPES
+  uint32_t ** task_computed_on; //[MAX_ACCEL_TYPES]; // array over TASK_TYPES
+  task_timing_data_t * task_timings; // array over TASK_TYPES
 
   // This is the segment for data for the tasks
   int32_t data_size;   // Number of bytes occupied in data (in case the task
   // evaluation wants to know)
-  uint8_t *data_space; // The total data space for the metadata block (holds ALL
+  void * data_space; // The total data space for the metadata block (holds ALL
   // data for the task)
 };
 
@@ -264,10 +264,10 @@ typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
 typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
 
 class dag_metadata_entry {
- public:
+public:
   // This points to the scheduler datastate structure (defiuned below) to which
   // this metadata block belongs.
-  scheduler_datastate *scheduler_datastate_pointer;
+  scheduler_datastate * scheduler_datastate_pointer;
   int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
   Graph * graph_ptr;
   // boost::adjacency_list<> * graph_ptr;
@@ -282,19 +282,19 @@ class dag_metadata_entry {
   //Stats calculation
   uint64_t dag_response_time;
 
-  dag_metadata_entry(scheduler_datastate *scheduler_datastate_pointer, int32_t dag_id,
-                     Graph * graph_ptr, uint64_t dag_deadline_time,
-                     task_criticality_t crit_level);
+  dag_metadata_entry(scheduler_datastate * scheduler_datastate_pointer, int32_t dag_id,
+    Graph * graph_ptr, uint64_t dag_deadline_time,
+    task_criticality_t crit_level);
 
 };
 
 // This is the Ready Task Queue -- it holds Metadata Block IDs
 //TODO: Why not just a queue of shorts?
 class ready_mb_task_queue_entry_t {
- public:
+public:
   // short unique_id;
   short block_id;
-  scheduler_datastate *sptr;
+  scheduler_datastate * sptr;
 };
 
 // This is a typedef for the call-back function, called by the scheduler at
@@ -302,28 +302,28 @@ class ready_mb_task_queue_entry_t {
 typedef void (*task_finish_callback_t)(task_metadata_entry *);
 
 // This is a typedef for an execution function called by the scheduler (e.g. to
-// execute a task)
-typedef void (*sched_execute_task_function_t)(task_metadata_entry *);
+// execute a task) The input is an IO ptr
+typedef void (*sched_execute_task_function_t)(void *);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_task_type routine.
 typedef void (*print_metadata_block_contents_t)(/*task_metadata_entry*/ void *);
-typedef void (*output_task_type_run_stats_t)(/*scheduler_datastate*/ void *sptr,
-    unsigned my_task_type, unsigned total_accel_types);
+typedef void (*output_task_type_run_stats_t)(/*scheduler_datastate*/ void * sptr,
+  unsigned my_task_type, unsigned total_accel_types);
 
-typedef /*task_metadata_entry*/ void *(*set_up_task_function_t)(/*scheduler_datastate*/ void *sptr,
-    task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
-    int32_t dag_id, int32_t task_id, void* args);
-typedef void (*finish_task_execution_function_t)(/*task_metadata_entry*/ void *the_metadata_block,
-    void* args);
-typedef void (*auto_finish_task_function_t)(/*task_metadata_entry*/ void *mb);
+typedef /*task_metadata_entry*/ void * (*set_up_task_function_t)(/*scheduler_datastate*/ void * sptr,
+  task_type_t the_task_type, task_criticality_t crit_level, bool auto_finish,
+  int32_t dag_id, int32_t task_id, void * args);
+typedef void (*finish_task_execution_function_t)(/*task_metadata_entry*/ void * the_metadata_block,
+  void * args);
+typedef void (*auto_finish_task_function_t)(/*task_metadata_entry*/ void * mb);
 
 // These are function pointer prototype declaration types, used for the
 // regsiter_accelerator_type routine.
-typedef void (*do_accel_initialization_t)(scheduler_datastate *sptr);
-typedef void (*do_accel_closeout_t)(scheduler_datastate *sptr);
-typedef void (*output_accel_run_stats_t)(scheduler_datastate *sptr, unsigned my_accel_id,
-    unsigned total_task_types);
+typedef void (*do_accel_initialization_t)(scheduler_datastate * sptr);
+typedef void (*do_accel_closeout_t)(scheduler_datastate * sptr);
+typedef void (*output_accel_run_stats_t)(scheduler_datastate * sptr, unsigned my_accel_id,
+  unsigned total_task_types);
 
 // This typedef defines a structure used to describe a accelerator (for the
 // register_accelerator_type routine)
@@ -338,14 +338,14 @@ typedef struct accel_pool_defn_info_struct {
 
 typedef struct bi_ll_struct {
   int clt_block_id;
-  struct bi_ll_struct *next;
+  struct bi_ll_struct * next;
 } blockid_linked_list_t;
 
 class scheduler_datastate {
- public:
+public:
   // These are limits (e.g. max-task-types) for this instantiation of the
   // scheduler datasatate space
-  scheduler_get_datastate_in_parms_t *inparms;
+  scheduler_get_datastate_in_parms_t * inparms;
 
   int max_accel_of_any_type; // The max number of accelerators allocated from
   // any of the pools
@@ -365,31 +365,31 @@ class scheduler_datastate {
   // unsigned scheduler_holdoff_usec;
 
   //Handle for dynamically loaded META policy
-  void *meta_policy_handle;
+  void * meta_policy_handle;
   // Function pointer to the meta policy static rank assignment
-  void (*assign_static_rank)(scheduler_datastate *sptr, dag_metadata_entry *);
+  void (*assign_static_rank)(scheduler_datastate * sptr, dag_metadata_entry *);
   // Function pointer to the meta policy static rank assignment
-  void (*assign_dynamic_rank)(scheduler_datastate *sptr, task_metadata_entry *);
+  void (*assign_dynamic_rank)(scheduler_datastate * sptr, task_metadata_entry *);
 
 
   // Handle for the dynamically loaded TASK policy
-  void *task_policy_handle;
+  void * task_policy_handle;
   // Function pointer to the policy initialization routine
-  void (*initialize_assign_task_to_pe)(void *in_parm_ptr);
+  void (*initialize_assign_task_to_pe)(void * in_parm_ptr);
   // Function pointer for the policy's assign_task_to_pe() function
-  ready_mb_task_queue_entry_t *(*assign_task_to_pe)(scheduler_datastate *sptr);
+  ready_mb_task_queue_entry_t * (*assign_task_to_pe)(scheduler_datastate * sptr);
   // inparm: char policy[256];
 
   // The pool of metadata blocks for use by the tasks, etc.
   unsigned total_metadata_pool_blocks;
-  task_metadata_entry *master_metadata_pool;
+  task_metadata_entry * master_metadata_pool;
 
   pthread_mutex_t free_metadata_mutex; // Used to guard access to altering the
   // free-list metadata information, etc.
   int free_metadata_blocks;
-  int *free_metadata_pool;
-  uint32_t *allocated_metadata_blocks; // array over TASK_TYPES
-  uint32_t *freed_metadata_blocks;     // array over TASK_TYPES
+  int * free_metadata_pool;
+  uint32_t * allocated_metadata_blocks; // array over TASK_TYPES
+  uint32_t * freed_metadata_blocks;     // array over TASK_TYPES
 
   pthread_mutex_t task_queue_mutex; // Used to guard access to altering the
   // ready-task-queue contents
@@ -404,19 +404,19 @@ class scheduler_datastate {
   std::list<dag_metadata_entry *> completed_dags;
 
   //Task based queues
-  std::list<ready_mb_task_queue_entry_t*> ready_mb_task_queue_pool;
-  std::list<ready_mb_task_queue_entry_t*> free_ready_mb_task_queue_entries;
+  std::list<ready_mb_task_queue_entry_t *> ready_mb_task_queue_pool;
+  std::list<ready_mb_task_queue_entry_t *> free_ready_mb_task_queue_entries;
 
 
   pthread_mutex_t accel_alloc_mutex; // Used to guard access to altering the
   // accelerator allocations
 
   // ASCII trace for Scheduler-Visualization Trace Output
-  FILE *sl_viz_fp;
+  FILE * sl_viz_fp;
   pthread_mutex_t sl_viz_out_mutex; // Used to guard access to writing the
   // sl_viz output entries.
 
-  pthread_t *metadata_threads;
+  pthread_t * metadata_threads;
 
   // pthread_mutex_t schedule_from_queue_mutex;   // Used to guard access to
   // scheduling functionality
@@ -424,8 +424,8 @@ class scheduler_datastate {
   pthread_t tasksched_thread;
 
 
-  char **task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
-  char **task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
+  char ** task_name_str; // array over TASK_TYPES and of size MAX_TASK_NAME_LEN
+  char ** task_desc_str; // array over TASK_TYPES and of size MAX_TASK_DESC_LEN
 
   std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> ** global_task_profile; // array over TASK_TYPES for task profile maps
 
@@ -442,28 +442,27 @@ class scheduler_datastate {
   //   which it can execute) Currently the targets are "CPU" and "HWR" -- this
   //   probably has to change (though this interpretation is only convention).
   sched_execute_task_function_t *
-  *scheduler_execute_task_function; //[MAX_ACCEL_TYPES]; // array over
-  //TASK_TYPES
+    * scheduler_execute_task_function; //[MAX_ACCEL_TYPES]; // array over
+    //TASK_TYPES
 
-  print_metadata_block_contents_t *print_metablock_contents_function; // array over TASK_TYPES
-  output_task_type_run_stats_t *output_task_run_stats_function;          // array over TASK_TYPES
-  set_up_task_function_t *set_up_task_function; // array over TASK_TYPES
-  finish_task_execution_function_t *finish_task_execution_function; // array over TASK_TYPES
-  auto_finish_task_function_t *auto_finish_task_function; // array over TASK_TYPES
+  print_metadata_block_contents_t * print_metablock_contents_function; // array over TASK_TYPES
+  output_task_type_run_stats_t * output_task_run_stats_function;          // array over TASK_TYPES
+  finish_task_execution_function_t * finish_task_execution_function; // array over TASK_TYPES
+  auto_finish_task_function_t * auto_finish_task_function; // array over TASK_TYPES
 
-  do_accel_initialization_t *do_accel_init_function; //[MAX_ACCEL_TYPES];
-  do_accel_closeout_t *do_accel_closeout_function;   //[MAX_ACCEL_TYPES];
+  do_accel_initialization_t * do_accel_init_function; //[MAX_ACCEL_TYPES];
+  do_accel_closeout_t * do_accel_closeout_function;   //[MAX_ACCEL_TYPES];
   output_accel_run_stats_t * output_accel_run_stats_function; //[MAX_ACCEL_TYPES];
 
   int map_sched_accel_type_to_local_accel_type[SCHED_MAX_ACCEL_TYPES];
   volatile int ** accelerator_in_use_by;    //[MAX_ACCEL_TYPES]; //[MAX_ACCEL_OF_ANY_TYPE];
-  int *num_accelerators_of_type; //[MAX_ACCEL_TYPES];
+  int * num_accelerators_of_type; //[MAX_ACCEL_TYPES];
 
   /*struct timeval last_accel_use_update_time;
     uint64_t
     in_use_accel_times_array[NUM_CPU_ACCEL+1][NUM_FFT_ACCEL+1][NUM_VIT_ACCEL+1][NUM_CV_ACCEL+1];*/
 
-  // Scheduler Library statistics
+    // Scheduler Library statistics
   uint64_t scheduler_decision_time_usec;
   uint64_t scheduler_decisions;
   uint64_t scheduler_decision_checks;
@@ -472,82 +471,78 @@ class scheduler_datastate {
 //Custom function to sort entries of ready queue
 struct rank_ordering {
   bool operator() (ready_mb_task_queue_entry_t const * lhs,
-                   ready_mb_task_queue_entry_t const * rhs) {
+    ready_mb_task_queue_entry_t const * rhs) {
     //First sort by rank_het
     if (((lhs->sptr)->master_metadata_pool[lhs->block_id]).rank_het >
-        ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_het) {
+      ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_het) {
       return true;
-    } else if (((lhs->sptr)->master_metadata_pool[lhs->block_id]).rank_het ==
-               ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_het) {
+    }
+    else if (((lhs->sptr)->master_metadata_pool[lhs->block_id]).rank_het ==
+      ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_het) {
       //And then sort by rank_hom
       return ((lhs->sptr)->master_metadata_pool[lhs->block_id]).rank_hom >=
-             ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_hom;
-    } else return false;
+        ((rhs->sptr)->master_metadata_pool[rhs->block_id]).rank_hom;
+    }
+    else return false;
   }
 };
 
 //Function to print DAG graph
-extern void print_dag_graph(Graph &graph);
+extern void print_dag_graph(Graph & graph);
 
 extern scheduler_get_datastate_in_parms_t *
 get_scheduler_datastate_input_parms();
 extern scheduler_datastate *
 initialize_scheduler_and_return_datastate_pointer(
-  scheduler_get_datastate_in_parms_t *inp);
+  scheduler_get_datastate_in_parms_t * inp);
 extern "C" scheduler_datastate *
 initialize_scheduler_from_config_file(char * config_file_name, unsigned max_task_types);
 
 extern "C" void set_up_scheduler();
 
 extern task_metadata_entry *
-get_task_metadata_block(scheduler_datastate *sptr, int32_t dag_id, int32_t task_id,
-                        task_type_t of_task_type, task_criticality_t crit_level,
-                        uint64_t *task_profile);
-extern void free_task_metadata_block(task_metadata_entry *mb);
+get_task_metadata_block(scheduler_datastate * sptr, int32_t dag_id, int32_t task_id,
+  task_type_t of_task_type, task_criticality_t crit_level,
+  uint64_t * task_profile);
+extern void free_task_metadata_block(task_metadata_entry * mb);
 
 extern auto_finish_task_function_t
-get_auto_finish_routine(scheduler_datastate *sptr,
-                        task_type_t the_task_type);
+get_auto_finish_routine(scheduler_datastate * sptr,
+  task_type_t the_task_type);
 
 // Create DAG and Process arrival
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
 extern "C" dag_metadata_entry * process_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr,
-    task_criticality_t crit_level, ...);
+  task_criticality_t crit_level, ...);
 
-extern void request_execution(void *dag_ptr);
+extern void request_execution(void * dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);
 
 extern "C" void wait_on_daglist(void * sptr, int num_dags, ...);
 
-extern void mark_task_done(task_metadata_entry *task_metadata_block);
-extern void update_dag(task_metadata_entry *task_metadata_block);
+extern void mark_task_done(task_metadata_entry * task_metadata_block);
+extern void update_dag(task_metadata_entry * task_metadata_block);
 
-extern void print_base_metadata_block_contents(task_metadata_entry *mb);
-extern void dump_all_metadata_blocks_states(scheduler_datastate *sptr);
+extern void print_base_metadata_block_contents(task_metadata_entry * mb);
+extern void dump_all_metadata_blocks_states(scheduler_datastate * sptr);
 
 extern "C" void shutdown_scheduler(scheduler_datastate * sptr);
 
-extern void init_accelerators_in_use_interval(scheduler_datastate *sptr,
-    struct timeval start_prog);
+extern void init_accelerators_in_use_interval(scheduler_datastate * sptr,
+  struct timeval start_prog);
 
-extern void cleanup_and_exit(int rval, void *sptr);
+extern void cleanup_and_exit(int rval, void * sptr);
 
 extern "C" void register_task_type(
   void * sptr, task_type_t tid, char * task_name, char * task_description,
   std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> *profile_map_ptr,
-  set_up_task_function_t set_up_task_func,
-  finish_task_execution_function_t finish_task_func,
-  auto_finish_task_function_t auto_finish_func,
-  print_metadata_block_contents_t
-  print_metadata_block_contents,                       // function pointer
-  output_task_type_run_stats_t output_task_type_run_stats, // function pointer
   int num_accel_task_exec_descriptions, ...);
 
-extern void *set_up_task(void *sptr, task_type_t the_task_type,
-                         task_criticality_t crit_level, int use_auto_finish,
-                         int32_t dag_id, int32_t task_id, void * args);
+extern void * set_up_task(void * sptr, task_type_t the_task_type,
+  task_criticality_t crit_level, int use_auto_finish,
+  int32_t dag_id, int32_t task_id, void * args);
 
-extern void finish_task_execution(void *the_metadata_block, void * args);
+extern void finish_task_execution(task_metadata_entry * the_metadata_block);
 
-extern void print_ready_tasks_queue(scheduler_datastate *sptr);
+extern void print_ready_tasks_queue(scheduler_datastate * sptr);
 #endif

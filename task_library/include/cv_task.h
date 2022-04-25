@@ -65,14 +65,10 @@ extern "C" void print_cv_metadata_block_contents(void * mb);
 
 extern "C" void output_cv_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-extern "C" void execute_hwr_cv_accelerator(void * task_metadata_block);
-extern "C" void execute_cpu_cv_accelerator(void * task_metadata_block);
+extern "C" void execute_hwr_cv_accelerator(void * cv_io_ptr);
+extern "C" void execute_cpu_cv_accelerator(void * cv_io_ptr);
 
 void set_up_cv_task_on_accel_profile_data();
-
-extern "C" void * set_up_cv_task(void * sptr, task_type_t cv_task_type,
-                     task_criticality_t crit_level, bool use_auto_finish,
-                     int32_t dag_id, int32_t task_id, void *args); // label_t in_label);
 
 extern "C" void cv_auto_finish_routine(void * mb);
 extern "C" void finish_cv_execution(void * fft_metadata_block, void * args); // label_t* out_label);

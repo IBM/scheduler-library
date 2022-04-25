@@ -28,6 +28,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <map>
+
 #include "task_lib.h"
 
 #include "vit_task.h"
@@ -39,15 +41,24 @@
 #include "test_task.h"
 #include "create_grid_task.h"
 
+std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cpu_profile;
+
 extern "C" {
-void initialize_task_lib() {
-  set_up_vit_task_on_accel_profile_data();
-  set_up_fft_task_on_accel_profile_data();
-  set_up_radar_task_on_accel_profile_data();
-  set_up_cv_task_on_accel_profile_data();
-  set_up_test_task_on_accel_profile_data();
-  set_up_plan_ctrl_task_on_accel_profile_data();
-  set_up_plan_ctrl2_task_on_accel_profile_data();
-  set_up_create_grid_task_on_accel_profile_data();
-}
+  void initialize_task_lib() {
+    set_up_vit_task_on_accel_profile_data();
+    set_up_fft_task_on_accel_profile_data();
+    set_up_radar_task_on_accel_profile_data();
+    set_up_cv_task_on_accel_profile_data();
+    set_up_test_task_on_accel_profile_data();
+    set_up_plan_ctrl_task_on_accel_profile_data();
+    set_up_plan_ctrl2_task_on_accel_profile_data();
+    set_up_create_grid_task_on_accel_profile_data();
+
+    for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {
+      cpu_profile[0][ai] = ACINFPROF;
+    }
+    cpu_profile[0][SCHED_CPU_ACCEL_T] = 1; //Set a low number
+    //TODO: Need to update as the task completes
+  }
+
 }

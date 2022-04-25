@@ -112,120 +112,31 @@ extern "C" {
 
 
 extern "C" {
-  void execute_on_hwr_fft_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
-  task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
-  int fn = task_metadata_block->accelerator_id;
-  int aidx = task_metadata_block->accelerator_type;
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (task_metadata_block->task_timings[task_metadata_block->task_type]);
-  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  TDEBUG(printf("In execute_hwr_test_accelerator on TEST_HWR Accel %u : MB%d  CL %d\n", fn,
-                task_metadata_block->block_id, task_metadata_block->crit_level));
+  void execute_on_hwr_fft_test_accelerator(void * test_io_ptr) {
 
-#ifdef INT_TIME
-  gettimeofday(&(test_timings_p->call_start), NULL);
-#endif
   // This usleep call stands in as the "Fake" CNN accelerator
-  usleep(test_on_hwr_fft_run_time_in_usec);
-#ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  test_timings_p->call_sec[aidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
-  test_timings_p->call_usec[aidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx],
-               test_timings_p->call_usec[aidx]));
-#endif
-
-  TDEBUG(printf("MB%u TEST_FFThwr calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
+    usleep(test_on_hwr_fft_run_time_in_usec);
 }
 }
 
 extern "C" {
-  void execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
-  task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
-  int fn = task_metadata_block->accelerator_id;
-  int aidx = task_metadata_block->accelerator_type;
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (task_metadata_block->task_timings[task_metadata_block->task_type]);
-  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  TDEBUG(printf("In execute_hwr_test_accelerator on TEST_HWR Accel %u : MB%d  CL %d\n", fn,
-                task_metadata_block->block_id, task_metadata_block->crit_level));
-
-#ifdef INT_TIME
-  gettimeofday(&(test_timings_p->call_start), NULL);
-#endif
+  void execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void * test_io_ptr) {
   // This usleep call stands in as the "Fake" CNN accelerator
-  usleep(test_on_hwr_vit_run_time_in_usec);
-#ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  test_timings_p->call_sec[aidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
-  test_timings_p->call_usec[aidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx],
-               test_timings_p->call_usec[aidx]));
-#endif
-
-  TDEBUG(printf("MB%u TEST_VIThwr calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
+    usleep(test_on_hwr_vit_run_time_in_usec);
 }
 }
 
 extern "C" {
-  void execute_on_hwr_cv_test_accelerator(/*task_metadata_entry*/void * task_metadata_block_ptr) {
-  task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
-  int fn = task_metadata_block->accelerator_id;
-  int aidx = task_metadata_block->accelerator_type;
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (task_metadata_block->task_timings[task_metadata_block->task_type]);
-  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  TDEBUG(printf("In execute_hwr_test_accelerator on TEST_HWR Accel %u : MB%d  CL %d\n", fn,
-                task_metadata_block->block_id, task_metadata_block->crit_level));
+  void execute_on_hwr_cv_test_accelerator(/*task_metadata_entry*/void * test_io_ptr) {
 
-#ifdef INT_TIME
-  gettimeofday(&(test_timings_p->call_start), NULL);
-#endif
-  // This usleep call stands in as the "Fake" CNN accelerator
-  usleep(test_on_hwr_cv_run_time_in_usec);
-#ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  test_timings_p->call_sec[aidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
-  test_timings_p->call_usec[aidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
-  DEBUG(printf("FAKE_HW_TEST: Set Call_Sec[%u] to %lu %lu\n", aidx, test_timings_p->call_sec[aidx],
-               test_timings_p->call_usec[aidx]));
-#endif
-
-  TDEBUG(printf("MB%u TEST_CVhwr calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
+    // This usleep call stands in as the "Fake" TEST accelerator
+    usleep(test_on_hwr_cv_run_time_in_usec);
 }
 }
 
 extern "C" {
-void execute_on_cpu_test_accelerator(/*task_metadata_entry*/void* task_metadata_block_ptr) {
-  task_metadata_entry *task_metadata_block = (task_metadata_entry*)task_metadata_block_ptr;
-  DEBUG(printf("In execute_on_cpu_test_accelerator: MB %d  CL %d\n", task_metadata_block->block_id,
-               task_metadata_block->crit_level ));
-  int aidx = task_metadata_block->accelerator_type;
-  task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (task_metadata_block->task_timings[task_metadata_block->task_type]);
-
-#ifdef INT_TIME
-  gettimeofday(&(test_timings_p->call_start), NULL);
-#endif
-
-  usleep(test_on_cpu_run_time_in_usec);
-
-#ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  test_timings_p->call_sec[aidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
-  test_timings_p->call_usec[aidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
-#endif
-
-  TDEBUG(printf("MB%u TEST_CPU calling mark_task_done...\n", task_metadata_block->block_id));
-  mark_task_done(task_metadata_block);
+  void execute_on_cpu_test_accelerator(/*task_metadata_entry*/void * test_io_ptr) {
+    usleep(test_on_cpu_run_time_in_usec);
 }
 }
 
@@ -257,59 +168,6 @@ void set_up_test_task_on_accel_profile_data() {
         printf("%15s :", "pnc_profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[0][ai]); } printf("\n");
   printf("\n"));
-}
-
-extern "C" {
-  /*task_metadata_entry*/void * set_up_test_task(/*scheduler_datastate*/void * sptr_ptr,
-                                        task_type_t test_task_type, task_criticality_t crit_level,
-                                        bool use_auto_finish, int32_t dag_id, int32_t task_id, void *args) {
-  va_list var_list;
-  va_copy(var_list, *(va_list*)args);
-  scheduler_datastate *sptr = (scheduler_datastate*)sptr_ptr;
-#ifdef TIME
-  gettimeofday(&start_exec_test, NULL);
-#endif
-  // Request a MetadataBlock (for an TEST task at Critical Level)
-  task_metadata_entry* test_mb_ptr = NULL;
-  DEBUG(printf("Calling get_task_metadata_block for Critical TEST-Task %u\n", test_task_type));
-  do {
-    test_mb_ptr = get_task_metadata_block(sptr, dag_id, task_id, test_task_type, crit_level,
-      test_profile[0]);
-    //usleep(get_mb_holdoff);
-  } while (0); //(*mb_ptr == NULL);
-#ifdef TIME
-  struct timeval got_time;
-  gettimeofday(&got_time, NULL);
-  exec_get_test_sec  += got_time.tv_sec  - start_exec_test.tv_sec;
-  exec_get_test_usec += got_time.tv_usec - start_exec_test.tv_usec;
-#endif
-  //printf("TEST Crit Profile: %e %e %e %e %e\n", test_profile[crit_test_samples_set][0], test_profile[crit_test_samples_set][1], test_profile[crit_test_samples_set][2], test_profile[crit_test_samples_set][3], test_profile[crit_test_samples_set][4]);
-  if (test_mb_ptr == NULL) {
-    // We ran out of metadata blocks -- PANIC!
-    printf("Out of metadata blocks for TEST -- PANIC Quit the run (for now)\n");
-    dump_all_metadata_blocks_states(sptr);
-    exit (-4);
-  }
-  if (use_auto_finish) {
-    test_mb_ptr->atFinish = (void (*)(task_metadata_entry *))(
-                              sptr->auto_finish_task_function[test_task_type]); // get_auto_finish_routine(sptr, test_task_type);
-  } else {
-    test_mb_ptr->atFinish = NULL;
-  }
-  DEBUG(printf("MB%u In start_test_execution\n", test_mb_ptr->block_id));
-
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (test_mb_ptr->task_timings[test_mb_ptr->task_type]);
-  test_data_struct_t * test_data_p    = (test_data_struct_t*)(test_mb_ptr->data_space);
-  // Currently we don't send in any data this way (though we should include the input image here)
-
-#ifdef INT_TIME
-  gettimeofday(&(test_timings_p->call_start), NULL);
-#endif
-  va_end(var_list);
-  // This now ends this block -- we've kicked off execution
-  return test_mb_ptr;
-}
 }
 
 // This is a default "finish" routine that can be included in the start_executiond call

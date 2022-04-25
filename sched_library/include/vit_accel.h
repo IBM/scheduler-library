@@ -47,7 +47,7 @@ extern struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 void do_vit_accel_type_initialization(scheduler_datastate* sptr);
 
 #ifdef HW_VIT
-void do_decoding_hw(scheduler_datastate* sptr, int *fd, struct vitdodec_access *desc);
+void do_decoding_hw(int * fd, struct vitdodec_access * desc);
 #endif
 
 void do_vit_accel_type_closeout(scheduler_datastate* sptr);

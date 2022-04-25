@@ -19,7 +19,7 @@
 #define INCLUDED_BASE_H
 
 #include "viterbi_types.h"
-// Maximum number of traceback bytes
+ // Maximum number of traceback bytes
 #define TRACEBACK_MAX 24
 
 /* This Viterbi decoder was taken from the gr-dvbt module of
@@ -29,9 +29,9 @@
 extern int d_ntraceback;
 extern int d_k;
 
-static ofdm_param *d_ofdm;
-static frame_param *d_frame;
-static const unsigned char *d_depuncture_pattern;
+static ofdm_param * d_ofdm;
+static frame_param * d_frame;
+static const unsigned char * d_depuncture_pattern;
 
 static uint8_t d_depunctured[MAX_ENCODED_BITS];
 static uint8_t d_decoded[MAX_ENCODED_BITS * 3 / 4];
@@ -71,8 +71,12 @@ static const unsigned char PARTAB[256] = {
     1, 0, 0, 1, 0, 1, 1, 0,
 };
 
-static const unsigned char PUNCTURE_1_2[2] = {1, 1};
-static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
-static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
+static const unsigned char PUNCTURE_1_2[2] = { 1, 1 };
+static const unsigned char PUNCTURE_2_3[4] = { 1, 1, 1, 0 };
+static const unsigned char PUNCTURE_3_4[6] = { 1, 1, 1, 0, 0, 1 };
+
+typedef union branchtab27_u {
+    unsigned char c[32];
+} t_branchtab27;
 
 #endif

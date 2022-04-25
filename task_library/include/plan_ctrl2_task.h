@@ -25,19 +25,19 @@
 #include "base_task_types.h"
 #include "scheduler.h"
 
-// This is a structure that defines the "PLAN_CTRL2" task's "view" of the data (in the metadata structure)
-//  Each job can define a specific "view" of data, and use that in interpreting the data space.
+ // This is a structure that defines the "PLAN_CTRL2" task's "view" of the data (in the metadata structure)
+ //  Each job can define a specific "view" of data, and use that in interpreting the data space.
 typedef struct { // The "Plan-and-Control" Task view of "data"
   unsigned        time_step;         // The current time-step of the simulation
   unsigned        repeat_factor;     // The number of repeated computations to do
   label_t         object_label;      // The determined label of the object in the image
   distance_t      object_distance;   // The distance to the closest vehicle in our lane
   message_t       safe_lanes_msg;    // The message indicating which lanes are safe to change into
-  uint8_t*        remote_data;       // Data sent from a remote car
+  uint8_t * remote_data;       // Data sent from a remote car
   lane_t          preferred_lane;    // The lane I prefer to drive in
   vehicle_state_t vehicle_state;     // The current (input) vehicle state
   vehicle_state_t new_vehicle_state; // The new (oputput) vehicle state
-}  plan_ctrl2_data_struct_t;
+}  plan_ctrl2_io_t;
 
 
 typedef struct {
@@ -47,24 +47,21 @@ typedef struct {
 } plan_ctrl2_timing_data_t;
 
 
-void print_plan_ctrl2_metadata_block_contents(void *mb);
+void print_plan_ctrl2_metadata_block_contents(void * mb);
 
-void output_plan_ctrl2_task_type_run_stats(void *sptr, unsigned my_task_type,
-    unsigned total_accel_types);
+void output_plan_ctrl2_task_type_run_stats(void * sptr, unsigned my_task_type,
+  unsigned total_accel_types);
 
-void execute_on_cpu_plan_ctrl2_accelerator(void *task_metadata_block);
-void execute_on_hwr_vit_plan_ctrl2_accelerator(void *task_metadata_block);
-void execute_on_hwr_fft_plan_ctrl2_accelerator(void *task_metadata_block);
-void execute_on_hwr_cv_plan_ctrl2_accelerator(void *task_metadata_block);
+void execute_on_cpu_plan_ctrl2_accelerator(void * plan_ctrl2_io_ptr);
+void execute_on_hwr_vit_plan_ctrl2_accelerator(void * plan_ctrl2_io_ptr);
+void execute_on_hwr_fft_plan_ctrl2_accelerator(void * plan_ctrl2_io_ptr);
+void execute_on_hwr_cv_plan_ctrl2_accelerator(void * plan_ctrl2_io_ptr);
 
 void set_up_plan_ctrl2_task_on_accel_profile_data();
 
-void *set_up_plan_ctrl2_task(void *sptr, task_type_t plan_ctrl2_task_type,
-                             task_criticality_t crit_level, bool use_auto_finish,
-                             int32_t dag_id, int32_t task_id, void *var_list);
 
-void plan_ctrl2_auto_finish_routine(void *mb);
-void finish_plan_ctrl2_execution(void *plan_ctrl2_metadata_block,
-                                 void *args); // vehicle_state_t* new_vehicle_state);
+void plan_ctrl2_auto_finish_routine(void * mb);
+void finish_plan_ctrl2_execution(void * plan_ctrl2_metadata_block,
+  void * args); // vehicle_state_t* new_vehicle_state);
 extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> plan_ctrl2_profile;
 #endif

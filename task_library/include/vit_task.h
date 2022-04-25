@@ -22,42 +22,27 @@
 #include <stdint.h>
 #include <sys/time.h>
 
+#include "viterbi_types.h"
 #include "base_task_types.h"
 #include "scheduler.h"
-#include "viterbi_base.h"
 
-//Viterbi: vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)
-struct viterbi_io_t {
-  // uint32_t in_size; //For profiling
+ //Viterbi: vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)
+struct vit_io_t {
+  size_t in_size; //For profiling
   message_size_t msize;
   ofdm_param * ofdm_ptr;
   size_t ofdm_param_size;
   frame_param * frame_ptr;
   size_t frame_ptr_size;
-  uint8_t * in_bits;
-  size_t in_bits_size;
-  message_t * message_id;
-  size_t msg_id_size;
-  char * out_msg_text;
-  size_t out_msg_text_size;
-  viterbi_io_t(message_size_t msize, ofdm_param * ofdm_ptr, size_t ofdm_param_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * in_bits, size_t in_bits_size, message_t * message_id, size_t msg_id_size, char * out_msg_text, size_t out_msg_text_size) :
+  uint8_t * vit_data;
+  size_t vit_data_size;
+  vit_io_t(message_size_t msize, ofdm_param * ofdm_ptr, size_t ofdm_param_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size) :
     msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
-    frame_ptr_size(frame_ptr_size), in_bits(in_bits),
-    in_bits_size(in_bits_size), message_id(message_id), msg_id_size(msg_id_size), out_msg_text(out_msg_text), out_msg_text_size(out_msg_text_size) {} //, in_size(msize) {}
+    frame_ptr_size(frame_ptr_size), vit_data(vit_data), vit_data_size(vit_data_size) {} //, in_size(msize) {}
 };
 
 // This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting the data space.
-typedef struct { // The "Viterbi" view of "data"
-  int32_t n_data_bits;
-  int32_t n_cbps;
-  int32_t n_traceback;
-  int32_t psdu_size;
-  int32_t inMem_size;   // The first inMem_size bytes of theData are the inMem (input memories)
-  int32_t inData_size;  // The next inData_size bytes of theData are the inData (input data)
-  int32_t outData_size; // The next outData_size bytes of theData are the outData (output data)
-  uint8_t theData[64 * 1024]; // Larger than needed (~24780 + 18585) but less than FFT (so okay)
-} viterbi_data_struct_t;
 
 typedef struct {
   struct timeval call_start;
@@ -80,17 +65,13 @@ void init_vit_parameters(int vn);
 
 extern "C" void output_vit_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-extern "C" void exec_vit_task_on_vit_hwr_accel(void * task_metadata_block);
-extern "C" void exec_vit_task_on_cpu_accel(void * task_metadata_block);
+extern "C" void exec_vit_task_on_vit_hwr_accel(void * vit_io_ptr);
+extern "C" void exec_vit_task_on_cpu_accel(void * vit_io_ptr);
 
 void set_up_vit_task_on_accel_profile_data();
 
-extern "C" void * set_up_vit_task(void * sptr, task_type_t vit_task_type,
-                      task_criticality_t crit_level, bool use_auto_finish,
-                      int32_t dag_id, int32_t task_id, void *);
 
 extern "C" void viterbi_auto_finish_routine(void * mb);
-extern "C" void finish_viterbi_execution(void * vit_metadata_block,
-                              void * args); // message_t* message_id, char* out_msg_txt);
+extern "C" void finish_viterbi_execution(void * vit_metadata_block); // message_t* message_id, char* out_msg_txt);
 extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> vit_profile;
 #endif

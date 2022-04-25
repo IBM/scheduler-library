@@ -31,10 +31,15 @@
 
 // This is a structure that defines the "FFT" job's "view" of the data (in the metadata structure)
 //  Each job can define a specific "view" of data, and use that in interpreting  the data space.
-typedef struct {                // The "FFT" Task view of "data"
-  int32_t log_nsamples;         // The Log2 of the number of samples in this FFT
-  float theData[2 * (1 << 14)]; // MAx supported samples (2^14) * 2 float per complex input/output
-} fft_data_struct_t;
+struct fft_io_t {
+  uint32_t log_nsamples;
+  float * inputs_ptr;
+  size_t inputs_ptr_size;
+  distance_t * distance_ptr;
+  size_t distance_ptr_size;
+  fft_io_t(uint32_t log_nsamples, float * inputs_ptr, size_t inputs_ptr_size, distance_t * distance_ptr, size_t distance_ptr_size) :
+    log_nsamples(log_nsamples), inputs_ptr(inputs_ptr), inputs_ptr_size(inputs_ptr_size), distance_ptr(distance_ptr), distance_ptr_size(distance_ptr_size) {}
+};
 
 // The following structures are for timing analysis (per job type)
 typedef struct {
@@ -75,12 +80,9 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 extern "C" void output_fft_task_type_run_stats(void * sptr_ptr, unsigned my_task_type,
                                     unsigned total_accel_types);
 
-extern "C" void execute_hwr_fft_accelerator(void * task_metadata_block);
-extern "C" void execute_cpu_fft_accelerator(void * task_metadata_block);
+extern "C" void execute_hwr_fft_accelerator(void * fft_io_ptr);
+extern "C" void execute_cpu_fft_accelerator(void * fft_io_ptr);
 
-void *set_up_fft_task(void *sptr, task_type_t fft_task_type,
-                      task_criticality_t crit_level, bool use_auto_finish,
-                      int32_t dag_id, int32_t task_id, void *);
 
 void finish_fft_execution(void *fft_metadata_block, void *); // float* results);
 

@@ -21,7 +21,10 @@
 #include <stdint.h>
 
 #include "base_task_types.h"
+#include "scheduler.h"
 
 extern "C" void initialize_task_lib();
+
+extern std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cpu_profile;
 
 #endif

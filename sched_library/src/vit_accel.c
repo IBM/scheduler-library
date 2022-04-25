@@ -109,7 +109,7 @@ do_vit_accel_type_initialization(scheduler_datastate* sptr) {
 
 
 #ifdef HW_VIT
-void do_decoding_hw(scheduler_datastate* sptr, int *fd, struct vitdodec_access *desc) {
+void do_decoding_hw(int * fd, struct vitdodec_access * desc) {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
     perror("ERROR : do_decoding_in_hw : IOCTL:");
     exit(EXIT_FAILURE);
