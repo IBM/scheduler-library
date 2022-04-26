@@ -1011,6 +1011,7 @@ void MiniERARoot(
     void * VIT_reset_depuncture = __hetero_task_begin(4,  vit_depunctured, vit_depunctured_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, in_bits, in_bit_size, 1, vit_depunctured, vit_depunctured_size,
       /* Optional Node Name */ "VIT_reset_depuncture");
     __hpvm__hint(CPU_TARGET);
+    //__hpvm__task(VIT_RESET_DEPUNCTURE);
     // printf("In VIT_RESET_DEPUNCTURE\n");
 
     vit_task_reset(ofdm_ptr);
@@ -1021,6 +1022,7 @@ void MiniERARoot(
     void * VIT_setup = __hetero_task_begin(2, vit_data, vit_data_size , vit_depunctured, vit_depunctured_size, 1, vit_data, vit_data_size,
       /* Optional Node Name */ "VIT_setup");
     __hpvm__hint(CPU_TARGET);
+    //__hpvm__task(VIT_SETUP);
 
     // printf("In VIT_SETUP\n");
     vit_task_start_decode(vit_depunctured, vit_data);
@@ -1042,6 +1044,7 @@ void MiniERARoot(
     void * VIT_post = __hetero_task_begin(4, frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size , 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
       /* Optional Node Name */ "VIT_post");
     __hpvm__hint(CPU_TARGET);
+    //__hpvm__task(VIT_POST);
 
     // printf("In VIT_POST\n");
     vit_post(frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size);
@@ -1323,9 +1326,9 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param * ofdm_ptr, size_t ofdm_s
     2, message_id, out_msg_text);
   __hpvm__task(VIT_TASK);
 
-  reset(ofdm_ptr, ofdm_size);
+  //reset(ofdm_ptr, ofdm_size);
 
-  uint8_t * depunctured = depuncture(in_bits, ofdm_ptr, frame_ptr);
+  //uint8_t * depunctured = depuncture(in_bits, ofdm_ptr, frame_ptr);
   /*
   DO_VERBOSE({
           printf("VBS: depunctured = [\n");
@@ -1373,7 +1376,7 @@ void vit_leaf_base(message_size_t msg_size, ofdm_param * ofdm_ptr, size_t ofdm_s
 
   for (int ti = 0; ti < MAX_ENCODED_BITS;
     ti++) { // This is over-kill for messages that are not max size
-    in_Data[ti] = depunctured[ti];
+    //in_Data[ti] = depunctured[ti];
     // DEBUG(if (ti < 32) { printf("HERE : in_Data %3u : %u\n", ti,
     // in_Data[ti]); });
   }
