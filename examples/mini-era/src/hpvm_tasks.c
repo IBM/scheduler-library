@@ -709,19 +709,16 @@ static float * bit_reverse(float * w, uint32_t N, uint32_t bits) {
 }
 
 void
-#ifdef HCC
-inline __attribute__((always_inline))
-#endif
+__attribute__ ((noinline))
 radar_leaf(size_t in_size, uint32_t log_nsamples, float * inputs_ptr) {
 
 
   DEBUG(printf("-- Radar Leaf Node --\n"));
-  __hpvm__hint(DEVICE);
 
 #ifndef HCC
+
   __hpvm__attributes(2, distance_ptr, inputs_ptr, 2, distance_ptr, inputs_ptr);
 #endif
-  __hpvm__task(RADAR_TASK);
 
   int sign = -1;
 
@@ -1011,7 +1008,7 @@ void MiniERARoot(
 #ifdef HCC
   void * Section = __hetero_section_begin();
   {
-    void * VIT_reset_depuncture = __hetero_task_begin(4, (size_t) 0, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, in_bits, in_bit_size, 1, vit_depunctured, vit_depunctured_size,
+    void * VIT_reset_depuncture = __hetero_task_begin(4,  vit_depunctured, vit_depunctured_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, in_bits, in_bit_size, 1, vit_depunctured, vit_depunctured_size,
       /* Optional Node Name */ "VIT_reset_depuncture");
     __hpvm__hint(CPU_TARGET);
     __hpvm__task(VIT_RESET_DEPUNCTURE);
@@ -1022,7 +1019,7 @@ void MiniERARoot(
 
     __hetero_task_end(VIT_reset_depuncture);
 
-    void * VIT_setup = __hetero_task_begin(2, (size_t) 0, vit_depunctured, vit_depunctured_size, 1, vit_data, vit_data_size,
+    void * VIT_setup = __hetero_task_begin(2, vit_data, vit_data_size , vit_depunctured, vit_depunctured_size, 1, vit_data, vit_data_size,
       /* Optional Node Name */ "VIT_setup");
     __hpvm__hint(CPU_TARGET);
     __hpvm__task(VIT_SETUP);
@@ -1044,7 +1041,7 @@ void MiniERARoot(
 
     __hetero_task_end(VIT);
 
-    void * VIT_post = __hetero_task_begin(3, (size_t) 0, frame_ptr, frame_ptr_size, vit_data, vit_data_size, 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
+    void * VIT_post = __hetero_task_begin(4, frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size , 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
       /* Optional Node Name */ "VIT_post");
     __hpvm__hint(CPU_TARGET);
     __hpvm__task(VIT_POST);
@@ -1058,17 +1055,22 @@ void MiniERARoot(
       /* Optional Node Name */ "RADAR");
     // printf("In RADAR_LEAF\n");
     // Body will be inlined into task
+    __hpvm__task(RADAR_TASK);
+    __hpvm__hint(DEVICE);
     radar_leaf(fft_size, log_nsamples, inputs_ptr);
 
     __hetero_task_end(RADAR);
 
-    void * RADAR_POST = __hetero_task_begin(3, (size_t) 0, log_nsamples, inputs_ptr, inputs_ptr_size, 1, distance_ptr, distance_ptr_size,
+
+
+    void * RADAR_POST = __hetero_task_begin(3 , log_nsamples, inputs_ptr, inputs_ptr_size , distance_ptr, distance_ptr_size, 1, distance_ptr, distance_ptr_size,
       /* Optional Node Name */ "RADAR_POST");
     // printf("In RADAR_POST\n");
     // Body will be inlined into task
     radar_post(log_nsamples, inputs_ptr, distance_ptr);
 
     __hetero_task_end(RADAR_POST);
+
 
     void * CV = __hetero_task_begin(3, cv_size, in_label, obj_label, obj_label_size,
       1, obj_label, obj_label_size,
@@ -1090,7 +1092,8 @@ void MiniERARoot(
 
     __hetero_task_end(PNC);
 
-  }
+
+  } 
   __hetero_section_end(Section);
 
 
@@ -1260,37 +1263,25 @@ void hpvm_launch(RootIn * _DFGArgs, message_size_t vit_msgs_size, vit_dict_entry
     /* Num Input Pairs */ 21,
     (size_t) vit_msgs_size,
     vit_msgs_size,
-    &(vit_data[0]),
-    sizeof(vit_data),
-    &vdentry_p->ofdm_p,
-    sizeof(ofdm_param),
-    &vdentry_p->frame_p,
-    sizeof(frame_param),
-    vdentry_p->in_bits,
-    sizeof(vdentry_p->in_bits),
-    vit_depunctured,
-    sizeof(vit_depunctured),
-    message,
-    sizeof(message_t),
-    out_msg_text,
-    1600,
+    &(vit_data[0]), sizeof(vit_data),
+    &vdentry_p->ofdm_p, sizeof(ofdm_param),
+    &vdentry_p->frame_p, sizeof(frame_param),
+    vdentry_p->in_bits, sizeof(vdentry_p->in_bits),
+    vit_depunctured, sizeof(vit_depunctured),
+    message, sizeof(message_t),
+    out_msg_text, 1600,
     (size_t) log_nsamples,
     log_nsamples,
-    radar_inputs,
-    radar_inputs_size,
-    distance,
-    sizeof(distance_t),
+    radar_inputs, radar_inputs_size,
+    distance, sizeof(distance_t),
     (size_t) sizeof(label_t),
     *cv_tr_label,
-    cv_tr_label,
-    sizeof(label_t),
+    cv_tr_label, sizeof(label_t),
     (size_t) sizeof(distance_t) + sizeof(message_t) + sizeof(label_t),
     time_step,
     pandc_repeat_factor,
-    vehicle_state,
-    sizeof(vehicle_state_t),
-    new_vehicle_state,
-    sizeof(vehicle_state_t),
+    vehicle_state, sizeof(vehicle_state_t),
+    new_vehicle_state, sizeof(vehicle_state_t),
     /* Num Output Pairs */ 1,
     new_vehicle_state, sizeof(vehicle_state_t)
   );
