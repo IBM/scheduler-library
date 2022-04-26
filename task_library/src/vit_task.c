@@ -73,32 +73,32 @@ void vit_task_start_decode(task_metadata_entry * vit_metadata_block, ofdm_param 
   frame_param * frame, uint8_t * in);
 uint8_t * vit_task_finish_decode(task_metadata_entry * mb_ptr, int * n_dec_char);
 
-extern "C" {
-  void print_viterbi_metadata_block_contents(/*task_metadata_entry*/ void * mb_ptr) {
-    task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
-    print_base_metadata_block_contents(mb);
-    viterbi_data_struct_t * vdata = (viterbi_data_struct_t *) (mb->data_space);
-    int32_t  inData_offset = vdata->inMem_size;
-    int32_t  outData_offset = inData_offset + vdata->inData_size;
-    uint8_t * in_Mem = &(vdata->theData[0]);
-    uint8_t * in_Data = &(vdata->theData[inData_offset]);
-    uint8_t * out_Data = &(vdata->theData[outData_offset]);
-    printf("   Viterbi Data: @ %p\n", vdata);
-    printf("      n_cbps      = %d\n", vdata->n_cbps);
-    printf("      n_traceback = %d\n", vdata->n_traceback);
-    printf("      n_data_bits = %d\n", vdata->n_data_bits);
-    printf("      psdu_size   = %d\n", vdata->psdu_size);
-    printf("      in_Mem_size   = %d\n", vdata->inMem_size);
-    printf("      in_Data_size  = %d\n", vdata->inData_size);
-    printf("      out_Data_size = %d\n", vdata->outData_size);
-    printf("      inMem_offset  = %d\n", 0);
-    printf("      inData_offset  = %d\n", inData_offset);
-    printf("      outData_offset = %d\n", outData_offset);
-    printf("      in_Mem   @ %p\n", &(vdata->theData[0]));
-    printf("      in_Data  @ %p\n", &(vdata->theData[inData_offset]));
-    printf("      out_Data @ %p\n", &(vdata->theData[outData_offset]));
-  }
-}
+// extern "C" {
+//   void print_viterbi_metadata_block_contents(/*task_metadata_entry*/ void * mb_ptr) {
+//     task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
+//     print_base_metadata_block_contents(mb);
+//     viterbi_data_struct_t * vdata = (viterbi_data_struct_t *) (mb->data_space);
+//     int32_t  inData_offset = vdata->inMem_size;
+//     int32_t  outData_offset = inData_offset + vdata->inData_size;
+//     uint8_t * in_Mem = &(vdata->theData[0]);
+//     uint8_t * in_Data = &(vdata->theData[inData_offset]);
+//     uint8_t * out_Data = &(vdata->theData[outData_offset]);
+//     printf("   Viterbi Data: @ %p\n", vdata);
+//     printf("      n_cbps      = %d\n", vdata->n_cbps);
+//     printf("      n_traceback = %d\n", vdata->n_traceback);
+//     printf("      n_data_bits = %d\n", vdata->n_data_bits);
+//     printf("      psdu_size   = %d\n", vdata->psdu_size);
+//     printf("      in_Mem_size   = %d\n", vdata->inMem_size);
+//     printf("      in_Data_size  = %d\n", vdata->inData_size);
+//     printf("      out_Data_size = %d\n", vdata->outData_size);
+//     printf("      inMem_offset  = %d\n", 0);
+//     printf("      inData_offset  = %d\n", inData_offset);
+//     printf("      outData_offset = %d\n", outData_offset);
+//     printf("      in_Mem   @ %p\n", &(vdata->theData[0]));
+//     printf("      in_Data  @ %p\n", &(vdata->theData[inData_offset]));
+//     printf("      out_Data @ %p\n", &(vdata->theData[outData_offset]));
+//   }
+// }
 
 extern "C" {
   void output_vit_task_type_run_stats(/*scheduler_datastate*/ void * sptr_ptr, unsigned my_task_type,
