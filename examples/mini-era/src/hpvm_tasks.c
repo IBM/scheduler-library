@@ -1014,7 +1014,6 @@ void MiniERARoot(
     void * VIT_reset_depuncture = __hetero_task_begin(4, (size_t) 0, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, in_bits, in_bit_size, 1, vit_depunctured, vit_depunctured_size,
       /* Optional Node Name */ "VIT_reset_depuncture");
     __hpvm__hint(CPU_TARGET);
-    __hpvm__task(VIT_RESET_DEPUNCTURE);
     // printf("In VIT_RESET_DEPUNCTURE\n");
 
     vit_task_reset(ofdm_ptr);
@@ -1025,7 +1024,6 @@ void MiniERARoot(
     void * VIT_setup = __hetero_task_begin(2, (size_t) 0, vit_depunctured, vit_depunctured_size, 1, vit_data, vit_data_size,
       /* Optional Node Name */ "VIT_setup");
     __hpvm__hint(CPU_TARGET);
-    __hpvm__task(VIT_SETUP);
 
     // printf("In VIT_SETUP\n");
     vit_task_start_decode(vit_depunctured, vit_data);
@@ -1047,7 +1045,6 @@ void MiniERARoot(
     void * VIT_post = __hetero_task_begin(3, (size_t) 0, frame_ptr, frame_ptr_size, vit_data, vit_data_size, 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
       /* Optional Node Name */ "VIT_post");
     __hpvm__hint(CPU_TARGET);
-    __hpvm__task(VIT_POST);
 
     // printf("In VIT_POST\n");
     vit_post(frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size);
