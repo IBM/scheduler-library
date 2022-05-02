@@ -129,7 +129,7 @@ void set_up_fuse_grids_task_on_accel_profile_data() {
   fuse_grids_profile[SCHED_CPU_ACCEL_T] = 1; // Picked a small value...
 
   DEBUG(printf("\n%15s : %18s %18s %18s %18s\n", "PROFILES", "CPU", "VIT-HWR", "FFT-HWR", "CV-HWR");
-        printf("%15s :", "pnc_profile");
+        printf("%15s :", "profile");
         for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES;
   ai++) { printf(" 0x%016lx", fuse_grids_profile[ai]); } printf("\n");
   printf("\n"));

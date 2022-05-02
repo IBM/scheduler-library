@@ -704,11 +704,11 @@ void execute_task_on_accelerator(task_metadata_entry * task_metadata_block) {
       int aidx = task_metadata_block->accelerator_type;
       task_metadata_block->task_computed_on[aidx][task_metadata_block->task_type]++;
 
-      DEBUG(printf("Starting executing Task for MB%d : Type %u %s on %u %s\n",
+      DEBUG(printf("Starting executing Task for MB%d : Type %u %s on %u %s with Dataspace:%p\n",
         task_metadata_block->block_id, task_metadata_block->task_type,
         sptr->task_name_str[task_metadata_block->task_type],
         task_metadata_block->accelerator_type,
-        sptr->accel_name_str[task_metadata_block->accelerator_type]));
+        sptr->accel_name_str[task_metadata_block->accelerator_type], task_metadata_block->data_space));
       //Execute the task
       // TODO: pass accelerator ID
       sptr->scheduler_execute_task_function[task_metadata_block->accelerator_type][task_metadata_block->task_type]((void *) task_metadata_block->data_space); // , task_metadata_block->accelerator_id);
@@ -1793,6 +1793,7 @@ void * schedule_dags(void * void_param_ptr) {
 
   scheduler_datastate * sptr = (scheduler_datastate *) void_param_ptr;
 
+  //TODO: Potential multithreaded bug if another thread modifies active_dags
   while (1) {
     if (sptr->active_dags.size() &&
       (sptr->active_dags.back()->dag_status == ACTIVE_DAG || //New DAGs added
@@ -1801,17 +1802,16 @@ void * schedule_dags(void * void_param_ptr) {
         printf("APP: in schedule DAG number of active dags: %u\n",
           sptr->active_dags.size());
       );
-      auto it_start = sptr->active_dags.begin();
-      auto it_end = sptr->active_dags.end();
 
-      //TODO: potential multithread bug if different thread deletes from active_dags
-      for (auto it = it_start; it != it_end; ++it) {
+      pthread_mutex_lock(&(sptr->dag_queue_mutex));
+      auto it = sptr->active_dags.begin();
+      auto it_end = sptr->active_dags.end();
+      while (it != it_end) {
         dag_metadata_entry * dag = *it;
         if (dag->dag_status == ACTIVE_DAG || dag->dag_status == ACTIVE_QUEUED_DAG) {
           //Create new ready task and put into ready queue
           Graph & graph = *(dag->graph_ptr);
           while (1) {
-            pthread_mutex_lock(&(sptr->dag_queue_mutex));
             vertex_t ready_task_vertex = -1;
             ready_task_vertex = get_ready_task_vertex(dag);
             if (ready_task_vertex == -1) { // No more ready tasks
@@ -1819,7 +1819,6 @@ void * schedule_dags(void * void_param_ptr) {
                 printf("DAG[%u] No more ready tasks\n", dag->dag_id);
               );
               dag->dag_status = ACTIVE_NOTREADY_DAG;
-              pthread_mutex_unlock(&(sptr->dag_queue_mutex));
               break;
             }
             DEBUG(
@@ -1832,10 +1831,12 @@ void * schedule_dags(void * void_param_ptr) {
             task_metadata_entry * task_metadata_block = (task_metadata_entry *) assign_task_to_metadata(sptr, graph[ready_task_vertex].task_type, dag->crit_level,
               false, dag->dag_id, graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].profile_ptr); // Critical CV task
             DEBUG(
-              printf("Assigned task %s to metadata \n", sptr->task_name_str[graph[ready_task_vertex].task_type]);
+              printf("Assigned task %s %p to metadata IO ptr: %p\n", sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->task_type, graph[ready_task_vertex].io_ptr);
             );
+
             //Copy io ptr into metadata data_space
             task_metadata_block->data_space = graph[ready_task_vertex].io_ptr;
+            DEBUG(printf("Task %s, IO Ptr: %p  Data Space:%p\n", sptr->task_name_str[graph[ready_task_vertex].task_type], graph[ready_task_vertex].io_ptr, task_metadata_block->data_space););
 
             //Update task node in graph with the metadata block ptr
             graph[ready_task_vertex].task_mb_ptr = task_metadata_block;
@@ -1853,7 +1854,6 @@ void * schedule_dags(void * void_param_ptr) {
             graph[ready_task_vertex].vertex_status = TASK_QUEUED;
             // print_dag_graph(graph);
             // sptr->active_dags.pop_front();
-            pthread_mutex_unlock(&(sptr->dag_queue_mutex));
 
             task_metadata_block->status = TASK_QUEUED; // queued
             gettimeofday(&task_metadata_block->sched_timings.queued_start, NULL);
@@ -1893,9 +1893,9 @@ void * schedule_dags(void * void_param_ptr) {
         else {
           continue;
         }
-
+        it++;
       }
-
+      pthread_mutex_unlock(&(sptr->dag_queue_mutex));
     }
     else {
       usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
@@ -2082,10 +2082,7 @@ void request_execution(
   dag_metadata_entry * dag = (dag_metadata_entry *) dag_ptr;;
   dag->dag_status = ACTIVE_DAG; //Active DAG
   Graph & graph = *(dag->graph_ptr);
-  DEBUG(
-    printf("APP: in request_execution for dag id%u\n",
-      dag->dag_id);
-  );
+  DEBUG(printf("APP: in request_execution for dag id %u\n", dag->dag_id); );
 
   scheduler_datastate * sptr = dag->scheduler_datastate_pointer;
 
@@ -2206,8 +2203,14 @@ extern "C" {
 
       DEBUG(printf("Task %s, IO Ptr: %p\n", sptr->task_name_str[graph[*v].task_type], graph[*v].io_ptr););
 
-      graph[*v].input_size = ((struct_io_t *) (graph[*v].io_ptr))->in_size;
       std::map<size_t, uint64_t[4]> & profile_map = *(sptr->global_task_profile[graph[*v].task_type]);
+      if (profile_map == cpu_profile) {
+        graph[*v].input_size = 0;
+      }
+      else {
+        graph[*v].input_size = ((struct_io_t *) (graph[*v].io_ptr))->in_size;
+      }
+
       graph[*v].profile_ptr = profile_map[graph[*v].input_size];
 
       uint64_t min_time = ACINFPROF;

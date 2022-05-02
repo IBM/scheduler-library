@@ -20,17 +20,17 @@
 #include "scheduler.h"
 #include "verbose.h"
 
-// This is a routine to set static ranks
-//  This takes in a generic pointer (e.g. to a policy-defined structure, etc.)
-// and sets internal policy-required parameters, etc.
+ // This is a routine to set static ranks
+ //  This takes in a generic pointer (e.g. to a policy-defined structure, etc.)
+ // and sets internal policy-required parameters, etc.
 
 extern "C" void
-assign_static_rank(scheduler_datastate* sptr, dag_metadata_entry * dag_ptr) {
+assign_static_rank(scheduler_datastate * sptr, dag_metadata_entry * dag_ptr) {
    // printf("[%u.%u] Entering DYNAMIC ranking\n", task->dag_id, task->task_id);
 }
 
 extern "C" void
-assign_dynamic_rank(scheduler_datastate* sptr, task_metadata_entry * task) {
+assign_dynamic_rank(scheduler_datastate * sptr, task_metadata_entry * task) {
    // printf("[%u.%u] Entering DYNAMIC ranking\n", task->dag_id, task->task_id);
 
 #ifdef INT_TIME
@@ -38,9 +38,9 @@ assign_dynamic_rank(scheduler_datastate* sptr, task_metadata_entry * task) {
    gettimeofday(&current_time, NULL);
    // Compute the remaining execution time (estimate) for task currently on accelerator
    int64_t elapsed_sec = current_time.tv_sec -
-                         task->sched_timings.get_start.tv_sec;
+      task->sched_timings.get_start.tv_sec;
    int64_t elapsed_usec = current_time.tv_usec -
-                          task->sched_timings.get_start.tv_usec;
+      task->sched_timings.get_start.tv_usec;
    int64_t total_elapsed_usec = elapsed_sec * 1000000 + elapsed_usec;
 #endif
 
@@ -50,30 +50,35 @@ assign_dynamic_rank(scheduler_datastate* sptr, task_metadata_entry * task) {
    if (task->crit_level > 1) {
       if (wcet_slack >= 0) {
          DEBUG(printf("Deadline: %lu, Elapsed time: %lu Max time: %lu, Min time: %lu, wcet_slack: %d, crit_level: %d\n",
-                      task->deadline_time, total_elapsed_usec, task->task_max_time, task->task_min_time, wcet_slack,
-                      task->crit_level););
+            task->deadline_time, total_elapsed_usec, task->task_max_time, task->task_min_time, wcet_slack,
+            task->crit_level););
          slack = 1 + wcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 3;
-      } else if (bcet_slack >= 0) {
+      }
+      else if (bcet_slack >= 0) {
          slack = 1 + bcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 4;
-      } else {
+      }
+      else {
          slack = 1 + 0.99 / bcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 5;
       }
-   } else {
+   }
+   else {
       if (wcet_slack >= 0) {
          slack = 1 + wcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 2;
-      } else if (bcet_slack >= 0) {
+      }
+      else if (bcet_slack >= 0) {
          slack = 1 + bcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 1;
-      } else {
+      }
+      else {
          slack = 1 + 0.99 / bcet_slack;
          task->rank_hom = (100000 * (task->crit_level)) / slack;
          task->rank_het = 0;

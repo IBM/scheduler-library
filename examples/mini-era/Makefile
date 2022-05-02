@@ -159,7 +159,7 @@ CFLAGS += -g
 endif
 
 ifdef COMPILE_TO_ESP
-CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
+CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET -fno-exceptions
 endif
 
 
@@ -354,16 +354,16 @@ obj_hpvm:
 	mkdir $@
 
 obj_hpvm/hpvm_tasks.ll : src/hpvm_tasks.c
-	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $<
+	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $< $(OPTFLAGS)
 
 obj_hpvm/hpvm_tasks.hetero.ll : obj_hpvm/hpvm_tasks.ll
-	$(HCC) -declsfile $(HPVM_DEF_FILE) --no-return-sizes -use0D $< -o $@ 
+	$(HCC) -declsfile $(HPVM_DEF_FILE) --no-return-sizes -use0D $< -o $@ $(OPTFLAGS)
 
 obj_hpvm/hpvm_tasks.hpvm.ll : obj_hpvm/hpvm_tasks.hetero.ll
-	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce -hpvm-timers-gen $< -S -o $@ $(OPTFLAGS) -debug
+	$(OPT) -load LLVMGenHPVM.so -genhpvm -globaldce -hpvm-timers-gen $< -S -o $@ $(OPTFLAGS)
 
 $(OBJ_H) : obj_hpvm/hpvm_tasks.hpvm.ll
-	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -dce -globaldce -S $< -o $@ $(OPTFLAGS) -debug
+	$(OPT) -load LLVMBuildDFG.so $(BACKEND_LOAD) -load LLVMClearDFG.so $(BACKEND_FLAG) -clearDFG -dce -globaldce -S $< -o $@ $(OPTFLAGS)
 
 $(OBJ_LL):obj_hpvm/%.ll : src/%.c
 	$(HPVMCXX) $(CFLAGS) -emit-llvm -S -o $@ $<

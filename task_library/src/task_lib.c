@@ -36,8 +36,6 @@
 #include "fft_task.h"
 #include "radar_task.h"
 #include "cv_task.h"
-#include "plan_ctrl_task.h"
-#include "plan_ctrl2_task.h"
 #include "test_task.h"
 #include "create_grid_task.h"
 
@@ -50,8 +48,6 @@ extern "C" {
     set_up_radar_task_on_accel_profile_data();
     set_up_cv_task_on_accel_profile_data();
     set_up_test_task_on_accel_profile_data();
-    set_up_plan_ctrl_task_on_accel_profile_data();
-    set_up_plan_ctrl2_task_on_accel_profile_data();
     set_up_create_grid_task_on_accel_profile_data();
 
     for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) {

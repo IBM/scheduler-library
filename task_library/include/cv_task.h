@@ -25,11 +25,12 @@
 #include "base_task_types.h"
 #include "scheduler.h"
 
-// Some Profiling Data:
-//#define usecHwrCV   150000
+ // Some Profiling Data:
+ //#define usecHwrCV   150000
 
-//CV: cv_tr_label
+ //CV: cv_tr_label
 struct cv_io_t {
+  size_t in_size; //For profiling
   label_t in_label;
   label_t * obj_label;
   size_t obj_label_size;

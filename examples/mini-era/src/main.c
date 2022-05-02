@@ -1109,8 +1109,8 @@ int main(int argc, char * argv[]) {
 
 
 #ifdef HPVM
-  DEBUG(printf("Using HPVM!\n");)
-    RootIn * DFGArgs = hpvm_initialize();
+  DEBUG(printf("Using HPVM!\n"););
+  hpvm_initialize();
 #endif
 
 #ifndef HPVM
@@ -1339,7 +1339,7 @@ int main(int argc, char * argv[]) {
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch(DFGArgs, (message_size_t) vit_msgs_size, vdentry_p, vit_depunctured, &message, out_msg_text, vit_data, &label, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, time_step, pandc_repeat_factor, &vehicle_state, &new_vehicle_state);
+    hpvm_launch((message_size_t) vit_msgs_size, vdentry_p, vit_depunctured, &message, out_msg_text, vit_data, &label, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, time_step, pandc_repeat_factor, &vehicle_state, &new_vehicle_state);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {
@@ -1425,7 +1425,7 @@ int main(int argc, char * argv[]) {
 #endif
 
 #ifdef HPVM
-  hpvm_cleanup(DFGArgs);
+  hpvm_cleanup();
 #else
   shutdown_scheduler(sptr);
 #endif

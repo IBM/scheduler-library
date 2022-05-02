@@ -30,7 +30,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-//#define VERBOSE
+ //#define VERBOSE
 #include "verbose.h"
 
 #include "scheduler.h"
@@ -42,88 +42,89 @@ unsigned num_Base_test_tasks = 0;
 std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> test_profile;
 
 extern "C" {
-void print_test_metadata_block_contents(/*task_metadata_entry*/void* mb_ptr) {
-  task_metadata_entry* mb = (task_metadata_entry*)mb_ptr;
-  print_base_metadata_block_contents(mb);
-}
+  void print_test_metadata_block_contents(/*task_metadata_entry*/void * mb_ptr) {
+    task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
+    print_base_metadata_block_contents(mb);
+  }
 }
 
 extern "C" {
   void output_test_task_type_run_stats(/*scheduler_datastate*/void * sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
-  scheduler_datastate *sptr = (scheduler_datastate*) sptr_ptr;
+    scheduler_datastate * sptr = (scheduler_datastate *) sptr_ptr;
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
-         my_task_type, sptr->task_name_str[my_task_type],
-         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
-  // The TEST/CNN Task Timing Info
-  unsigned total_test_comp_by[total_accel_types + 1];
-  uint64_t total_test_call_usec[total_accel_types + 1];
-  for (int ai = 0; ai <= total_accel_types; ai++) {
-    total_test_comp_by[ai] = 0;
-    total_test_call_usec[ai] = 0;
-  }
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type,
-             sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
+    printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
+      my_task_type, sptr->task_name_str[my_task_type],
+      sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+    // The TEST/CNN Task Timing Info
+    unsigned total_test_comp_by[total_accel_types + 1];
+    uint64_t total_test_call_usec[total_accel_types + 1];
+    for (int ai = 0; ai <= total_accel_types; ai++) {
+      total_test_comp_by[ai] = 0;
+      total_test_call_usec[ai] = 0;
     }
-    for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                            (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
-      unsigned this_comp_by = (unsigned)(
-                                sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
-      uint64_t this_test_call_usec = (uint64_t)(test_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(
-                                       test_timings_p->call_usec[ai]);
+    for (int ai = 0; ai < total_accel_types; ai++) {
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-        printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi, ai, sptr->accel_name_str[ai],
-               this_comp_by, this_test_call_usec);
-      } else {
-        if ((this_comp_by + this_test_call_usec) != 0) {
-          printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi, ai, sptr->accel_name_str[ai],
-                 this_comp_by, this_test_call_usec);
-        }
+        printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type,
+          sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
       }
-      // Per acceleration (CPU, HWR)
-      total_test_comp_by[ai] += this_comp_by;
-      total_test_call_usec[ai]  += this_test_call_usec;
-      // Overall Total
-      total_test_comp_by[total_accel_types] += this_comp_by;
-      total_test_call_usec[total_accel_types]  += this_test_call_usec;
-    } // for (bi = 1 .. numMetatdataBlocks)
-  } // for (ai = 0 .. total_accel_types)
+      for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
+        test_timing_data_t * test_timings_p = (test_timing_data_t *) &
+          (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+        unsigned this_comp_by = (unsigned) (
+          sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
+        uint64_t this_test_call_usec = (uint64_t) (test_timings_p->call_sec[ai]) * 1000000 + (uint64_t) (
+          test_timings_p->call_usec[ai]);
+        if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
+          printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu usec\n", bi, ai, sptr->accel_name_str[ai],
+            this_comp_by, this_test_call_usec);
+        }
+        else {
+          if ((this_comp_by + this_test_call_usec) != 0) {
+            printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu\n", bi, ai, sptr->accel_name_str[ai],
+              this_comp_by, this_test_call_usec);
+          }
+        }
+        // Per acceleration (CPU, HWR)
+        total_test_comp_by[ai] += this_comp_by;
+        total_test_call_usec[ai] += this_test_call_usec;
+        // Overall Total
+        total_test_comp_by[total_accel_types] += this_comp_by;
+        total_test_call_usec[total_accel_types] += this_test_call_usec;
+      } // for (bi = 1 .. numMetatdataBlocks)
+    } // for (ai = 0 .. total_accel_types)
 
-  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
-         sptr->task_name_str[my_task_type]);
-  printf("     TEST-call  run time\n                          ");
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_test_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_test_comp_by[ai], total_test_call_usec[ai], avg);
+    printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
+      sptr->task_name_str[my_task_type]);
+    printf("     TEST-call  run time\n                          ");
+    for (int ai = 0; ai < total_accel_types; ai++) {
+      double avg = (double) total_test_call_usec[ai] / (double) sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
+        sptr->accel_name_str[ai], total_test_comp_by[ai], total_test_call_usec[ai], avg);
+    }
+    {
+      double avg = (double) total_test_call_usec[total_accel_types] / (double)
+        sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
+        total_test_comp_by[total_accel_types], total_test_call_usec[total_accel_types], avg);
+    }
   }
-  {
-    double avg = (double)total_test_call_usec[total_accel_types] / (double)
-                 sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_test_comp_by[total_accel_types], total_test_call_usec[total_accel_types], avg);
-  }
-}
 }
 
 
 extern "C" {
   void execute_on_hwr_fft_test_accelerator(void * test_io_ptr) {
 
-  // This usleep call stands in as the "Fake" CNN accelerator
+    // This usleep call stands in as the "Fake" CNN accelerator
     usleep(test_on_hwr_fft_run_time_in_usec);
-}
+  }
 }
 
 extern "C" {
   void execute_on_hwr_vit_test_accelerator(/*task_metadata_entry*/void * test_io_ptr) {
-  // This usleep call stands in as the "Fake" CNN accelerator
+    // This usleep call stands in as the "Fake" CNN accelerator
     usleep(test_on_hwr_vit_run_time_in_usec);
-}
+  }
 }
 
 extern "C" {
@@ -131,26 +132,26 @@ extern "C" {
 
     // This usleep call stands in as the "Fake" TEST accelerator
     usleep(test_on_hwr_cv_run_time_in_usec);
-}
+  }
 }
 
 extern "C" {
   void execute_on_cpu_test_accelerator(/*task_metadata_entry*/void * test_io_ptr) {
     usleep(test_on_cpu_run_time_in_usec);
-}
+  }
 }
 
 
 #ifdef COMPILE_TO_ESP
-unsigned test_on_cpu_run_time_in_usec        = 25000;
-unsigned test_on_hwr_fft_run_time_in_usec    =  6000;
-unsigned test_on_hwr_vit_run_time_in_usec    =  9000;
-unsigned test_on_hwr_cv_run_time_in_usec     =  9000;
+unsigned test_on_cpu_run_time_in_usec = 25000;
+unsigned test_on_hwr_fft_run_time_in_usec = 6000;
+unsigned test_on_hwr_vit_run_time_in_usec = 9000;
+unsigned test_on_hwr_cv_run_time_in_usec = 9000;
 #else
-unsigned test_on_cpu_run_time_in_usec        =     1;
-unsigned test_on_hwr_fft_run_time_in_usec    =     1;
-unsigned test_on_hwr_vit_run_time_in_usec    =     1;
-unsigned test_on_hwr_cv_run_time_in_usec     =     1;
+unsigned test_on_cpu_run_time_in_usec = 1;
+unsigned test_on_hwr_fft_run_time_in_usec = 1;
+unsigned test_on_hwr_vit_run_time_in_usec = 1;
+unsigned test_on_hwr_cv_run_time_in_usec = 1;
 #endif
 
 void set_up_test_task_on_accel_profile_data() {
@@ -164,9 +165,9 @@ void set_up_test_task_on_accel_profile_data() {
   test_profile[0][SCHED_EPOCHS_CV_CNN_ACCEL_T] = test_on_hwr_cv_run_time_in_usec;
 
   DEBUG(printf("\n%18s : %18s %18s %18s %18s\n", "TEST-PROFILES", "CPU", "FFT-HWR", "VIT-HWR",
-               "CV-HWR");
-        printf("%15s :", "pnc_profile");
-        for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[0][ai]); } printf("\n");
+    "CV-HWR");
+  printf("%15s :", "profile");
+  for (int ai = 0; ai < SCHED_MAX_ACCEL_TYPES; ai++) { printf(" 0x%016lx", test_profile[0][ai]); } printf("\n");
   printf("\n"));
 }
 
@@ -174,16 +175,16 @@ void set_up_test_task_on_accel_profile_data() {
 // for a task that is to be executed, but whose results are not used...
 //
 extern "C" {
-void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
-  task_metadata_entry *mb = (task_metadata_entry*)mb_ptr;
-  TDEBUG(scheduler_datastate* sptr = mb->scheduler_datastate_pointer;
-         printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id,
-                sptr->task_name_str[mb->task_type],
-                sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type],
-                mb->accelerator_id));
-  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
-  free_task_metadata_block(mb);
-}
+  void test_auto_finish_routine(/*task_metadata_entry*/void * mb_ptr) {
+    task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
+    TDEBUG(scheduler_datastate * sptr = mb->scheduler_datastate_pointer;
+    printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n", mb->block_id,
+      sptr->task_name_str[mb->task_type],
+      sptr->task_criticality_str[mb->crit_level], sptr->accel_name_str[mb->accelerator_type],
+      mb->accelerator_id));
+    DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+    free_task_metadata_block(mb);
+  }
 }
 
 
@@ -195,23 +196,23 @@ void test_auto_finish_routine(/*task_metadata_entry*/void* mb_ptr) {
 //   over-write the original input data with the TEST results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 extern "C" {
-void finish_test_execution(/*task_metadata_entry*/void* test_metadata_block_ptr, void *args) {
-  task_metadata_entry *test_metadata_block = (task_metadata_entry*)test_metadata_block_ptr;
-  int tidx = test_metadata_block->accelerator_type;
-  test_timing_data_t * test_timings_p = (test_timing_data_t*) &
-                                        (test_metadata_block->task_timings[test_metadata_block->task_type]);
-  test_data_struct_t * test_data_p    = (test_data_struct_t*)(test_metadata_block->data_space);
+  void finish_test_execution(/*task_metadata_entry*/void * test_metadata_block_ptr, void * args) {
+    task_metadata_entry * test_metadata_block = (task_metadata_entry *) test_metadata_block_ptr;
+    int tidx = test_metadata_block->accelerator_type;
+    test_timing_data_t * test_timings_p = (test_timing_data_t *) &
+      (test_metadata_block->task_timings[test_metadata_block->task_type]);
+    test_data_struct_t * test_data_p = (test_data_struct_t *) (test_metadata_block->data_space);
 #ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  test_timings_p->call_sec[tidx]  += stop_time.tv_sec  - test_timings_p->call_start.tv_sec;
-  test_timings_p->call_usec[tidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
+    struct timeval stop_time;
+    gettimeofday(&stop_time, NULL);
+    test_timings_p->call_sec[tidx] += stop_time.tv_sec - test_timings_p->call_start.tv_sec;
+    test_timings_p->call_usec[tidx] += stop_time.tv_usec - test_timings_p->call_start.tv_usec;
 #endif // INT_TIME
 
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
-  free_task_metadata_block(test_metadata_block);
-}
+    // We've finished the execution and lifetime for this task; free its metadata
+    DEBUG(printf("  MB%u Calling free_task_metadata_block\n", test_metadata_block->block_id));
+    free_task_metadata_block(test_metadata_block);
+  }
 }
 
 
