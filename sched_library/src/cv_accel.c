@@ -66,7 +66,6 @@ do_cv_accel_type_initialization(struct scheduler_datastate_block_struct* sptr)
   if (pModule == NULL) {
      PyErr_Print();
      printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
-     return 1;
   } else {
     pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
 
