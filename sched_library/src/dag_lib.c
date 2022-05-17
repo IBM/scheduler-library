@@ -32,7 +32,7 @@ extern "C" {
         filename.append(graphml_filename);
         return(_create_leaf_graph(filename, true));
     }
-    RootGraph * create_root_graph(std::string graphml_filename) {
+    RootGraph * create_root_graph(char * graphml_filename) {
         std::string filename;
         filename.append(graphml_filename);
         return(_create_root_graph(filename, NULL, true));

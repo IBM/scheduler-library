@@ -530,7 +530,7 @@ get_auto_finish_routine(scheduler_datastate * sptr,
   task_type_t the_task_type);
 
 // Create DAG and Process arrival
-extern "C" dag_metadata_entry * process_root_dag_arrival(scheduler_datastate * sptr, RootGraph * ref_root_graph_ptr, task_criticality_t crit_level, ...);
+extern "C" RootGraph * process_root_dag_arrival(scheduler_datastate * sptr, RootGraph * ref_root_graph_ptr, task_criticality_t crit_level, ...);
 
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
 extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr, task_criticality_t crit_level, ...);

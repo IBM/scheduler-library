@@ -136,7 +136,7 @@ endif
 
 ifdef CONFIG_VERBOSE
 CFLAGS += -DVERBOSE
-#OPTFLAGS += -debug
+OPTFLAGS += -debug
 endif
 
 ifdef HPVM_BASE_CRIT
@@ -392,6 +392,7 @@ $(TASK_LIB) $(TASK_MODULE):
 clean:
 	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_LL) $(OBJ_H) $(OBJ_LINKED)
 	$(RM) -r obj_t obj_s obj_hpvm
+	$(RM) *.dot 
 	$(RM) wnvdla_test.o
 	if [ -f "$(NVDLA_MODULE)" ]; then rm $(NVDLA_MODULE); fi
 	if [ -d "$(NVDLA_RUNTIME)" ]; then rm -rf $(NVDLA_RUNTIME); fi
