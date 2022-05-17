@@ -1214,7 +1214,7 @@ int main(int argc, char * argv[]) {
       sizeof(vehicle_state), &vehicle_state, sizeof(vehicle_state), out_msg_text, 1600);
 
     // DFG info should have task type at the node and is given input for the task
-    dag_metadata_entry * dag_ptr = process_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK,
+    dag_metadata_entry * dag_ptr = process_leaf_dag_arrival(sptr, dfg_ptr, CRITICAL_TASK,
       0, radar_io_ptr,
       1, viterbi_io_ptr,
       2, pnc_io_ptr,

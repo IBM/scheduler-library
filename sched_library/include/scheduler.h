@@ -33,6 +33,7 @@
 #include <map>
 #include <vector>
 #include <utility>
+#include <string>
 
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/topological_sort.hpp"
@@ -235,22 +236,30 @@ public:
   // data for the task)
 };
 
+struct struct_io_t {
+  size_t in_size;
+};
+
+//Declaration for dag_vertex_t
+class dag_metadata_entry;
+
 //Boost graph task vertex bundled property
 struct dag_vertex_t {
-  int32_t vertex_id;
+  std::string graphml_filename;
+  int32_t dag_vertex_id;
+  int32_t task_vertex_id;
   task_status_t vertex_status = TASK_FREE;
+  int8_t leaf_dag_type = 1; //0 for root node and 1 for leaf node (default)
   task_type_t task_type;
-  uint64_t * profile_ptr = NULL;
-  uint64_t max_time;
-  uint64_t min_time;
+  dag_metadata_entry * dag_mb_ptr = NULL;
   task_metadata_entry * task_mb_ptr = NULL;
   size_t input_size;
   void * io_ptr = NULL;
-  bool visited = false;
-};
+  uint64_t * profile_ptr = NULL;
 
-struct struct_io_t {
-  size_t in_size;
+  uint64_t max_time;
+  uint64_t min_time;
+  bool visited = false;
 };
 
 //Boost graph edge vertex bundled property
@@ -262,6 +271,17 @@ typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, 
 typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
 typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
 typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
+
+struct RootGraph {
+  Graph * graph_ptr;
+  dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
+  bool root_graph_call;
+  //Map (DAG_vertex_ID -> Pair(int type of DAG, Root/Graph ptr)
+  std::map<int32_t, std::pair<int8_t, void *>> dag_id_map;
+
+  //Map (DAG_vertex_ID -> Map (Task_vertex_IDs -> Graph vertex identifier))
+  std::map<int32_t, std::map<int32_t, vertex_t>> task_id_map;
+};
 
 class dag_metadata_entry {
 public:
@@ -276,7 +296,6 @@ public:
   uint64_t dag_deadline_time_usec; //Time before which DAG should be completed
   uint64_t dag_slack_usec; //Time until deadline
   task_criticality_t crit_level; // [0 .. 3] -- see above enumeration ("Base" to "Critical")
-  // dag_type_t dag_type; //Type of DAG
   dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
 
   //Stats calculation
@@ -511,9 +530,10 @@ get_auto_finish_routine(scheduler_datastate * sptr,
   task_type_t the_task_type);
 
 // Create DAG and Process arrival
+extern "C" dag_metadata_entry * process_root_dag_arrival(scheduler_datastate * sptr, RootGraph * ref_root_graph_ptr, task_criticality_t crit_level, ...);
+
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
-extern "C" dag_metadata_entry * process_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr,
-  task_criticality_t crit_level, ...);
+extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr, task_criticality_t crit_level, ...);
 
 extern void request_execution(void * dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);

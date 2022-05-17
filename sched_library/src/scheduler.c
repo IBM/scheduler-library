@@ -133,7 +133,7 @@ void print_dag_graph(Graph & graph) {
   boost::write_graphviz(std::cout, graph);
   Graph::vertex_iterator v, vend;
   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
-    printf("%u: Task-type: %u Status: %u\n", graph[*v].vertex_id, graph[*v].task_type,
+    printf("%u: Task-type: %u Status: %u\n", graph[*v].task_vertex_id, graph[*v].task_type,
       graph[*v].vertex_status);
   }
 }
@@ -425,7 +425,7 @@ void update_dag(task_metadata_entry * task_metadata_block) {
           graph[vertex].task_mb_ptr == task_metadata_block) {
           //Found the completed task
           DEBUG(
-            printf("DAG[%u.%u] completed task execution MB: %u\n", dag->dag_id, graph[vertex].vertex_id,
+            printf("DAG[%u.%u] completed task execution MB: %u\n", dag->dag_id, graph[vertex].task_vertex_id,
               task_metadata_block->block_id);
           );
           boost::clear_vertex(vertex, graph);
@@ -1544,8 +1544,7 @@ initialize_scheduler(scheduler_datastate * sptr) { //, char* sl_viz_fname)
   }
   assert(ti = sptr->total_metadata_pool_blocks);
   sptr->num_free_task_queue_entries = sptr->total_metadata_pool_blocks;
-  DEBUG(printf(" AND free_ready_mb_task_queue_entries = %p\n",
-    sptr->num_free_task_queue_entries));
+  DEBUG(printf(" AND free_ready_mb_task_queue_entries = %u\n", sptr->num_free_task_queue_entries));
 
   // Now initialize the per-metablock threads
   // For portability (as per POSIX documentation) explicitly create threads in
@@ -1739,7 +1738,7 @@ vertex_t get_ready_task_vertex(dag_metadata_entry * dag_ptr) {
   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
     if (boost::in_degree(*v, graph) == 0 && graph[*v].vertex_status == TASK_FREE) {
       //Found a ready task
-      // printf("DAG[%u] Found ready task in vertex %u\n", dag_ptr->dag_id, graph[*v].vertex_id);
+      // printf("DAG[%u] Found ready task in vertex %u\n", dag_ptr->dag_id, graph[*v].task_vertex_id);
       return *v;
     }
   }
@@ -1799,8 +1798,7 @@ void * schedule_dags(void * void_param_ptr) {
       (sptr->active_dags.back()->dag_status == ACTIVE_DAG || //New DAGs added
         sptr->active_dags.back()->dag_status == ACTIVE_QUEUED_DAG)) { //Active DAGs with remaining tasks
       DEBUG(
-        printf("APP: in schedule DAG number of active dags: %u\n",
-          sptr->active_dags.size());
+        printf("APP: in schedule DAG number of active dags: %lu\n", sptr->active_dags.size());
       );
 
       pthread_mutex_lock(&(sptr->dag_queue_mutex));
@@ -1823,15 +1821,15 @@ void * schedule_dags(void * void_param_ptr) {
             }
             DEBUG(
               printf("DAG[%u] Found ready task %u, status %u \n", dag->dag_id,
-                graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].vertex_status);
+                graph[ready_task_vertex].task_vertex_id, graph[ready_task_vertex].vertex_status);
             );
 
             //Get a free task mb for vertex
 
             task_metadata_entry * task_metadata_block = (task_metadata_entry *) assign_task_to_metadata(sptr, graph[ready_task_vertex].task_type, dag->crit_level,
-              false, dag->dag_id, graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].profile_ptr); // Critical CV task
+              false, dag->dag_id, graph[ready_task_vertex].task_vertex_id, graph[ready_task_vertex].profile_ptr); // Critical CV task
             DEBUG(
-              printf("Assigned task %s %p to metadata IO ptr: %p\n", sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->task_type, graph[ready_task_vertex].io_ptr);
+              printf("Assigned task %s %d to metadata IO ptr: %p\n", sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->task_type, graph[ready_task_vertex].io_ptr);
             );
 
             //Copy io ptr into metadata data_space
@@ -1842,7 +1840,7 @@ void * schedule_dags(void * void_param_ptr) {
             graph[ready_task_vertex].task_mb_ptr = task_metadata_block;
             DEBUG(
               printf("DAG[%u.%u] Creating and scheduling Task type:%u task Block-ID = MB%u\n", dag->dag_id,
-                graph[ready_task_vertex].vertex_id, graph[ready_task_vertex].task_type,
+                graph[ready_task_vertex].task_vertex_id, graph[ready_task_vertex].task_type,
                 task_metadata_block->block_id);
             );
 
@@ -1867,7 +1865,7 @@ void * schedule_dags(void * void_param_ptr) {
             // Put this into the ready-task-queue
             //   Get a ready_task_queue_entry
             pthread_mutex_lock(&(sptr->task_queue_mutex));
-            DEBUG(printf("APP: there are currently %u %u free task queue entries in the list\n",
+            DEBUG(printf("APP: there are currently %u %lu free task queue entries in the list\n",
               sptr->num_free_task_queue_entries, sptr->free_ready_mb_task_queue_entries.size()));
             SDEBUG(print_free_ready_tasks_list(sptr));
             ready_mb_task_queue_entry_t * my_queue_entry = sptr->free_ready_mb_task_queue_entries.front();
@@ -2170,11 +2168,98 @@ void append_sdr(Graph & graph) {
   }
 }
 
+// vertex_t get_ready_root_vertex(RootGraph * root_graph_ptr) {
+//   Graph & graph = *(root_graph_ptr->graph_ptr);
+//   Graph::vertex_iterator v, vend;
+//   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
+//     if (boost::in_degree(*v, graph) == 0 && graph[*v].vertex_status == DAG_FREE) {
+//       //Found a ready DAG
+
+//       return *v;
+//     }
+//   }
+//   if (boost::num_vertices(graph) == 0) {
+//     print_dag_graph(*(root_graph_ptr->graph_ptr));
+//     printf("DAG is empty\n");
+//   }
+//   return -1;
+
+// }
+
+extern "C" {
+  RootGraph * process_root_dag_arrival(scheduler_datastate * sptr, RootGraph * ref_root_graph_ptr, task_criticality_t crit_level, ...) {
+    //   DEBUG(printf("Entering process dag arrival\n"));
+    //   // Create new graph
+    //   // Deleted when all tasks in the Graph have completed execution (in update_dag)
+    //   RootGraph * root_graph_ptr = new(RootGraph);
+    //   Graph * graph_ptr = new(Graph);
+    //   Graph & graph = *graph_ptr;
+
+    //   root_graph_ptr->graph_ptr = graph_ptr;
+
+    //   // Copy static DFG into a new graph
+    //   boost::copy_graph(*(ref_root_graph_ptr->graph_ptr), *graph_ptr);
+
+    //   //Create a map of the io ptrs for root_graph_call
+    //   std::map<int32_t, void *> io_map;
+
+    //   va_list var_list;
+    //   va_start(var_list, crit_level);
+
+    //   for (int32_t i = 0; i < ref_root_graph_ptr->num_task_vertices; i++) {
+    //     int32_t task_vertex_id = va_arg(var_list, int32_t);
+    //     void * task_io_ptr = va_arg(var_list, void *);
+
+    //     io_map[task_vertex_id] = task_io_ptr;
+    //   }
+
+    //   va_end(var_list);
+
+    //   //Get all ready nodes
+    //   while (1) {
+    //     //For each ready node
+    //     vertex_t ready_root_vertex = -1;
+    //     ready_root_vertex = get_ready_root_vertex(root_graph_ptr);
+    //     if (ready_task_vertex == -1) { // No more ready vertex_graphs
+    //       DEBUG(printf("DAG[%p] No more ready vertices\n", root_graph_ptr););
+    //       root_graph_ptr->dag_status = ACTIVE_NOTREADY_DAG;
+    //       usleep(sptr->inparms ->scheduler_holdoff_usec);
+    //       continue;
+    //     }
+    //     //If root node
+
+    //     //If leaf node
+
+
+
+    //     if (boost::num_vertices(graph) == 0) {
+    //       DEBUG(printf("DAG[%p] completed\n", root_graph_ptr););
+    //       root_graph_ptr->dag_status = COMPLETED_DAG;
+    //       //Can cleanup the graph -> No longer required
+    //       delete root_graph_ptr->graph_ptr;
+    //       sptr->completed_dags.push_back(dag);
+    //       sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
+    //     }
+    //     else {
+    //       dag->dag_status = ACTIVE_QUEUED_DAG;
+    //     }
+
+
+    //     //When a node in the root_dag completes
+
+    //     //Get task vertex id of ready nodes
+    //   }
+
+    // }
+    return NULL;
+  }
+}
+
 //TODO: Use Template Variadic args instead
 extern "C" {
-  dag_metadata_entry * process_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr,
+  dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr,
     task_criticality_t crit_level, ...) {
-    DEBUG(printf("Entering process dag arrival\n"));
+    DEBUG(printf("Entering process leaf dag arrival\n"));
     // Create new graph
     // Deleted when all tasks in the Graph have completed execution (in update_dag)
     Graph * graph_ptr = new(Graph);
@@ -2194,10 +2279,10 @@ extern "C" {
     va_start(var_list, crit_level);
     Graph::vertex_iterator v, vend;
     for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
-      int32_t vertex_id = va_arg(var_list, int32_t);
-      if (graph[*v].vertex_id != vertex_id) {
-        std::cout << "Graph VID: " << graph[*v].vertex_id << " Input: " << vertex_id << std::endl;
-        assert(graph[*v].vertex_id == vertex_id);
+      int32_t task_vertex_id = va_arg(var_list, int32_t);
+      if (graph[*v].task_vertex_id != task_vertex_id) {
+        std::cout << "Graph VID: " << graph[*v].task_vertex_id << " Input: " << task_vertex_id << std::endl;
+        assert(graph[*v].task_vertex_id == task_vertex_id);
       }
       graph[*v].io_ptr = va_arg(var_list, void *);
 
@@ -2216,7 +2301,7 @@ extern "C" {
       uint64_t min_time = ACINFPROF;
       uint64_t max_time = 0;
       for (int i = 0; i < sptr->inparms->max_accel_types; ++i) {
-        DEBUG(printf("%u: Task-type: %s Size: %d Time: %d\n", graph[*v].vertex_id,
+        DEBUG(printf("%u: Task-type: %s Size: %d Time: %d\n", graph[*v].task_vertex_id,
           sptr->task_name_str[graph[*v].task_type], graph[*v].input_size, graph[*v].profile_ptr[i]););
         if (graph[*v].profile_ptr[i] > max_time && graph[*v].profile_ptr[i] != ACINFPROF) {
           max_time = graph[*v].profile_ptr[i];
@@ -2230,7 +2315,7 @@ extern "C" {
       graph[*v].visited = false;
 
       DEBUG(
-        printf("%u: Task-type: %s Size: %d Max: %d Min: %d Status: %u\n", graph[*v].vertex_id,
+        printf("%u: Task-type: %s Size: %lu Max: %d Min: %d Status: %u\n", graph[*v].task_vertex_id,
           sptr->task_name_str[graph[*v].task_type], graph[*v].input_size, graph[*v].max_time,
           graph[*v].min_time, graph[*v].vertex_status);
       );
