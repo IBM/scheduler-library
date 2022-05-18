@@ -415,25 +415,25 @@ $(NVDLA_MODULE):
 $(HPVMTARGET1): $(OBJ_LINKED1) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(shell python2.7-config --cflags) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS) $(shell python3.6m-config --ldflags)
 	rm dme_test.o wnvdla_test.o
 
 $(HPVMTARGET2): $(OBJ_LINKED2) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(shell python2.7-config --cflags) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS) $(LDFLAGS) $(NVDLA_FLAGS) $(shell python3.6m-config --ldflags)
 	rm dme_test.o wnvdla_test.o
 
 $(HPVMTARGET1_W): $(OBJ_LINKED1_W) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(shell python2.7-config --cflags)  $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS)  $(shell python3.6m-config --ldflags)
 	rm dme_test.o wnvdla_test.o
 
 $(HPVMTARGET2_W): $(OBJ_LINKED2_W) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -DXMIT_PORT=5558 -DRECV_PORT=5559 -DBUILD_WITH_N_LANES=5 -fPIC $< -c -o dme_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) dme_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(shell python2.7-config --cflags)  $(LDLIBS) wnvdla_test.o -o $@ $(MYLIBS_W) $(LDFLAGS) $(NVDLA_FLAGS) $(shell python3.6m-config --ldflags)
 	rm dme_test.o wnvdla_test.o
 
 #-----------------------------------------------------------------------------------------------
