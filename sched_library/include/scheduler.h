@@ -83,7 +83,8 @@ typedef enum {
 } task_status_t;
 
 typedef enum {
-  ACTIVE_DAG = 0,
+  FREE_DAG = 0,
+  ACTIVE_DAG,
   ACTIVE_QUEUED_DAG,
   ACTIVE_NOTREADY_DAG,
   COMPLETED_DAG,
@@ -242,14 +243,17 @@ struct struct_io_t {
 
 //Declaration for dag_vertex_t
 class dag_metadata_entry;
+struct graph_wrapper_t;
 
 //Boost graph task vertex bundled property
 struct dag_vertex_t {
   std::string graphml_filename;
   int32_t dag_vertex_id;
   int32_t task_vertex_id;
+  dag_status_t dag_status = FREE_DAG; // Used only for leaf DAGs
   task_status_t vertex_status = TASK_FREE;
   int8_t leaf_dag_type = 1; //0 for root node and 1 for leaf node (default)
+  graph_wrapper_t * graph_wrapper_ptr;
   task_type_t task_type;
   dag_metadata_entry * dag_mb_ptr = NULL;
   task_metadata_entry * task_mb_ptr = NULL;
@@ -272,15 +276,18 @@ typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
 typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
 typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
 
-struct RootGraph {
+struct graph_wrapper_t {
+  int32_t dag_vertex_id;
+  bool leafGraph;
   Graph * graph_ptr;
   dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
-  bool root_graph_call;
-  //Map (DAG_vertex_ID -> Pair(int type of DAG, Root/Graph ptr)
-  std::map<int32_t, std::pair<int8_t, void *>> dag_id_map;
+  int32_t num_task_vertices;
+  bool parent_graph_call;
+  //Map (DAG_vertex_ID -> Pair(int type of DAG, graph_wrapper_t ptr)
+  std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>> dag_id_map;
 
-  //Map (DAG_vertex_ID -> Map (Task_vertex_IDs -> Graph vertex identifier))
-  std::map<int32_t, std::map<int32_t, vertex_t>> task_id_map;
+  //Map (DAG_vertex_ID -> List of task_vertex_IDs)
+  std::map<int32_t, std::list<int32_t>> task_id_map;
 };
 
 class dag_metadata_entry {
@@ -288,7 +295,10 @@ public:
   // This points to the scheduler datastate structure (defiuned below) to which
   // this metadata block belongs.
   scheduler_datastate * scheduler_datastate_pointer;
+  int32_t dag_vertex_id;
   int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
+
+  graph_wrapper_t * graph_wrapper_ptr;
   Graph * graph_ptr;
   // boost::adjacency_list<> * graph_ptr;
   task_metadata_entry * task_mb_ptr;
@@ -302,7 +312,7 @@ public:
   uint64_t dag_response_time;
 
   dag_metadata_entry(scheduler_datastate * scheduler_datastate_pointer, int32_t dag_id,
-    Graph * graph_ptr, uint64_t dag_deadline_time,
+    graph_wrapper_t * graph_wrapper_ptr, uint64_t dag_deadline_time,
     task_criticality_t crit_level);
 
 };
@@ -530,10 +540,11 @@ get_auto_finish_routine(scheduler_datastate * sptr,
   task_type_t the_task_type);
 
 // Create DAG and Process arrival
-extern "C" RootGraph * process_root_dag_arrival(scheduler_datastate * sptr, RootGraph * ref_root_graph_ptr, task_criticality_t crit_level, ...);
+extern "C" graph_wrapper_t * process_root_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...);
 
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
-extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, Graph * dfg_ptr, task_criticality_t crit_level, ...);
+extern "C" dag_metadata_entry * _process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, std::list<std::pair<int32_t, void *>> io_list);
+extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...);
 
 extern void request_execution(void * dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);

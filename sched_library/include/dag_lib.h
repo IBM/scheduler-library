@@ -30,10 +30,10 @@
 #include "verbose.h"
 
  //Functions to create static DAGs
-extern "C" RootGraph * create_root_graph(char * graphml_filename);
-extern "C" RootGraph * _create_root_graph(std::string graphml_filename, RootGraph * parent_root_graph = NULL, bool root_graph_call = true);
+extern "C" graph_wrapper_t * create_root_graph(char * graphml_filename);
+extern "C" graph_wrapper_t * _create_root_graph(std::string graphml_filename, graph_wrapper_t * parent_root_graph = NULL, bool parent_graph_call = true);
 
-extern "C" Graph * create_leaf_graph(char * graphml_filename);
-extern "C" Graph * _create_leaf_graph(std::string graphml_filename, bool root_graph_call = true);
+extern "C" graph_wrapper_t * create_leaf_graph(char * graphml_filename);
+extern "C" graph_wrapper_t * _create_leaf_graph(std::string graphml_filename, bool parent_graph_call = true);
 
 #endif
