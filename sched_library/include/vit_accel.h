@@ -25,16 +25,23 @@
 #include"scheduler.h"
 
 #ifdef COMPILE_TO_ESP
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 #include "contig.h"
+#ifdef __cplusplus
+}
+#endif
 #include "mini-era.h"
 
 #define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
 
 extern int vitHW_fd[NUM_VIT_ACCEL];
 extern contig_handle_t vitHW_mem[NUM_VIT_ACCEL];
-extern vitHW_token_t *vitHW_lmem[NUM_VIT_ACCEL];   // Pointer to local view of contig memory
-extern vitHW_token_t *vitHW_li_mem[NUM_VIT_ACCEL]; // Pointer to input memory block
-extern vitHW_token_t *vitHW_lo_mem[NUM_VIT_ACCEL]; // Pointer to output memory block
+extern vitHW_token_t * vitHW_lmem[NUM_VIT_ACCEL];   // Pointer to local view of contig memory
+extern vitHW_token_t * vitHW_li_mem[NUM_VIT_ACCEL]; // Pointer to input memory block
+extern vitHW_token_t * vitHW_lo_mem[NUM_VIT_ACCEL]; // Pointer to output memory block
 extern size_t vitHW_in_len[NUM_VIT_ACCEL];
 extern size_t vitHW_out_len[NUM_VIT_ACCEL];
 extern size_t vitHW_in_size[NUM_VIT_ACCEL];
@@ -44,13 +51,13 @@ extern size_t vitHW_size[NUM_VIT_ACCEL];
 extern struct vitdodec_access vitHW_desc[NUM_VIT_ACCEL];
 #endif
 
-void do_vit_accel_type_initialization(scheduler_datastate* sptr);
+void do_vit_accel_type_initialization(scheduler_datastate * sptr);
 
 #ifdef HW_VIT
 void do_decoding_hw(int * fd, struct vitdodec_access * desc);
 #endif
 
-void do_vit_accel_type_closeout(scheduler_datastate* sptr);
-void output_vit_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types);
+void do_vit_accel_type_closeout(scheduler_datastate * sptr);
+void output_vit_accel_type_run_stats(scheduler_datastate * sptr, unsigned my_accel_id, unsigned total_task_types);
 
 #endif

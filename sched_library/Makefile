@@ -8,7 +8,7 @@ ifdef DO_CROSS_COMPILATION
 endif
 
 ifdef COMPILE_TO_ESP
- ESP_ROOT ?= $(realpath ../../../esp)
+ # ESP_ROOT ?= $(realpath ../../../esp)
  ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 
@@ -30,12 +30,15 @@ CC = g++ -std=c++11
 
 INCDIR ?=
 INCDIR += -I./include
+ifdef DO_CROSS_COMPILATION
+ INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 -g
+CFLAGS ?= -O2
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
@@ -149,6 +152,9 @@ CFLAGS += -g
 endif
 
 LDLIBS ?=
+ifdef DO_CROSS_COMPILATION
+ LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+endif
 ifdef COMPILE_TO_ESP
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
@@ -163,6 +169,9 @@ LDFLAGS ?=
 LDFLAGS += -lm
 LDFLAGS += -lpthread
 #LDFLAGS += -ldl -rdynamic
+ifdef DO_CROSS_COMPILATION
+ LDFLAGS += -lboost_graph -lboost_regex
+endif
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
  LDFLAGS += -lesp
@@ -241,7 +250,7 @@ endif
 .PHONY: esp-build-clean esp-build-distclean esp-libs
 
 obj/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ 
 
 meta_policies/%.so: src/meta_policy_src/%.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -shared -fPIC $< -o $@

@@ -8,7 +8,7 @@ ifdef DO_CROSS_COMPILATION
 endif
 
 ifdef COMPILE_TO_ESP
- ESP_ROOT ?= $(realpath ../../../esp)
+ # ESP_ROOT ?= $(realpath ../../../esp)
  ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 
@@ -29,9 +29,12 @@ HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 CC = g++ -std=c++11
 #CC = gcc -std=c99
 
-SCHED_ROOT = $(realpath ../sched_library)
+SCHED_ROOT = $(SCHED_LIB_DIR)
 INCDIR ?=
 INCDIR += -I./include -I$(SCHED_ROOT)/include
+ifdef DO_CROSS_COMPILATION
+ INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -47,6 +50,8 @@ endif
 #  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
 CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
+
+CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 
 # # This sets the maximum number of any Acceleartor type in this build
 # #  This should be equal to the largest number of any of FFT, VIT, CV, etc.
@@ -70,7 +75,6 @@ endif
 ifdef CONFIG_NUM_CV
 CFLAGS += -DNUM_CV_ACCEL=$(CONFIG_NUM_CV)
 endif
-CFLAGS += -DMAX_RADAR_LOGN=$(LOG2_MAX_FFT_SAMPLES)
 
 SW_STR = S
 FA_STR =
@@ -145,6 +149,9 @@ CFLAGS += -g
 endif
 
 LDLIBS ?=
+ifdef DO_CROSS_COMPILATION
+ LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+endif
 ifdef COMPILE_TO_ESP
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
@@ -159,6 +166,9 @@ LDFLAGS ?=
 LDFLAGS += -lm
 LDFLAGS += -lpthread
 #LDFLAGS += -ldl -rdynamic
+ifdef DO_CROSS_COMPILATION
+ LDFLAGS += -lboost_graph -lboost_regex
+endif
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
  LDFLAGS += -lesp
@@ -223,7 +233,7 @@ endif
 .PHONY: esp-build-clean esp-build-distclean esp-libs
 
 obj/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DBUILD_WITH_N_LANES=5 -c $< -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DBUILD_WITH_N_LANES=5 -c $< -o $@
 
 $(OBJ): $(HDR)
 

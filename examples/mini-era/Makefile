@@ -15,8 +15,8 @@ ifdef COMPILE_TO_ESP
  ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 endif
 
-CC = g++ -std=c++11
-#CC = gcc -std=c99
+CXX = g++ -std=c++11
+CC = gcc -std=c99
 
 HPVM_BIN_PATH = $(HPVM_BUILD_DIR)/bin
 OPT = $(HPVM_BIN_PATH)/opt
@@ -34,7 +34,10 @@ NC='\033[0m'
 
 
 #INCDIR ?=
-INCDIR += -I./include -I../../sched_library/include -I../../task_library/include
+INCDIR += -I./include -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include
+ifdef DO_CROSS_COMPILATION
+ INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -115,7 +118,7 @@ ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
  CFLAGS += -DHW_CV -DENABLE_NVDLA -I/usr/include/python3.6m
-#  CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
+ #CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
   SW_STR =
@@ -176,16 +179,23 @@ SCHED_MODULE = $(SCHED_LIB_DIR)/libscheduler.bc
 TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 
 LDLIBS ?=
+ifdef DO_CROSS_COMPILATION
+ LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+endif
 ifdef COMPILE_TO_ESP
- ESP_BUILD_DRIVERS=../../sched_library/esp-build/drivers
- LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
- LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
- LDLIBS += -L$(ESP_BUILD_DRIVERS)/libesp
+ SCHED_ESP_BUILD_DRIVERS=$(SCHED_LIB_DIR)/esp-build/drivers
+ LDLIBS += -L$(SCHED_ESP_BUILD_DRIVERS)/contig_alloc
+ LDLIBS += -L$(SCHED_ESP_BUILD_DRIVERS)/test
+ LDLIBS += -L$(SCHED_ESP_BUILD_DRIVERS)/libesp
+ TASK_ESP_BUILD_DRIVERS=$(TASK_LIB_DIR)/esp-build/drivers
+ LDLIBS += -L$(TASK_ESP_BUILD_DRIVERS)/contig_alloc
+ LDLIBS += -L$(TASK_ESP_BUILD_DRIVERS)/test
+ LDLIBS += -L$(TASK_ESP_BUILD_DRIVERS)/libesp
 endif
 #ifndef CONFIG_KERAS_CV_BYPASS
 # LDLIBS += 
 #endif
-LDLIBS += -L../../task_library -L../../sched_library
+LDLIBS += -L$(SCHED_LIB_DIR) -L$(TASK_LIB_DIR)
 
 LDFLAGS ?=
 LDFLAGS += -ltasks -lscheduler
@@ -193,6 +203,9 @@ LDFLAGS += -lm
 LDFLAGS += -lpthread
 LDFLAGS += -lboost_graph -lboost_regex
 LDFLAGS += -ldl -rdynamic
+ifdef DO_CROSS_COMPILATION
+ LDFLAGS += -lboost_graph -lboost_regex
+endif
 ifdef COMPILE_TO_ESP
  LDFLAGS += -lrt
  LDFLAGS += -lesp
@@ -248,11 +261,11 @@ hpvm-epochs: HPVM = hpvm
 
 hpvm-cpu: CFLAGS += -DHPVM -DDEVICE=CPU_TARGET
 #hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
-hpvm-cpu: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
+hpvm-cpu: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include, $(CFLAGS))
 hpvm-cpu: BACKEND_LOAD = -load LLVMDFG2LLVM_CPU.so
 hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu 
 hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
-hpvm-cpu: LDLIBS := $(filter-out -L../../task_library -L../../sched_library, $(LDLIBS))
+hpvm-cpu: LDLIBS := $(filter-out -L$(SCHED_LIB_DIR) -L$(TASK_LIB_DIR), $(LDLIBS))
 
 
 hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
@@ -310,27 +323,27 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	cd $(NVDLA_MAKE_DIR) && ln -sf $(CUR_DIR)/user_scripts/miniera.py . && python miniera.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+	cd $(NVDLA_MAKE_DIR) && python miniera.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------
 obj_t/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CXX) $(CFLAGS) -c $< -o $@
 
 obj_s/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
+	$(CROSS_COMPILE)$(CXX) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
 
 
 $(OBJ_T): $(HDR_T)
 
 $(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T) $(NVDLA_MODULE) $(ALLMODULE_OBJS)
-	#$(CROSS_COMPILE)$(CC) -fPIC $< -c -o me_test.o
+	#$(CROSS_COMPILE)$(CXX) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) $(OBJ_T) -o wnvdla_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
-	#$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
+	#$(CROSS_COMPILE)$(CXX) $(LDLIBS) $(OBJ_T) -o $@ $(LDFLAGS)
 
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
-	$(CROSS_COMPILE)$(CC) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o

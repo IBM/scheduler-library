@@ -27,7 +27,14 @@
 #define MAX_RADAR_N     (1<<MAX_RADAR_LOGN) // Max we allow is 16k samples
 
 #ifdef COMPILE_TO_ESP
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 #include "contig.h"
+#ifdef __cplusplus
+}
+#endif
 #include "mini-era.h"
 
 #define DMA_WORD_PER_BEAT(_st)  (sizeof(void *) / _st)
