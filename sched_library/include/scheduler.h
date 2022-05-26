@@ -253,7 +253,7 @@ struct dag_vertex_t {
   dag_status_t dag_status = FREE_DAG; // Used only for leaf DAGs
   task_status_t vertex_status = TASK_FREE;
   int8_t leaf_dag_type = 1; //0 for root node and 1 for leaf node (default)
-  graph_wrapper_t * graph_wrapper_ptr;
+  graph_wrapper_t * graph_wptr;
   task_type_t task_type;
   dag_metadata_entry * dag_mb_ptr = NULL;
   task_metadata_entry * task_mb_ptr = NULL;
@@ -278,6 +278,8 @@ typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
 
 struct graph_wrapper_t {
   int32_t dag_vertex_id;
+  int32_t parent_dag_vertex_id;
+  graph_wrapper_t * parent_graph_wptr;
   bool leafGraph;
   Graph * graph_ptr;
   dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
@@ -298,7 +300,8 @@ public:
   int32_t dag_vertex_id;
   int32_t dag_id;  // Indicates unique DAG ID based on arrival of DAG
 
-  graph_wrapper_t * graph_wrapper_ptr;
+  //Graph wrapper of the leaf DAG
+  graph_wrapper_t * graph_wptr;
   Graph * graph_ptr;
   // boost::adjacency_list<> * graph_ptr;
   task_metadata_entry * task_mb_ptr;
@@ -312,7 +315,7 @@ public:
   uint64_t dag_response_time;
 
   dag_metadata_entry(scheduler_datastate * scheduler_datastate_pointer, int32_t dag_id,
-    graph_wrapper_t * graph_wrapper_ptr, uint64_t dag_deadline_time,
+    graph_wrapper_t * graph_wptr, uint64_t dag_deadline_time,
     task_criticality_t crit_level);
 
 };
@@ -540,11 +543,11 @@ get_auto_finish_routine(scheduler_datastate * sptr,
   task_type_t the_task_type);
 
 // Create DAG and Process arrival
-extern "C" graph_wrapper_t * process_root_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...);
+extern "C" graph_wrapper_t * process_root_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, ...);
 
 // Provide variadic arg as node-id, input_struct_ptr, output_struct_ptr
-extern "C" dag_metadata_entry * _process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, std::list<std::pair<int32_t, void *>> io_list);
-extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...);
+extern "C" dag_metadata_entry * _process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, std::list<std::pair<int32_t, void *>> io_list);
+extern "C" dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, ...);
 
 extern void request_execution(void * dag_ptr);
 // extern int get_task_status(scheduler_datastate* sptr, int task_id);

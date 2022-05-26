@@ -99,15 +99,15 @@ scheduler_get_datastate_in_parms_t sched_state_default_parms = {
 
 //Constructors
 dag_metadata_entry::dag_metadata_entry(scheduler_datastate * scheduler_datastate_pointer,
-  int32_t dag_id, graph_wrapper_t * graph_wrapper_ptr, uint64_t dag_deadline_time_usec,
+  int32_t dag_id, graph_wrapper_t * graph_wptr, uint64_t dag_deadline_time_usec,
   task_criticality_t crit_level) {
 
   gettimeofday(&this->dag_arrival_time, NULL);
   this->scheduler_datastate_pointer = scheduler_datastate_pointer;
-  this->dag_vertex_id = graph_wrapper_ptr->dag_vertex_id;
+  this->dag_vertex_id = graph_wptr->dag_vertex_id;
   this->dag_id = dag_id;
-  this->graph_wrapper_ptr = graph_wrapper_ptr;
-  this->graph_ptr = graph_wrapper_ptr->graph_ptr;
+  this->graph_wptr = graph_wptr;
+  this->graph_ptr = graph_wptr->graph_ptr;
   this->dag_deadline_time_usec = dag_deadline_time_usec;
   this->dag_slack_usec = dag_deadline_time_usec;
   this->crit_level = crit_level;
@@ -405,6 +405,54 @@ void free_task_metadata_block(task_metadata_entry * task_metadata_ptr) {
   pthread_mutex_unlock(&(sptr->free_metadata_mutex));
 }
 
+void cleanup_graph_completion(graph_wrapper_t * graph_wptr) {
+
+  //Get parent wrapper
+  graph_wrapper_t * parent_graph_wptr = graph_wptr->parent_graph_wptr;
+  DEBUG(printf("Parent graph_wptr %p\n", parent_graph_wptr););
+  if (parent_graph_wptr == NULL) {
+    DEBUG(printf("Setting completed for DAG_vertex_id [%d]\n", graph_wptr->dag_vertex_id););
+    graph_wptr->dag_status = COMPLETED_DAG;
+
+  }
+  else {
+
+    //Delete node from parent graph
+    Graph & parent_graph = *(parent_graph_wptr->graph_ptr);
+    bool found_task = false;
+
+    Graph::vertex_iterator vit, vend, vnext;
+    boost::tie(vit, vend) = vertices(parent_graph);
+    for (vnext = vit; vit != vend; vit = vnext) {
+      ++vnext;
+      vertex_t vertex = *vit;
+      if (parent_graph[vertex].dag_vertex_id = graph_wptr->dag_vertex_id) {
+        //Found the completed task
+        DEBUG(
+          printf("DAG_v_id[%u] completed: %u\n", graph_wptr->dag_vertex_id);
+        );
+        boost::clear_vertex(vertex, parent_graph);
+        boost::remove_vertex(vertex, parent_graph);
+
+        DEBUG(
+          print_dag_graph(parent_graph);
+        );
+
+        found_task = true;
+        break;
+      }
+    }
+    if (!found_task) {
+      //TODO: Won't hold true for dropping
+      printf("ERROR: [%u] Graph wrapper inconsistent, did not find DAG_vertex_id[%u] completed task in the DAG\n",
+        parent_graph_wptr->dag_vertex_id, graph_wptr->dag_vertex_id);
+      exit(-43);
+    }
+    if (boost::num_vertices(parent_graph) == 0) {
+      cleanup_graph_completion(parent_graph_wptr);
+    }
+  }
+}
 void update_dag(task_metadata_entry * task_metadata_block) {
 
   scheduler_datastate * sptr = task_metadata_block->scheduler_datastate_pointer;
@@ -452,9 +500,16 @@ void update_dag(task_metadata_entry * task_metadata_block) {
       }
 
       if (boost::num_vertices(graph) == 0) {
-        DEBUG(printf("DAG[%u] completed\n", dag->dag_id););
-        dag->dag_status = COMPLETED_DAG;
+        DEBUG(printf("DAG[%u], DAG_V_ID[%d] completed, entering cleanup function\n", dag->dag_id,
+          graph_wptr->dag_vertex_id););
+
         //Can cleanup the graph -> No longer required
+        //Update graph ptr
+        //Get graph wrapper
+        graph_wrapper_t * graph_wptr = dag->graph_wptr;
+
+        cleanup_graph_completion(graph_wptr);
+        dag->dag_status = COMPLETED_DAG;
         delete dag->graph_ptr;
         sptr->completed_dags.push_back(dag);
         sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
@@ -2170,19 +2225,20 @@ void append_sdr(Graph & graph) {
   }
 }
 
-graph_wrapper_t * get_ready_leaf_dag_vertex(graph_wrapper_t * graph_wrapper_ptr) {
-  Graph & graph = *(graph_wrapper_ptr->graph_ptr);
+//TODO get -2 only when no more tasks left
+graph_wrapper_t * get_ready_leaf_dag_vertex(graph_wrapper_t * graph_wptr) {
+  Graph & graph = *(graph_wptr->graph_ptr);
   Graph::vertex_iterator v, vend;
-
+  graph_wrapper_t * return_graph_wrapper = NULL;
   for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
     if (boost::in_degree(*v, graph) == 0) {
       //Found a ready leaf DAG
       if (graph[*v].leaf_dag_type == 1) {
         if (graph[*v].dag_status == FREE_DAG)
-          return graph[*v].graph_wrapper_ptr;
+          return graph[*v].graph_wptr;
       }
       else { //Found a ready root DAG
-        graph_wrapper_t * return_graph_wrapper = get_ready_leaf_dag_vertex(graph[*v].graph_wrapper_ptr);
+        return_graph_wrapper = get_ready_leaf_dag_vertex(graph[*v].graph_wptr);
         if (return_graph_wrapper == NULL) {
           continue;
         }
@@ -2190,38 +2246,98 @@ graph_wrapper_t * get_ready_leaf_dag_vertex(graph_wrapper_t * graph_wrapper_ptr)
       }
     }
   }
-  if (boost::num_vertices(graph) == 0) {
-    print_dag_graph(*(graph_wrapper_ptr->graph_ptr));
-    printf("DAG is empty\n");
-  }
-  return NULL;
+  return return_graph_wrapper;
+}
 
+void request_root_graph_execution(scheduler_datastate * sptr, graph_wrapper_t * graph_wptr, std::map<int32_t, void *> & io_map, task_criticality_t crit_level) {
+  // Get all ready nodes
+  while (1) {
+    //For each ready node
+    graph_wrapper_t * ready_graph_wptr = NULL;
+    ready_graph_wptr = get_ready_leaf_dag_vertex(graph_wptr);
+    if (ready_graph_wptr == NULL) { // No more ready vertex_graphs or all tasks completed
+      Graph & graph = *(graph_wptr->graph_ptr);
+      if (boost::num_vertices(graph) == 0) {
+        graph_wptr->dag_status = COMPLETED_DAG;
+        print_dag_graph(*(graph_wptr->graph_ptr));
+        printf("DAG is empty\n");
+        break;
+      }
+      else {
+        DEBUG(printf("DAG[%p] No more ready vertices\n", graph_wptr););
+        graph_wptr->dag_status = ACTIVE_NOTREADY_DAG;
+        usleep(sptr->inparms ->scheduler_holdoff_usec);
+        continue;
+      }
+    }
+
+    // Get vertex ids of tasks that belong to the ready DAG to pass io ptrs
+    std::list<std::pair<int32_t, void *>> io_list;
+    for (auto & task_vertex_id : graph_wptr->task_id_map[ready_graph_wptr->dag_vertex_id]) {
+      io_list.push_back(std::make_pair(task_vertex_id, io_map[task_vertex_id]));
+
+    }
+    dag_metadata_entry * leaf_dag_ptr = _process_leaf_dag_arrival(sptr, ready_graph_wptr, crit_level, io_list);
+  }
+}
+
+void copy_graph_wptr(graph_wrapper_t * ref_graph_wptr, graph_wrapper_t * new_graph_wptr, bool root_parent_graph_call) {
+  Graph * graph_ptr = new(Graph);
+  Graph & graph = *graph_ptr;
+
+  new_graph_wptr->graph_ptr = graph_ptr;
+  DEBUG(printf("WRef: %p Ref: %p WNew: %p New: %p\n", ref_graph_wptr, ref_graph_wptr->graph_ptr, new_graph_wptr, new_graph_wptr->graph_ptr););
+  //Copy values from ref_graph_wptr
+  new_graph_wptr->dag_vertex_id = ref_graph_wptr->dag_vertex_id;
+  new_graph_wptr->parent_dag_vertex_id = ref_graph_wptr->parent_dag_vertex_id;
+  if (ref_graph_wptr->parent_graph_call) {
+    new_graph_wptr->parent_graph_wptr = ref_graph_wptr->parent_graph_wptr;
+  }
+  new_graph_wptr->leafGraph = ref_graph_wptr->leafGraph;
+  new_graph_wptr->dag_status = ref_graph_wptr->dag_status;
+  new_graph_wptr->num_task_vertices = ref_graph_wptr->num_task_vertices;
+  new_graph_wptr->parent_graph_call = ref_graph_wptr->parent_graph_call;
+  new_graph_wptr->task_id_map = ref_graph_wptr->task_id_map;
+
+  boost::copy_graph(*(ref_graph_wptr->graph_ptr), *(new_graph_wptr->graph_ptr));
+
+  //Copy the DAG id map and create copy of all graphs
+  if (root_parent_graph_call) {
+    std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>> ref_dag_id_map = ref_graph_wptr->dag_id_map;
+    std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>> new_dag_id_map = new_graph_wptr->dag_id_map;
+
+    for (std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>>::iterator iter = ref_dag_id_map.begin(); iter != ref_dag_id_map.end(); ++iter) {
+      int32_t dag_vertex_id = iter->first;
+
+      std::pair<int8_t, graph_wrapper_t *> pair_val = iter->second;
+      int8_t leaf_dag_type = pair_val.first;
+      graph_wrapper_t * temp_ref_graph_wptr = pair_val.second;
+      graph_wrapper_t * temp_new_graph_wptr = new(graph_wrapper_t);
+      copy_graph_wptr(temp_ref_graph_wptr, temp_new_graph_wptr, false);
+      new_dag_id_map[dag_vertex_id] = std::make_pair(leaf_dag_type, temp_new_graph_wptr);
+
+    }
+    for (std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>>::iterator iter = ref_dag_id_map.begin(); iter != ref_dag_id_map.end(); ++iter) {
+      int32_t dag_vertex_id = iter->first;
+
+      std::pair<int8_t, graph_wrapper_t *> pair_val = iter->second;
+      int8_t leaf_dag_type = pair_val.first;
+      graph_wrapper_t * graph_wptr = pair_val.second;
+
+      graph_wptr->parent_graph_wptr = (new_dag_id_map[graph_wptr->parent_dag_vertex_id]).second;
+    }
+  }
 }
 
 extern "C" {
-  graph_wrapper_t * process_root_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...) {
+  graph_wrapper_t * process_root_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, ...) {
     DEBUG(printf("Entering process dag arrival\n"));
     // Create new graph
     // Deleted when all tasks in the Graph have completed execution (in update_dag)
-    graph_wrapper_t * graph_wrapper_ptr = new(graph_wrapper_t);
-    Graph * graph_ptr = new(Graph);
-    Graph & graph = *graph_ptr;
+    graph_wrapper_t * graph_wptr = new(graph_wrapper_t);
+    copy_graph_wptr(ref_graph_wptr, graph_wptr, true);
 
-    graph_wrapper_ptr->graph_ptr = graph_ptr;
-
-    // Copy static DFG into a new graph
-    boost::copy_graph(*(ref_graph_wrapper_ptr->graph_ptr), *graph_ptr);
-
-    //Copy values from ref_graph_wrapper_ptr
-    graph_wrapper_ptr->dag_vertex_id = ref_graph_wrapper_ptr->dag_vertex_id;
-    graph_wrapper_ptr->leafGraph = ref_graph_wrapper_ptr->leafGraph;
-    graph_wrapper_ptr->dag_status = ref_graph_wrapper_ptr->dag_status;
-    graph_wrapper_ptr->num_task_vertices = ref_graph_wrapper_ptr->num_task_vertices;
-    graph_wrapper_ptr->parent_graph_call = ref_graph_wrapper_ptr->parent_graph_call;
-
-    //get the maps from Parent Root Graph
-    std::map<int32_t, std::pair<int8_t, graph_wrapper_t *>> dag_id_map = ref_graph_wrapper_ptr->dag_id_map;
-    std::map<int32_t, std::list<int32_t>> task_id_map = ref_graph_wrapper_ptr->task_id_map;
+    Graph & graph = *(graph_wptr->graph_ptr);
 
     //Create a map of the io ptrs for parent_graph_call
     std::map<int32_t, void *> io_map;
@@ -2229,7 +2345,8 @@ extern "C" {
     va_list var_list;
     va_start(var_list, crit_level);
 
-    for (int32_t i = 0; i < ref_graph_wrapper_ptr->num_task_vertices; i++) {
+    //Create io_map task_vertex_id -> task_io_ptr
+    for (int32_t i = 0; i < ref_graph_wptr->num_task_vertices; i++) {
       int32_t task_vertex_id = va_arg(var_list, int32_t);
       void * task_io_ptr = va_arg(var_list, void *);
 
@@ -2238,53 +2355,18 @@ extern "C" {
 
     va_end(var_list);
 
-    //Get all ready nodes
-    while (1) {
-      //For each ready node
-      graph_wrapper_t * ready_graph_wrapper_ptr = NULL;
-      ready_graph_wrapper_ptr = get_ready_leaf_dag_vertex(graph_wrapper_ptr);
-      if (ready_graph_wrapper_ptr == NULL) { // No more ready vertex_graphs
-        DEBUG(printf("DAG[%p] No more ready vertices\n", graph_wrapper_ptr););
-        graph_wrapper_ptr->dag_status = ACTIVE_NOTREADY_DAG;
-        usleep(sptr->inparms ->scheduler_holdoff_usec);
-        continue;
-      }
-      std::list<std::pair<int32_t, void *>> io_list;
-      for (auto & task_vertex_id : task_id_map[ready_graph_wrapper_ptr->dag_vertex_id]) {
-        io_list.push_back(std::make_pair(task_vertex_id, io_map[task_vertex_id]));
+    request_root_graph_execution(sptr, graph_wptr, io_map, crit_level);
 
-      }
-      dag_metadata_entry * leaf_dag_ptr = _process_leaf_dag_arrival(sptr, ready_graph_wrapper_ptr, crit_level, io_list);
-
-
-
-
-      //     if (boost::num_vertices(graph) == 0) {
-      //       DEBUG(printf("DAG[%p] completed\n", graph_wrapper_ptr););
-      //       graph_wrapper_ptr->dag_status = COMPLETED_DAG;
-      //       //Can cleanup the graph -> No longer required
-      //       delete graph_wrapper_ptr->graph_ptr;
-      //       sptr->completed_dags.push_back(dag);
-      //       sptr->active_dags.erase(it++);  // alternatively, i = sptr->active_dags.erase(i);
-      //     }
-      //     else {
-      //       dag->dag_status = ACTIVE_QUEUED_DAG;
-      //     }
-
-
-      //     //When a node in the root_dag completes
-
-      //     //Get task vertex id of ready nodes
-      //   }
-
-      // }
-      return NULL;
+    //TODO: Move this to a function call wait_on_root_daglist non-blocking
+    while (graph_wptr->dag_status != COMPLETED_DAG) {
+      usleep(sptr->inparms ->scheduler_holdoff_usec);
     }
+    return graph_wptr;
   }
 }
 //TODO: Use Template Variadic args instead
 extern "C" {
-  dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, ...) {
+  dag_metadata_entry * process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, ...) {
     DEBUG(printf("Entering wrapper for process leaf dag arrival\n"));
 
     std::list<std::pair<int32_t, void *>> io_list;
@@ -2293,7 +2375,7 @@ extern "C" {
     va_list var_list;
     va_start(var_list, crit_level);
 
-    for (size_t i = 0; i < boost::num_vertices(*(ref_graph_wrapper_ptr->graph_ptr)); i++) {
+    for (size_t i = 0; i < boost::num_vertices(*(ref_graph_wptr->graph_ptr)); i++) {
 
       int32_t task_vertex_id = va_arg(var_list, int32_t);
       void * io_ptr = va_arg(var_list, void *);
@@ -2301,34 +2383,28 @@ extern "C" {
     }
     va_end(var_list);
 
-    return(_process_leaf_dag_arrival(sptr, ref_graph_wrapper_ptr, crit_level, io_list));
+    return(_process_leaf_dag_arrival(sptr, ref_graph_wptr, crit_level, io_list));
   }
 
-  dag_metadata_entry * _process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wrapper_ptr, task_criticality_t crit_level, std::list<std::pair<int32_t, void *>> io_list) {
+  dag_metadata_entry * _process_leaf_dag_arrival(scheduler_datastate * sptr, graph_wrapper_t * ref_graph_wptr, task_criticality_t crit_level, std::list<std::pair<int32_t, void *>> io_list) {
     DEBUG(printf("Entering process leaf dag arrival\n"));
     // Create new graph
     // Deleted when all tasks in the Graph have completed execution (in update_dag)
-    graph_wrapper_t * graph_wrapper_ptr = new(graph_wrapper_t);
-    Graph * graph_ptr = new(Graph);
-    Graph & graph = *graph_ptr;
+    graph_wrapper_t * graph_wptr = new(graph_wrapper_t);
+    DEBUG(printf("Copy ref_graph_ptr to new graph_ptr\n"););
+    copy_graph_wptr(ref_graph_wptr, graph_wptr, false);
 
-    graph_wrapper_ptr->graph_ptr = graph_ptr;
+    DEBUG(printf("Copied ref_graph_ptr to new graph_ptr\n"););
+    DEBUG(printf("WRef: %p WNew: %p \n", ref_graph_wptr, graph_wptr););
+    DEBUG(printf("WRef: %p Ref: %p WNew: %p New: %p\n", ref_graph_wptr, ref_graph_wptr->graph_ptr, graph_wptr, graph_wptr->graph_ptr););
+    Graph & graph = *(graph_wptr->graph_ptr);
 
-    // Copy static DFG into a new graph
-    boost::copy_graph(*(ref_graph_wrapper_ptr->graph_ptr), *graph_ptr);
-
-    //Copy values from ref_graph_wrapper_ptr
-    graph_wrapper_ptr->dag_vertex_id = ref_graph_wrapper_ptr->dag_vertex_id;
-    graph_wrapper_ptr->leafGraph = ref_graph_wrapper_ptr->leafGraph;
-    graph_wrapper_ptr->dag_status = ref_graph_wrapper_ptr->dag_status;
-    graph_wrapper_ptr->num_task_vertices = ref_graph_wrapper_ptr->num_task_vertices;
-    graph_wrapper_ptr->parent_graph_call = ref_graph_wrapper_ptr->parent_graph_call;
 
     sptr->next_avail_DAG_id++;
     //Create DAG object and set graph_ptr
     //Deleted during cleanup state
     DEBUG(printf("Creating DAG object\n"));
-    dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_wrapper_ptr, 10000000, crit_level);
+    dag_metadata_entry * dag_ptr = new dag_metadata_entry(sptr, sptr->next_avail_DAG_id, graph_wptr, 10000000, crit_level);
 
     //Set Input and Output ptr of graph
     Graph::vertex_iterator v, vend;

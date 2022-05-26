@@ -67,7 +67,7 @@ extern "C" {
 #include "calc_fmcw_dist.h"
 
 #ifdef HW_FFT
-unsigned int fft_rev(unsigned int v) {
+unsigned int fft2_rev(unsigned int v) {
   unsigned int r = v;
   int s = sizeof(v) * CHAR_BIT - 1;
 
@@ -80,7 +80,7 @@ unsigned int fft_rev(unsigned int v) {
   return r;
 }
 
-void fft_bit_reverse(float * w, unsigned int n, unsigned int bits) {
+void fft2_bit_reverse(float * w, unsigned int n, unsigned int bits) {
   unsigned int i, s, shift;
 
   s = sizeof(i) * CHAR_BIT - 1;
@@ -90,7 +90,7 @@ void fft_bit_reverse(float * w, unsigned int n, unsigned int bits) {
     unsigned int r;
     float t_real, t_imag;
 
-    r = fft_rev(i);
+    r = fft2_rev(i);
     r >>= shift;
 
     if (i < r) {

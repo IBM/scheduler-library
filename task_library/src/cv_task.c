@@ -31,7 +31,7 @@
 #include <unistd.h>
 
 #include "viterbi_types.h"
-//#define VERBOSE
+ //#define VERBOSE
 #include "verbose.h"
 
 #include "cv_task.h"
@@ -47,18 +47,18 @@
 #include <pythonrun.h>
 #endif
 #ifndef BYPASS_KERAS_CV_CODE
-PyObject *pName, *pModule, *pFunc, *pFunc_load;
-PyObject *pArgs, *pValue, *pretValue;
+PyObject * pName, * pModule, * pFunc, * pFunc_load;
+PyObject * pArgs, * pValue, * pretValue;
 #define PY_SSIZE_T_CLEAN
 
-char *python_module = "mio";
-char *python_func = "predict";
-char *python_func_load = "loadmodel";
+char * python_module = "mio";
+char * python_func = "predict";
+char * python_func_load = "loadmodel";
 #endif
 
 #ifdef ENABLE_NVDLA
 extern void initNVDLA();
-extern void runImageonNVDLAWrapper(char *Image);
+extern void runImageonNVDLAWrapper(char * Image);
 #endif
 
 #ifdef COMPILE_TO_ESP
@@ -77,115 +77,116 @@ std::map<size_t, uint64_t[SCHED_MAX_ACCEL_TYPES]> cv_profile;
 unsigned image_index = 0;
 
 extern "C" {
-void print_cv_metadata_block_contents(/*task_metadata_entry*/ void *mb_ptr) {
-  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
-  print_base_metadata_block_contents(mb);
-}
+  void print_cv_metadata_block_contents(/*task_metadata_entry*/ void * mb_ptr) {
+    task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
+    print_base_metadata_block_contents(mb);
+  }
 }
 
 extern "C" {
-void output_cv_task_type_run_stats(/*scheduler_datastate*/ void *sptr_ptr, unsigned my_task_type,
+  void output_cv_task_type_run_stats(/*scheduler_datastate*/ void * sptr_ptr, unsigned my_task_type,
     unsigned total_accel_types) {
-  scheduler_datastate *sptr = (scheduler_datastate *)sptr_ptr;
+    scheduler_datastate * sptr = (scheduler_datastate *) sptr_ptr;
 
-  printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
-         my_task_type, sptr->task_name_str[my_task_type],
-         sptr->freed_metadata_blocks[my_task_type], total_accel_types);
-  // The CV/CNN Task Timing Info
-  unsigned total_cv_comp_by[total_accel_types + 1];
-  uint64_t total_cv_call_usec[total_accel_types + 1];
-  uint64_t total_nvdla_usec[total_accel_types + 1];
-  uint64_t total_parse_usec[total_accel_types + 1];
-  for (int ai = 0; ai <= total_accel_types; ai++) {
-    total_cv_comp_by[ai] = 0;
-    total_cv_call_usec[ai] = 0;
-    total_nvdla_usec[ai] = 0;
-    total_parse_usec[ai] = 0;
-  }
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-      printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type,
-             sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
+    printf("\n  Per-MetaData-Block %u %s Timing Data: %u finished tasks over %u accelerators\n",
+      my_task_type, sptr->task_name_str[my_task_type],
+      sptr->freed_metadata_blocks[my_task_type], total_accel_types);
+    // The CV/CNN Task Timing Info
+    unsigned total_cv_comp_by[total_accel_types + 1];
+    uint64_t total_cv_call_usec[total_accel_types + 1];
+    uint64_t total_nvdla_usec[total_accel_types + 1];
+    uint64_t total_parse_usec[total_accel_types + 1];
+    for (int ai = 0; ai <= total_accel_types; ai++) {
+      total_cv_comp_by[ai] = 0;
+      total_cv_call_usec[ai] = 0;
+      total_nvdla_usec[ai] = 0;
+      total_parse_usec[ai] = 0;
     }
-    for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
-      cv_timing_data_t *cv_timings_p = (cv_timing_data_t *) &
-                                       (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
-      unsigned this_comp_by = (unsigned)(
-                                sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
-      uint64_t this_cv_call_usec = (uint64_t)(cv_timings_p->call_sec[ai]) * 1000000 + (uint64_t)(
-                                     cv_timings_p->call_usec[ai]);
-      uint64_t this_nvdla_usec = (uint64_t)(cv_timings_p->nvdla_sec[ai]) * 1000000 + (uint64_t)(
-                                   cv_timings_p->nvdla_usec[ai]);
-      uint64_t this_parse_usec = (uint64_t)(cv_timings_p->parse_sec[ai]) * 1000000 + (uint64_t)(
-                                   cv_timings_p->parse_usec[ai]);
+    for (int ai = 0; ai < total_accel_types; ai++) {
       if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
-        printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai,
-               sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec,
-               this_parse_usec);
-      } else {
-        if ((this_comp_by + this_cv_call_usec + this_parse_usec) != 0) {
-          printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai,
-                 sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec,
-                 this_parse_usec);
-        }
+        printf("\n  Per-MetaData-Block-Timing for Task  %u %s on Accelerator %u %s\n", my_task_type,
+          sptr->task_name_str[my_task_type], ai, sptr->accel_name_str[ai]);
       }
-      // Per acceleration (CPU, HWR)
-      total_cv_comp_by[ai] += this_comp_by;
-      total_cv_call_usec[ai] += this_cv_call_usec;
-      total_nvdla_usec[ai] += this_nvdla_usec;
-      total_parse_usec[ai] += this_parse_usec;
-      // Overall Total
-      total_cv_comp_by[total_accel_types] += this_comp_by;
-      total_cv_call_usec[total_accel_types] += this_cv_call_usec;
-      total_nvdla_usec[total_accel_types] += this_nvdla_usec;
-      total_parse_usec[total_accel_types] += this_parse_usec;
-    } // for (bi = 1 .. numMetatdataBlocks)
-  }   // for (ai = 0 .. total_accel_types)
+      for (int bi = 0; bi < sptr->total_metadata_pool_blocks; bi++) {
+        cv_timing_data_t * cv_timings_p = (cv_timing_data_t *) &
+          (sptr->master_metadata_pool[bi].task_timings[my_task_type]);
+        unsigned this_comp_by = (unsigned) (
+          sptr->master_metadata_pool[bi].task_computed_on[ai][my_task_type]);
+        uint64_t this_cv_call_usec = (uint64_t) (cv_timings_p->call_sec[ai]) * 1000000 + (uint64_t) (
+          cv_timings_p->call_usec[ai]);
+        uint64_t this_nvdla_usec = (uint64_t) (cv_timings_p->nvdla_sec[ai]) * 1000000 + (uint64_t) (
+          cv_timings_p->nvdla_usec[ai]);
+        uint64_t this_parse_usec = (uint64_t) (cv_timings_p->parse_sec[ai]) * 1000000 + (uint64_t) (
+          cv_timings_p->parse_usec[ai]);
+        if (sptr->scheduler_execute_task_function[ai][my_task_type] != NULL) {
+          printf("    Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai,
+            sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec,
+            this_parse_usec);
+        }
+        else {
+          if ((this_comp_by + this_cv_call_usec + this_parse_usec) != 0) {
+            printf("  ERROR: Block %3u : %u %s : CmpBy %8u call-time %15lu parse %15lu usec\n", bi, ai,
+              sptr->accel_name_str[ai], this_comp_by, this_cv_call_usec,
+              this_parse_usec);
+          }
+        }
+        // Per acceleration (CPU, HWR)
+        total_cv_comp_by[ai] += this_comp_by;
+        total_cv_call_usec[ai] += this_cv_call_usec;
+        total_nvdla_usec[ai] += this_nvdla_usec;
+        total_parse_usec[ai] += this_parse_usec;
+        // Overall Total
+        total_cv_comp_by[total_accel_types] += this_comp_by;
+        total_cv_call_usec[total_accel_types] += this_cv_call_usec;
+        total_nvdla_usec[total_accel_types] += this_nvdla_usec;
+        total_parse_usec[total_accel_types] += this_parse_usec;
+      } // for (bi = 1 .. numMetatdataBlocks)
+    }   // for (ai = 0 .. total_accel_types)
 
-  printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
-         sptr->task_name_str[my_task_type]);
-  printf("     CNN-call  run time\n                          ");
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_cv_call_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_cv_comp_by[ai], total_cv_call_usec[ai], avg);
-  }
-  {
-    double avg = (double)total_cv_call_usec[total_accel_types] / (double)
-                 sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_cv_comp_by[total_accel_types], total_cv_call_usec[total_accel_types], avg);
-  }
+    printf("\nAggregate TID %u %s Tasks Total Timing Data:\n", my_task_type,
+      sptr->task_name_str[my_task_type]);
+    printf("     CNN-call  run time\n                          ");
+    for (int ai = 0; ai < total_accel_types; ai++) {
+      double avg = (double) total_cv_call_usec[ai] / (double) sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
+        sptr->accel_name_str[ai], total_cv_comp_by[ai], total_cv_call_usec[ai], avg);
+    }
+    {
+      double avg = (double) total_cv_call_usec[total_accel_types] / (double)
+        sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
+        total_cv_comp_by[total_accel_types], total_cv_call_usec[total_accel_types], avg);
+    }
 
-  printf("     CNN-NVDLA run time\n                          ");
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_nvdla_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_cv_comp_by[ai], total_nvdla_usec[ai], avg);
-  }
-  {
-    double avg = (double)total_nvdla_usec[total_accel_types] / (double)
-                 sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_cv_comp_by[total_accel_types], total_nvdla_usec[total_accel_types], avg);
-  }
+    printf("     CNN-NVDLA run time\n                          ");
+    for (int ai = 0; ai < total_accel_types; ai++) {
+      double avg = (double) total_nvdla_usec[ai] / (double) sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
+        sptr->accel_name_str[ai], total_cv_comp_by[ai], total_nvdla_usec[ai], avg);
+    }
+    {
+      double avg = (double) total_nvdla_usec[total_accel_types] / (double)
+        sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
+        total_cv_comp_by[total_accel_types], total_nvdla_usec[total_accel_types], avg);
+    }
 
-  printf("     get_label (parse) run time\n                  ");
-  for (int ai = 0; ai < total_accel_types; ai++) {
-    double avg = (double)total_parse_usec[ai] / (double)sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
-           sptr->accel_name_str[ai], total_cv_comp_by[ai], total_parse_usec[ai], avg);
-  }
-  {
-    double avg = (double)total_parse_usec[total_accel_types] / (double)
-                 sptr->freed_metadata_blocks[my_task_type];
-    printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
-           total_cv_comp_by[total_accel_types], total_parse_usec[total_accel_types], avg);
-  }
-}}
+    printf("     get_label (parse) run time\n                  ");
+    for (int ai = 0; ai < total_accel_types; ai++) {
+      double avg = (double) total_parse_usec[ai] / (double) sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n                          ", ai,
+        sptr->accel_name_str[ai], total_cv_comp_by[ai], total_parse_usec[ai], avg);
+    }
+    {
+      double avg = (double) total_parse_usec[total_accel_types] / (double)
+        sptr->freed_metadata_blocks[my_task_type];
+      printf("%u %20s %8u %15lu usec %16.3lf avg\n", total_accel_types, "TOTAL",
+        total_cv_comp_by[total_accel_types], total_parse_usec[total_accel_types], avg);
+    }
+  }}
 
 static inline label_t parse_output_dimg() {
-  FILE *file_p = fopen("./output.dimg", "r");
+  FILE * file_p = fopen("./output.dimg", "r");
   const size_t n_classes = 5;
   float probs[n_classes];
   for (size_t i = 0; i < n_classes; i++) {
@@ -201,63 +202,63 @@ static inline label_t parse_output_dimg() {
     }
   }
   fclose(file_p);
-  return (label_t)max_idx;
+  return (label_t) max_idx;
 }
 
 extern "C" {
   void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void * cv_io_ptr) {
     cv_io_t * cv_data_p = (cv_io_t *) (cv_io_ptr);
 #ifdef HW_CV
-  //printf("  We have HW_CV defined...\n");
+    //printf("  We have HW_CV defined...\n");
 #ifdef ENABLE_NVDLA
   //printf("  We have ENABLE_NVDLA defined...\n");
   // Add the call to the NVDLA stuff here.
-  label_t tr_label = cv_data_p->object_label;
-  char image_name[32];
-  switch (tr_label) {
-  case no_label:
-    sprintf(image_name, "cnn_data/empty_%02u.jpg", (image_index & 0x1f));
-    break;
-  case bicycle:
-    sprintf(image_name, "cnn_data/bike_%02u.jpg", (image_index & 0x1f));
-    break;
-  case car:
-    sprintf(image_name, "cnn_data/car_%02u.jpg", (image_index & 0x1f));
-    break;
-  case pedestrian:
-    sprintf(image_name, "cnn_data/person_%02u.jpg", (image_index & 0x1f));
-    break;
-  case truck:
-    sprintf(image_name, "cnn_data/truck_%02u.jpg", (image_index & 0x1f));
-    break;
-  default:
-    printf("ERROR : unknown input object type %u\n", tr_label);
-  }
-  DEBUG(printf("Calling NVDLA for idx %u image %s\n", image_index, image_name));
-  runImageonNVDLAWrapper(image_name);
-  DEBUG(printf("   DONE with NVDLA call...\n"));
-  image_index++;
-  DEBUG(printf("Setting pred_label from parse_output_dimg call...\n"));
-  label_t pred_label = parse_output_dimg();
-  TDEBUG(printf("---> Predicted label = %d\n", pred_label));
-  // Set result into the metatdata block
-  //task_metadata_block->data_view.cv_data.object_label = pred_label;
-  cv_data_p->object_label = pred_label;
+    label_t tr_label = cv_data_p->in_label;
+    char image_name[32];
+    switch (tr_label) {
+    case no_label:
+      sprintf(image_name, "cnn_data/empty_%02u.jpg", (image_index & 0x1f));
+      break;
+    case bicycle:
+      sprintf(image_name, "cnn_data/bike_%02u.jpg", (image_index & 0x1f));
+      break;
+    case car:
+      sprintf(image_name, "cnn_data/car_%02u.jpg", (image_index & 0x1f));
+      break;
+    case pedestrian:
+      sprintf(image_name, "cnn_data/person_%02u.jpg", (image_index & 0x1f));
+      break;
+    case truck:
+      sprintf(image_name, "cnn_data/truck_%02u.jpg", (image_index & 0x1f));
+      break;
+    default:
+      printf("ERROR : unknown input object type %u\n", tr_label);
+    }
+    DEBUG(printf("Calling NVDLA for idx %u image %s\n", image_index, image_name));
+    runImageonNVDLAWrapper(image_name);
+    DEBUG(printf("   DONE with NVDLA call...\n"));
+    image_index++;
+    DEBUG(printf("Setting pred_label from parse_output_dimg call...\n"));
+    label_t pred_label = parse_output_dimg();
+    TDEBUG(printf("---> Predicted label = %d\n", pred_label));
+    // Set result into the metatdata block
+    //task_metadata_block->data_view.cv_data.object_label = pred_label;
+    *(cv_data_p->obj_label) = pred_label;
 #endif // ifdef ENABLE_NVDLA
 
 #else // Of #ifdef HW_CV
 #ifdef FAKE_HW_CV
-  // This usleep call stands in as the "Fake" CNN accelerator
-  usleep(cv_fake_hwr_run_time_in_usec);
-  // cv_data_p->object_label = run_object_classification(tr_val);
+    // This usleep call stands in as the "Fake" CNN accelerator
+    usleep(cv_fake_hwr_run_time_in_usec);
+    // cv_data_p->object_label = run_object_classification(tr_val);
 
 #endif // #fdef FAKE_HE_CV
 #endif // else of #ifdef HW_CV
-}}
+  }}
 
 label_t run_object_classification(unsigned tr_val) {
   DEBUG(printf("Entered run_object_classification... tr_val = %u\n", tr_val));
-  label_t object = (label_t)tr_val;
+  label_t object = (label_t) tr_val;
 #ifndef BYPASS_KERAS_CV_CODE
   if (pModule != NULL) {
     DEBUG(printf("  Starting call to pModule...\n"));
@@ -271,7 +272,7 @@ label_t run_object_classification(unsigned tr_val) {
         Py_DECREF(pFunc);
         Py_DECREF(pModule);
         fprintf(stderr, "Trying to run CNN kernel: Cannot convert C argument "
-                "into python\n");
+          "into python\n");
         return (label_t) 1;
       }
       PyTuple_SetItem(pArgs, 0, pValue);
@@ -279,20 +280,22 @@ label_t run_object_classification(unsigned tr_val) {
       Py_DECREF(pArgs);
       if (pretValue != NULL) {
         DEBUG(printf("Predicted label from Python program: %ld\n",
-                     PyLong_AsLong(pretValue)));
+          PyLong_AsLong(pretValue)));
         int val = PyLong_AsLong(pretValue);
-        object = (label_t)val;
+        object = (label_t) val;
         DEBUG(printf("run_object_classification returning %u = %u\n", val,
-                     object));
+          object));
         Py_DECREF(pretValue);
-      } else {
+      }
+      else {
         Py_DECREF(pFunc);
         Py_DECREF(pModule);
         PyErr_Print();
         printf("Trying to run CNN kernel : Python function call failed\n");
         return (label_t) 1;
       }
-    } else {
+    }
+    else {
       if (PyErr_Occurred())
         PyErr_Print();
       printf("Cannot find python function");
@@ -311,7 +314,7 @@ extern "C" {
     label_t tr_val = cv_data_p->in_label;
 
     *(cv_data_p->obj_label) = run_object_classification((unsigned) tr_val);
-}
+  }
 }
 
 // void execute_cpu_cv_accelerator( /*task_metadata_entry*/ void *task_metadata_block_ptr) {
@@ -385,17 +388,17 @@ void set_up_cv_task_on_accel_profile_data() {
 // are not used...
 //
 extern "C" {
-void cv_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
-  task_metadata_entry *mb = (task_metadata_entry *)mb_ptr;
-  TDEBUG(scheduler_datastate *sptr = mb->scheduler_datastate_pointer;
-         printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
-                mb->block_id, sptr->task_name_str[mb->task_type],
-                sptr->task_criticality_str[mb->crit_level],
-                sptr->accel_name_str[mb->accelerator_type],
-                mb->accelerator_id));
-  DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
-  free_task_metadata_block(mb);
-}}
+  void cv_auto_finish_routine(/*task_metadata_entry*/ void * mb_ptr) {
+    task_metadata_entry * mb = (task_metadata_entry *) mb_ptr;
+    TDEBUG(scheduler_datastate * sptr = mb->scheduler_datastate_pointer;
+    printf("Releasing Metadata Block %u : Task %s %s from Accel %s %u\n",
+      mb->block_id, sptr->task_name_str[mb->task_type],
+      sptr->task_criticality_str[mb->crit_level],
+      sptr->accel_name_str[mb->accelerator_type],
+      mb->accelerator_id));
+    DEBUG(printf("  MB%u auto Calling free_task_metadata_block\n", mb->block_id));
+    free_task_metadata_block(mb);
+  }}
 
 // NOTE: This routine DOES NOT copy out the data results -- a call to
 //   calculate_peak_distance_from_fmcw now results in alteration ONLY
@@ -403,25 +406,25 @@ void cv_auto_finish_routine(/*task_metadata_entry*/ void *mb_ptr) {
 //   over-write the original input data with the CV results (As we used to)
 //   but this seems un-necessary since we only want the final "distance" really.
 extern "C" {
-void finish_cv_execution(/*task_metadata_entry*/ void *cv_metadata_block_ptr,  void *args) {
-  task_metadata_entry *cv_metadata_block = (task_metadata_entry *)cv_metadata_block_ptr;
-  // label_t *obj_label)
-  label_t * obj_label = ((cv_io_t *) args)->obj_label;
+  void finish_cv_execution(/*task_metadata_entry*/ void * cv_metadata_block_ptr, void * args) {
+    task_metadata_entry * cv_metadata_block = (task_metadata_entry *) cv_metadata_block_ptr;
+    // label_t *obj_label)
+    label_t * obj_label = ((cv_io_t *) args)->obj_label;
 
-  int tidx = cv_metadata_block->accelerator_type;
-  cv_timing_data_t *cv_timings_p = (cv_timing_data_t *) &
-                                   (cv_metadata_block->task_timings[cv_metadata_block->task_type]);
-  cv_data_struct_t *cv_data_p = (cv_data_struct_t *)(cv_metadata_block->data_space);
+    int tidx = cv_metadata_block->accelerator_type;
+    cv_timing_data_t * cv_timings_p = (cv_timing_data_t *) &
+      (cv_metadata_block->task_timings[cv_metadata_block->task_type]);
+    cv_data_struct_t * cv_data_p = (cv_data_struct_t *) (cv_metadata_block->data_space);
 #ifdef INT_TIME
-  struct timeval stop_time;
-  gettimeofday(&stop_time, NULL);
-  cv_timings_p->call_sec[tidx] += stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
-  cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
+    struct timeval stop_time;
+    gettimeofday(&stop_time, NULL);
+    cv_timings_p->call_sec[tidx] += stop_time.tv_sec - cv_timings_p->call_start.tv_sec;
+    cv_timings_p->call_usec[tidx] += stop_time.tv_usec - cv_timings_p->call_start.tv_usec;
 #endif // INT_TIME
 
-  *obj_label = cv_data_p->object_label;
+    * obj_label = cv_data_p->object_label;
 
-  // We've finished the execution and lifetime for this task; free its metadata
-  DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
-  free_task_metadata_block(cv_metadata_block);
-}}
+    // We've finished the execution and lifetime for this task; free its metadata
+    DEBUG(printf("  MB%u Calling free_task_metadata_block\n", cv_metadata_block->block_id));
+    free_task_metadata_block(cv_metadata_block);
+  }}
