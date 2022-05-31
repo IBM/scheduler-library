@@ -253,7 +253,7 @@ all: $(TARGET)
 #hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include -I../../task_library/include, $(CFLAGS))
 #hpvm-epochs: CFLAGS := $(filter-out -I../../sched_library/include, $(CFLAGS))
-hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p2.config 
+hpvm-epochs: CONFIG_FILE ?= config_files/base_me_p3.config 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
 hpvm-epochs: BACKEND_FLAG = -dfg2llvm-epochs -sched-lib-path=$(SCHED_MODULE) -sched-config=$(CONFIG_FILE) -task-config=$(TASK_CONFIG_FILE) -task-lib-path=$(TASK_MODULE)
@@ -416,6 +416,7 @@ clobber: clean
 	$(RM) $(STARGET)
 	$(RM) $(HPVMTARGET)
 	$(RM) $(HPVMTARGET_CPU)
+	$(RM) graph*.xml
 
 check_env:
 ifndef HPVM_DIR

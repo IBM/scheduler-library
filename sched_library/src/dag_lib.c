@@ -31,27 +31,26 @@ extern "C" {
         DEBUG(printf("Entering wrapper for create leaf graph\n"));
         std::string filename;
         filename.append(graphml_filename);
-        return(_create_leaf_graph(filename, true));
-    }
-    graph_wrapper_t * create_root_graph(char * graphml_filename) {
-        std::string filename;
-        filename.append(graphml_filename);
-        return(_create_root_graph(filename, NULL, true));
+        return(_create_leaf_graph(filename, -1, true));
     }
 
-    graph_wrapper_t * _create_leaf_graph(std::string graphml_filename, bool parent_graph_call) {
-        DEBUG(printf("Entering create leaf graph\n"));
+    graph_wrapper_t * _create_leaf_graph(std::string graphml_filename, int32_t dag_vertex_id, bool root_parent_graph_call) {
+        DEBUG(printf("Entering create leaf graph %s\n", graphml_filename.c_str()));
         // Create graph_wrapper_t struct
         graph_wrapper_t * graph_wptr = new(graph_wrapper_t);
 
         //Create empty DFG and assign to graph_wrapper_t
         graph_wptr->graph_ptr = new(Graph);
 
-        //Pass the parent_graph_call bool
-        graph_wptr->parent_graph_call = parent_graph_call;
-        if (parent_graph_call) {
+        //Set DAG vertex ID
+        graph_wptr->dag_vertex_id = dag_vertex_id;
+
+        //Pass the root_parent_graph_call bool
+        graph_wptr->root_parent_graph_call = root_parent_graph_call;
+        graph_wptr->dag_status = FREE_DAG;
+        if (root_parent_graph_call) {
             //Leaf graph in application
-            graph_wptr->dag_vertex_id = -1;
+            graph_wptr->parent_dag_vertex_id = -1;
             graph_wptr->parent_graph_wptr = NULL;
         }
         graph_wptr->leafGraph = true;
@@ -78,23 +77,34 @@ extern "C" {
         return graph_wptr;
     }
 
+    graph_wrapper_t * create_root_graph(char * graphml_filename) {
+        DEBUG(printf("Entering wrapper for create root graph  %s\n", graphml_filename));
+        std::string filename;
+        filename.append(graphml_filename);
 
-    graph_wrapper_t * _create_root_graph(std::string graphml_filename, graph_wrapper_t * parent_graph_wptr, bool parent_graph_call) {
+        return(_create_root_graph(filename, -1, NULL, true));
+    }
 
+    graph_wrapper_t * _create_root_graph(std::string graphml_filename, int32_t dag_vertex_id, graph_wrapper_t * root_parent_graph_wptr, bool root_parent_graph_call) {
+        DEBUG(printf("Entering create root graph for %s\n", graphml_filename.c_str()));
         // Create graph_wrapper_t struct
         graph_wrapper_t * graph_wptr = new(graph_wrapper_t);
 
-        if (parent_graph_call) {
-            parent_graph_wptr = graph_wptr;
-            graph_wptr->dag_vertex_id = -1;
-            graph_wptr->dag_status = FREE_DAG;
+        graph_wptr->dag_vertex_id = dag_vertex_id;
+
+        if (root_parent_graph_call) {
+            root_parent_graph_wptr = graph_wptr;
+            graph_wptr->parent_dag_vertex_id = -1;
+            graph_wptr->dag_id_map[graph_wptr->dag_vertex_id] = std::make_pair(false, graph_wptr);
         }
+        graph_wptr->root_parent_graph_wptr = root_parent_graph_wptr;
+        graph_wptr->dag_status = FREE_DAG;
 
         //Create empty DFG and assign to graph_wrapper_t
         graph_wptr->graph_ptr = new(Graph);
 
-        //Pass the parent_graph_call bool
-        graph_wptr->parent_graph_call = parent_graph_call;
+        //Pass the root_parent_graph_call bool
+        graph_wptr->root_parent_graph_call = root_parent_graph_call;
         graph_wptr->leafGraph = false;
 
         //Create useful temporary variables
@@ -116,7 +126,7 @@ extern "C" {
 
         boost::read_graphml(inFile, *dfg_ptr, dp);
 
-        DEBUG(print_dag_graph(*dfg_ptr););
+        // DEBUG(boost::write_graphviz(std::cout, *dfg_ptr););
 
         graph_wrapper_t * vertex_graph_wptr;
 
@@ -124,23 +134,24 @@ extern "C" {
         Graph::vertex_iterator v, vend;
         for (boost::tie(v, vend) = vertices(graph); v != vend; ++v) {
             if (graph[*v].leaf_dag_type) {
-                vertex_graph_wptr = _create_leaf_graph(graph[*v].graphml_filename, false);
-                vertex_graph_wptr->dag_vertex_id = graph[*v].dag_vertex_id;
-                Graph * v_leaf_graph_ptr = vertex_graph_wptr->graph_ptr;
-                parent_graph_wptr->num_task_vertices += boost::num_vertices(*v_leaf_graph_ptr);
+                vertex_graph_wptr = _create_leaf_graph(graph[*v].graphml_filename, graph[*v].dag_vertex_id, false);
 
-                populate_task_map(v_leaf_graph_ptr, graph[*v].dag_vertex_id, parent_graph_wptr->task_id_map);
-                break;
+                //Populate task id map
+                Graph * v_leaf_graph_ptr = vertex_graph_wptr->graph_ptr;
+                root_parent_graph_wptr->num_task_vertices += boost::num_vertices(*v_leaf_graph_ptr);
+                populate_task_map(v_leaf_graph_ptr, graph[*v].dag_vertex_id, root_parent_graph_wptr->task_id_map);
             }
             else {
-                vertex_graph_wptr = _create_root_graph(graph[*v].graphml_filename, parent_graph_wptr, false);
-                vertex_graph_wptr->dag_vertex_id = graph[*v].dag_vertex_id;
-
+                vertex_graph_wptr = _create_root_graph(graph[*v].graphml_filename, graph[*v].dag_vertex_id, root_parent_graph_wptr, false);
             }
             graph[*v].dag_status = FREE_DAG;
             vertex_graph_wptr->dag_status = FREE_DAG;
             vertex_graph_wptr->parent_dag_vertex_id = graph_wptr->dag_vertex_id;
-            parent_graph_wptr->dag_id_map[graph[*v].dag_vertex_id] = std::make_pair(graph[*v].leaf_dag_type, vertex_graph_wptr);
+            vertex_graph_wptr->root_parent_graph_wptr = root_parent_graph_wptr;
+            root_parent_graph_wptr->dag_id_map[graph[*v].dag_vertex_id] = std::make_pair(graph[*v].leaf_dag_type, vertex_graph_wptr);
+
+            DEBUG(printf("Create DAG ID: %d : Leaf: %d Graph_wptr: %p Parent DAG ID: %d %d\n", graph[*v].dag_vertex_id, graph[*v].leaf_dag_type, vertex_graph_wptr, vertex_graph_wptr->parent_dag_vertex_id, graph_wptr->dag_vertex_id););
+            // std::cout << std::boolalpha << "DAG ID: " << graph[*v].dag_vertex_id << " : Leaf: " << graph[*v].leaf_dag_type << " Graph_wptr: " << vertex_graph_wptr << " Parent DAG ID: " << vertex_graph_wptr->parent_dag_vertex_id << std::endl;
         }
 
         return graph_wptr;

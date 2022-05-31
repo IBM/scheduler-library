@@ -942,6 +942,80 @@ pnc_leaf(uint32_t time_step, uint32_t repeat_factor, label_t * obj_label,
     new_vehicle_state->speed));
 }
 
+void MiniERARootWrapper(
+  size_t fft_size,
+  uint32_t log_nsamples,
+  float * inputs_ptr, size_t inputs_ptr_size,
+  distance_t * distance_ptr, size_t distance_ptr_size,
+  size_t cv_size,
+  label_t in_label,
+  label_t * obj_label, size_t obj_label_size,
+  size_t vit_size,
+  message_size_t msg_size,
+  uint8_t * vit_data, size_t vit_data_size,
+  ofdm_param * ofdm_ptr, size_t ofdm_size,
+  frame_param * frame_ptr, size_t frame_ptr_size,
+  uint8_t * in_bits, size_t in_bit_size,
+  uint8_t * vit_depunctured, size_t vit_depunctured_size,
+  message_t * message_id, size_t msg_id_size,
+  char * out_msg_text, size_t out_msg_text_size,
+  uint32_t time_step,
+  uint32_t repeat_factor,
+  vehicle_state_t * current_vehicle_state, size_t current_vehicle_state_size,
+  vehicle_state_t * new_vehicle_state, size_t new_vehicle_state_size
+) {
+  void * Section = __hetero_section_begin();
+  {
+    void * MiniERA = __hetero_task_begin(
+      /* Num Input Pairs */ 20,
+      fft_size,
+      log_nsamples,
+      inputs_ptr, inputs_ptr_size,
+      distance_ptr, distance_ptr_size,
+      cv_size,
+      in_label,
+      obj_label, obj_label_size,
+      vit_size,
+      msg_size,
+      vit_data, vit_data_size,
+      ofdm_ptr, ofdm_size,
+      frame_ptr, frame_ptr_size,
+      in_bits, in_bit_size,
+      vit_depunctured, vit_depunctured_size,
+      message_id, msg_id_size,
+      out_msg_text, out_msg_text_size,
+      time_step,
+      repeat_factor,
+      current_vehicle_state, current_vehicle_state_size,
+      new_vehicle_state, new_vehicle_state_size,
+      /* Num Output Pairs */ 1,
+      new_vehicle_state, new_vehicle_state_size);
+
+    MiniERARoot(fft_size,
+      log_nsamples,
+      inputs_ptr, inputs_ptr_size,
+      distance_ptr, distance_ptr_size,
+      cv_size,
+      in_label,
+      obj_label, obj_label_size,
+      vit_size,
+      msg_size,
+      vit_data, vit_data_size,
+      ofdm_ptr, ofdm_size,
+      frame_ptr, frame_ptr_size,
+      in_bits, in_bit_size,
+      vit_depunctured, vit_depunctured_size,
+      message_id, msg_id_size,
+      out_msg_text, out_msg_text_size,
+      time_step,
+      repeat_factor,
+      current_vehicle_state, current_vehicle_state_size,
+      new_vehicle_state, new_vehicle_state_size);
+    __hetero_task_end(MiniERA);
+
+  }
+  __hetero_section_end(Section);
+}
 
 void MiniERARoot(
   size_t fft_size,
@@ -1058,13 +1132,8 @@ void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uin
   size_t vit_size = (size_t) vit_msgs_size;
   size_t out_msg_size = (size_t) 1600;
 
-  // void * PNC = __hetero_task_begin(9, pnc_size, time_step, repeat_factor, obj_label, obj_label_size, distance_ptr, distance_ptr_size, message_id, msg_id_size, current_vehicle_state, current_vehicle_state_size, out_msg_text, out_msg_text_size, new_vehicle_state, new_vehicle_state_size, 1, new_vehicle_state, new_vehicle_state_size,
-  //   /* Optional Node Name */ "PNC");
-
-// Use Hetero-C++ 
-  printf("log_nsamples:%d %p, radar_inputs: %lf %p\n", log_nsamples, &log_nsamples, radar_inputs[0], radar_inputs);
-  printf("time_step:%d, pandc_repeat_factor:%d, vehicle_state_size:%zu vehicle_state: %p, new_vehicle_state: %p\n", time_step, pandc_repeat_factor, sizeof(vehicle_state_t), vehicle_state, new_vehicle_state);
-  void * DFG = __hetero_launch((void *) MiniERARoot,
+  // Use Hetero-C++ 
+  void * DFG = __hetero_launch((void *) MiniERARootWrapper,
     /* Num Input Pairs */ 20,
     fft_size,
     log_nsamples,

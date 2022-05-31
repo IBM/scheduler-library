@@ -31,9 +31,9 @@
 
  //Functions to create static DAGs
 extern "C" graph_wrapper_t * create_root_graph(char * graphml_filename);
-extern "C" graph_wrapper_t * _create_root_graph(std::string graphml_filename, graph_wrapper_t * parent_root_graph = NULL, bool parent_graph_call = true);
+extern "C" graph_wrapper_t * _create_root_graph(std::string graphml_filename, int32_t dag_vertex_id, graph_wrapper_t * parent_root_graph = NULL, bool parent_graph_call = true);
 
 extern "C" graph_wrapper_t * create_leaf_graph(char * graphml_filename);
-extern "C" graph_wrapper_t * _create_leaf_graph(std::string graphml_filename, bool parent_graph_call = true);
+extern "C" graph_wrapper_t * _create_leaf_graph(std::string graphml_filename, int32_t dag_vertex_id, bool parent_graph_call = true);
 
 #endif
