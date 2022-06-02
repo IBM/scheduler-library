@@ -1,7 +1,7 @@
 STARGET=libscheduler.a
 TTARGET=libtasks.a
 
-EXAMPLES=mini-era demo-me
+EXAMPLES=mini-era #demo-me
 
 #$(info $$TARGET is [${TARGET}])
 #$(info $$EXAMPLES is [${EXAMPLES}])

@@ -99,10 +99,10 @@ void execute_on_cpu_create_grid_accelerator(task_metadata_block_t *task_metadata
   create_grid_data_struct_t *create_grid_data_p = (create_grid_data_struct_t *)(task_metadata_block->data_space);
   create_grid_timing_data_t *create_grid_timings_p = (create_grid_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the create_grid task : position %u input_data %p occ_grid %p\n", 
+  /*DEBUG(printf("In the create_grid task : position %u input_data %p occ_grid %p\n", 
                create_grid_data_p->position, 
                create_grid_data_p->input_data,
-               create_grid_data_p->occ_grid));
+               create_grid_data_p->occ_grid));*/
   
  #ifdef INT_TIME
   gettimeofday(&(create_grid_timings_p->call_start), NULL);

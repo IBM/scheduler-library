@@ -102,10 +102,10 @@ void execute_on_cpu_fuse_grids_accelerator(task_metadata_block_t *task_metadata_
   fuse_grids_data_struct_t *fuse_grids_data_p = (fuse_grids_data_struct_t *)(task_metadata_block->data_space);
   fuse_grids_timing_data_t *fuse_grids_timings_p = (fuse_grids_timing_data_t *)&(task_metadata_block->task_timings[task_metadata_block->task_type]);
 
-  DEBUG(printf("In the fuse_grids task : position %u input_data %p occ_grid %p\n", 
+  /*DEBUG(printf("In the fuse_grids task : position %u input_data %p occ_grid %p\n", 
                fuse_grids_data_p->position, 
                fuse_grids_data_p->input_data,
-               fuse_grids_data_p->occ_grid));
+               fuse_grids_data_p->occ_grid));*/
   
  #ifdef INT_TIME
   gettimeofday(&(fuse_grids_timings_p->call_start), NULL);
@@ -193,10 +193,10 @@ task_metadata_block_t *set_up_fuse_grids_task(scheduler_datastate_block_t *sptr,
     fuse_grids_data_p->my_occ_grid[i] = my_occ_grid[i];
     fuse_grids_data_p->your_occ_grid[i] = your_occ_grid[i];
   }
-  DEBUG(printf("   Set MB%u my_lane %u your_lane %u x_dim %u y_dim %u\n", 
+  /*DEBUG(printf("   Set MB%u my_lane %u your_lane %u x_dim %u y_dim %u\n", 
                fuse_grids_mb_ptr->block_id,
 	       fuse_grids_data_p->my_laneposition, fuse_grids_data_p->you_lane,
-               fuse_grids_data_p->occ_x_dim, fuse_grids_data_p->occ_y_dim));
+               fuse_grids_data_p->occ_x_dim, fuse_grids_data_p->occ_y_dim));*/
 
 #ifdef INT_TIME
   gettimeofday(&(fuse_grids_timings_p->call_start), NULL);
