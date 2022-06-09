@@ -285,7 +285,7 @@ struct graph_wrapper_t {
   bool leafGraph;
   Graph * graph_ptr;
   dag_status_t dag_status; // =-1 active, 0 active and queued, 1 completed
-  int32_t num_task_vertices;
+  int32_t num_task_vertices = 0;
   bool root_parent_graph_call;
   //Map (DAG_vertex_ID -> Pair(int type of DAG, graph_wrapper_t ptr)
   std::map<int32_t, std::pair<bool, graph_wrapper_t *>> dag_id_map;
@@ -477,7 +477,7 @@ public:
   //   probably has to change (though this interpretation is only convention).
   sched_execute_task_function_t *
     * scheduler_execute_task_function; //[MAX_ACCEL_TYPES]; // array over
-    //TASK_TYPES
+  //TASK_TYPES
 
   print_metadata_block_contents_t * print_metablock_contents_function; // array over TASK_TYPES
   output_task_type_run_stats_t * output_task_run_stats_function;          // array over TASK_TYPES

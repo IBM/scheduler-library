@@ -409,7 +409,6 @@ void cleanup_graph_completion(graph_wrapper_t * graph_wptr) {
 
   //Get parent wrapper
   graph_wrapper_t * parent_graph_wptr = graph_wptr->parent_graph_wptr;
-  DEBUG(printf("Parent graph_wptr[%d] %p for graph_wptr[%d] %p\n", parent_graph_wptr->dag_vertex_id, parent_graph_wptr, graph_wptr->dag_vertex_id, graph_wptr););
   if (parent_graph_wptr == NULL || graph_wptr->dag_vertex_id == -1) {
     //Reached parent root graph
     DEBUG(printf("Setting completed for DAG_vertex_id [%d]\n", graph_wptr->dag_vertex_id););
@@ -417,7 +416,7 @@ void cleanup_graph_completion(graph_wrapper_t * graph_wptr) {
 
   }
   else {
-
+    DEBUG(printf("Parent graph_wptr[%d] %p for graph_wptr[%d] %p\n", parent_graph_wptr->dag_vertex_id, parent_graph_wptr, graph_wptr->dag_vertex_id, graph_wptr););
     //Delete node from parent graph
     Graph & parent_graph = *(parent_graph_wptr->graph_ptr);
     bool found_task = false;
@@ -713,11 +712,11 @@ void mark_task_done(task_metadata_entry * task_metadata_block) {
         task_metadata_block->accelerator_id, // accelerator_id ?,
         sptr->accel_name_str[task_metadata_block
         ->accelerator_type], // accelerator_type
-// ?,
-"nan",                                        // task_parent_ids
-start_time, // task_arrival_time  (now this is in the Rdy_Que above)
-start_time, // curr_job_start_time
-end_time);  // curr_job_end_time
+        // ?,
+        "nan",                                        // task_parent_ids
+        start_time, // task_arrival_time  (now this is in the Rdy_Que above)
+        start_time, // curr_job_start_time
+        end_time);  // curr_job_end_time
       pthread_mutex_unlock(&(sptr->sl_viz_out_mutex));
     }
     else {
@@ -2125,10 +2124,10 @@ void * schedule_executions_from_queue(void * void_param_ptr) {
       }
     }
     else { // if (num_tasks_in_queue > 0)
-   // I think perhaps we should add a short delay here to avoid this being
-   // such a busy spin loop...
-   //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
-   // DEBUG(printf("Waiting for ready task in the queue...\n"));
+      // I think perhaps we should add a short delay here to avoid this being
+      // such a busy spin loop...
+      //   If we are using the 78MHz FPGA, then one clock cycle is ~12.82 ns ?
+      // DEBUG(printf("Waiting for ready task in the queue...\n"));
       usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
     }
   } // while (1)
@@ -2366,6 +2365,8 @@ void copy_graph_wptr(graph_wrapper_t * ref_graph_wptr, graph_wrapper_t * new_gra
       graph_wptr->parent_graph_wptr = (new_dag_id_map[graph_wptr->parent_dag_vertex_id]).second;
       DEBUG(printf("Parent graph_wptr[%d] %p for graph_wptr[%d] %p\n", graph_wptr->parent_graph_wptr->dag_vertex_id, graph_wptr->parent_graph_wptr, graph_wptr->dag_vertex_id, graph_wptr););
     }
+
+    DEBUG(printf("Done printing NEW DAG ID MAP %p: Size %d\n", &(new_graph_wptr->dag_id_map), new_graph_wptr->dag_id_map.size()););
   }
 }
 
@@ -2381,6 +2382,7 @@ extern "C" {
     Graph & graph = *(graph_wptr->graph_ptr);
 
     //Create a map of the io ptrs for root_parent_graph_call
+    DEBUG(printf("Create map of io ptrs in process root dag arrival for vertices %d\n", ref_graph_wptr->num_task_vertices));
     std::map<int32_t, void *> io_map;
 
     va_list var_list;
@@ -2390,12 +2392,11 @@ extern "C" {
     for (int32_t i = 0; i < ref_graph_wptr->num_task_vertices; i++) {
       int32_t task_vertex_id = va_arg(var_list, int32_t);
       void * task_io_ptr = va_arg(var_list, void *);
-
       io_map[task_vertex_id] = task_io_ptr;
     }
 
     va_end(var_list);
-
+    DEBUG(printf("Call request_root_graph_execution\n"));
     request_root_graph_execution(sptr, graph_wptr, io_map, crit_level);
     return graph_wptr;
   }
@@ -2517,7 +2518,7 @@ extern "C" {
  //TODO: convert to conditional variable to save on power
 //TODO: HACK: To make nested-graphs work with the backend until names are exchanged (graphlist and daglist)
 extern "C" {
-  void wait_on_daglist(void * _sptr, int num_graphs, ...) {
+  void wait_on_graphlist(void * _sptr, int num_graphs, ...) {
     scheduler_datastate * sptr = (scheduler_datastate *) _sptr;
     va_list var_list;
     va_start(var_list, num_graphs);
@@ -2535,7 +2536,7 @@ extern "C" {
 }
 
 extern "C" {
-  void wait_on_graphlist(void * _sptr, int num_dags, ...) {
+  void wait_on_daglist(void * _sptr, int num_dags, ...) {
     scheduler_datastate * sptr = (scheduler_datastate *) _sptr;
     va_list var_list;
     va_start(var_list, num_dags);

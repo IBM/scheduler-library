@@ -78,11 +78,12 @@ extern "C" {
     }
 
     graph_wrapper_t * create_root_graph(char * graphml_filename) {
-        DEBUG(printf("Entering wrapper for create root graph  %s\n", graphml_filename));
+        DEBUG(printf("Entering wrapper for create root graph  %s\n", graphml_filename););
         std::string filename;
         filename.append(graphml_filename);
-
-        return(_create_root_graph(filename, -1, NULL, true));
+        graph_wrapper_t * return_root_graph_wptr = _create_root_graph(filename, -1, NULL, true);
+        DEBUG(printf("Create root graph with %d leaf vertices\n", return_root_graph_wptr->num_task_vertices););
+        return(return_root_graph_wptr);
     }
 
     graph_wrapper_t * _create_root_graph(std::string graphml_filename, int32_t dag_vertex_id, graph_wrapper_t * root_parent_graph_wptr, bool root_parent_graph_call) {
@@ -96,6 +97,7 @@ extern "C" {
             root_parent_graph_wptr = graph_wptr;
             graph_wptr->parent_dag_vertex_id = -1;
             graph_wptr->dag_id_map[graph_wptr->dag_vertex_id] = std::make_pair(false, graph_wptr);
+            root_parent_graph_wptr->num_task_vertices = 0;
         }
         graph_wptr->root_parent_graph_wptr = root_parent_graph_wptr;
         graph_wptr->dag_status = FREE_DAG;
@@ -138,6 +140,7 @@ extern "C" {
 
                 //Populate task id map
                 Graph * v_leaf_graph_ptr = vertex_graph_wptr->graph_ptr;
+                DEBUG(printf("%s has %d leaf task vertices\n", graph[*v].graphml_filename.c_str(), boost::num_vertices(*v_leaf_graph_ptr)););
                 root_parent_graph_wptr->num_task_vertices += boost::num_vertices(*v_leaf_graph_ptr);
                 populate_task_map(v_leaf_graph_ptr, graph[*v].dag_vertex_id, root_parent_graph_wptr->task_id_map);
             }

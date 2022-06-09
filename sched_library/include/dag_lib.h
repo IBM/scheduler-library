@@ -27,6 +27,7 @@
 
 #include "scheduler.h"
 
+ // #define VERBOSE
 #include "verbose.h"
 
  //Functions to create static DAGs
