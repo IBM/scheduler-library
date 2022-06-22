@@ -215,7 +215,7 @@ void do_accelerator_type_closeout(scheduler_datastate_block_t *sptr) {
   // Clean up any hardware accelerator stuff
   DEBUG(printf("Doing accelerator type closeout for %u accelerators\n",
                sptr->next_avail_accel_id));
-  for (int ai = 0; ai < sptr->next_avail_accel_id; ai++) {
+  for (int ai = 0; ai < sptr->next_avail_accel_id-1; ai++) {
     if (sptr->do_accel_closeout_function[ai] != NULL) {
       sptr->do_accel_closeout_function[ai](NULL);
     } else {
