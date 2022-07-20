@@ -45,6 +45,9 @@ extern "C" {
         //Set DAG vertex ID
         graph_wptr->dag_vertex_id = dag_vertex_id;
 
+        //Set graphml name
+        graph_wptr->graphml_filename = graphml_filename;
+
         //Pass the root_parent_graph_call bool
         graph_wptr->root_parent_graph_call = root_parent_graph_call;
         graph_wptr->dag_status = FREE_DAG;
@@ -92,6 +95,7 @@ extern "C" {
         graph_wrapper_t * graph_wptr = new(graph_wrapper_t);
 
         graph_wptr->dag_vertex_id = dag_vertex_id;
+        graph_wptr->graphml_filename = graphml_filename;
 
         if (root_parent_graph_call) {
             root_parent_graph_wptr = graph_wptr;

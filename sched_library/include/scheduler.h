@@ -277,6 +277,7 @@ typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
 typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
 
 struct graph_wrapper_t {
+  std::string graphml_filename;
   int32_t dag_vertex_id;
   int32_t parent_dag_vertex_id;
   graph_wrapper_t * parent_graph_wptr;

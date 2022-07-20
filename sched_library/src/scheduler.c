@@ -461,14 +461,28 @@ void cleanup_graph_completion(graph_wrapper_t * graph_wptr) {
 void update_dag(task_metadata_entry * task_metadata_block) {
 
   scheduler_datastate * sptr = task_metadata_block->scheduler_datastate_pointer;
-  DEBUG(printf("SCHED: in update DAG, completed for task %s, MB%u\n",
-    sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->block_id));
+  DEBUG(
+    printf("SCHED: in update DAG[%d], completed for task %s, MB%u, tid: %d\n", task_metadata_block->dag_id,
+    sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->block_id, task_metadata_block->task_type);
+    );
   pthread_mutex_lock(&(sptr->dag_queue_mutex));
+  DEBUG(
+    printf("I have the mutex for dag_queue_mutex in update_dags\n");
+
+    printf("Active DAG Queue\n");
+    for (auto dit = sptr->active_dags.begin(); dit != sptr->active_dags.end(); dit++) {
+      dag_metadata_entry * dag = *dit;
+      printf("DAG ID: %d\n", dag->dag_id);
+    }
+  );
   auto it = sptr->active_dags.begin();
   while (it != sptr->active_dags.end()) {
     dag_metadata_entry * dag = *it;
     //Update dag of completed task
     if (dag->dag_id == task_metadata_block->dag_id) {
+      DEBUG(
+        printf("SCHED: in update DAG[%d], Found completed DAG for task %s, MB%u, tid: %d\n", task_metadata_block->dag_id, sptr->task_name_str[task_metadata_block->task_type], task_metadata_block->block_id, task_metadata_block->task_type);
+      );
       Graph & graph = *(dag->graph_ptr);
       bool found_task = false;
       Graph::vertex_iterator vit, vend, vnext;
@@ -480,7 +494,7 @@ void update_dag(task_metadata_entry * task_metadata_block) {
           graph[vertex].task_mb_ptr == task_metadata_block) {
           //Found the completed task
           DEBUG(
-            printf("DAG[%u.%u] completed task execution MB: %u\n", dag->dag_id, graph[vertex].task_vertex_id,
+            printf("DAG[%u.%u] completed task execution type tid: %d MB: %u\n", dag->dag_id, graph[vertex].task_vertex_id, graph[vertex].task_type,
               task_metadata_block->block_id);
           );
           boost::clear_vertex(vertex, graph);
@@ -521,6 +535,9 @@ void update_dag(task_metadata_entry * task_metadata_block) {
         dag->dag_status = ACTIVE_QUEUED_DAG;
       }
       pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+      DEBUG(
+        printf("I have the unlocked the mutex for dag_queue_mutex in update_dags\n");
+      );
       return;
     }
     ++it;
@@ -745,11 +762,15 @@ void mark_task_done(task_metadata_entry * task_metadata_block) {
 void execute_task_on_accelerator(task_metadata_entry * task_metadata_block) {
   scheduler_datastate * sptr =
     task_metadata_block->scheduler_datastate_pointer;
-  DEBUG(printf("In execute_task_on_accelerator for MB%d with Accel Type %s and "
+  DEBUG(
+    printf("In execute_task_on_accelerator for tid: %d MB%d with Accel Type %s and "
     "Number %u\n",
+    task_metadata_block->task_type,
     task_metadata_block->block_id,
     sptr->accel_name_str[task_metadata_block->accelerator_type],
-    task_metadata_block->accelerator_id));
+    task_metadata_block->accelerator_id);
+  );
+
   if (task_metadata_block->accelerator_type != NO_Accelerator) {
     if ((task_metadata_block->task_type != NO_Task) &&
       (task_metadata_block->task_type < sptr->inparms->max_task_types)) {
@@ -778,7 +799,8 @@ void execute_task_on_accelerator(task_metadata_entry * task_metadata_block) {
           task_metadata_block->block_id, task_metadata_block->task_type,
           sptr->task_name_str[task_metadata_block->task_type],
           task_metadata_block->accelerator_type,
-          sptr->accel_name_str[task_metadata_block->accelerator_type]));
+          sptr->accel_name_str[task_metadata_block->accelerator_type]);
+      );
       // Mark task as done
       mark_task_done(task_metadata_block);
 
@@ -1862,8 +1884,13 @@ void * schedule_dags(void * void_param_ptr) {
       );
 
       pthread_mutex_lock(&(sptr->dag_queue_mutex));
+      DEBUG(
+        printf("I have the mutex for dag_queue_mutex in schedule_dags\n");
+      );
       auto it = sptr->active_dags.begin();
       auto it_end = sptr->active_dags.end();
+      int d_count = 0;
+      int num_active_dags = sptr->active_dags.size();
       while (it != it_end) {
         dag_metadata_entry * dag = *it;
         if (dag->dag_status == ACTIVE_DAG || dag->dag_status == ACTIVE_QUEUED_DAG) {
@@ -1880,8 +1907,8 @@ void * schedule_dags(void * void_param_ptr) {
               break;
             }
             DEBUG(
-              printf("DAG[%u] Found ready task %u, status %u \n", dag->dag_id,
-                graph[ready_task_vertex].task_vertex_id, graph[ready_task_vertex].vertex_status);
+              printf("DAG[%u] Found ready task %u, tid: %d status %u \n", dag->dag_id,
+                graph[ready_task_vertex].task_vertex_id, graph[ready_task_vertex].task_type, graph[ready_task_vertex].vertex_status);
             );
 
             //Get a free task mb for vertex
@@ -1948,12 +1975,17 @@ void * schedule_dags(void * void_param_ptr) {
             pthread_mutex_unlock(&(sptr->task_queue_mutex));
           }
         }
-        else {
-          continue;
-        }
+        // else {
+        //   it++;
+        //   continue;
+        // }
         it++;
+        d_count++;
       }
       pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+      DEBUG(
+        printf("I have the unlocked the mutex for dag_queue_mutex in schedule_dags\n");
+      );
     }
     else {
       usleep(sptr->inparms->scheduler_holdoff_usec); // This defaults to 1 usec (about 78 FPGA clock cycles)
@@ -2149,12 +2181,18 @@ void request_execution(
 
   // Put this into the active dag queue
   pthread_mutex_lock(&(sptr->dag_queue_mutex));
+  DEBUG(
+    printf("I have the mutex for dag_queue_mutex in request_execution\n");
+  );
 
   sptr->active_dags.push_back(dag);
   DEBUG(printf("APP: and now there are %u DAGs in the active dag queue\n",
     sptr->active_dags.size()););
 
   pthread_mutex_unlock(&(sptr->dag_queue_mutex));
+  DEBUG(
+    printf("I have the unlocked the mutex for dag_queue_mutex in request_execution\n");
+  );
 
   return;
 }
@@ -2272,15 +2310,19 @@ void request_root_graph_execution(scheduler_datastate * sptr, graph_wrapper_t * 
     if (ready_graph_wptr == NULL) { // No more ready vertex_graphs or all tasks completed
       Graph & graph = *(graph_wptr->graph_ptr);
       if (boost::num_vertices(graph) == 0) {
-        DEBUG(printf("All tasks completed in request_root_graph_execution\n"));
+        DEBUG(
+          printf("All tasks completed in request_root_graph_execution for %s\n", graph_wptr->graphml_filename.c_str());
+        );
         graph_wptr->dag_status = COMPLETED_DAG;
         DEBUG(print_dag_graph(*(graph_wptr->graph_ptr));
         printf("DAG is empty\n"););
         break;
       }
       else {
-        DEBUG(printf("No more ready DAGs in request_root_graph_execution\n"));
-        DEBUG(printf("DAG[%p] No more ready vertices\n", graph_wptr););
+        DEBUG(
+          printf("No more ready DAGs in request_root_graph_execution\n");
+          printf("DAG[%s] No more ready vertices out of %d\n", graph_wptr->graphml_filename.c_str(), boost::num_vertices(graph));
+        );
         graph_wptr->dag_status = ACTIVE_NOTREADY_DAG;
         usleep(sptr->inparms ->scheduler_holdoff_usec);
         continue;
@@ -2312,6 +2354,7 @@ void copy_graph_wptr(graph_wrapper_t * ref_graph_wptr, graph_wrapper_t * new_gra
     new_graph_wptr->parent_graph_wptr = ref_graph_wptr->parent_graph_wptr;
   }
 
+  new_graph_wptr->graphml_filename = ref_graph_wptr->graphml_filename;
   new_graph_wptr->leafGraph = ref_graph_wptr->leafGraph;
   new_graph_wptr->dag_status = ref_graph_wptr->dag_status;
   new_graph_wptr->num_task_vertices = ref_graph_wptr->num_task_vertices;
@@ -2503,7 +2546,9 @@ extern "C" {
     graph_wptr->dag_status = ACTIVE_QUEUED_DAG;
 
     //Request execution on the DAG
-    DEBUG(printf("Requesting execution on DAG ID: %d\n", dag_ptr->dag_id));
+    DEBUG(
+      printf("Requesting execution on DAG ID: %d %s\n", dag_ptr->dag_id, graph_wptr->graphml_filename.c_str());
+    );
     request_execution(dag_ptr);
 
     //return for waitlist
@@ -3028,7 +3073,7 @@ extern "C" {
     printf(" and num_accel_task_exeC_descr  = %u\n", num_accel_task_exec_descriptions);
     );
 
-    printf("Registering Task %s : %s\n", task_name, task_description);
+    printf("Registering Task %s : %s with tid: %d\n", task_name, task_description, tid);
 
     if (profile_map_ptr == NULL && num_accel_task_exec_descriptions > 1) {
       printf("ERROR: Profileing information doesn't exist for an accelerator based task\n");
