@@ -39,9 +39,10 @@ assign_task_to_pe(scheduler_datastate* sptr) {
   task_metadata_entry * task_metadata_block = NULL;
   if (selected_task_entry != NULL) {
     task_metadata_block = &(sptr->master_metadata_pool[selected_task_entry->block_id]);
-  }
-  if (selected_task_entry == NULL) {
-    printf("Ready queue empty or invalid ready queue entry\n");
+  } else {
+    printf("ERROR : First Ready Task Queue entry is NULL?\n");
+    //pthread_mutex_unlock(&schedule_from_queue_mutex);
+    exit( -19);  
   }
   if (task_metadata_block == NULL) {
     printf("ERROR : First Ready Task Queue entry is NULL?\n");

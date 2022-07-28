@@ -432,7 +432,10 @@ public:
   unsigned num_tasks_in_ready_queue;
 
   pthread_mutex_t dag_queue_mutex; // Used to guard access to altering the
-  // ative-dag-queue contents
+  // active-dag-queue contents
+
+  pthread_mutex_t graph_mutex; // Used to guard access to altering the
+  // active-graphs nodes and edges
 
   //DAG based queues
   std::list<dag_metadata_entry *> active_dags;
