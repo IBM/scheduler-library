@@ -289,7 +289,7 @@ ESP_NVDLA_DIR = esp_hardware/nvdla
 INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
 
 NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
-NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/gen_miniera
+NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/gen_yolo
 
 NVDLA_RUNTIME_DIR = $(ROOT)
 NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
@@ -323,7 +323,7 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	cd $(NVDLA_MAKE_DIR) && python miniera.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+	cd $(NVDLA_MAKE_DIR) && python yolo.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------
@@ -345,11 +345,11 @@ $(TARGET): $(TASK_LIB) $(SCHED_LIB) obj_t $(OBJ_T) $(NVDLA_MODULE) $(ALLMODULE_O
 $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) $(OBJ_S) -o $@ $(LDFLAGS)
 
-$(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
-	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
-	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
-	rm me_test.o wnvdla_test.o
+$(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(NVDLA_MODULE) $(ALLMODULE_OBJS)
+	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o mehpvm_test.o
+	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) mehpvm_test.o -o whpvmnvdla_test.o
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) whpvmnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	rm mehpvm_test.o whpvmnvdla_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
 	$(HPVMCXX) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o

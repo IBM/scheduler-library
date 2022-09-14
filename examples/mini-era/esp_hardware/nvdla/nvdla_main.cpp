@@ -42,7 +42,7 @@ TestAppArgs defaultTestAppArgs = TestAppArgs();
 TestAppArgs testAppArgs = defaultTestAppArgs;
 TestInfo testInfo;
 
-static NvDlaError testSetup(const TestAppArgs* appArgs, TestInfo* i)
+static NvDlaError testSetup(const TestAppArgs * appArgs, TestInfo * i)
 //NvDlaError testSetup(const TestAppArgs* appArgs, TestInfo* i)
 {
     NvDlaError e = NvDlaSuccess;
@@ -51,8 +51,7 @@ static NvDlaError testSetup(const TestAppArgs* appArgs, TestInfo* i)
     NvDlaStatType stat;
 
     // Do input paths exist?
-    if (std::strcmp(appArgs->inputName.c_str(), "") != 0)
-    {
+    if (std::strcmp(appArgs->inputName.c_str(), "") != 0) {
         e = NvDlaStat(appArgs->inputPath.c_str(), &stat);
         if (e != NvDlaSuccess)
             ORIGINATE_ERROR_FAIL(NvDlaError_BadParameter, "Input path does not exist: \"%s\"", appArgs->inputPath.c_str());
@@ -69,7 +68,7 @@ fail:
     return e;
 }
 
-static NvDlaError launchServer(const TestAppArgs* appArgs)
+static NvDlaError launchServer(const TestAppArgs * appArgs)
 //NvDlaError launchServer(const TestAppArgs* appArgs)
 {
     NvDlaError e = NvDlaSuccess;
@@ -82,7 +81,7 @@ fail:
     return e;
 }
 
-static NvDlaError launchTest(const TestAppArgs* appArgs)
+static NvDlaError launchTest(const TestAppArgs * appArgs)
 //NvDlaError launchTest(const TestAppArgs* appArgs)
 {
     NvDlaError e = NvDlaSuccess;
@@ -105,8 +104,7 @@ void runImageonNVDLA(std::string iImage) {
     testAppArgs.rawOutputDump = true;
     //PROPAGATE_ERROR_FAIL(runImage(&testAppArgs, &testInfo));
     e = runImage(&testAppArgs, &testInfo);
-    if (e != NvDlaSuccess)
-    {
+    if (e != NvDlaSuccess) {
         //return EXIT_FAILURE;
         NvDlaDebugPrintf("Test failed\n");
     }
@@ -119,39 +117,37 @@ void runImageonNVDLA(std::string iImage) {
 
 // This function reads the loadable and creates a new runtime context
 extern "C" {
-void initNVDLA() {
+    void initNVDLA() {
 
-    NvDlaError e = NvDlaError_TestApplicationFailed;
-//    TestAppArgs testAppArgs = defaultTestAppArgs;
-    bool serverMode = false;
-    bool inputPathSet = false;
-    NVDLA_UNUSED(inputPathSet);
+        NvDlaError e = NvDlaError_TestApplicationFailed;
+        //    TestAppArgs testAppArgs = defaultTestAppArgs;
+        bool serverMode = false;
+        bool inputPathSet = false;
+        NVDLA_UNUSED(inputPathSet);
 
-    //testAppArgs.loadableName = "mnist_loadable2.nvdla";
-    testAppArgs.loadableName = "hpvm-mod.nvdla";
+        //testAppArgs.loadableName = "mnist_loadable2.nvdla";
+        testAppArgs.loadableName = "hpvm-mod.nvdla";
 
 
         // Launch
-    e = launchTest(&testAppArgs);
+        e = launchTest(&testAppArgs);
 
-    if (e != NvDlaSuccess)
-    {
-        //return EXIT_FAILURE;
-        NvDlaDebugPrintf("Runtime creation failed and loadable not read\n");
-    }
-    else
-    {
-        NvDlaDebugPrintf("Loadable read and Runtime creation successful\n");
-    }
+        if (e != NvDlaSuccess) {
+            //return EXIT_FAILURE;
+            NvDlaDebugPrintf("Runtime creation failed and loadable not read\n");
+        }
+        else {
+            NvDlaDebugPrintf("Loadable read and Runtime creation successful\n");
+        }
 
-}
+    }
 }
 
 
 extern "C" {
-void runImageonNVDLAWrapper(char *Image) {
-    runImageonNVDLA(std::string(Image));
-}
+    void runImageonNVDLAWrapper(char * Image) {
+        runImageonNVDLA(std::string(Image));
+    }
 }
 
 

@@ -29,7 +29,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-//#define VERBOSE
+ //#define VERBOSE
 #include "verbose.h"
 
 #include "scheduler.h"
@@ -45,17 +45,17 @@
 #include <pythonrun.h>
 #endif
 #ifndef BYPASS_KERAS_CV_CODE
-PyObject *pName, *pModule, *pFunc, *pFunc_load;
-PyObject *pArgs, *pValue, *pretValue;
+PyObject * pName, * pModule, * pFunc, * pFunc_load;
+PyObject * pArgs, * pValue, * pretValue;
 #define PY_SSIZE_T_CLEAN
 
-char *python_module = "mio";
-char *python_func = "predict";
-char *python_func_load = "loadmodel";
+char * python_module = "yolo";
+char * python_func = "predict";
+char * python_func_load = "loadmodel";
 #endif
 
 void
-do_cv_accel_type_initialization(scheduler_datastate* sptr) {
+do_cv_accel_type_initialization(scheduler_datastate * sptr) {
 #ifndef BYPASS_KERAS_CV_CODE
    Py_Initialize();
    pName = PyUnicode_DecodeFSDefault(python_module);
@@ -66,12 +66,14 @@ do_cv_accel_type_initialization(scheduler_datastate* sptr) {
       PyErr_Print();
       printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
       return;
-   } else {
+   }
+   else {
       pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
 
       if (pFunc_load && PyCallable_Check(pFunc_load)) {
          PyObject_CallObject(pFunc_load, NULL);
-      } else {
+      }
+      else {
          if (PyErr_Occurred())
             PyErr_Print();
          printf("Cannot find python function - loadmodel");
@@ -87,7 +89,7 @@ do_cv_accel_type_initialization(scheduler_datastate* sptr) {
 
 
 void
-do_cv_accel_type_closeout(scheduler_datastate* sptr) {
+do_cv_accel_type_closeout(scheduler_datastate * sptr) {
 #ifndef BYPASS_KERAS_CV_CODE
    Py_DECREF(pModule);
    Py_Finalize();
@@ -99,6 +101,5 @@ do_cv_accel_type_closeout(scheduler_datastate* sptr) {
 
 
 void
-output_cv_accel_type_run_stats(scheduler_datastate* sptr, unsigned my_accel_id, unsigned total_task_types) {
-}
+output_cv_accel_type_run_stats(scheduler_datastate * sptr, unsigned my_accel_id, unsigned total_task_types) {}
 

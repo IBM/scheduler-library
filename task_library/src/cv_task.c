@@ -51,14 +51,14 @@ PyObject * pName, * pModule, * pFunc, * pFunc_load;
 PyObject * pArgs, * pValue, * pretValue;
 #define PY_SSIZE_T_CLEAN
 
-char * python_module = "mio";
+char * python_module = "yolo";
 char * python_func = "predict";
 char * python_func_load = "loadmodel";
 #endif
 
 #ifdef ENABLE_NVDLA
-extern void initNVDLA();
-extern void runImageonNVDLAWrapper(char * Image);
+extern "C" void initNVDLA();
+extern "C" void runImageonNVDLAWrapper(char * Image);
 #endif
 
 #ifdef COMPILE_TO_ESP
