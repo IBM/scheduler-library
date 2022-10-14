@@ -27,7 +27,6 @@
  * created by Phil Karn. For more info see: gr-dvbt/lib/d_viterbi.h
  */
 
-extern int d_ntraceback;
 extern int d_k;
 
 static ofdm_param * d_ofdm;

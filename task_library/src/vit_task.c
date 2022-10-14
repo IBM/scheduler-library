@@ -206,13 +206,18 @@ extern "C" {
     int vn = 0; //accelerator_id;
     vit_io_t * vdata = (vit_io_t *) (vit_io_ptr);
     int32_t  in_cbps = vdata->ofdm_ptr->n_cbps;
-    int32_t  in_ntraceback = d_ntraceback;
+    int32_t  in_ntraceback = *(vdata->d_ntraceback_arg);
     int32_t  in_data_bits = vdata->frame_ptr->n_data_bits;
     int32_t  inData_offset = 72;
-    int32_t  outData_offset = inData_offset + MAX_ENCODED_BITS;
-    uint8_t * in_Mem = &(vdata->vit_data[0]);
-    uint8_t * in_Data = &(vdata->vit_data[inData_offset]);
-    uint8_t * out_Data = &(vdata->vit_data[outData_offset]);
+    // int32_t  outData_offset = inData_offset + MAX_ENCODED_BITS;
+    uint8_t * in_Mem = &(vdata->vit_data_in[0]);
+    uint8_t * in_Data = &(vdata->vit_data_in[inData_offset]);
+    uint8_t * out_Data = &(vdata->vit_data_out[0]);
+    DEBUG(
+      printf("Running on VIT HW accelerator\n");
+      printf("In exec_vit_task_on_vit_hwr_accel\n");
+      printf("IM: %p, ID: %p, OD: %p\n", &(vdata->vit_data_in[0]), &(vdata->vit_data_in[inData_offset]), &(vdata->vit_data_out[0]));
+    );
 
 #ifdef HW_VIT
     DEBUG(printf("EHVA:   setting up HW_VIT parameters\n"));

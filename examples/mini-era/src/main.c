@@ -399,14 +399,12 @@ int main(int argc, char * argv[]) {
   message_t message;
   test_res_t test_res;
 
-  //Set vit data array
-  uint8_t vit_data[64 * 1024]; // Larger than needed (~24780 + 18585) but less than FFT (so okay)
-  size_t vit_data_size = sizeof(vit_data);
-  if (vit_data_size != (sizeof(uint8_t) * 64 * 1024)) {
+  //Set vit data
+  int d_ntraceback;
+  uint8_t vit_depunctured[MAX_ENCODED_BITS];
 
-    printf("ERROR: Size of vit_data_size %zu != %lu not set properly\n", vit_data_size, (sizeof(uint8_t) * 64 * 1024));
-    exit(-100);
-  }
+  uint8_t vit_data_in[64 * 1024]; // Larger than needed (~24780 + 18585) but less than FFT (so okay)
+  uint8_t vit_data_out[64 * 1024];
 
 #ifdef USE_SIM_ENVIRON
   char world_desc_file_name[256] = "default_world.desc";
@@ -1335,11 +1333,10 @@ int main(int argc, char * argv[]) {
     /* -- HPVM -- Fill in Viterbi Task Args */
 
     DEBUG(printf("Launching HPVM graph!\n"));
-    uint8_t vit_depunctured[MAX_ENCODED_BITS];
 
     new_vehicle_state = vehicle_state; // Starting state of new vehicle state is the previous state
     label = cv_tr_label; // label used as input and output in hpvm_launch
-    hpvm_launch((message_size_t) vit_msgs_size, vdentry_p, vit_depunctured, &message, out_msg_text, vit_data, &label, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, time_step, pandc_repeat_factor, &vehicle_state, &new_vehicle_state);
+    hpvm_launch((message_size_t) vit_msgs_size, vdentry_p, vit_depunctured, &message, out_msg_text, &d_ntraceback, vit_data_in, vit_data_out, &label, radar_log_nsamples_per_dict_set[crit_fft_samples_set], radar_inputs, &distance, time_step, pandc_repeat_factor, &vehicle_state, &new_vehicle_state);
 
     // POST-EXECUTE other tasks to gather stats, etc.
     if (!no_crit_cnn_task) {

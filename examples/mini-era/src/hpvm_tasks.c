@@ -50,7 +50,6 @@ static unsigned int _rev(unsigned int v) {
 // GLOBAL VARIABLES for Viterbi decoding
 extern t_branchtab27 d_branchtab27_generic[2];
 
-int d_ntraceback;
 int d_k;
 
 void descrambler(uint8_t * in, int psdusize, char * out_msg, uint8_t * ref, uint8_t * msg) { //definition
@@ -137,17 +136,17 @@ void descrambler(uint8_t * in, int psdusize, char * out_msg, uint8_t * ref, uint
 
 void
 inline __attribute__((always_inline))
-vit_task_reset(ofdm_param * ofdm_ptr) {
+vit_task_reset(ofdm_param * ofdm_ptr, int * d_ntraceback_arg) {
   switch (ofdm_ptr->encoding) {
   case BPSK_1_2:
   case QPSK_1_2:
   case QAM16_1_2:
-    d_ntraceback = 5;
+    *d_ntraceback_arg = 5;
     d_depuncture_pattern = PUNCTURE_1_2;
     d_k = 1;
     break;
   case QAM64_2_3:
-    d_ntraceback = 9;
+    *d_ntraceback_arg = 9;
     d_depuncture_pattern = PUNCTURE_2_3;
     d_k = 2;
     break;
@@ -155,7 +154,7 @@ vit_task_reset(ofdm_param * ofdm_ptr) {
   case QPSK_3_4:
   case QAM16_3_4:
   case QAM64_3_4:
-    d_ntraceback = 10;
+    *d_ntraceback_arg = 10;
     d_depuncture_pattern = PUNCTURE_3_4;
     d_k = 3;
     break;
@@ -164,11 +163,11 @@ vit_task_reset(ofdm_param * ofdm_ptr) {
 
 void
 inline __attribute__((always_inline))
-vit_task_depuncture(ofdm_param * ofdm_ptr, frame_param * frame_ptr, uint8_t * in_bits, uint8_t * vit_depunctured) {
+vit_task_depuncture(ofdm_param * ofdm_ptr, frame_param * frame_ptr, uint8_t * in_bits, int * d_ntraceback_arg, uint8_t * vit_depunctured) {
   int count;
   int n_cbps = ofdm_ptr->n_cbps;
   //printf("Depunture call...\n");
-  if (d_ntraceback == 5) {
+  if (*d_ntraceback_arg == 5) {
     count = frame_ptr->n_sym * n_cbps;
     for (int i = 0; i < MAX_ENCODED_BITS; i++) {
       vit_depunctured[i] = in_bits[i];
@@ -568,8 +567,8 @@ void do_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 
 void
 inline __attribute__((always_inline))
-vit_leaf(size_t in_size, message_size_t msg_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
-  frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size) {
+vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
+  frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size) {
 
   DEBUG(printf("-- Vitterbi Leaf Node --\n"));
 
@@ -579,11 +578,12 @@ vit_leaf(size_t in_size, message_size_t msg_size, ofdm_param * ofdm_ptr, size_t 
 
   // DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
   int32_t in_cbps = ofdm_ptr->n_cbps;
-  int32_t in_ntraceback = d_ntraceback;
+  int32_t in_ntraceback = *d_ntraceback_arg;
   int32_t in_data_bits = frame_ptr->n_data_bits;
-  uint8_t * in_Mem = &(vit_data[0]);
-  uint8_t * in_Data = &(vit_data[72]);
-  uint8_t * out_Data = &(vit_data[72 + MAX_ENCODED_BITS]);
+  uint8_t * in_Mem = &(vit_data_in[0]);
+  uint8_t * in_Data = &(vit_data_in[72]);
+  uint8_t * out_Data = vit_data_out;  
+
 
   do_viterbi_function(in_data_bits, in_cbps, in_ntraceback, in_Mem, out_Data);
 
@@ -605,12 +605,12 @@ vit_leaf(size_t in_size, message_size_t msg_size, ofdm_param * ofdm_ptr, size_t 
 
 
 void
-vit_post(frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size, message_t * message_id, size_t msg_id_size, char * out_msg_text, size_t out_msg_text_size) {
+vit_post(frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data_out, size_t vit_data_out_size, message_t * message_id, size_t msg_id_size, char * out_msg_text, size_t out_msg_text_size) {
 
   message_t msg = NUM_MESSAGES;
 
   int psdusize = frame_ptr->psdu_size;; // set by finish_decode call...
-  uint8_t * out_Data = &(vit_data[72 + MAX_ENCODED_BITS]);
+  uint8_t * out_Data = vit_data_out;
 
   for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4);
     ti++) { // This covers the full-size OUTPUT area
@@ -951,8 +951,9 @@ void MiniERARootWrapper(
   label_t in_label,
   label_t * obj_label, size_t obj_label_size,
   size_t vit_size,
-  message_size_t msg_size,
-  uint8_t * vit_data, size_t vit_data_size,
+  int * d_ntraceback_arg, size_t d_ntraceback_arg_sz,
+  uint8_t * vit_data_in, size_t vit_data_in_size,
+  uint8_t * vit_data_out, size_t vit_data_out_size,
   ofdm_param * ofdm_ptr, size_t ofdm_size,
   frame_param * frame_ptr, size_t frame_ptr_size,
   uint8_t * in_bits, size_t in_bit_size,
@@ -967,7 +968,7 @@ void MiniERARootWrapper(
   void * Section = __hetero_section_begin();
   {
     void * MiniERA = __hetero_task_begin(
-      /* Num Input Pairs */ 20,
+      /* Num Input Pairs */ 21,
       fft_size,
       log_nsamples,
       inputs_ptr, inputs_ptr_size,
@@ -976,8 +977,9 @@ void MiniERARootWrapper(
       in_label,
       obj_label, obj_label_size,
       vit_size,
-      msg_size,
-      vit_data, vit_data_size,
+      d_ntraceback_arg, d_ntraceback_arg_sz,
+      vit_data_in, vit_data_in_size,
+      vit_data_out, vit_data_out_size,
       ofdm_ptr, ofdm_size,
       frame_ptr, frame_ptr_size,
       in_bits, in_bit_size,
@@ -999,8 +1001,9 @@ void MiniERARootWrapper(
       in_label,
       obj_label, obj_label_size,
       vit_size,
-      msg_size,
-      vit_data, vit_data_size,
+      d_ntraceback_arg, d_ntraceback_arg_sz,
+      vit_data_in, vit_data_in_size,
+      vit_data_out, vit_data_out_size,
       ofdm_ptr, ofdm_size,
       frame_ptr, frame_ptr_size,
       in_bits, in_bit_size,
@@ -1026,8 +1029,9 @@ void MiniERARoot(
   label_t in_label,
   label_t * obj_label, size_t obj_label_size,
   size_t vit_size,
-  message_size_t msg_size,
-  uint8_t * vit_data, size_t vit_data_size,
+  int* d_ntraceback_arg, size_t d_ntraceback_arg_sz,
+  uint8_t * vit_data_in, size_t vit_data_in_size,
+  uint8_t * vit_data_out, size_t vit_data_out_size,
   ofdm_param * ofdm_ptr, size_t ofdm_size,
   frame_param * frame_ptr, size_t frame_ptr_size,
   uint8_t * in_bits, size_t in_bit_size,
@@ -1060,40 +1064,40 @@ void MiniERARoot(
 
     __hetero_task_end(RADAR_POST);
 
-    void * VIT_reset_depuncture = __hetero_task_begin(5, (size_t) 0, vit_depunctured, vit_depunctured_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, in_bits, in_bit_size, 1, vit_depunctured, vit_depunctured_size,
+    void * VIT_reset_depuncture = __hetero_task_begin(6, (size_t) 0, vit_depunctured, vit_depunctured_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, d_ntraceback_arg,  d_ntraceback_arg_sz , in_bits, in_bit_size, 2, d_ntraceback_arg,  d_ntraceback_arg_sz, vit_depunctured, vit_depunctured_size,
       /* Optional Node Name */ "VIT_reset_depuncture");
     // printf("In VIT_RESET_DEPUNCTURE\n");
 
-    vit_task_reset(ofdm_ptr);
-    vit_task_depuncture(ofdm_ptr, frame_ptr, in_bits, vit_depunctured);
+    vit_task_reset(ofdm_ptr, d_ntraceback_arg);
+    vit_task_depuncture(ofdm_ptr, frame_ptr, in_bits, d_ntraceback_arg, vit_depunctured);
 
     __hetero_task_end(VIT_reset_depuncture);
 
-    void * VIT_setup = __hetero_task_begin(3, (size_t) 0, vit_data, vit_data_size, vit_depunctured, vit_depunctured_size, 1, vit_data, vit_data_size,
+    void * VIT_setup = __hetero_task_begin(3, (size_t) 0, vit_data_in, vit_data_in_size, vit_depunctured, vit_depunctured_size, 1, vit_data_in, vit_data_in_size,
       /* Optional Node Name */ "VIT_setup");
 
     // printf("In VIT_SETUP\n");
-    vit_task_start_decode(vit_depunctured, vit_data);
+    vit_task_start_decode(vit_depunctured, vit_data_in);
 
     __hetero_task_end(VIT_setup);
 
-    void * VIT = __hetero_task_begin(5, vit_size, msg_size, ofdm_ptr, ofdm_size,
-      frame_ptr, frame_ptr_size, vit_data, vit_data_size,
-      1, vit_data, vit_data_size,
+    void * VIT = __hetero_task_begin(5, vit_size, ofdm_ptr, ofdm_size,
+      frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
+      2, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size,
       /* Optional Node Name */ "VIT");
 
     // Body will be inlined into task
     __hpvm__hint(DEVICE);
     __hpvm__task(VIT_TASK);
-    vit_leaf(vit_size, msg_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, vit_data, vit_data_size);
+    vit_leaf(vit_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size);
 
     __hetero_task_end(VIT);
 
-    void * VIT_post = __hetero_task_begin(5, (size_t) 0, frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size, 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
+    void * VIT_post = __hetero_task_begin(5, (size_t) 0, frame_ptr, frame_ptr_size, vit_data_out, vit_data_out_size, message_id, msg_id_size, out_msg_text, out_msg_text_size, 2, message_id, msg_id_size, out_msg_text, out_msg_text_size,
       /* Optional Node Name */ "VIT_post");
 
     // printf("In VIT_POST\n");
-    vit_post(frame_ptr, frame_ptr_size, vit_data, vit_data_size, message_id, msg_id_size, out_msg_text, out_msg_text_size);
+    vit_post(frame_ptr, frame_ptr_size, vit_data_out, vit_data_out_size, message_id, msg_id_size, out_msg_text, out_msg_text_size);
 
     __hetero_task_end(VIT_post);
 
@@ -1123,7 +1127,7 @@ void MiniERARoot(
 }
 
 
-void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uint8_t * vit_depunctured, message_t * message, char * out_msg_text, uint8_t * vit_data, label_t * cv_tr_label, unsigned log_nsamples, float * radar_inputs, distance_t * distance, unsigned time_step, unsigned pandc_repeat_factor, vehicle_state_t * vehicle_state, vehicle_state_t * new_vehicle_state) {
+void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uint8_t * vit_depunctured, message_t * message, char * out_msg_text, int * d_ntraceback_arg, uint8_t * vit_data_in, uint8_t * vit_data_out, label_t * cv_tr_label, unsigned log_nsamples, float * radar_inputs, distance_t * distance, unsigned time_step, unsigned pandc_repeat_factor, vehicle_state_t * vehicle_state, vehicle_state_t * new_vehicle_state) {
   DEBUG(printf("In hpvm_launch()\n"));
 
   size_t radar_inputs_size = 2 * (1 << MAX_RADAR_LOGN) * sizeof(float);
@@ -1134,7 +1138,7 @@ void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uin
 
   // Use Hetero-C++ 
   void * DFG = __hetero_launch((void *) MiniERARootWrapper,
-    /* Num Input Pairs */ 20,
+    /* Num Input Pairs */ 21,
     fft_size,
     log_nsamples,
     radar_inputs, radar_inputs_size,
@@ -1143,8 +1147,9 @@ void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uin
     *cv_tr_label,
     cv_tr_label, sizeof(label_t),
     vit_size,
-    vit_msgs_size,
-    &(vit_data[0]), sizeof(vit_data),
+    d_ntraceback_arg, sizeof(int),
+    &(vit_data_in[0]), sizeof(vit_data_in),
+    &(vit_data_out[0]), sizeof(vit_data_out),
     &vdentry_p->ofdm_p, sizeof(ofdm_param),
     &vdentry_p->frame_p, sizeof(frame_param),
     vdentry_p->in_bits, sizeof(vdentry_p->in_bits),
@@ -1182,7 +1187,7 @@ void hpvm_cleanup() {
 
 
 void VITRoot(
-  size_t vit_size, message_size_t msg_size, uint8_t * vit_data, size_t vit_data_size, ofdm_param * ofdm_ptr, size_t ofdm_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * in_bits, size_t in_bit_size, uint8_t * vit_depunctured, size_t vit_depunctured_size, message_t * message_id, size_t msg_id_size, char * out_msg_text, size_t out_msg_text_size
+  size_t vit_size, uint8_t * vit_data, size_t vit_data_size, ofdm_param * ofdm_ptr, size_t ofdm_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * in_bits, size_t in_bit_size, uint8_t * vit_depunctured, size_t vit_depunctured_size, message_t * message_id, size_t msg_id_size, char * out_msg_text, size_t out_msg_text_size
 ) {
 
   void * Section = __hetero_section_begin();
@@ -1191,8 +1196,8 @@ void VITRoot(
       /* Optional Node Name */ "VIT_reset_depuncture");
     // printf("In VIT_RESET_DEPUNCTURE\n");
 
-    vit_task_reset(ofdm_ptr);
-    vit_task_depuncture(ofdm_ptr, frame_ptr, in_bits, vit_depunctured);
+    vit_task_reset(ofdm_ptr, d_ntraceback_arg);
+    vit_task_depuncture(ofdm_ptr, frame_ptr, in_bits, d_ntraceback_arg, vit_depunctured);
 
     __hetero_task_end(VIT_reset_depuncture);
 
@@ -1204,15 +1209,14 @@ void VITRoot(
 
     __hetero_task_end(VIT_setup);
 
-    void * VIT = __hetero_task_begin(5, (size_t) vit_msgs_size, msg_size, ofdm_ptr, ofdm_size,
-      frame_ptr, frame_ptr_size, vit_data, vit_data_size,
-      1, vit_data, vit_data_size,
+    void * VIT = __hetero_task_begin(5, vit_size, ofdm_ptr, ofdm_size,
+      frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
+      2, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size,
       /* Optional Node Name */ "VIT");
 
     // Body will be inlined into task
     // printf("In VIT_LEAF\n");
-    vit_leaf(vit_size, msg_size, ofdm_ptr, ofdm_size,
-      frame_ptr, frame_ptr_size, vit_data, vit_data_size);
+    vit_leaf(vit_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size);
 
     __hetero_task_end(VIT);
 

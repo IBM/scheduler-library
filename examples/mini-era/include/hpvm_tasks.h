@@ -44,8 +44,8 @@ void
 #ifdef HCC
 inline __attribute__((always_inline))
 #endif
-vit_leaf(size_t in_size, message_size_t msg_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
-  frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size);
+vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
+  frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size);
 
 void
 #ifdef HCC
@@ -81,8 +81,9 @@ void MiniERARoot(
   label_t in_label,
   label_t * obj_label, size_t obj_label_size,
   size_t vit_size,
-  message_size_t msg_size,
-  uint8_t * vit_data, size_t vit_data_size,
+  int* d_ntraceback_arg, size_t d_ntraceback_arg_sz,
+  uint8_t * vit_data_in, size_t vit_data_in_size,
+  uint8_t * vit_data_out, size_t vit_data_out_size,
   ofdm_param * ofdm_ptr, size_t ofdm_size,
   frame_param * frame_ptr, size_t frame_ptr_size,
   uint8_t * in_bits, size_t in_bit_size,
@@ -96,7 +97,7 @@ void MiniERARoot(
 );
 
 
-void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uint8_t * vit_depunctured, message_t * message, char * out_msg_text, uint8_t * vit_data, label_t * cv_tr_label, unsigned log_nsamples, float * radar_inputs, distance_t * distance, unsigned time_step, unsigned pandc_repeat_factor, vehicle_state_t * vehicle_state, vehicle_state_t * new_vehicle_state);
+void hpvm_launch(message_size_t vit_msgs_size, vit_dict_entry_t * vdentry_p, uint8_t * vit_depunctured, message_t * message, char * out_msg_text, int * d_ntraceback_arg, uint8_t * vit_data_in, uint8_t * vit_data_out, label_t * cv_tr_label, unsigned log_nsamples, float * radar_inputs, distance_t * distance, unsigned time_step, unsigned pandc_repeat_factor, vehicle_state_t * vehicle_state, vehicle_state_t * new_vehicle_state);
 
 extern "C" void hpvm_initialize();
 

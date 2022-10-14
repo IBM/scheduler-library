@@ -29,16 +29,19 @@
  //Viterbi: vit_msgs_size, &(vdentry_p->ofdm_p), sizeof(ofdm_param), &(vdentry_p->frame_p), sizeof(frame_param), vdentry_p->in_bits, sizeof(uint8_t)
 struct vit_io_t {
   size_t in_size; //For profiling
-  message_size_t msize;
   ofdm_param * ofdm_ptr;
   size_t ofdm_param_size;
   frame_param * frame_ptr;
   size_t frame_ptr_size;
-  uint8_t * vit_data;
-  size_t vit_data_size;
-  vit_io_t(message_size_t msize, ofdm_param * ofdm_ptr, size_t ofdm_param_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size) :
-    msize(msize), ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
-    frame_ptr_size(frame_ptr_size), vit_data(vit_data), vit_data_size(vit_data_size) {} //, in_size(msize) {}
+  int * d_ntraceback_arg;
+  size_t d_ntraceback_arg_sz; 
+  uint8_t * vit_data_in;
+  size_t vit_data_in_size;
+  uint8_t * vit_data_out;
+  size_t vit_data_out_size;
+  vit_io_t(ofdm_param * ofdm_ptr, size_t ofdm_param_size, frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data, size_t vit_data_size) :
+    ofdm_ptr(ofdm_ptr), ofdm_param_size(ofdm_param_size), frame_ptr(frame_ptr),
+    frame_ptr_size(frame_ptr_size), vit_data_in(vit_data_in), vit_data_in_size(vit_data_in_size), vit_data_out(vit_data_out), vit_data_out_size(vit_data_out_size) {} //, in_size(msize) {}
 };
 
 // This is a structure that defines the "Viterbi" job's "view" of the data (in the metadata structure)
