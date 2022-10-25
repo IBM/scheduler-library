@@ -80,7 +80,7 @@ void init_fft_parameters(unsigned n, uint32_t log_nsamples);
 extern "C" void output_fft_task_type_run_stats(void * sptr_ptr, unsigned my_task_type,
                                     unsigned total_accel_types);
 
-extern "C" void execute_hwr_fft_accelerator(void * fft_io_ptr);
+extern "C" void execute_hwr_fft_accelerator(size_t in_size, uint32_t log_nsamples, float * inputs_ptr, size_t inputs_ptr_size);
 extern "C" void execute_cpu_fft_accelerator(void * fft_io_ptr);
 
 

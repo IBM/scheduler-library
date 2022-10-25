@@ -6,6 +6,7 @@
 
 #include "base_types.h"
 #include "hpvm.h"
+#include "hetero.h"
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>

@@ -1,6 +1,8 @@
 
 #include <stdlib.h>
+#ifdef __cplusplus
 extern "C" {
+#endif
     extern void * __hpvm_launch(void *, ...);
     extern void __hpvm_wait(void *);
     extern void * __hpvm_parallel_section_begin();
@@ -31,4 +33,7 @@ extern "C" {
     extern void * __hetero_malloc(size_t);
     extern void __hetero_free(void *);
     extern void __hetero_hint(int);
+#ifdef __cplusplus
 }
+#endif
+

@@ -66,7 +66,7 @@ extern "C" void print_cv_metadata_block_contents(void * mb);
 
 extern "C" void output_cv_task_type_run_stats(void * sptr, unsigned my_task_type, unsigned total_accel_types);
 
-extern "C" void execute_hwr_cv_accelerator(void * cv_io_ptr);
+extern "C" void execute_hwr_cv_accelerator (size_t in_size, label_t in_label, label_t * obj_label, size_t obj_label_size);
 extern "C" void execute_cpu_cv_accelerator(void * cv_io_ptr);
 
 void set_up_cv_task_on_accel_profile_data();

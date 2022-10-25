@@ -566,7 +566,7 @@ void do_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 
 
 void
-inline __attribute__((always_inline))
+__attribute__((noinline))
 vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
   frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size) {
 
@@ -642,7 +642,7 @@ vit_post(frame_param * frame_ptr, size_t frame_ptr_size, uint8_t * vit_data_out,
 }
 
 void
-inline __attribute__((always_inline))
+__attribute__((noinline))
 cv_leaf(size_t in_size, label_t in_label, label_t * obj_label, size_t obj_label_size) {
   DEBUG(printf("-- CV Leaf Node --\n"));
 
@@ -1050,8 +1050,8 @@ void MiniERARoot(
       /* Optional Node Name */ "RADAR");
     // printf("In RADAR_LEAF\n");
     // Body will be inlined into task
-    __hpvm__hint(DEVICE);
-    __hpvm__task(RADAR_TASK);
+    // __hpvm__hint(DEVICE);
+    // __hpvm__task(RADAR_TASK, radar_leaf);
     radar_leaf(fft_size, log_nsamples, inputs_ptr, inputs_ptr_size);
 
     __hetero_task_end(RADAR);
@@ -1088,7 +1088,7 @@ void MiniERARoot(
 
     // Body will be inlined into task
     __hpvm__hint(DEVICE);
-    __hpvm__task(VIT_TASK);
+    __hpvm__task(VIT_TASK, vit_leaf);
     vit_leaf(vit_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size);
 
     __hetero_task_end(VIT);
@@ -1107,8 +1107,8 @@ void MiniERARoot(
       /* Optional Node Name */ "CV");
     // printf("In CV_LEAF\n");
     // Body will be inlined into task
-    __hpvm__hint(DEVICE);
-    __hpvm__task(CV_TASK);
+    // __hpvm__hint(DEVICE);
+    // __hpvm__task(CV_TASK, cv_leaf);
     cv_leaf(cv_size, in_label, obj_label, obj_label_size);
 
     __hetero_task_end(CV);

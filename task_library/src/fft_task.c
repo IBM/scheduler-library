@@ -313,17 +313,17 @@ extern "C" {
 }
 
 extern "C" {
-  void execute_hwr_fft_accelerator(void * fft_io_ptr) { //, int accelerator_id) {
+  void execute_hwr_fft_accelerator(size_t in_size, uint32_t log_nsamples, float * inputs_ptr, size_t inputs_ptr_size) { //, int accelerator_id) {
     //TODO: Figure how to pass accelerator id as fn
     int fn = 0; //accelerator_id;
-    fft_io_t * fft_data_p = (fft_io_t *) (fft_io_ptr);
-    uint32_t log_nsamples = fft_data_p->log_nsamples;
+    // fft_io_t * fft_data_p = (fft_io_t *) (fft_io_ptr);
+    // uint32_t log_nsamples = log_nsamples;
 #ifdef HW_FFT
     // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
     init_fft_parameters(fn, log_nsamples);
 
     // convert input from float to fixed point
-    float * data = (float *) (fft_data_p->inputs_ptr);
+    float * data = (float *) (inputs_ptr);
     for (int j = 0; j < 2 * (1 << log_nsamples); j++) {
       fftHW_lmem[fn][j] = float2fx(data[j], FX_IL);
     }

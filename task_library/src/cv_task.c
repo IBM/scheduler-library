@@ -206,14 +206,15 @@ static inline label_t parse_output_dimg() {
 }
 
 extern "C" {
-  void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void * cv_io_ptr) {
-    cv_io_t * cv_data_p = (cv_io_t *) (cv_io_ptr);
+  // void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void * cv_io_ptr) {
+  void execute_hwr_cv_accelerator (size_t in_size, label_t in_label, label_t * obj_label, size_t obj_label_size) {
+    // cv_io_t * cv_data_p = (cv_io_t *) (cv_io_ptr);
 #ifdef HW_CV
     //printf("  We have HW_CV defined...\n");
 #ifdef ENABLE_NVDLA
   //printf("  We have ENABLE_NVDLA defined...\n");
   // Add the call to the NVDLA stuff here.
-    label_t tr_label = cv_data_p->in_label;
+    label_t tr_label = in_label;
     char image_name[32];
     switch (tr_label) {
     case no_label:
@@ -243,7 +244,7 @@ extern "C" {
     TDEBUG(printf("---> Predicted label = %d\n", pred_label));
     // Set result into the metatdata block
     //task_metadata_block->data_view.cv_data.object_label = pred_label;
-    *(cv_data_p->obj_label) = pred_label;
+    *(obj_label) = pred_label;
 #endif // ifdef ENABLE_NVDLA
 
 #else // Of #ifdef HW_CV

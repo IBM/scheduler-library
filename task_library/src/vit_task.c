@@ -202,21 +202,24 @@ extern "C" {
 }
 
 extern "C" {
-  void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void * vit_io_ptr) {//, int accelerator_id) {
+  // void exec_vit_task_on_vit_hwr_accel( /*task_metadata_entry*/ void * vit_io_ptr) {//, int accelerator_id) {
+  void 
+  __attribute__((noinline))
+  exec_vit_task_on_vit_hwr_accel(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size, frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size) {
     int vn = 0; //accelerator_id;
-    vit_io_t * vdata = (vit_io_t *) (vit_io_ptr);
-    int32_t  in_cbps = vdata->ofdm_ptr->n_cbps;
-    int32_t  in_ntraceback = *(vdata->d_ntraceback_arg);
-    int32_t  in_data_bits = vdata->frame_ptr->n_data_bits;
+    // vit_io_t * vdata = (vit_io_t *) (vit_io_ptr);
+    int32_t  in_cbps = ofdm_ptr->n_cbps;
+    int32_t  in_ntraceback = *(d_ntraceback_arg);
+    int32_t  in_data_bits = frame_ptr->n_data_bits;
     int32_t  inData_offset = 72;
     // int32_t  outData_offset = inData_offset + MAX_ENCODED_BITS;
-    uint8_t * in_Mem = &(vdata->vit_data_in[0]);
-    uint8_t * in_Data = &(vdata->vit_data_in[inData_offset]);
-    uint8_t * out_Data = &(vdata->vit_data_out[0]);
+    uint8_t * in_Mem = (uint8_t *) &(vit_data_in[0]);
+    uint8_t * in_Data = (uint8_t *) &(vit_data_in[inData_offset]);
+    uint8_t * out_Data = (uint8_t *) &(vit_data_out[0]);
     DEBUG(
       printf("Running on VIT HW accelerator\n");
       printf("In exec_vit_task_on_vit_hwr_accel\n");
-      printf("IM: %p, ID: %p, OD: %p\n", &(vdata->vit_data_in[0]), &(vdata->vit_data_in[inData_offset]), &(vdata->vit_data_out[0]));
+      printf("IM: %p, ID: %p, OD: %p\n", &(vit_data_in[0]), &(vit_data_in[inData_offset]), &(vit_data_out[0]));
     );
 
 #ifdef HW_VIT
