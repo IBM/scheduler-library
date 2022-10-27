@@ -567,8 +567,8 @@ void do_viterbi_function(int in_n_data_bits, int in_cbps, int in_ntraceback,
 
 void
 __attribute__((noinline))
-vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
-  frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size) {
+vit_leaf(size_t in_size, void * ofdm_ptr, size_t ofdm_size,
+  void * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size) {
 
   DEBUG(printf("-- Vitterbi Leaf Node --\n"));
 
@@ -577,9 +577,9 @@ vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
   //
 
   // DEBUG(printf("In exec_vit_task_on_cpu_accel\n"));
-  int32_t in_cbps = ofdm_ptr->n_cbps;
+  int32_t in_cbps = ((ofdm_param *) ofdm_ptr)->n_cbps;
   int32_t in_ntraceback = *d_ntraceback_arg;
-  int32_t in_data_bits = frame_ptr->n_data_bits;
+  int32_t in_data_bits = ((frame_param *) frame_ptr)->n_data_bits;
   uint8_t * in_Mem = &(vit_data_in[0]);
   uint8_t * in_Data = &(vit_data_in[72]);
   uint8_t * out_Data = vit_data_out;  
@@ -1081,15 +1081,15 @@ void MiniERARoot(
 
     __hetero_task_end(VIT_setup);
 
-    void * VIT = __hetero_task_begin(5, vit_size, ofdm_ptr, ofdm_size,
-      frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
+    void * VIT = __hetero_task_begin(5, vit_size, (void *) ofdm_ptr, ofdm_size,
+      (void *) frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
       2, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size,
       /* Optional Node Name */ "VIT");
 
     // Body will be inlined into task
     __hpvm__hint(DEVICE);
     __hpvm__task(VIT_TASK, vit_leaf);
-    vit_leaf(vit_size, ofdm_ptr, ofdm_size, frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size);
+    vit_leaf(vit_size, (void *) ofdm_ptr, ofdm_size, (void *) frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size);
 
     __hetero_task_end(VIT);
 
@@ -1209,8 +1209,8 @@ void VITRoot(
 
     __hetero_task_end(VIT_setup);
 
-    void * VIT = __hetero_task_begin(5, vit_size, ofdm_ptr, ofdm_size,
-      frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
+    void * VIT = __hetero_task_begin(5, vit_size, (void *) ofdm_ptr, ofdm_size,
+      (void *) frame_ptr, frame_ptr_size, d_ntraceback_arg, d_ntraceback_arg_sz, vit_data_in, vit_data_in_size, 
       2, vit_data_in, vit_data_in_size, vit_data_out, vit_data_out_size,
       /* Optional Node Name */ "VIT");
 

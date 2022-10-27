@@ -45,8 +45,8 @@ void
 #ifdef HCC
 inline __attribute__((always_inline))
 #endif
-vit_leaf(size_t in_size, ofdm_param * ofdm_ptr, size_t ofdm_size,
-  frame_param * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size);
+vit_leaf(size_t in_size, void * ofdm_ptr, size_t ofdm_size,
+  void * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * vit_data_in, size_t vit_data_in_size, uint8_t * vit_data_out, size_t vit_data_out_size);
 
 void
 #ifdef HCC
