@@ -36,7 +36,7 @@ NC='\033[0m'
 #INCDIR ?=
 INCDIR += -I./include -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include
 ifdef DO_CROSS_COMPILATION
- INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+ INCDIR += -I$(RISCV_BOOST_DIR)/include/
 endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
@@ -180,7 +180,7 @@ TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 
 LDLIBS ?=
 ifdef DO_CROSS_COMPILATION
- LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+ LDLIBS += -L$(RISCV_BOOST_DIR)/lib
 endif
 ifdef COMPILE_TO_ESP
  SCHED_ESP_BUILD_DRIVERS=$(SCHED_LIB_DIR)/esp-build/drivers

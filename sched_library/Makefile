@@ -31,7 +31,7 @@ CC = g++ -std=c++11
 INCDIR ?=
 INCDIR += -I./include
 ifdef DO_CROSS_COMPILATION
- INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+ INCDIR += -I$(RISCV_BOOST_DIR)/include/
 endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
@@ -153,7 +153,7 @@ endif
 
 LDLIBS ?=
 ifdef DO_CROSS_COMPILATION
- LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+ LDLIBS += -L$(RISCV_BOOST_DIR)/lib
 endif
 ifdef COMPILE_TO_ESP
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc

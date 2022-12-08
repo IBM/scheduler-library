@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/bash
 ####### THESE VARIABLES NEED TO BE SET! #########
 #export HPVM_DIR=$HOME/work_dir/hpvm-dssoc/hpvm
 #export RISCV_BIN_DIR=$HOME/work_dir/riscv/bin
-export HPVM_DIR=
-export RISCV_BIN_DIR=
-export ESP_ROOT=
+export HPVM_DIR=/home/espuser/hpvm-release/hpvm
+export RISCV_BIN_DIR=/home/espuser/riscv/bin
+export ESP_ROOT=/home/espuser/esp
 
 
 ####### THESE VARIABLES SHOULD NOT NEED ANY MODIFICATION! #########
