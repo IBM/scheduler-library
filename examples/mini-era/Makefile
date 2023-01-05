@@ -1,3 +1,9 @@
+# Need to specify bash in order for conda activate to work.
+SHELL=/bin/bash
+# Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
+CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
+CONDA_DEACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda deactivate
+
 include ../../hardware.config
 
 CPU ?= ariane
@@ -323,7 +329,7 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	cd $(NVDLA_MAKE_DIR) && python yolo.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+	$(CONDA_ACTIVATE) hpvm && cd $(NVDLA_MAKE_DIR) && python yolo.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR) && $(CONDA_DEACTIVATE)
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------

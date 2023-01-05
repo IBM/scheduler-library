@@ -1107,8 +1107,8 @@ void MiniERARoot(
       /* Optional Node Name */ "CV");
     // printf("In CV_LEAF\n");
     // Body will be inlined into task
-    // __hpvm__hint(DEVICE);
-    // __hpvm__task(CV_TASK, cv_leaf);
+     __hpvm__hint(DEVICE);
+    __hpvm__task(CV_TASK, cv_leaf);
     cv_leaf(cv_size, in_label, obj_label, obj_label_size);
 
     __hetero_task_end(CV);

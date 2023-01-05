@@ -204,6 +204,46 @@ static inline label_t parse_output_dimg() {
   fclose(file_p);
   return (label_t) max_idx;
 }
+static inline label_t parse_yolo_output_dimg() {
+  // TODO: parse to produce bounding boxes
+  FILE * file_p = fopen("./output.dimg", "r");
+  fclose(file_p);
+  return (label_t) -1;
+}
+
+extern "C" {
+  // void execute_hwr_yolocv_accelerator( /*task_metadata_entry*/ void * cv_io_ptr) {
+  void execute_hwr_yolocv_accelerator (size_t in_size, label_t in_label, label_t * obj_label, size_t obj_label_size) {
+    // cv_io_t * cv_data_p = (cv_io_t *) (cv_io_ptr);
+#ifdef HW_CV
+    //printf("  We have HW_CV defined...\n");
+#ifdef ENABLE_NVDLA
+  //printf("  We have ENABLE_NVDLA defined...\n");
+  // Add the call to the NVDLA stuff here.
+    char image_name[32];
+    sprintf(image_name, "atr.jpg", (image_index & 0x1f));
+    DEBUG(printf("Calling NVDLA for idx %u image %s\n", image_index, image_name));
+    runImageonNVDLAWrapper(image_name);
+    DEBUG(printf("   DONE with NVDLA call...\n"));
+    image_index++;
+    DEBUG(printf("Setting pred_label from parse_output_dimg call...\n"));
+    label_t pred_label = parse_yolo_output_dimg();
+    TDEBUG(printf("---> Predicted label = %d\n", pred_label));
+    // Set result into the metatdata block
+    //task_metadata_block->data_view.cv_data.object_label = pred_label;
+    *(obj_label) = pred_label;
+#endif // ifdef ENABLE_NVDLA
+
+#else // Of #ifdef HW_CV
+#ifdef FAKE_HW_CV
+    // This usleep call stands in as the "Fake" CNN accelerator
+    usleep(cv_fake_hwr_run_time_in_usec);
+    // cv_data_p->object_label = run_object_classification(tr_val);
+
+#endif // #fdef FAKE_HE_CV
+#endif // else of #ifdef HW_CV
+  }}
+
 
 extern "C" {
   // void execute_hwr_cv_accelerator( /*task_metadata_entry*/ void * cv_io_ptr) {
