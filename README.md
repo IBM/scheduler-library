@@ -128,6 +128,7 @@ The Scheduler Library is under constant development (and hopefully improvement).
 
 ## Contacts and Current Maintainers
 
+ - Aporva Amarnath (aporva.amarnath@ibm.com)
  - J-D Wellman (wellman@us.ibm.com)
  - Augusto Vega (ajvega@us.ibm.com)
 
